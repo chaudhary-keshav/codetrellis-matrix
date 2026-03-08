@@ -1,0 +1,1102 @@
+# MobX State Management Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.51 - MobX State Management Framework Support
+# Practice IDs: MOBX001-MOBX050
+# Coverage: Observable Setup, Actions, Computed, Reactions, Configuration,
+#           TypeScript, Performance, Testing, Architecture, Migration
+# Versions: MobX v3.x-v6.x (makeObservable, makeAutoObservable, observable,
+#           action, computed, autorun, reaction, when, flow, configure)
+
+practices:
+  # ============================================================================
+  # OBSERVABLE SETUP (MOBX001-MOBX010) - Observable state best practices
+  # ============================================================================
+
+  - id: MOBX001
+    title: "Use makeAutoObservable for simple stores in MobX 6+"
+    description: "Prefer makeAutoObservable(this) for class-based stores. It automatically infers observable, action, and computed annotations from property types, reducing boilerplate. Only use makeObservable when you need explicit control over annotations."
+    category: "mobx_observable"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx", "mobx-v6"]
+    tags: ["mobx", "makeAutoObservable", "observable", "store", "v6"]
+    example: |
+      import { makeAutoObservable } from 'mobx';
+
+      class TodoStore {
+        todos: Todo[] = [];
+        filter = 'all';
+
+        constructor() {
+          makeAutoObservable(this);  // ✅ Automatic inference
+        }
+
+        get filtered() { return this.todos.filter(t => t.status === this.filter); }
+        addTodo(text: string) { this.todos.push({ text, done: false }); }
+      }
+
+  - id: MOBX002
+    title: "Use makeObservable with explicit annotations for complex stores"
+    description: "Use makeObservable(this, { ... }) when you need fine-grained control: marking specific fields as observable.ref, observable.shallow, action.bound, or computed. Each annotation must be explicitly specified."
+    category: "mobx_observable"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx", "mobx-v6"]
+    tags: ["mobx", "makeObservable", "annotations", "explicit"]
+    example: |
+      import { makeObservable, observable, action, computed } from 'mobx';
+
+      class UserStore {
+        users: User[] = [];
+        selectedId: string | null = null;
+
+        constructor() {
+          makeObservable(this, {
+            users: observable,
+            selectedId: observable,
+            selectedUser: computed,
+            setSelected: action,
+            fetchUsers: flow,
+          });
+        }
+      }
+
+  - id: MOBX003
+    title: "Use observable.ref for non-plain objects that should not be deeply observed"
+    description: "Mark fields as observable.ref when they hold non-plain objects (DOM elements, class instances, immutable data) that should trigger reactions on reassignment but not on internal mutation."
+    category: "mobx_observable"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "observable.ref", "shallow", "reference"]
+    example: |
+      import { makeObservable, observable } from 'mobx';
+
+      class EditorStore {
+        editorRef: HTMLDivElement | null = null;
+        immutableData: ImmutableMap = ImmutableMap();
+
+        constructor() {
+          makeObservable(this, {
+            editorRef: observable.ref,      // ✅ Only react to reassignment
+            immutableData: observable.ref,   // ✅ Immutable - no deep tracking
+          });
+        }
+      }
+
+  - id: MOBX004
+    title: "Use observable.shallow for arrays/maps where items should not be deeply observed"
+    description: "Use observable.shallow for collections where you want to track additions/removals but not deep changes within items. Useful for large lists of complex objects where deep observation would be expensive."
+    category: "mobx_observable"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "observable.shallow", "performance", "collections"]
+    example: |
+      import { makeObservable, observable } from 'mobx';
+
+      class ListStore {
+        items: Item[] = [];
+
+        constructor() {
+          makeObservable(this, {
+            items: observable.shallow,  // ✅ Track add/remove only
+          });
+        }
+      }
+
+  - id: MOBX005
+    title: "Use observable.struct for value-type comparisons"
+    description: "Use observable.struct for objects/values where you want to suppress notifications if the new value is structurally equal to the old one. This uses deep structural comparison instead of reference comparison."
+    category: "mobx_observable"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "observable.struct", "structural-equality"]
+    example: |
+      import { makeObservable, observable } from 'mobx';
+
+      class PositionStore {
+        position = { x: 0, y: 0 };
+
+        constructor() {
+          makeObservable(this, {
+            position: observable.struct,  // ✅ Only react to actual changes
+          });
+        }
+
+        setPosition(x: number, y: number) {
+          this.position = { x, y };  // No notification if same values
+        }
+      }
+
+  - id: MOBX006
+    title: "Do not make non-serializable fields observable"
+    description: "Avoid making functions, promises, class instances, and non-serializable values observable. Use makeAutoObservable with overrides to exclude them, or use observable.ref for references."
+    category: "mobx_observable"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "observable", "serialization", "overrides"]
+    example: |
+      class ApiStore {
+        apiClient: ApiClient;  // Non-serializable
+
+        constructor(client: ApiClient) {
+          this.apiClient = client;
+          makeAutoObservable(this, {
+            apiClient: false,  // ✅ Exclude from observation
+          });
+        }
+      }
+
+  - id: MOBX007
+    title: "Keep store constructors simple — defer complex initialization"
+    description: "The constructor should only call makeObservable/makeAutoObservable and set default values. Defer async initialization, side effects, and complex setup to separate init() methods or use flow."
+    category: "mobx_observable"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "constructor", "initialization", "store"]
+    example: |
+      class DataStore {
+        data: Item[] = [];
+        isLoading = false;
+
+        constructor() {
+          makeAutoObservable(this);
+          // ✅ No async work here
+        }
+
+        *init() {  // ✅ Separate initialization as a flow
+          this.isLoading = true;
+          this.data = yield fetchData();
+          this.isLoading = false;
+        }
+      }
+
+  - id: MOBX008
+    title: "Prefer class-based stores over observable() factory functions"
+    description: "Use class-based stores with makeAutoObservable/makeObservable for better TypeScript support, IDE autocompletion, inheritance, and clear structure. Reserve observable() for simple standalone values."
+    category: "mobx_observable"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "class", "store", "observable", "architecture"]
+    example: |
+      // ✅ Class-based store
+      class CounterStore {
+        count = 0;
+        constructor() { makeAutoObservable(this); }
+        increment() { this.count++; }
+      }
+
+      // ⚠️ observable() factory — less structured
+      const counter = observable({ count: 0 });
+
+  - id: MOBX009
+    title: "Use observable.map and observable.set for dynamic key collections"
+    description: "Use observable.map() instead of plain objects for dynamic key/value stores, and observable.set() for unique collections. They provide proper observability for additions/deletions of keys."
+    category: "mobx_observable"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "observable.map", "observable.set", "collections"]
+    example: |
+      import { observable } from 'mobx';
+
+      class CacheStore {
+        cache = observable.map<string, CacheEntry>();
+        tags = observable.set<string>();
+
+        constructor() { makeAutoObservable(this); }
+
+        set(key: string, value: CacheEntry) { this.cache.set(key, value); }
+        addTag(tag: string) { this.tags.add(tag); }
+      }
+
+  - id: MOBX010
+    title: "Call makeObservable/makeAutoObservable exactly once per class"
+    description: "Call makeObservable or makeAutoObservable exactly once in the constructor. Multiple calls will throw. In inheritance, call it only in the most derived class or use overrides to handle parent fields."
+    category: "mobx_observable"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "makeObservable", "constructor", "inheritance"]
+    example: |
+      // ✅ Call once in most-derived class
+      class Base {
+        baseValue = 0;
+      }
+
+      class Derived extends Base {
+        derivedValue = 0;
+        constructor() {
+          super();
+          makeObservable(this, {
+            baseValue: observable,
+            derivedValue: observable,
+          });
+        }
+      }
+
+  # ============================================================================
+  # ACTIONS (MOBX011-MOBX018) - Action best practices
+  # ============================================================================
+
+  - id: MOBX011
+    title: "Always modify observable state inside actions"
+    description: "Enable enforceActions: 'always' or 'observed' in configure() to ensure all state modifications happen inside actions. This makes state changes predictable, traceable, and compatible with MobX devtools."
+    category: "mobx_action"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "action", "enforceActions", "configure"]
+    example: |
+      import { configure } from 'mobx';
+
+      configure({ enforceActions: 'always' });  // ✅ Enforce action discipline
+
+      class Store {
+        count = 0;
+        constructor() { makeAutoObservable(this); }
+        increment() { this.count++; }  // ✅ Action (auto-inferred)
+      }
+
+  - id: MOBX012
+    title: "Use action.bound for methods passed as callbacks"
+    description: "Use action.bound (or makeAutoObservable(this, {}, { autoBind: true })) for methods that are passed as event handlers or callbacks. This ensures 'this' is correctly bound."
+    category: "mobx_action"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "action.bound", "binding", "callbacks", "autoBind"]
+    example: |
+      class FormStore {
+        value = '';
+
+        constructor() {
+          makeObservable(this, {
+            value: observable,
+            handleChange: action.bound,  // ✅ Bound for event handlers
+          });
+        }
+
+        handleChange(e: ChangeEvent<HTMLInputElement>) {
+          this.value = e.target.value;
+        }
+      }
+
+      // Or use autoBind: true
+      makeAutoObservable(this, {}, { autoBind: true });
+
+  - id: MOBX013
+    title: "Use runInAction for inline async state updates"
+    description: "When you need to update state after an await inside an async method, wrap the update in runInAction(). Alternatively, use flow() with generator functions for more structured async handling."
+    category: "mobx_action"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "runInAction", "async", "await"]
+    example: |
+      import { runInAction } from 'mobx';
+
+      class UserStore {
+        users: User[] = [];
+        loading = false;
+
+        constructor() { makeAutoObservable(this); }
+
+        async fetchUsers() {
+          this.loading = true;  // ✅ In action (the method itself)
+          const data = await api.getUsers();
+          runInAction(() => {   // ✅ Wrap post-await updates
+            this.users = data;
+            this.loading = false;
+          });
+        }
+      }
+
+  - id: MOBX014
+    title: "Use flow() for complex async operations instead of async/await"
+    description: "Use flow() with generator functions for complex async workflows. Flow automatically wraps each yield continuation in an action, eliminating the need for runInAction and providing built-in cancellation."
+    category: "mobx_action"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "flow", "generator", "async", "cancellation"]
+    example: |
+      import { flow, makeAutoObservable } from 'mobx';
+
+      class DataStore {
+        data: Item[] = [];
+        state = 'idle';
+
+        constructor() { makeAutoObservable(this); }
+
+        fetchData = flow(function* (this: DataStore) {
+          this.state = 'loading';
+          try {
+            this.data = yield api.fetchItems();  // ✅ Auto-wrapped in action
+            this.state = 'done';
+          } catch (e) {
+            this.state = 'error';
+          }
+        });
+      }
+
+  - id: MOBX015
+    title: "Name your actions for better devtools debugging"
+    description: "Give actions explicit names using action('name', fn) for better tracing in MobX devtools and spy. When using makeObservable, method names are used automatically."
+    category: "mobx_action"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "action", "naming", "devtools", "debugging"]
+    example: |
+      import { action, runInAction } from 'mobx';
+
+      // ✅ Named standalone action
+      const reset = action('resetStore', () => { store.count = 0; });
+
+      // ✅ Named runInAction
+      runInAction('updateAfterFetch', () => {
+        store.data = fetchedData;
+      });
+
+  - id: MOBX016
+    title: "Keep actions focused — one action per state change intent"
+    description: "Each action should represent a single user intent or state transition. Avoid mega-actions that modify many unrelated pieces of state. Compose smaller actions if needed."
+    category: "mobx_action"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "action", "single-responsibility"]
+    example: |
+      // ✅ Focused actions
+      class CartStore {
+        addItem(item: Item) { this.items.push(item); }
+        removeItem(id: string) { this.items = this.items.filter(i => i.id !== id); }
+        updateQuantity(id: string, qty: number) { /* ... */ }
+        checkout() { /* orchestrates focused actions */ }
+      }
+
+  - id: MOBX017
+    title: "Use flowResult() for proper TypeScript return types with flow"
+    description: "Wrap flow() calls with flowResult() to get correct TypeScript return types. flow() returns a CancellablePromise but TypeScript cannot infer the generator return type without flowResult."
+    category: "mobx_action"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "flow", "flowResult", "typescript"]
+    example: |
+      import { flow, flowResult, makeAutoObservable } from 'mobx';
+
+      class Store {
+        constructor() { makeAutoObservable(this); }
+
+        fetchData = flow(function* () {
+          const data = yield api.fetch();
+          return data;
+        });
+      }
+
+      // ✅ Correct typing
+      const data = await flowResult(store.fetchData());
+
+  - id: MOBX018
+    title: "Cancel flows on component unmount or store disposal"
+    description: "flow() returns a CancellablePromise. Cancel running flows when components unmount or stores are disposed to prevent state updates on destroyed stores."
+    category: "mobx_action"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "flow", "cancel", "cleanup", "dispose"]
+    example: |
+      useEffect(() => {
+        const promise = store.fetchData();
+        return () => promise.cancel();  // ✅ Cancel on unmount
+      }, []);
+
+  # ============================================================================
+  # COMPUTED VALUES (MOBX019-MOBX024) - Computed property best practices
+  # ============================================================================
+
+  - id: MOBX019
+    title: "Use computed for any value that can be derived from state"
+    description: "If a value can be computed from existing observable state, make it a computed property (get keyword). Computed values are cached and only recalculated when their dependencies change."
+    category: "mobx_computed"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "computed", "derived", "caching"]
+    example: |
+      class TodoStore {
+        todos: Todo[] = [];
+
+        constructor() { makeAutoObservable(this); }
+
+        get completedCount() {  // ✅ Derived from todos
+          return this.todos.filter(t => t.done).length;
+        }
+
+        get progress() {  // ✅ Derived from other computed + observable
+          return this.todos.length ? this.completedCount / this.todos.length : 0;
+        }
+      }
+
+  - id: MOBX020
+    title: "Do not have side effects inside computed properties"
+    description: "Computed values should be pure derivations. Never modify state, make API calls, or trigger side effects inside computed getters. Use reactions (autorun/reaction) for side effects."
+    category: "mobx_computed"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "computed", "pure", "side-effects"]
+    example: |
+      // ❌ Side effects in computed
+      get total() {
+        console.log('computing total');  // ❌ Side effect
+        this.lastComputed = Date.now();  // ❌ State modification
+        return this.items.reduce((sum, i) => sum + i.price, 0);
+      }
+
+      // ✅ Pure computed
+      get total() {
+        return this.items.reduce((sum, i) => sum + i.price, 0);
+      }
+
+  - id: MOBX021
+    title: "Use computed.struct for computed objects/arrays to avoid unnecessary re-renders"
+    description: "When a computed returns an object or array, use computed.struct (or comparer.structural) to prevent notifications when the result is structurally identical to the previous value."
+    category: "mobx_computed"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "computed.struct", "structural-equality", "performance"]
+    example: |
+      import { makeObservable, computed } from 'mobx';
+
+      class FilterStore {
+        constructor() {
+          makeObservable(this, {
+            activeFilters: computed.struct,  // ✅ Structural comparison
+          });
+        }
+
+        get activeFilters() {
+          return { type: this.type, status: this.status };
+        }
+      }
+
+  - id: MOBX022
+    title: "Use keepAlive for expensive computeds that should persist without observers"
+    description: "By default, computed values are garbage collected when they have no observers. Use keepAlive: true for expensive computations that should remain cached even when no component observes them."
+    category: "mobx_computed"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "computed", "keepAlive", "caching", "performance"]
+    example: |
+      import { computed } from 'mobx';
+
+      class AnalyticsStore {
+        constructor() {
+          makeObservable(this, {
+            expensiveReport: computed({ keepAlive: true }),  // ✅ Persist cache
+          });
+        }
+
+        get expensiveReport() {
+          return this.data.reduce(/* expensive computation */);
+        }
+      }
+
+  - id: MOBX023
+    title: "Chain computed values to build a derivation tree"
+    description: "Build complex derived data by chaining computed properties. Each computed tracks only its direct dependencies, creating an efficient dependency graph with minimal recomputation."
+    category: "mobx_computed"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "computed", "chain", "derivation-tree"]
+    example: |
+      class ShopStore {
+        items: Item[] = [];
+        taxRate = 0.1;
+
+        get subtotal() { return this.items.reduce((s, i) => s + i.price * i.qty, 0); }
+        get tax() { return this.subtotal * this.taxRate; }  // ✅ Depends on subtotal
+        get total() { return this.subtotal + this.tax; }    // ✅ Depends on subtotal + tax
+      }
+
+  - id: MOBX024
+    title: "Use requiresReaction for computeds that should not be accessed outside reactions"
+    description: "Set requiresReaction: true to warn when a computed is accessed outside of a reactive context (autorun, reaction, observer component). This catches accidental non-reactive reads."
+    category: "mobx_computed"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "computed", "requiresReaction", "debugging"]
+    example: |
+      makeObservable(this, {
+        total: computed({ requiresReaction: true }),  // ✅ Warns if read outside reaction
+      });
+
+  # ============================================================================
+  # REACTIONS (MOBX025-MOBX032) - Side effect management best practices
+  # ============================================================================
+
+  - id: MOBX025
+    title: "Prefer reaction() over autorun() for targeted side effects"
+    description: "Use reaction() when you want to observe specific data and trigger an effect only when that data changes. Use autorun() only when the entire reactive expression should drive the effect."
+    category: "mobx_reaction"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "reaction", "autorun", "side-effects"]
+    example: |
+      // ✅ reaction — targeted
+      reaction(
+        () => store.selectedUser,          // Data function
+        (user) => analytics.track(user),   // Effect function
+      );
+
+      // ⚠️ autorun — tracks everything it reads
+      autorun(() => {
+        analytics.track(store.selectedUser);
+      });
+
+  - id: MOBX026
+    title: "Always dispose reactions to prevent memory leaks"
+    description: "autorun, reaction, and when return disposer functions. Always call the disposer when the reaction is no longer needed (component unmount, store disposal) to prevent memory leaks."
+    category: "mobx_reaction"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "dispose", "cleanup", "memory-leak", "autorun", "reaction"]
+    example: |
+      // ✅ In React components
+      useEffect(() => {
+        const dispose = autorun(() => {
+          document.title = `${store.count} items`;
+        });
+        return () => dispose();  // ✅ Cleanup
+      }, []);
+
+      // ✅ In stores
+      class Store {
+        disposers: (() => void)[] = [];
+
+        init() {
+          this.disposers.push(reaction(() => this.query, q => this.search(q)));
+        }
+
+        dispose() {
+          this.disposers.forEach(d => d());  // ✅ Cleanup all
+        }
+      }
+
+  - id: MOBX027
+    title: "Use when() for one-time reactions"
+    description: "Use when() to trigger a side effect exactly once when a condition becomes true. when() automatically disposes after the effect runs. Use the promise form for await-based patterns."
+    category: "mobx_reaction"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "when", "one-time", "promise", "condition"]
+    example: |
+      // ✅ Callback form
+      when(
+        () => store.isReady,
+        () => store.initialize(),
+      );
+
+      // ✅ Promise form (async/await)
+      async function waitForReady() {
+        await when(() => store.isReady);
+        store.initialize();
+      }
+
+  - id: MOBX028
+    title: "Use reaction delay option for debouncing"
+    description: "Use the delay option in reaction() and autorun() to debounce the effect. The effect will be scheduled to run after the specified delay (ms) since the last data change."
+    category: "mobx_reaction"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "reaction", "delay", "debounce"]
+    example: |
+      reaction(
+        () => store.searchQuery,
+        (query) => store.search(query),
+        { delay: 300 },  // ✅ Debounce 300ms
+      );
+
+  - id: MOBX029
+    title: "Use fireImmediately for reactions that should run on setup"
+    description: "Set fireImmediately: true on reaction() to also trigger the effect function immediately with the current data value, not just on subsequent changes."
+    category: "mobx_reaction"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "reaction", "fireImmediately", "initial"]
+    example: |
+      reaction(
+        () => store.theme,
+        (theme) => applyTheme(theme),
+        { fireImmediately: true },  // ✅ Apply current theme immediately
+      );
+
+  - id: MOBX030
+    title: "Use onError option to handle reaction errors"
+    description: "Set the onError option in autorun/reaction/when to handle errors gracefully. Without it, errors in reactions will propagate and potentially crash the application."
+    category: "mobx_reaction"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "reaction", "onError", "error-handling"]
+    example: |
+      autorun(
+        () => { store.processCriticalData(); },
+        {
+          onError: (error) => {
+            console.error('Reaction error:', error);
+            errorService.report(error);
+          },
+        },
+      );
+
+  - id: MOBX031
+    title: "Do not modify observables inside reaction data functions"
+    description: "The data expression of reaction() should be a pure function that reads observables. Never modify state inside it — that belongs in the effect function or in actions."
+    category: "mobx_reaction"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "reaction", "pure", "data-function"]
+    example: |
+      // ❌ Modifying state in data function
+      reaction(
+        () => { store.lastAccessed = Date.now(); return store.data; },
+        (data) => sync(data),
+      );
+
+      // ✅ Pure data function
+      reaction(
+        () => store.data,
+        (data) => {
+          store.lastSynced = Date.now();  // ✅ Side effect in effect
+          sync(data);
+        },
+      );
+
+  - id: MOBX032
+    title: "Use spy/trace for debugging reactions — never in production"
+    description: "Use spy() and trace() during development to debug which observables trigger reactions. Remove or guard them behind development checks before deploying to production."
+    category: "mobx_reaction"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "spy", "trace", "debugging", "devtools"]
+    example: |
+      import { spy, trace } from 'mobx';
+
+      if (process.env.NODE_ENV === 'development') {
+        spy((event) => {
+          if (event.type === 'action') console.log(`Action: ${event.name}`);
+        });
+      }
+
+      autorun(() => {
+        trace();  // ✅ Log why this autorun triggered (dev only)
+        console.log(store.value);
+      });
+
+  # ============================================================================
+  # CONFIGURATION & STRICT MODE (MOBX033-MOBX037) - Configuration best practices
+  # ============================================================================
+
+  - id: MOBX033
+    title: "Enable enforceActions: 'always' in production apps"
+    description: "Configure MobX with enforceActions: 'always' to ensure all state modifications occur within actions. This prevents accidental direct mutations and makes state changes traceable."
+    category: "mobx_config"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "configure", "enforceActions", "strict"]
+    example: |
+      import { configure } from 'mobx';
+
+      configure({
+        enforceActions: 'always',  // ✅ All mutations in actions
+      });
+
+  - id: MOBX034
+    title: "Configure MobX once at application startup"
+    description: "Call configure() once at the application entry point before any stores are created. Multiple configure() calls can lead to inconsistent behavior."
+    category: "mobx_config"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "configure", "startup", "initialization"]
+    example: |
+      // ✅ In app entry point (index.ts / main.ts)
+      import { configure } from 'mobx';
+
+      configure({
+        enforceActions: 'always',
+        computedRequiresReaction: true,
+        reactionRequiresObservable: true,
+        observableRequiresReaction: true,
+      });
+
+  - id: MOBX035
+    title: "Use useProxies: 'never' only for legacy environment compatibility"
+    description: "MobX 6 uses Proxies by default for better performance. Only set useProxies: 'never' if targeting environments without Proxy support (IE11, React Native Hermes < 0.70)."
+    category: "mobx_config"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "configure", "proxy", "legacy", "compatibility"]
+    example: |
+      // Only if needed for legacy support
+      configure({ useProxies: 'never' });
+
+      // ✅ Default (Proxy-based) — better performance
+      configure({ useProxies: 'always' });  // default in v6
+
+  - id: MOBX036
+    title: "Enable isolateGlobalState for micro-frontend or multiple MobX instances"
+    description: "When running multiple MobX instances (micro-frontends, module federation), enable isolateGlobalState to prevent state leaking between instances."
+    category: "mobx_config"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "configure", "isolateGlobalState", "micro-frontend"]
+    example: |
+      configure({ isolateGlobalState: true });
+
+  - id: MOBX037
+    title: "Enable all strict-mode flags during development"
+    description: "Enable computedRequiresReaction, reactionRequiresObservable, and observableRequiresReaction during development to catch common MobX anti-patterns early."
+    category: "mobx_config"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "configure", "strict-mode", "debugging"]
+    example: |
+      if (process.env.NODE_ENV === 'development') {
+        configure({
+          enforceActions: 'always',
+          computedRequiresReaction: true,
+          reactionRequiresObservable: true,
+          observableRequiresReaction: true,
+        });
+      }
+
+  # ============================================================================
+  # REACT INTEGRATION (MOBX038-MOBX043) - React binding best practices
+  # ============================================================================
+
+  - id: MOBX038
+    title: "Use observer() from mobx-react-lite for functional components"
+    description: "Wrap every React component that reads observable state with observer() from 'mobx-react-lite'. Without observer, the component will not re-render when observables change."
+    category: "mobx_react"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx", "react"]
+    tags: ["mobx", "observer", "mobx-react-lite", "react"]
+    example: |
+      import { observer } from 'mobx-react-lite';
+
+      const TodoList = observer(({ store }) => (
+        <ul>
+          {store.todos.map(todo => <li key={todo.id}>{todo.text}</li>)}
+        </ul>
+      ));
+
+  - id: MOBX039
+    title: "Prefer mobx-react-lite over mobx-react for new projects"
+    description: "Use mobx-react-lite for functional components — it's smaller and faster. Use mobx-react only if you need class component support (Provider/inject pattern, Observer render-prop)."
+    category: "mobx_react"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx", "react"]
+    tags: ["mobx", "mobx-react-lite", "mobx-react", "bundle-size"]
+    example: |
+      // ✅ For functional components (recommended)
+      import { observer } from 'mobx-react-lite';
+
+      // ⚠️ Only when class components needed
+      import { observer, inject, Provider } from 'mobx-react';
+
+  - id: MOBX040
+    title: "Use useLocalObservable for component-local observable state"
+    description: "Use useLocalObservable() from mobx-react-lite for component-scoped observable state that shouldn't live in a global store. It creates an observable that is automatically tracked by the observer wrapper."
+    category: "mobx_react"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx", "react"]
+    tags: ["mobx", "useLocalObservable", "local-state", "react"]
+    example: |
+      import { observer, useLocalObservable } from 'mobx-react-lite';
+
+      const SearchBox = observer(() => {
+        const state = useLocalObservable(() => ({
+          query: '',
+          setQuery(q: string) { state.query = q; },
+          get isEmpty() { return state.query.length === 0; },
+        }));
+
+        return <input value={state.query} onChange={e => state.setQuery(e.target.value)} />;
+      });
+
+  - id: MOBX041
+    title: "Pass stores via React Context, not prop drilling"
+    description: "Create React Context providers for your stores instead of prop-drilling. This gives clean access to stores from any component depth without excessive props."
+    category: "mobx_react"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx", "react"]
+    tags: ["mobx", "context", "provider", "dependency-injection"]
+    example: |
+      const StoreContext = React.createContext<RootStore | null>(null);
+
+      export const StoreProvider: React.FC = ({ children }) => {
+        const store = useMemo(() => new RootStore(), []);
+        return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
+      };
+
+      export const useStore = () => {
+        const store = useContext(StoreContext);
+        if (!store) throw new Error('useStore must be within StoreProvider');
+        return store;
+      };
+
+  - id: MOBX042
+    title: "Keep observer components small and focused"
+    description: "Break large components into smaller observer components. Each observer component only re-renders when its specific observable dependencies change, improving performance."
+    category: "mobx_react"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx", "react"]
+    tags: ["mobx", "observer", "granularity", "performance", "react"]
+    example: |
+      // ✅ Small, focused observer components
+      const Header = observer(() => <h1>{store.title}</h1>);
+      const Counter = observer(() => <span>{store.count}</span>);
+      const List = observer(() => (
+        <ul>{store.items.map(i => <Item key={i.id} item={i} />)}</ul>
+      ));
+
+      // ❌ One large observer with many dependencies
+      const App = observer(() => (
+        <div>{/* reads store.title, store.count, store.items... */}</div>
+      ));
+
+  - id: MOBX043
+    title: "Do not destructure observables outside observer boundaries"
+    description: "Destructuring observable objects outside of an observer component breaks reactivity — the destructured values become plain (non-observable) copies. Read properties inside the observer render."
+    category: "mobx_react"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx", "react"]
+    tags: ["mobx", "observer", "destructuring", "reactivity"]
+    example: |
+      // ❌ Destructured outside observer — NOT reactive
+      const { name, age } = store.user;
+      const Profile = observer(() => <div>{name} {age}</div>);
+
+      // ✅ Read inside observer
+      const Profile = observer(() => (
+        <div>{store.user.name} {store.user.age}</div>
+      ));
+
+  # ============================================================================
+  # ARCHITECTURE & PATTERNS (MOBX044-MOBX047) - Store architecture
+  # ============================================================================
+
+  - id: MOBX044
+    title: "Use a RootStore pattern to compose domain stores"
+    description: "Create a RootStore that holds references to all domain stores. Each domain store receives the root (or specific peer stores) via constructor injection for cross-store communication."
+    category: "mobx_architecture"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "rootStore", "architecture", "composition", "domain"]
+    example: |
+      class RootStore {
+        userStore: UserStore;
+        todoStore: TodoStore;
+
+        constructor() {
+          this.userStore = new UserStore(this);
+          this.todoStore = new TodoStore(this);
+        }
+      }
+
+      class TodoStore {
+        constructor(private root: RootStore) {
+          makeAutoObservable(this);
+        }
+
+        get userTodos() {
+          return this.todos.filter(t => t.userId === this.root.userStore.currentId);
+        }
+      }
+
+  - id: MOBX045
+    title: "Separate domain logic from UI stores"
+    description: "Create separate domain stores (data, business logic) and UI stores (view state, selections, filters). Domain stores should be UI-agnostic and reusable."
+    category: "mobx_architecture"
+    severity: "info"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "domain", "ui-store", "separation", "architecture"]
+    example: |
+      // ✅ Domain store — UI-agnostic
+      class TodoDomainStore {
+        todos: Todo[] = [];
+        addTodo(text: string) { /* ... */ }
+        removeTodo(id: string) { /* ... */ }
+      }
+
+      // ✅ UI store — view-specific
+      class TodoUIStore {
+        filter = 'all';
+        editingId: string | null = null;
+        constructor(private domain: TodoDomainStore) { makeAutoObservable(this); }
+        get visibleTodos() { return this.domain.todos.filter(/* ... */); }
+      }
+
+  - id: MOBX046
+    title: "Use toJS() only at serialization boundaries"
+    description: "Use toJS() to convert observable objects/arrays to plain JavaScript only when needed for serialization (localStorage, API calls, JSON). Never use toJS() just to pass data to child components."
+    category: "mobx_architecture"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "toJS", "serialization", "plain-objects"]
+    example: |
+      import { toJS } from 'mobx';
+
+      // ✅ Serialization boundary
+      localStorage.setItem('todos', JSON.stringify(toJS(store.todos)));
+
+      // ❌ Unnecessary toJS — breaks reactivity
+      <TodoList todos={toJS(store.todos)} />
+
+      // ✅ Pass observable directly — observer handles it
+      <TodoList todos={store.todos} />
+
+  - id: MOBX047
+    title: "Implement store disposal for cleanup in SPAs"
+    description: "Implement a dispose() method on stores that cleans up all reactions, event listeners, and subscriptions. Call it when the store's scope ends (route change, component unmount, app shutdown)."
+    category: "mobx_architecture"
+    severity: "warning"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "dispose", "cleanup", "lifecycle", "memory"]
+    example: |
+      class FeatureStore {
+        private disposers: (() => void)[] = [];
+
+        constructor() {
+          makeAutoObservable(this);
+          this.disposers.push(
+            autorun(() => this.syncToStorage()),
+            reaction(() => this.query, q => this.debouncedSearch(q)),
+          );
+        }
+
+        dispose() {
+          this.disposers.forEach(d => d());
+          this.disposers = [];
+        }
+      }
+
+  # ============================================================================
+  # TESTING & MIGRATION (MOBX048-MOBX050) - Testing and version migration
+  # ============================================================================
+
+  - id: MOBX048
+    title: "Test stores in isolation without React components"
+    description: "Test MobX stores as plain JavaScript/TypeScript classes. Create store instances, call actions, and assert computed/observable values directly. No React rendering required."
+    category: "mobx_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx"]
+    tags: ["mobx", "testing", "unit-test", "store"]
+    example: |
+      describe('TodoStore', () => {
+        let store: TodoStore;
+        beforeEach(() => { store = new TodoStore(); });
+
+        test('addTodo adds to list', () => {
+          store.addTodo('test');
+          expect(store.todos).toHaveLength(1);
+          expect(store.todos[0].text).toBe('test');
+        });
+
+        test('completedCount reflects done todos', () => {
+          store.addTodo('a');
+          store.addTodo('b');
+          store.todos[0].done = true;
+          expect(store.completedCount).toBe(1);
+        });
+      });
+
+  - id: MOBX049
+    title: "Migrate from decorators to makeObservable/makeAutoObservable"
+    description: "MobX 6 moved away from decorators by default. Migrate @observable/@action/@computed decorators to makeObservable() annotation maps or makeAutoObservable(). This is required for standard JavaScript and avoids experimental decorator configs."
+    category: "mobx_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx", "mobx-v6"]
+    tags: ["mobx", "migration", "decorators", "v6", "makeObservable"]
+    example: |
+      // ❌ MobX 4/5 decorator pattern
+      class Store {
+        @observable count = 0;
+        @computed get double() { return this.count * 2; }
+        @action increment() { this.count++; }
+      }
+
+      // ✅ MobX 6 equivalent
+      class Store {
+        count = 0;
+        get double() { return this.count * 2; }
+        increment() { this.count++; }
+        constructor() { makeAutoObservable(this); }
+      }
+
+  - id: MOBX050
+    title: "Migrate from MobX 5 to 6 — key breaking changes"
+    description: "Key MobX 5→6 migration steps: (1) Replace @decorator with makeObservable/makeAutoObservable, (2) Proxies enabled by default, (3) configure() replaces decorate(), (4) action wrapping of callbacks is stricter, (5) computed.struct is available via annotation."
+    category: "mobx_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["mobx", "mobx-v6"]
+    tags: ["mobx", "migration", "v5", "v6", "breaking-changes"]
+    example: |
+      // MobX 5 → 6 migration checklist:
+      // 1. Replace decorate() with makeObservable()
+      // 2. Or use makeAutoObservable() for auto-inference
+      // 3. Remove @observable/@action/@computed if using makeAutoObservable
+      // 4. Update configure() options (enforceActions values changed)
+      // 5. Test with configure({ enforceActions: 'always' })
+
+      // MobX 5
+      import { decorate, observable, action } from 'mobx';
+      class Store { count = 0; inc() { this.count++; } }
+      decorate(Store, { count: observable, inc: action });
+
+      // MobX 6
+      import { makeObservable, observable, action } from 'mobx';
+      class Store {
+        count = 0;
+        constructor() {
+          makeObservable(this, { count: observable, inc: action });
+        }
+        inc() { this.count++; }
+      }

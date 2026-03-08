@@ -1,0 +1,171 @@
+  warnings.warn(
+────────────────────────────────────────────────────────────
+Aider v0.82.3
+Model: none with whole edit format
+Git repo: ../../.git with 314 files
+Repo-map: using 1024 tokens, auto refresh
+Here are summaries of some files present in my git 
+repository.
+Do not propose changes to these files, treat them as 
+*read-only*.
+If you need to edit any of these files, ask me to *add them 
+to the chat* first.
+
+ai/trading-ui/src/app/components/analysis-history/analysis-h
+istory.component.ts:
+⋮
+│interface HistoryStats {
+│  totalActivities: number;
+│  completedCount: number;
+│  failedCount: number;
+│  successRate: number;
+│  avgDuration: number;
+│  totalStocksPicked: number;
+⋮
+
+ai/trading-ui/src/app/components/dashboard-widgets/eod-summa
+ry/eod-summary.component.ts:
+⋮
+│interface DailySummaryMetric {
+│  readonly label: string;
+│  readonly value: string | number;
+│  readonly change?: number;
+│  readonly trend?: 'up' | 'down' | 'flat';
+│  readonly highlight?: boolean;
+⋮
+
+ai/trading-ui/src/app/components/dashboard-widgets/market-br
+eadth/market-breadth.component.ts:
+⋮
+│@Component({
+│  selector: 'app-market-breadth',
+│  standalone: true,
+│  imports: [CommonModule],
+│  templateUrl: './market-breadth.component.html',
+│  styleUrl: './market-breadth.component.scss',
+│  changeDetection: ChangeDetectionStrategy.OnPush,
+│})
+│export class MarketBreadthComponent {
+│  private readonly marketStore = inject(MarketDataStore);
+│
+│  // Market regime from store (contains breadth data)
+│  readonly marketRegime = this.marketStore.marketRegime;
+│
+│  // Computed: Breadth data
+│  readonly breadth = computed(() => {
+│    const regime = this.marketRegime();
+│    return regime?.breadth ?? null;
+⋮
+
+ai/trading-ui/src/app/components/live-trading-view/execution
+-status/execution-status.component.ts:
+⋮
+│export type OrderStatus = 'none' | 'pending' | 'filled' | 
+'partial' | 'rejected';
+│
+⋮
+
+ai/trading-ui/src/app/components/observable-dashboard/market
+-breadth/market-breadth.component.ts:
+⋮
+│@Component({
+│  selector: 'app-market-breadth',
+│  standalone: true,
+│  imports: [CommonModule, DecimalPipe],
+│  templateUrl: './market-breadth.component.html',
+│  styleUrl: './market-breadth.component.scss',
+│  changeDetection: ChangeDetectionStrategy.OnPush,
+│})
+│export class MarketBreadthComponent {
+│  private readonly marketDataStore = 
+inject(MarketDataStore);
+│
+│  /**
+│   * Current market regime
+│   */
+│  readonly regime = this.marketDataStore.marketRegime;
+│
+│  /**
+│   * Breadth summary
+⋮
+
+ai/trading-ui/src/app/components/shared/pnl-chart/pnl-chart.
+component.ts:
+⋮
+│export interface PnLChartConfig {
+│  showGrid: boolean;
+│  showArea: boolean;
+│  showTrades: boolean;
+│  animateOnUpdate: boolean;
+│  currencySymbol: string;
+⋮
+
+ai/trading-ui/src/app/models/pipeline.model.ts:
+⋮
+│export type PipelineLayerStatus = 'pending' | 'running' | 
+'complete' | 'error' | 'warning';
+│
+⋮
+│export interface LayerOutputData {
+│  // Layer 0: Regime
+│  readonly regime?: {
+│    readonly type: string;
+│    readonly confidence: number;
+│    readonly vixLevel: number;
+│    readonly niftyDirection: string;
+│    readonly breadthHealth: string;
+│    readonly weightAdjustments: WeightAdjustment[];
+│  };
+│
+⋮
+
+ai/trading-ui/src/app/models/position.model.ts:
+⋮
+│export type PositionStatus = 'NO_POSITION' | 'LONG' | 
+'SHORT';
+│
+⋮
+
+ai/trading-ui/src/app/models/price.model.ts:
+⋮
+│export interface MarketBreadth {
+│  readonly advances: number;
+│  readonly declines: number;
+│  readonly unchanged: number;
+│  readonly advanceDeclineRatio: number;
+│  readonly percentAbove50DMA: number;
+⋮
+
+ai/trading-ui/src/app/models/worker.model.ts:
+⋮
+│export type OrderStatus = 'NONE' | 'PENDING' | 'FILLED' | 
+'PARTIAL' | 'REJECTED';
+│
+⋮
+│export interface WorkerTileData {
+│  // Stock info
+│  readonly symbol: string;
+│  readonly companyName: string;
+│  readonly sector?: string;
+│
+│  // AI Worker assignment
+│  readonly workerId: string;
+│  readonly workerPort: number;
+│  readonly strategyType: 'momentum' | 'breakout' | 
+'meanReversion' | 'scalping';
+│
+⋮
+
+ai/trading-ui/src/app/services/trading-control.service.ts:
+⋮
+│export type TradingModeType = 'INTRADAY' | 'SWING' | 
+'DELIVERY';
+⋮
+│export interface FeatureFlags {
+│  EMERGENCY_STOP: boolean;
+│  PAPER_TRADING: boolean;
+│  SWING_TRADING: boolean;
+│  INTRADAY_TRADING: boolean;
+│  DELIVERY_TRADING: boolean;
+⋮
+

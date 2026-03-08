@@ -1,0 +1,1869 @@
+# Database & ORM Best Practices Library
+# Version: 1.0.0
+# Coverage: SQL, ORM Patterns, Migrations, Transactions, Query Optimization, Indexing
+# Applicable to: SQLAlchemy, Django ORM, PostgreSQL, MySQL, SQLite
+
+version: '1.0.0'
+framework: database
+framework_version:
+  min_version: '1.0'
+description: 'Comprehensive database and ORM best practices for application development'
+
+practices:
+  # ============================================================================
+  # QUERY OPTIMIZATION (DB001-DB005)
+  # ============================================================================
+
+  - id: DB001
+    title: 'Avoid N+1 Query Problem'
+    category: performance
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+        - prisma
+    content:
+      description: |
+        Use eager loading (join, prefetch) to avoid N+1 queries when
+        accessing related objects in loops.
+      rationale: |
+        N+1 queries cause severe performance issues, turning a single
+        page load into hundreds of database queries.
+      good_examples:
+        - |
+          # ✅ SQLAlchemy - Eager loading
+          from sqlalchemy.orm import joinedload, selectinload
+
+          # Single JOIN for one-to-one/many-to-one
+          users = session.query(User).options(
+              joinedload(User.profile)
+          ).all()
+
+          # Separate query for one-to-many (better for large collections)
+          users = session.query(User).options(
+              selectinload(User.posts)
+          ).all()
+
+          # Nested eager loading
+          posts = session.query(Post).options(
+              joinedload(Post.author).joinedload(User.profile),
+              selectinload(Post.comments).joinedload(Comment.author)
+          ).all()
+
+          # ✅ Django - select_related and prefetch_related
+          # ForeignKey/OneToOne (JOIN)
+          articles = Article.objects.select_related('author', 'category')
+
+          # ManyToMany/reverse ForeignKey (separate query)
+          articles = Article.objects.prefetch_related('tags', 'comments')
+
+          # Combined
+          articles = (
+              Article.objects
+              .select_related('author')
+              .prefetch_related('comments__author')  # Nested
+          )
+      bad_examples:
+        - |
+          # ❌ N+1 problem - query per iteration
+          users = session.query(User).all()
+          for user in users:
+              print(user.profile.bio)  # Query per user!
+              for post in user.posts:  # Another query per user!
+                  print(post.title)
+      references:
+        - 'https://docs.sqlalchemy.org/en/20/orm/loading_relationships.html'
+      tags:
+        - n+1
+        - performance
+        - eager-loading
+
+  - id: DB002
+    title: 'Use Proper Indexing Strategy'
+    category: performance
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - postgresql
+        - mysql
+        - sqlite
+    content:
+      description: |
+        Create indexes on columns used in WHERE, JOIN, and ORDER BY clauses.
+        Use composite indexes for multi-column queries.
+      rationale: |
+        Proper indexes can improve query performance by orders of
+        magnitude, especially on large tables.
+      good_examples:
+        - |
+          # ✅ SQLAlchemy model with indexes
+          from sqlalchemy import Index
+
+          class Order(Base):
+              __tablename__ = 'orders'
+
+              id = Column(Integer, primary_key=True)
+              user_id = Column(Integer, ForeignKey('users.id'), index=True)
+              status = Column(String(20), index=True)
+              created_at = Column(DateTime, index=True)
+              total_amount = Column(Numeric(10, 2))
+
+              __table_args__ = (
+                  # Composite index for common query pattern
+                  Index('ix_orders_user_status', 'user_id', 'status'),
+                  # Composite index for date range + status queries
+                  Index('ix_orders_created_status', 'created_at', 'status'),
+                  # Partial index (PostgreSQL)
+                  Index(
+                      'ix_orders_pending',
+                      'created_at',
+                      postgresql_where=(status == 'pending')
+                  ),
+              )
+
+          # ✅ Django model with indexes
+          class Order(models.Model):
+              user = models.ForeignKey(User, on_delete=models.CASCADE)
+              status = models.CharField(max_length=20, db_index=True)
+              created_at = models.DateTimeField(db_index=True)
+
+              class Meta:
+                  indexes = [
+                      models.Index(fields=['user', 'status']),
+                      models.Index(fields=['created_at', 'status']),
+                      models.Index(
+                          fields=['created_at'],
+                          name='pending_orders_idx',
+                          condition=models.Q(status='pending'),
+                      ),
+                  ]
+
+          # ✅ Raw SQL index creation
+          """
+          -- Composite index
+          CREATE INDEX ix_orders_user_status ON orders (user_id, status);
+
+          -- Covering index (includes data, avoids table lookup)
+          CREATE INDEX ix_orders_covering ON orders (user_id, status)
+              INCLUDE (total_amount, created_at);
+
+          -- Partial index for active records only
+          CREATE INDEX ix_orders_active ON orders (created_at)
+              WHERE status = 'active';
+          """
+      bad_examples:
+        - |
+          # ❌ Missing indexes on frequently queried columns
+          class Order(Base):
+              __tablename__ = 'orders'
+
+              user_id = Column(Integer)  # No index!
+              status = Column(String(20))  # No index!
+              created_at = Column(DateTime)  # No index!
+
+          # This query will do full table scan:
+          orders = session.query(Order).filter(
+              Order.user_id == user_id,
+              Order.status == 'pending'
+          ).all()
+      references:
+        - 'https://use-the-index-luke.com/'
+      tags:
+        - indexes
+        - performance
+        - optimization
+
+  - id: DB003
+    title: 'Optimize Query Patterns'
+    category: performance
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Use efficient query patterns: select only needed columns,
+        use aggregations, batch operations, and avoid ORM overhead where appropriate.
+      rationale: |
+        Efficient queries reduce database load, memory usage,
+        and response times.
+      good_examples:
+        - |
+          # ✅ Select only needed columns
+          # SQLAlchemy
+          users = session.query(User.id, User.name, User.email).all()
+
+          # Django
+          users = User.objects.values('id', 'name', 'email')
+          # or
+          users = User.objects.only('id', 'name', 'email')
+
+          # ✅ Use database aggregations
+          from sqlalchemy import func
+
+          # SQLAlchemy
+          stats = session.query(
+              Order.status,
+              func.count(Order.id).label('count'),
+              func.sum(Order.total).label('total'),
+              func.avg(Order.total).label('average'),
+          ).group_by(Order.status).all()
+
+          # Django
+          from django.db.models import Count, Sum, Avg
+          stats = Order.objects.values('status').annotate(
+              count=Count('id'),
+              total=Sum('total'),
+              average=Avg('total'),
+          )
+
+          # ✅ Use EXISTS instead of COUNT for existence check
+          # SQLAlchemy
+          exists_query = session.query(
+              session.query(Order).filter(Order.user_id == user_id).exists()
+          ).scalar()
+
+          # Django
+          has_orders = Order.objects.filter(user_id=user_id).exists()
+
+          # ✅ Batch operations
+          # SQLAlchemy
+          session.query(Order).filter(
+              Order.status == 'pending',
+              Order.created_at < cutoff
+          ).update({'status': 'expired'}, synchronize_session='fetch')
+
+          # Django
+          Order.objects.filter(
+              status='pending',
+              created_at__lt=cutoff
+          ).update(status='expired')
+
+          # ✅ Bulk insert
+          # SQLAlchemy
+          session.bulk_insert_mappings(Order, orders_data)
+
+          # Django
+          Order.objects.bulk_create([Order(**data) for data in orders_data])
+      bad_examples:
+        - |
+          # ❌ Loading full objects when not needed
+          users = session.query(User).all()
+          names = [u.name for u in users]  # Loaded all columns!
+
+          # ❌ Python-side aggregation
+          orders = Order.objects.all()
+          total = sum(o.amount for o in orders)  # Do this in DB!
+
+          # ❌ One-by-one inserts
+          for data in orders_data:
+              order = Order(**data)
+              session.add(order)
+              session.commit()  # Commit per item!
+      tags:
+        - query-optimization
+        - performance
+        - aggregations
+
+  - id: DB004
+    title: 'Use Query Pagination'
+    category: performance
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Always paginate queries that can return large result sets.
+        Use cursor-based pagination for large datasets.
+      rationale: |
+        Pagination prevents memory issues and improves response times
+        by limiting data fetched per request.
+      good_examples:
+        - |
+          # ✅ Offset-based pagination (simple, for small datasets)
+          # SQLAlchemy
+          page = 1
+          per_page = 20
+
+          query = session.query(Order).order_by(Order.created_at.desc())
+          total = query.count()
+          items = query.offset((page - 1) * per_page).limit(per_page).all()
+
+          pagination = {
+              'items': items,
+              'page': page,
+              'per_page': per_page,
+              'total': total,
+              'pages': (total + per_page - 1) // per_page,
+          }
+
+          # Django
+          from django.core.paginator import Paginator
+
+          orders = Order.objects.order_by('-created_at')
+          paginator = Paginator(orders, 20)
+          page_obj = paginator.get_page(page)
+
+          # ✅ Cursor-based pagination (for large datasets)
+          # More efficient - no offset scanning
+
+          # SQLAlchemy
+          def get_orders_cursor(cursor=None, limit=20):
+              query = session.query(Order).order_by(Order.id.desc())
+
+              if cursor:
+                  query = query.filter(Order.id < cursor)
+
+              items = query.limit(limit + 1).all()
+
+              has_next = len(items) > limit
+              if has_next:
+                  items = items[:limit]
+
+              next_cursor = items[-1].id if items and has_next else None
+
+              return {
+                  'items': items,
+                  'next_cursor': next_cursor,
+                  'has_next': has_next,
+              }
+
+          # ✅ Keyset pagination (most efficient)
+          def get_orders_keyset(last_created_at=None, last_id=None, limit=20):
+              query = session.query(Order).order_by(
+                  Order.created_at.desc(),
+                  Order.id.desc()
+              )
+
+              if last_created_at and last_id:
+                  query = query.filter(
+                      db.or_(
+                          Order.created_at < last_created_at,
+                          db.and_(
+                              Order.created_at == last_created_at,
+                              Order.id < last_id
+                          )
+                      )
+                  )
+
+              return query.limit(limit).all()
+      bad_examples:
+        - |
+          # ❌ No pagination - loads everything
+          orders = Order.objects.all()  # Could be millions!
+
+          # ❌ Offset pagination on large tables
+          # Gets slower as offset increases
+          orders = Order.objects.all()[100000:100020]  # Slow!
+      tags:
+        - pagination
+        - performance
+        - cursors
+
+  - id: DB005
+    title: 'Use EXPLAIN to Analyze Queries'
+    category: performance
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - postgresql
+        - mysql
+    content:
+      description: |
+        Use EXPLAIN (ANALYZE) to understand query execution plans
+        and identify performance bottlenecks.
+      rationale: |
+        Query analysis helps identify missing indexes, inefficient
+        joins, and other performance issues.
+      good_examples:
+        - |
+          # ✅ PostgreSQL EXPLAIN ANALYZE
+          """
+          EXPLAIN ANALYZE
+          SELECT o.*, u.name
+          FROM orders o
+          JOIN users u ON o.user_id = u.id
+          WHERE o.status = 'pending'
+          AND o.created_at > '2024-01-01'
+          ORDER BY o.created_at DESC
+          LIMIT 20;
+
+          -- Look for:
+          -- - Seq Scan (full table scan) -> needs index
+          -- - High cost numbers
+          -- - Large row estimates vs actual rows
+          -- - Nested loops on large tables
+          """
+
+          # ✅ SQLAlchemy query analysis
+          from sqlalchemy import event
+          import logging
+
+          logger = logging.getLogger('sqlalchemy.engine')
+
+          @event.listens_for(Engine, 'before_cursor_execute')
+          def log_query(conn, cursor, statement, parameters, context, executemany):
+              logger.debug('Query: %s', statement)
+              logger.debug('Parameters: %s', parameters)
+
+          # Print query without executing
+          query = session.query(Order).filter(Order.status == 'pending')
+          print(str(query.statement.compile(compile_kwargs={'literal_binds': True})))
+
+          # ✅ Django query analysis
+          from django.db import connection
+
+          # Get query SQL
+          queryset = Order.objects.filter(status='pending').select_related('user')
+          print(queryset.query)
+
+          # Get query with explain
+          print(queryset.explain())
+          print(queryset.explain(analyze=True))  # PostgreSQL
+
+          # Check query count
+          from django.db import reset_queries
+          from django.conf import settings
+
+          settings.DEBUG = True
+          reset_queries()
+
+          # ... your code ...
+
+          print(f'Query count: {len(connection.queries)}')
+          for query in connection.queries:
+              print(f'{query["time"]}s: {query["sql"][:100]}')
+      bad_examples:
+        - |
+          # ❌ Not analyzing slow queries
+          orders = Order.objects.filter(
+              status='pending',
+              created_at__gt=cutoff,
+          )  # Is this using indexes? Who knows!
+      tags:
+        - explain
+        - query-analysis
+        - debugging
+
+  # ============================================================================
+  # DATA INTEGRITY (DB006-DB010)
+  # ============================================================================
+
+  - id: DB006
+    title: 'Use Database Transactions Properly'
+    category: database
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Use transactions for operations that must succeed or fail
+        together. Understand isolation levels and locking.
+      rationale: |
+        Proper transaction handling ensures data consistency and
+        prevents partial updates.
+      good_examples:
+        - |
+          # ✅ SQLAlchemy transactions
+          from sqlalchemy.orm import Session
+
+          def transfer_funds(session: Session, from_id: int, to_id: int, amount: Decimal):
+              """Transfer funds atomically."""
+              try:
+                  from_account = session.query(Account).filter_by(id=from_id).with_for_update().one()
+                  to_account = session.query(Account).filter_by(id=to_id).with_for_update().one()
+
+                  if from_account.balance < amount:
+                      raise InsufficientFunds()
+
+                  from_account.balance -= amount
+                  to_account.balance += amount
+
+                  # Create transaction records
+                  session.add(Transaction(account_id=from_id, amount=-amount, type='debit'))
+                  session.add(Transaction(account_id=to_id, amount=amount, type='credit'))
+
+                  session.commit()
+              except Exception:
+                  session.rollback()
+                  raise
+
+          # ✅ Context manager pattern
+          from contextlib import contextmanager
+
+          @contextmanager
+          def transaction_scope():
+              session = Session()
+              try:
+                  yield session
+                  session.commit()
+              except Exception:
+                  session.rollback()
+                  raise
+              finally:
+                  session.close()
+
+          # Usage
+          with transaction_scope() as session:
+              # All operations are atomic
+              user = User(name='John')
+              session.add(user)
+              profile = Profile(user=user)
+              session.add(profile)
+
+          # ✅ Django transactions
+          from django.db import transaction
+
+          @transaction.atomic
+          def create_order(user, items):
+              order = Order.objects.create(user=user)
+              for item in items:
+                  OrderItem.objects.create(order=order, **item)
+                  Product.objects.filter(id=item['product_id']).update(
+                      stock=F('stock') - item['quantity']
+                  )
+              return order
+
+          # Savepoints for partial rollback
+          @transaction.atomic
+          def process_batch(items):
+              for item in items:
+                  try:
+                      with transaction.atomic():
+                          process_item(item)
+                  except ProcessingError:
+                      # This item fails, but continue with others
+                      log_error(item)
+      bad_examples:
+        - |
+          # ❌ No transaction - partial failure possible
+          def transfer_funds(from_id, to_id, amount):
+              from_account = Account.objects.get(id=from_id)
+              from_account.balance -= amount
+              from_account.save()  # If next line fails, money is lost!
+
+              to_account = Account.objects.get(id=to_id)
+              to_account.balance += amount
+              to_account.save()
+      tags:
+        - transactions
+        - atomicity
+        - data-integrity
+
+  - id: DB007
+    title: 'Use Database Constraints'
+    category: database
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Use database-level constraints (UNIQUE, CHECK, FOREIGN KEY)
+        to enforce data integrity at the database level.
+      rationale: |
+        Database constraints provide a safety net that application
+        code cannot guarantee, especially with concurrent access.
+      good_examples:
+        - |
+          # ✅ SQLAlchemy constraints
+          from sqlalchemy import CheckConstraint, UniqueConstraint, ForeignKeyConstraint
+
+          class Booking(Base):
+              __tablename__ = 'bookings'
+
+              id = Column(Integer, primary_key=True)
+              room_id = Column(Integer, ForeignKey('rooms.id', ondelete='CASCADE'), nullable=False)
+              user_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'))
+              start_date = Column(Date, nullable=False)
+              end_date = Column(Date, nullable=False)
+              status = Column(String(20), default='pending')
+
+              __table_args__ = (
+                  # Check constraint
+                  CheckConstraint('end_date > start_date', name='check_dates'),
+                  CheckConstraint(
+                      "status IN ('pending', 'confirmed', 'cancelled')",
+                      name='check_status'
+                  ),
+                  # Unique constraint with condition
+                  UniqueConstraint(
+                      'room_id', 'start_date',
+                      name='unique_room_date',
+                  ),
+                  # Composite foreign key
+                  ForeignKeyConstraint(
+                      ['room_id', 'start_date'],
+                      ['room_availability.room_id', 'room_availability.date'],
+                  ),
+              )
+
+          # ✅ Django constraints
+          class Booking(models.Model):
+              room = models.ForeignKey(Room, on_delete=models.CASCADE)
+              start_date = models.DateField()
+              end_date = models.DateField()
+              status = models.CharField(max_length=20)
+
+              class Meta:
+                  constraints = [
+                      models.CheckConstraint(
+                          check=models.Q(end_date__gt=models.F('start_date')),
+                          name='booking_end_after_start',
+                      ),
+                      models.UniqueConstraint(
+                          fields=['room', 'start_date'],
+                          condition=models.Q(status='confirmed'),
+                          name='unique_confirmed_booking',
+                      ),
+                      models.CheckConstraint(
+                          check=models.Q(status__in=['pending', 'confirmed', 'cancelled']),
+                          name='valid_status',
+                      ),
+                  ]
+      bad_examples:
+        - |
+          # ❌ Only application-level validation
+          class Booking(Base):
+              def validate(self):
+                  if self.end_date <= self.start_date:
+                      raise ValueError('Invalid dates')
+              # Race condition: two requests can create overlapping bookings!
+      tags:
+        - constraints
+        - data-integrity
+        - validation
+
+  - id: DB008
+    title: 'Handle Concurrent Updates Safely'
+    category: database
+    level: advanced
+    priority: high
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Use optimistic or pessimistic locking to handle concurrent
+        updates safely and prevent race conditions.
+      rationale: |
+        Without proper locking, concurrent updates can cause lost
+        updates and data corruption.
+      good_examples:
+        - |
+          # ✅ Optimistic locking with version column
+          # SQLAlchemy
+          class Product(Base):
+              __tablename__ = 'products'
+
+              id = Column(Integer, primary_key=True)
+              name = Column(String(100))
+              stock = Column(Integer, default=0)
+              version = Column(Integer, default=1)
+
+              __mapper_args__ = {
+                  'version_id_col': version,
+              }
+
+          # Usage - raises StaleDataError if version changed
+          product = session.query(Product).get(product_id)
+          product.stock -= quantity
+          try:
+              session.commit()
+          except StaleDataError:
+              session.rollback()
+              raise ConcurrentUpdateError('Product was modified by another request')
+
+          # ✅ Pessimistic locking - SELECT FOR UPDATE
+          # SQLAlchemy
+          product = session.query(Product).filter_by(id=product_id).with_for_update().one()
+          product.stock -= quantity
+          session.commit()  # Lock released
+
+          # Django
+          from django.db import transaction
+
+          with transaction.atomic():
+              product = Product.objects.select_for_update().get(id=product_id)
+              product.stock -= quantity
+              product.save()
+
+          # ✅ Atomic update without race condition
+          # SQLAlchemy
+          session.query(Product).filter(
+              Product.id == product_id,
+              Product.stock >= quantity,
+          ).update({
+              'stock': Product.stock - quantity
+          })
+
+          # Django - F() expression for atomic update
+          from django.db.models import F
+
+          updated = Product.objects.filter(
+              id=product_id,
+              stock__gte=quantity,
+          ).update(stock=F('stock') - quantity)
+
+          if updated == 0:
+              raise InsufficientStock()
+      bad_examples:
+        - |
+          # ❌ Race condition - read-modify-write
+          product = Product.objects.get(id=product_id)
+          if product.stock >= quantity:
+              product.stock -= quantity  # Another request might have changed stock!
+              product.save()
+      tags:
+        - concurrency
+        - locking
+        - race-conditions
+
+  - id: DB009
+    title: 'Use Soft Deletes When Appropriate'
+    category: patterns
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Use soft deletes for data that may need to be recovered or
+        for audit trails. Filter deleted records automatically.
+      rationale: |
+        Soft deletes preserve data for recovery and auditing while
+        appearing deleted to the application.
+      good_examples:
+        - |
+          # ✅ SQLAlchemy soft delete with custom query class
+          from sqlalchemy.orm import Query
+          from datetime import datetime
+
+          class SoftDeleteQuery(Query):
+              def __new__(cls, *args, **kwargs):
+                  obj = super().__new__(cls)
+                  obj._with_deleted = kwargs.pop('_with_deleted', False)
+                  return obj
+
+              def __init__(self, *args, **kwargs):
+                  kwargs.pop('_with_deleted', None)
+                  super().__init__(*args, **kwargs)
+
+              def __iter__(self):
+                  return super().__iter__()
+
+              def _execute_and_instances(self, context):
+                  if not self._with_deleted:
+                      self = self.filter_by(deleted_at=None)
+                  return super()._execute_and_instances(context)
+
+              def with_deleted(self):
+                  return self.__class__(
+                      self._entity_from_pre_ent_zero(),
+                      session=self.session,
+                      _with_deleted=True,
+                  )
+
+          class SoftDeleteMixin:
+              deleted_at = Column(DateTime, nullable=True, index=True)
+
+              def soft_delete(self):
+                  self.deleted_at = datetime.utcnow()
+
+              def restore(self):
+                  self.deleted_at = None
+
+          # ✅ Django soft delete
+          from django.db import models
+          from django.utils import timezone
+
+          class SoftDeleteManager(models.Manager):
+              def get_queryset(self):
+                  return super().get_queryset().filter(deleted_at__isnull=True)
+
+          class AllObjectsManager(models.Manager):
+              pass
+
+          class SoftDeleteModel(models.Model):
+              deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+              objects = SoftDeleteManager()
+              all_objects = AllObjectsManager()
+
+              class Meta:
+                  abstract = True
+
+              def delete(self, using=None, keep_parents=False):
+                  self.deleted_at = timezone.now()
+                  self.save(update_fields=['deleted_at'])
+
+              def hard_delete(self):
+                  super().delete()
+
+              def restore(self):
+                  self.deleted_at = None
+                  self.save(update_fields=['deleted_at'])
+
+          # Usage
+          class Article(SoftDeleteModel):
+              title = models.CharField(max_length=200)
+
+          Article.objects.all()  # Only non-deleted
+          Article.all_objects.all()  # All including deleted
+      bad_examples:
+        - |
+          # ❌ Hard delete - data lost forever
+          article.delete()  # Gone!
+
+          # ❌ Soft delete without automatic filtering
+          article.is_deleted = True
+          article.save()
+          # Article.objects.all() still returns deleted items!
+      tags:
+        - soft-delete
+        - patterns
+        - audit
+
+  - id: DB010
+    title: 'Implement Audit Logging'
+    category: monitoring
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Track changes to important data with audit logs. Record who
+        changed what and when.
+      rationale: |
+        Audit logs are essential for compliance, debugging, and
+        understanding data history.
+      good_examples:
+        - |
+          # ✅ SQLAlchemy event-based audit logging
+          from sqlalchemy import event
+          from sqlalchemy.orm import Session
+          import json
+
+          class AuditLog(Base):
+              __tablename__ = 'audit_logs'
+
+              id = Column(Integer, primary_key=True)
+              table_name = Column(String(100), nullable=False)
+              record_id = Column(Integer, nullable=False)
+              action = Column(String(20), nullable=False)  # INSERT, UPDATE, DELETE
+              old_values = Column(JSON)
+              new_values = Column(JSON)
+              user_id = Column(Integer, ForeignKey('users.id'))
+              timestamp = Column(DateTime, default=datetime.utcnow)
+
+              __table_args__ = (
+                  Index('ix_audit_table_record', 'table_name', 'record_id'),
+              )
+
+          def create_audit_log(session, action, instance, old_values=None):
+              audit = AuditLog(
+                  table_name=instance.__tablename__,
+                  record_id=instance.id,
+                  action=action,
+                  old_values=old_values,
+                  new_values=instance.to_dict() if hasattr(instance, 'to_dict') else None,
+                  user_id=get_current_user_id(),
+              )
+              session.add(audit)
+
+          @event.listens_for(Session, 'before_flush')
+          def audit_changes(session, flush_context, instances):
+              for instance in session.new:
+                  if hasattr(instance, '__audit__') and instance.__audit__:
+                      create_audit_log(session, 'INSERT', instance)
+
+              for instance in session.dirty:
+                  if hasattr(instance, '__audit__') and instance.__audit__:
+                      old_values = {
+                          attr.key: get_history(instance, attr.key).deleted[0]
+                          for attr in instance.__mapper__.attrs
+                          if get_history(instance, attr.key).has_changes()
+                      }
+                      create_audit_log(session, 'UPDATE', instance, old_values)
+
+          # ✅ Django signals for audit
+          from django.db.models.signals import post_save, post_delete
+          from django.dispatch import receiver
+
+          @receiver(post_save, sender=Order)
+          def log_order_change(sender, instance, created, **kwargs):
+              AuditLog.objects.create(
+                  content_type=ContentType.objects.get_for_model(instance),
+                  object_id=instance.pk,
+                  action='CREATE' if created else 'UPDATE',
+                  user=get_current_user(),
+                  data=instance.to_dict(),
+              )
+      bad_examples:
+        - |
+          # ❌ No audit trail
+          order.status = 'cancelled'
+          order.save()  # Who cancelled it? When? Why?
+      tags:
+        - audit
+        - logging
+        - compliance
+
+  # ============================================================================
+  # MIGRATIONS & SCHEMA (DB011-DB015)
+  # ============================================================================
+
+  - id: DB011
+    title: 'Write Safe Database Migrations'
+    category: database
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - alembic
+        - django
+    content:
+      description: |
+        Write migrations that are reversible, handle data safely,
+        and can be deployed without downtime.
+      rationale: |
+        Safe migrations prevent data loss and enable rollbacks
+        during deployments.
+      good_examples:
+        - |
+          # ✅ Alembic - Safe column addition
+          """
+          def upgrade():
+              # Add nullable column first
+              op.add_column('users', sa.Column('phone', sa.String(20), nullable=True))
+
+          def downgrade():
+              op.drop_column('users', 'phone')
+          """
+
+          # ✅ Alembic - Safe column rename (two deployments)
+          # Migration 1: Add new column
+          """
+          def upgrade():
+              op.add_column('users', sa.Column('full_name', sa.String(200)))
+              # Copy data
+              op.execute('UPDATE users SET full_name = name')
+
+          def downgrade():
+              op.drop_column('users', 'full_name')
+          """
+
+          # Deploy code that writes to both columns
+          # Migration 2: Remove old column (after code deployed)
+          """
+          def upgrade():
+              op.drop_column('users', 'name')
+
+          def downgrade():
+              op.add_column('users', sa.Column('name', sa.String(200)))
+              op.execute('UPDATE users SET name = full_name')
+          """
+
+          # ✅ Django - Safe data migration
+          from django.db import migrations
+
+          def populate_slug(apps, schema_editor):
+              Article = apps.get_model('blog', 'Article')
+              for article in Article.objects.filter(slug__isnull=True).iterator():
+                  article.slug = slugify(article.title)[:200]
+                  article.save(update_fields=['slug'])
+
+          def reverse_populate_slug(apps, schema_editor):
+              Article = apps.get_model('blog', 'Article')
+              Article.objects.all().update(slug=None)
+
+          class Migration(migrations.Migration):
+              operations = [
+                  migrations.RunPython(populate_slug, reverse_populate_slug),
+              ]
+
+          # ✅ Batch processing for large tables
+          def migrate_data_in_batches(apps, schema_editor):
+              Model = apps.get_model('app', 'Model')
+              batch_size = 1000
+
+              while True:
+                  batch = list(Model.objects.filter(migrated=False)[:batch_size])
+                  if not batch:
+                      break
+
+                  for item in batch:
+                      item.new_field = transform(item.old_field)
+                      item.migrated = True
+
+                  Model.objects.bulk_update(batch, ['new_field', 'migrated'])
+      bad_examples:
+        - |
+          # ❌ Non-reversible migration
+          def upgrade():
+              op.drop_column('users', 'legacy_field')  # Data lost!
+
+          def downgrade():
+              pass  # Can't restore!
+
+          # ❌ Locking migration on large table
+          def upgrade():
+              op.alter_column('orders', 'status',
+                  nullable=False,
+                  server_default='pending'
+              )  # Locks entire table!
+      tags:
+        - migrations
+        - deployment
+        - schema
+
+  - id: DB012
+    title: 'Design Schemas for Performance'
+    category: architecture
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - postgresql
+        - mysql
+    content:
+      description: |
+        Design database schemas with performance in mind: proper
+        normalization, denormalization where needed, and efficient data types.
+      rationale: |
+        Good schema design prevents performance issues and makes
+        queries more efficient.
+      good_examples:
+        - |
+          # ✅ Efficient data types
+          """
+          -- Use appropriate sizes
+          CREATE TABLE users (
+              id SERIAL PRIMARY KEY,
+              email VARCHAR(254) NOT NULL,  -- Max email length per RFC
+              name VARCHAR(100) NOT NULL,
+              age SMALLINT,  -- 2 bytes vs 4 for INT
+              created_at TIMESTAMPTZ DEFAULT NOW(),
+
+              -- Use UUID for distributed IDs
+              public_id UUID DEFAULT gen_random_uuid(),
+
+              -- Use ENUM for fixed values
+              status user_status NOT NULL DEFAULT 'active',
+
+              -- Use JSONB for flexible data (PostgreSQL)
+              metadata JSONB DEFAULT '{}'
+          );
+
+          -- Create enum type
+          CREATE TYPE user_status AS ENUM ('active', 'inactive', 'banned');
+          """
+
+          # ✅ Strategic denormalization
+          """
+          -- Denormalize frequently accessed counts
+          CREATE TABLE articles (
+              id SERIAL PRIMARY KEY,
+              title VARCHAR(200),
+              -- Denormalized counts (update via triggers)
+              view_count INT DEFAULT 0,
+              comment_count INT DEFAULT 0,
+              like_count INT DEFAULT 0
+          );
+
+          -- Trigger to maintain count
+          CREATE FUNCTION update_comment_count() RETURNS TRIGGER AS $$
+          BEGIN
+              IF TG_OP = 'INSERT' THEN
+                  UPDATE articles SET comment_count = comment_count + 1
+                  WHERE id = NEW.article_id;
+              ELSIF TG_OP = 'DELETE' THEN
+                  UPDATE articles SET comment_count = comment_count - 1
+                  WHERE id = OLD.article_id;
+              END IF;
+              RETURN NULL;
+          END;
+          $$ LANGUAGE plpgsql;
+          """
+
+          # ✅ Partition large tables
+          """
+          CREATE TABLE events (
+              id BIGSERIAL,
+              event_type VARCHAR(50),
+              data JSONB,
+              created_at TIMESTAMPTZ NOT NULL
+          ) PARTITION BY RANGE (created_at);
+
+          -- Create monthly partitions
+          CREATE TABLE events_2024_01 PARTITION OF events
+              FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+          """
+      bad_examples:
+        - |
+          # ❌ Inefficient schema
+          """
+          CREATE TABLE users (
+              id BIGINT,  -- Overkill for user IDs
+              email TEXT,  -- No length limit
+              age INT,  -- 4 bytes for small number
+              is_active VARCHAR(10),  -- Should be boolean
+              created_at VARCHAR(50),  -- Should be timestamp
+          );
+          """
+      tags:
+        - schema-design
+        - performance
+        - normalization
+
+  - id: DB013
+    title: 'Use Connection Pooling'
+    category: performance
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Configure database connection pooling to reuse connections
+        and prevent connection exhaustion.
+      rationale: |
+        Connection pooling reduces overhead of creating connections
+        and prevents running out of database connections.
+      good_examples:
+        - |
+          # ✅ SQLAlchemy connection pooling
+          from sqlalchemy import create_engine
+          from sqlalchemy.pool import QueuePool
+
+          engine = create_engine(
+              'postgresql://user:pass@localhost/db',
+              poolclass=QueuePool,
+              pool_size=20,  # Number of connections to keep
+              max_overflow=10,  # Extra connections under load
+              pool_timeout=30,  # Wait time for connection
+              pool_recycle=1800,  # Recycle connections after 30 min
+              pool_pre_ping=True,  # Check connection health
+          )
+
+          # ✅ Django database settings
+          DATABASES = {
+              'default': {
+                  'ENGINE': 'django.db.backends.postgresql',
+                  'NAME': 'mydb',
+                  'USER': 'user',
+                  'PASSWORD': 'password',
+                  'HOST': 'localhost',
+                  'PORT': '5432',
+                  'CONN_MAX_AGE': 600,  # Keep connections alive 10 min
+                  'CONN_HEALTH_CHECKS': True,  # Django 4.1+
+                  'OPTIONS': {
+                      'connect_timeout': 10,
+                  },
+              }
+          }
+
+          # ✅ Using PgBouncer for external pooling
+          """
+          # pgbouncer.ini
+          [databases]
+          mydb = host=localhost dbname=mydb
+
+          [pgbouncer]
+          pool_mode = transaction
+          max_client_conn = 1000
+          default_pool_size = 50
+          min_pool_size = 10
+          """
+
+          # ✅ Monitor pool usage
+          from sqlalchemy import event
+
+          @event.listens_for(engine, 'checkout')
+          def receive_checkout(dbapi_connection, connection_record, connection_proxy):
+              logger.debug(f'Connection checked out: {connection_record}')
+
+          @event.listens_for(engine, 'checkin')
+          def receive_checkin(dbapi_connection, connection_record):
+              logger.debug(f'Connection returned: {connection_record}')
+      bad_examples:
+        - |
+          # ❌ No connection pooling
+          engine = create_engine(
+              'postgresql://user:pass@localhost/db',
+              poolclass=NullPool,  # New connection every time!
+          )
+
+          # ❌ Django without persistent connections
+          DATABASES = {
+              'default': {
+                  'CONN_MAX_AGE': 0,  # Close after each request
+              }
+          }
+      tags:
+        - connection-pooling
+        - performance
+        - database
+
+  - id: DB014
+    title: 'Handle Database Timeouts and Retries'
+    category: reliability
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Configure appropriate timeouts and implement retry logic
+        for transient database failures.
+      rationale: |
+        Proper timeout and retry handling improves reliability
+        and prevents cascading failures.
+      good_examples:
+        - |
+          # ✅ SQLAlchemy with timeouts and retry
+          from sqlalchemy import create_engine
+          from tenacity import retry, stop_after_attempt, wait_exponential
+
+          engine = create_engine(
+              'postgresql://user:pass@localhost/db',
+              connect_args={
+                  'connect_timeout': 10,
+                  'options': '-c statement_timeout=30000',  # 30s query timeout
+              },
+          )
+
+          @retry(
+              stop=stop_after_attempt(3),
+              wait=wait_exponential(multiplier=1, min=1, max=10),
+              reraise=True,
+          )
+          def execute_with_retry(session, query):
+              """Execute query with retry on transient failures."""
+              try:
+                  return session.execute(query)
+              except OperationalError as e:
+                  if 'connection' in str(e).lower():
+                      session.rollback()
+                      raise  # Will retry
+                  raise  # Don't retry other errors
+
+          # ✅ Django with retry decorator
+          from django.db import connection, OperationalError
+          from functools import wraps
+          import time
+
+          def retry_on_db_error(max_retries=3, delay=1):
+              def decorator(func):
+                  @wraps(func)
+                  def wrapper(*args, **kwargs):
+                      retries = 0
+                      while retries < max_retries:
+                          try:
+                              return func(*args, **kwargs)
+                          except OperationalError as e:
+                              retries += 1
+                              if retries == max_retries:
+                                  raise
+                              connection.close()
+                              time.sleep(delay * retries)
+                      return func(*args, **kwargs)
+                  return wrapper
+              return decorator
+
+          @retry_on_db_error(max_retries=3)
+          def create_order(user, items):
+              with transaction.atomic():
+                  return Order.objects.create(user=user)
+      bad_examples:
+        - |
+          # ❌ No timeouts - can hang forever
+          engine = create_engine('postgresql://...')  # No timeout!
+
+          # ❌ No retry - fails on transient errors
+          def create_order():
+              Order.objects.create(...)  # Connection drop = failure
+      tags:
+        - timeouts
+        - retry
+        - reliability
+
+  - id: DB015
+    title: 'Secure Database Access'
+    category: security
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - postgresql
+        - mysql
+    content:
+      description: |
+        Secure database access: use least privilege, encrypt connections,
+        and protect credentials.
+      rationale: |
+        Database security protects sensitive data and prevents
+        unauthorized access.
+      good_examples:
+        - |
+          # ✅ Least privilege database users
+          """
+          -- Application user with minimal permissions
+          CREATE USER app_user WITH PASSWORD 'strong_password';
+          GRANT CONNECT ON DATABASE mydb TO app_user;
+          GRANT USAGE ON SCHEMA public TO app_user;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
+          GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO app_user;
+
+          -- Read-only user for reporting
+          CREATE USER readonly_user WITH PASSWORD 'another_password';
+          GRANT CONNECT ON DATABASE mydb TO readonly_user;
+          GRANT USAGE ON SCHEMA public TO readonly_user;
+          GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
+
+          -- Migration user (more permissions)
+          CREATE USER migration_user WITH PASSWORD 'migration_password';
+          GRANT ALL PRIVILEGES ON DATABASE mydb TO migration_user;
+          """
+
+          # ✅ SSL connection
+          engine = create_engine(
+              'postgresql://user:pass@localhost/db',
+              connect_args={
+                  'sslmode': 'verify-full',
+                  'sslcert': '/path/to/client-cert.pem',
+                  'sslkey': '/path/to/client-key.pem',
+                  'sslrootcert': '/path/to/ca-cert.pem',
+              }
+          )
+
+          # ✅ Credentials from environment
+          import os
+
+          DATABASE_URL = os.environ.get('DATABASE_URL')
+          engine = create_engine(DATABASE_URL)
+
+          # ✅ Row-level security (PostgreSQL)
+          """
+          ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+
+          CREATE POLICY documents_owner_policy ON documents
+              FOR ALL
+              TO app_user
+              USING (owner_id = current_setting('app.current_user_id')::integer);
+          """
+      bad_examples:
+        - |
+          # ❌ Root user in application
+          engine = create_engine('postgresql://postgres:root@localhost/db')
+
+          # ❌ Hardcoded credentials
+          DATABASES = {
+              'default': {
+                  'PASSWORD': 'hardcoded_password',  # In code!
+              }
+          }
+
+          # ❌ No SSL
+          engine = create_engine('postgresql://user:pass@remote-server/db')
+      tags:
+        - security
+        - credentials
+        - ssl
+
+  # ============================================================================
+  # ADVANCED PATTERNS (DB016-DB020)
+  # ============================================================================
+
+  - id: DB016
+    title: 'Use Read Replicas'
+    category: architecture
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Route read queries to read replicas to scale database reads
+        and reduce load on the primary.
+      rationale: |
+        Read replicas enable horizontal scaling of read-heavy
+        workloads without affecting write performance.
+      good_examples:
+        - |
+          # ✅ SQLAlchemy with read/write routing
+          from sqlalchemy import create_engine
+          from sqlalchemy.orm import Session
+
+          write_engine = create_engine('postgresql://host-primary/db')
+          read_engine = create_engine('postgresql://host-replica/db')
+
+          class RoutingSession(Session):
+              def get_bind(self, mapper=None, clause=None):
+                  if self._flushing or self._transaction:
+                      return write_engine
+                  return read_engine
+
+          # ✅ Django database router
+          # settings.py
+          DATABASES = {
+              'default': {
+                  'ENGINE': 'django.db.backends.postgresql',
+                  'HOST': 'primary-host',
+              },
+              'replica': {
+                  'ENGINE': 'django.db.backends.postgresql',
+                  'HOST': 'replica-host',
+              },
+          }
+
+          DATABASE_ROUTERS = ['myapp.routers.ReadReplicaRouter']
+
+          # myapp/routers.py
+          class ReadReplicaRouter:
+              def db_for_read(self, model, **hints):
+                  return 'replica'
+
+              def db_for_write(self, model, **hints):
+                  return 'default'
+
+              def allow_relation(self, obj1, obj2, **hints):
+                  return True
+
+              def allow_migrate(self, db, app_label, model_name=None, **hints):
+                  return db == 'default'
+
+          # ✅ Explicit routing for replication lag
+          # Read from primary when consistency needed
+          user = User.objects.using('default').get(id=user_id)  # Force primary
+
+          # Or use a decorator
+          from functools import wraps
+
+          def use_primary_db(func):
+              @wraps(func)
+              def wrapper(*args, **kwargs):
+                  with transaction.atomic(using='default'):
+                      return func(*args, **kwargs)
+              return wrapper
+      bad_examples:
+        - |
+          # ❌ All queries to primary
+          # Replica sits idle while primary is overloaded
+
+          # ❌ Reading from replica immediately after write
+          user.name = 'New Name'
+          user.save()
+          # This might get stale data due to replication lag:
+          User.objects.using('replica').get(id=user.id)
+      tags:
+        - read-replicas
+        - scaling
+        - architecture
+
+  - id: DB017
+    title: 'Implement Database Caching'
+    category: performance
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Cache frequently accessed, rarely changed data to reduce
+        database load. Implement proper cache invalidation.
+      rationale: |
+        Caching reduces database queries and improves response times
+        for frequently accessed data.
+      good_examples:
+        - |
+          # ✅ Django caching with invalidation
+          from django.core.cache import cache
+          from django.db.models.signals import post_save, post_delete
+          from django.dispatch import receiver
+
+          class CachedQueryMixin:
+              CACHE_TIMEOUT = 300  # 5 minutes
+
+              @classmethod
+              def get_cache_key(cls, pk):
+                  return f'{cls.__name__.lower()}:{pk}'
+
+              @classmethod
+              def get_cached(cls, pk):
+                  cache_key = cls.get_cache_key(pk)
+                  obj = cache.get(cache_key)
+                  if obj is None:
+                      obj = cls.objects.get(pk=pk)
+                      cache.set(cache_key, obj, cls.CACHE_TIMEOUT)
+                  return obj
+
+              def invalidate_cache(self):
+                  cache.delete(self.get_cache_key(self.pk))
+
+          class Category(CachedQueryMixin, models.Model):
+              name = models.CharField(max_length=100)
+
+          @receiver([post_save, post_delete], sender=Category)
+          def invalidate_category_cache(sender, instance, **kwargs):
+              instance.invalidate_cache()
+              cache.delete('all_categories')  # Invalidate list cache too
+
+          # ✅ Cache query results
+          def get_all_categories():
+              cache_key = 'all_categories'
+              categories = cache.get(cache_key)
+              if categories is None:
+                  categories = list(Category.objects.all())
+                  cache.set(cache_key, categories, 3600)
+              return categories
+
+          # ✅ Cache with dogpile prevention
+          from django.core.cache import cache
+          import threading
+
+          _locks = {}
+
+          def get_with_lock(key, creator, timeout=300):
+              value = cache.get(key)
+              if value is not None:
+                  return value
+
+              lock = _locks.setdefault(key, threading.Lock())
+              with lock:
+                  value = cache.get(key)
+                  if value is None:
+                      value = creator()
+                      cache.set(key, value, timeout)
+              return value
+      bad_examples:
+        - |
+          # ❌ No cache invalidation
+          def get_category(pk):
+              return cache.get_or_set(f'category:{pk}',
+                  lambda: Category.objects.get(pk=pk), 3600)
+          # Cache never invalidated when category changes!
+
+          # ❌ Caching frequently changing data
+          cache.set('user_order_count', Order.objects.count(), 86400)
+      tags:
+        - caching
+        - performance
+        - invalidation
+
+  - id: DB018
+    title: 'Handle Large Data Sets'
+    category: performance
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - sqlalchemy
+        - django
+    content:
+      description: |
+        Process large data sets efficiently using iterators, chunking,
+        and streaming to avoid memory issues.
+      rationale: |
+        Loading large datasets into memory can cause out-of-memory
+        errors and slow performance.
+      good_examples:
+        - |
+          # ✅ SQLAlchemy - Streaming results
+          def process_all_orders():
+              # Stream results without loading all into memory
+              for order in session.query(Order).yield_per(1000):
+                  process_order(order)
+
+              # Or use server-side cursor
+              with session.begin():
+                  for order in session.execute(
+                      select(Order),
+                      execution_options={'stream_results': True, 'yield_per': 1000}
+                  ):
+                      process_order(order)
+
+          # ✅ Django - Iterator and chunked processing
+          def export_all_users():
+              # iterator() uses server-side cursor
+              for user in User.objects.all().iterator(chunk_size=1000):
+                  yield user.to_csv_row()
+
+          # ✅ Chunked processing with ID ranges
+          def process_in_chunks(model, process_func, chunk_size=1000):
+              last_id = 0
+              while True:
+                  chunk = list(
+                      model.objects.filter(id__gt=last_id)
+                      .order_by('id')[:chunk_size]
+                  )
+                  if not chunk:
+                      break
+
+                  for obj in chunk:
+                      process_func(obj)
+
+                  last_id = chunk[-1].id
+
+          # ✅ Bulk operations
+          def update_all_prices(multiplier):
+              # Don't load objects - update in batches
+              batch_size = 1000
+              updated = 0
+
+              while True:
+                  ids = list(
+                      Product.objects.filter(price_updated=False)
+                      .values_list('id', flat=True)[:batch_size]
+                  )
+                  if not ids:
+                      break
+
+                  Product.objects.filter(id__in=ids).update(
+                      price=F('price') * multiplier,
+                      price_updated=True,
+                  )
+                  updated += len(ids)
+
+              return updated
+      bad_examples:
+        - |
+          # ❌ Loading all into memory
+          all_orders = list(Order.objects.all())  # Millions of objects!
+          for order in all_orders:
+              process(order)
+
+          # ❌ No chunking
+          Order.objects.all().update(processed=True)  # Single huge transaction
+      tags:
+        - large-data
+        - streaming
+        - memory
+
+  - id: DB019
+    title: 'Use Full-Text Search'
+    category: patterns
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - postgresql
+        - django
+    content:
+      description: |
+        Use database full-text search for efficient text searching
+        instead of LIKE queries or loading data into Python.
+      rationale: |
+        Full-text search is much faster than LIKE queries and
+        provides features like ranking and stemming.
+      good_examples:
+        - |
+          # ✅ PostgreSQL full-text search
+          """
+          -- Add search vector column
+          ALTER TABLE articles ADD COLUMN search_vector tsvector;
+
+          -- Create GIN index
+          CREATE INDEX articles_search_idx ON articles USING GIN (search_vector);
+
+          -- Update trigger
+          CREATE FUNCTION articles_search_trigger() RETURNS trigger AS $$
+          BEGIN
+              NEW.search_vector :=
+                  setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
+                  setweight(to_tsvector('english', COALESCE(NEW.content, '')), 'B');
+              RETURN NEW;
+          END
+          $$ LANGUAGE plpgsql;
+
+          CREATE TRIGGER articles_search_update
+              BEFORE INSERT OR UPDATE ON articles
+              FOR EACH ROW EXECUTE FUNCTION articles_search_trigger();
+
+          -- Search query with ranking
+          SELECT id, title, ts_rank(search_vector, query) AS rank
+          FROM articles, plainto_tsquery('english', 'python best practices') query
+          WHERE search_vector @@ query
+          ORDER BY rank DESC
+          LIMIT 20;
+          """
+
+          # ✅ Django full-text search
+          from django.contrib.postgres.search import (
+              SearchVector, SearchQuery, SearchRank, TrigramSimilarity
+          )
+
+          # Basic search
+          articles = Article.objects.annotate(
+              search=SearchVector('title', 'content'),
+          ).filter(search='python best practices')
+
+          # Weighted search with ranking
+          search_query = SearchQuery('python best practices')
+          articles = Article.objects.annotate(
+              search=SearchVector('title', weight='A') + SearchVector('content', weight='B'),
+              rank=SearchRank(F('search'), search_query),
+          ).filter(search=search_query).order_by('-rank')
+
+          # Trigram similarity for fuzzy matching
+          articles = Article.objects.annotate(
+              similarity=TrigramSimilarity('title', 'pythom'),
+          ).filter(similarity__gt=0.3).order_by('-similarity')
+      bad_examples:
+        - |
+          # ❌ LIKE queries - slow and no ranking
+          articles = Article.objects.filter(
+              Q(title__icontains='python') | Q(content__icontains='python')
+          )
+
+          # ❌ Python-side filtering
+          all_articles = Article.objects.all()
+          results = [a for a in all_articles if 'python' in a.content.lower()]
+      tags:
+        - full-text-search
+        - postgresql
+        - search
+
+  - id: DB020
+    title: 'Monitor Database Performance'
+    category: monitoring
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - postgresql
+        - mysql
+    content:
+      description: |
+        Monitor database performance: slow queries, connection usage,
+        lock contention, and resource utilization.
+      rationale: |
+        Database monitoring enables proactive identification of
+        performance issues before they impact users.
+      good_examples:
+        - |
+          # ✅ PostgreSQL slow query logging
+          """
+          -- postgresql.conf
+          log_min_duration_statement = 1000  # Log queries > 1s
+          log_statement = 'none'
+          log_lock_waits = on
+
+          -- Or dynamically
+          ALTER SYSTEM SET log_min_duration_statement = 1000;
+          SELECT pg_reload_conf();
+          """
+
+          # ✅ PostgreSQL pg_stat_statements
+          """
+          -- Enable extension
+          CREATE EXTENSION pg_stat_statements;
+
+          -- Find slow queries
+          SELECT
+              calls,
+              mean_exec_time::integer as avg_ms,
+              total_exec_time::integer as total_ms,
+              query
+          FROM pg_stat_statements
+          ORDER BY mean_exec_time DESC
+          LIMIT 20;
+
+          -- Find queries with most I/O
+          SELECT
+              calls,
+              shared_blks_read + shared_blks_hit as total_blocks,
+              query
+          FROM pg_stat_statements
+          ORDER BY shared_blks_read DESC
+          LIMIT 20;
+          """
+
+          # ✅ Django query logging
+          import logging
+
+          LOGGING = {
+              'handlers': {
+                  'db_queries': {
+                      'level': 'DEBUG',
+                      'class': 'logging.FileHandler',
+                      'filename': '/var/log/django/queries.log',
+                  },
+              },
+              'loggers': {
+                  'django.db.backends': {
+                      'handlers': ['db_queries'],
+                      'level': 'DEBUG',
+                  },
+              },
+          }
+
+          # ✅ Connection monitoring
+          """
+          -- Active connections
+          SELECT
+              datname,
+              usename,
+              state,
+              query_start,
+              query
+          FROM pg_stat_activity
+          WHERE state = 'active';
+
+          -- Connection count by state
+          SELECT state, count(*)
+          FROM pg_stat_activity
+          GROUP BY state;
+
+          -- Lock monitoring
+          SELECT
+              l.locktype,
+              l.relation::regclass,
+              l.mode,
+              l.granted,
+              a.query
+          FROM pg_locks l
+          JOIN pg_stat_activity a ON l.pid = a.pid
+          WHERE NOT l.granted;
+          """
+      bad_examples:
+        - |
+          # ❌ No monitoring
+          # Slow queries go unnoticed until users complain
+
+          # ❌ DEBUG=True in production for query logging
+          DEBUG = True  # Logs queries but also exposes errors!
+      references:
+        - 'https://www.postgresql.org/docs/current/monitoring-stats.html'
+      tags:
+        - monitoring
+        - performance
+        - observability

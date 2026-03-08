@@ -1,0 +1,562 @@
+# PHP Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.24 - PHP Language Support
+# Practice IDs: PHP001-PHP050
+# Category: php
+# Frameworks: php
+
+practices:
+  - id: PHP001
+    title: "Declare strict_types=1 in every PHP file"
+    description: "Add 'declare(strict_types=1);' at the top of every PHP file to enforce strict type checking for function arguments and return values. This catches type coercion bugs at call sites."
+    category: "type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "type-safety", "strict-types"]
+    example: |
+      <?php
+      declare(strict_types=1);
+      function add(int $a, int $b): int {
+          return $a + $b;
+      }
+
+  - id: PHP002
+    title: "Use typed properties and constructor promotion"
+    description: "Declare property types explicitly and use PHP 8.0+ constructor promotion to reduce boilerplate. Use readonly properties (PHP 8.1+) for immutable data."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "type-safety", "properties"]
+    example: |
+      class User {
+          public function __construct(
+              private readonly string $name,
+              private readonly string $email,
+              private int $age = 0,
+          ) {}
+      }
+
+  - id: PHP003
+    title: "Always specify return types for methods and functions"
+    description: "Declare return types for all functions and methods. Use union types (PHP 8.0+), intersection types (PHP 8.1+), or never/void where appropriate. Use nullable types (?Type) sparingly."
+    category: "type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "type-safety", "return-types"]
+
+  - id: PHP004
+    title: "Use enums instead of class constants for finite sets (PHP 8.1+)"
+    description: "Replace groups of related class constants with backed enums. Enums provide type safety, exhaustive matching, and self-documenting code."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "type-safety", "enums", "php81"]
+    example: |
+      enum Status: string {
+          case Active = 'active';
+          case Inactive = 'inactive';
+          case Pending = 'pending';
+      }
+
+  - id: PHP005
+    title: "Prefer named arguments for functions with 3+ parameters"
+    description: "Use named arguments (PHP 8.0+) when calling functions with 3 or more parameters to improve readability and prevent argument ordering bugs."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "api-design", "named-args", "php80"]
+    example: |
+      $user = new User(
+          name: 'John',
+          email: 'john@example.com',
+          role: Role::Admin,
+      );
+
+  - id: PHP006
+    title: "Use match expressions instead of switch statements"
+    description: "Prefer match expressions (PHP 8.0+) over switch statements. Match uses strict comparison, returns values, doesn't fall through, and throws UnhandledMatchError for missing cases."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "style", "match", "php80"]
+    example: |
+      $result = match($status) {
+          Status::Active => 'Active user',
+          Status::Inactive => 'Inactive user',
+          Status::Pending => 'Awaiting activation',
+      };
+
+  - id: PHP007
+    title: "Never suppress errors with @ operator"
+    description: "Never use the @ error suppression operator. It hides bugs and makes debugging difficult. Use proper error handling with try/catch and configure error reporting appropriately."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "error-handling", "suppression"]
+
+  - id: PHP008
+    title: "Throw specific exceptions, not generic Exception"
+    description: "Create custom exception classes extending RuntimeException or LogicException. Never throw bare \\Exception. Use SPL exception classes (InvalidArgumentException, etc.) where appropriate."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "error-handling", "exceptions"]
+    example: |
+      class UserNotFoundException extends RuntimeException {}
+      throw new UserNotFoundException("User {$id} not found");
+
+  - id: PHP009
+    title: "Use PSR-4 autoloading with Composer"
+    description: "Follow PSR-4 autoloading standard. One class per file, namespace matches directory structure. Configure autoloading in composer.json, never use require/include for classes."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "architecture", "psr-4", "autoloading"]
+
+  - id: PHP010
+    title: "Follow PSR-12 coding style"
+    description: "Follow PSR-12 extended coding style guide. Use 4 spaces for indentation, opening braces on same line for control structures, next line for classes/methods. Use PHP-CS-Fixer or PHP_CodeSniffer."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "style", "psr-12"]
+
+  - id: PHP011
+    title: "Use interfaces for dependency inversion"
+    description: "Depend on interfaces, not concrete implementations. Define interfaces for services, repositories, and external integrations. This enables testing with mocks and swapping implementations."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "architecture", "interfaces", "solid"]
+
+  - id: PHP012
+    title: "Use constructor injection for dependencies"
+    description: "Inject dependencies through the constructor, not through setters or service locators. Use readonly promoted properties for immutable dependency references."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "architecture", "dependency-injection"]
+    example: |
+      class UserService {
+          public function __construct(
+              private readonly UserRepositoryInterface $users,
+              private readonly EventDispatcherInterface $events,
+          ) {}
+      }
+
+  - id: PHP013
+    title: "Use value objects for domain concepts"
+    description: "Encapsulate domain primitives (email, money, coordinates) in value objects with validation. Use readonly classes (PHP 8.2+) for truly immutable value objects."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "architecture", "value-objects", "ddd"]
+    example: |
+      readonly class Email {
+          public function __construct(
+              public string $value,
+          ) {
+              if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                  throw new InvalidArgumentException("Invalid email: {$value}");
+              }
+          }
+      }
+
+  - id: PHP014
+    title: "Use DTOs for data transfer between layers"
+    description: "Use Data Transfer Objects to pass data between application layers. DTOs should be immutable (readonly properties), validated at construction, and contain no business logic."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "architecture", "dto"]
+
+  - id: PHP015
+    title: "Never use global variables or global keyword"
+    description: "Avoid global state entirely. Never use the global keyword, $GLOBALS superglobal, or static mutable state. Pass dependencies explicitly through constructors or method parameters."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "architecture", "no-globals"]
+
+  - id: PHP016
+    title: "Use null coalescing and nullsafe operators"
+    description: "Use ?? (null coalescing) and ?-> (nullsafe operator, PHP 8.0+) instead of verbose isset() checks or ternary expressions for null handling."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "style", "null-safety", "php80"]
+    example: |
+      $name = $user?->getProfile()?->getName() ?? 'Anonymous';
+
+  - id: PHP017
+    title: "Use array_map/array_filter/array_reduce over manual loops"
+    description: "Prefer functional array operations (array_map, array_filter, array_reduce) and Collection classes over manual foreach loops with push/append patterns."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "style", "functional"]
+
+  - id: PHP018
+    title: "Validate all external input at boundaries"
+    description: "Validate and sanitize all input from HTTP requests, CLI arguments, file uploads, and external APIs at application boundaries. Use validation libraries or framework validators."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "security", "validation", "input"]
+
+  - id: PHP019
+    title: "Use prepared statements for all database queries"
+    description: "Never concatenate user input into SQL queries. Always use prepared statements with parameter binding (PDO::prepare or Eloquent/Doctrine query builders)."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "security", "sql-injection", "database"]
+
+  - id: PHP020
+    title: "Use password_hash and password_verify for passwords"
+    description: "Always hash passwords with password_hash(PASSWORD_DEFAULT) and verify with password_verify(). Never use md5(), sha1(), or custom hashing for passwords."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "security", "passwords", "hashing"]
+
+  - id: PHP021
+    title: "Use CSRF protection for all state-changing requests"
+    description: "Protect all POST/PUT/PATCH/DELETE endpoints with CSRF tokens. Use framework-provided CSRF middleware (Laravel @csrf, Symfony csrf_token())."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "security", "csrf"]
+
+  - id: PHP022
+    title: "Escape output based on context"
+    description: "Always escape output based on context: htmlspecialchars() for HTML, json_encode() for JSON, urlencode() for URLs. Use framework template engines that auto-escape (Blade, Twig)."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "security", "xss", "output-encoding"]
+
+  - id: PHP023
+    title: "Use Fibers for cooperative concurrency (PHP 8.1+)"
+    description: "Use Fibers for lightweight cooperative concurrency when handling I/O-bound operations. Consider libraries like ReactPHP, Amp, or Swoole for async programming patterns."
+    category: "performance"
+    severity: "informational"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "performance", "fibers", "async", "php81"]
+
+  - id: PHP024
+    title: "Use generators for memory-efficient iteration"
+    description: "Use generators (yield) for processing large datasets to avoid loading everything into memory. Prefer generators over arrays when you only need to iterate once."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "performance", "generators"]
+    example: |
+      function readLargeFile(string $path): Generator {
+          $handle = fopen($path, 'r');
+          while (($line = fgets($handle)) !== false) {
+              yield trim($line);
+          }
+          fclose($handle);
+      }
+
+  - id: PHP025
+    title: "Use opcache in production"
+    description: "Enable and configure opcache for production. Set opcache.validate_timestamps=0 in production, use opcache.preload for framework bootstrapping (PHP 7.4+)."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "performance", "opcache"]
+
+  - id: PHP026
+    title: "Write unit tests with PHPUnit or Pest"
+    description: "Write unit tests for all business logic using PHPUnit or Pest. Follow AAA pattern (Arrange-Act-Assert). Aim for 80%+ code coverage on business logic."
+    category: "testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "testing", "phpunit", "pest"]
+
+  - id: PHP027
+    title: "Use data providers for parameterized tests"
+    description: "Use PHPUnit @dataProvider or Pest datasets() for testing multiple input scenarios. This reduces test duplication and improves coverage visibility."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "testing", "data-providers"]
+
+  - id: PHP028
+    title: "Mock external dependencies in unit tests"
+    description: "Use Mockery, Prophecy, or PHPUnit mocks for external dependencies. Never make real HTTP calls, database queries, or file operations in unit tests."
+    category: "testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "testing", "mocking"]
+
+  - id: PHP029
+    title: "Use PHPStan or Psalm for static analysis"
+    description: "Run PHPStan (level 8+) or Psalm (level 1) in CI. Static analysis catches type errors, dead code, and security issues before runtime."
+    category: "quality"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "quality", "static-analysis", "phpstan", "psalm"]
+
+  - id: PHP030
+    title: "Use attributes instead of annotations (PHP 8.0+)"
+    description: "Prefer native PHP attributes (#[Attribute]) over docblock annotations (@Annotation). Attributes are first-class PHP syntax, validated at compile time, and discoverable via Reflection."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "style", "attributes", "php80"]
+    example: |
+      #[Route('/users/{id}', methods: ['GET'])]
+      #[IsGranted('ROLE_USER')]
+      public function show(int $id): Response {}
+
+  - id: PHP031
+    title: "Use readonly classes for immutable data (PHP 8.2+)"
+    description: "Declare classes as readonly when all properties should be immutable. This automatically makes all promoted properties readonly and prevents adding non-readonly properties."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "type-safety", "readonly", "php82"]
+    example: |
+      readonly class CreateUserRequest {
+          public function __construct(
+              public string $name,
+              public string $email,
+              public Role $role = Role::User,
+          ) {}
+      }
+
+  - id: PHP032
+    title: "Use intersection types for precise type contracts (PHP 8.1+)"
+    description: "Use intersection types (TypeA&TypeB) when a value must satisfy multiple type constraints simultaneously. Combine with union types (PHP 8.2+ DNF types) for complex type expressions."
+    category: "type_safety"
+    severity: "informational"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "type-safety", "intersection-types", "php81"]
+
+  - id: PHP033
+    title: "Use first-class callable syntax (PHP 8.1+)"
+    description: "Use the first-class callable syntax (strlen(...)) instead of string-based callables ('strlen') for type safety and IDE support."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "style", "callables", "php81"]
+    example: |
+      $lengths = array_map(strlen(...), $strings);
+      $validator = $this->validate(...);
+
+  - id: PHP034
+    title: "Use Laravel Form Requests for validation"
+    description: "In Laravel, use Form Request classes for request validation instead of inline validation in controllers. This separates validation logic and makes it reusable and testable."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php", "laravel"]
+    tags: ["php", "laravel", "validation", "form-requests"]
+    example: |
+      class StoreUserRequest extends FormRequest {
+          public function rules(): array {
+              return [
+                  'name' => ['required', 'string', 'max:255'],
+                  'email' => ['required', 'email', 'unique:users'],
+              ];
+          }
+      }
+
+  - id: PHP035
+    title: "Use Laravel API Resources for response formatting"
+    description: "Use API Resource classes to transform models into JSON responses. This decouples your API response format from your database schema."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php", "laravel"]
+    tags: ["php", "laravel", "api-resources"]
+
+  - id: PHP036
+    title: "Use Eloquent scopes for reusable query logic"
+    description: "Define local scopes on Eloquent models for frequently used query conditions. Use global scopes sparingly and document them clearly."
+    category: "data_access"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php", "laravel", "eloquent"]
+    tags: ["php", "laravel", "eloquent", "scopes"]
+    example: |
+      class User extends Model {
+          public function scopeActive(Builder $query): Builder {
+              return $query->where('status', Status::Active);
+          }
+      }
+
+  - id: PHP037
+    title: "Eager load relationships to prevent N+1 queries"
+    description: "Always use with() or load() to eager load Eloquent relationships. Use Laravel Debugbar or strict mode to detect N+1 queries during development."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["php", "laravel", "eloquent"]
+    tags: ["php", "laravel", "eloquent", "n-plus-one"]
+    example: |
+      // Good: eager load
+      $users = User::with(['posts', 'posts.comments'])->get();
+      // Bad: N+1 queries
+      $users = User::all();
+      foreach ($users as $user) {
+          $user->posts; // Lazy load per iteration
+      }
+
+  - id: PHP038
+    title: "Use database transactions for multi-step operations"
+    description: "Wrap multi-step database operations in transactions. Use DB::transaction() with closures or manual begin/commit/rollback for complex scenarios."
+    category: "data_access"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "database", "transactions"]
+
+  - id: PHP039
+    title: "Use queues for long-running tasks"
+    description: "Dispatch time-consuming tasks (email sending, file processing, API calls) to queues. Use Laravel Queue, Symfony Messenger, or similar. Never block HTTP requests with heavy operations."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "performance", "queues", "async"]
+
+  - id: PHP040
+    title: "Use caching strategically"
+    description: "Cache expensive computations, database queries, and external API responses. Use cache tags for group invalidation. Set appropriate TTLs. Use Laravel Cache, Symfony Cache, or PSR-6/PSR-16."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "performance", "caching"]
+
+  - id: PHP041
+    title: "Use Symfony services with autowiring"
+    description: "In Symfony, use autowiring and autoconfiguration for service registration. Define interfaces for services and bind them in services.yaml. Avoid manual service definitions."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php", "symfony"]
+    tags: ["php", "symfony", "services", "autowiring"]
+
+  - id: PHP042
+    title: "Use Doctrine repositories for data access"
+    description: "In Symfony/Doctrine, use repository classes for all database queries. Never use EntityManager directly in controllers. Implement custom repository methods for complex queries."
+    category: "data_access"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php", "symfony", "doctrine"]
+    tags: ["php", "symfony", "doctrine", "repositories"]
+
+  - id: PHP043
+    title: "Use middleware for cross-cutting concerns"
+    description: "Use middleware for authentication, authorization, rate limiting, logging, CORS, and other cross-cutting concerns. Keep middleware focused on a single responsibility."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "architecture", "middleware"]
+
+  - id: PHP044
+    title: "Use events and listeners for decoupled communication"
+    description: "Use events and listeners for decoupled communication between modules. Dispatch domain events for significant state changes. Use Laravel Events, Symfony EventDispatcher, or PSR-14."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "architecture", "events", "decoupling"]
+
+  - id: PHP045
+    title: "Use service providers for modular bootstrapping"
+    description: "In Laravel, use service providers to register bindings, event listeners, middleware, and other bootstrapping logic. Keep providers focused and avoid heavy logic in register/boot."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php", "laravel"]
+    tags: ["php", "laravel", "service-providers"]
+
+  - id: PHP046
+    title: "Use database migrations for schema changes"
+    description: "Use migration files for all database schema changes. Never modify the database manually in production. Migrations should be reversible (down method). Use seeders for test data."
+    category: "data_access"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "database", "migrations"]
+
+  - id: PHP047
+    title: "Use environment variables for configuration"
+    description: "Store configuration in environment variables (.env). Never commit secrets or credentials. Use config files to provide defaults and type casting. Validate required env vars at boot."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "security", "configuration", "env"]
+
+  - id: PHP048
+    title: "Use PSR-7 HTTP messages for framework-agnostic code"
+    description: "Use PSR-7 (HTTP Messages) and PSR-15 (HTTP Handlers) for framework-agnostic HTTP handling. This enables middleware reuse across frameworks and improves testability."
+    category: "architecture"
+    severity: "informational"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "architecture", "psr-7", "psr-15"]
+
+  - id: PHP049
+    title: "Use structured logging with PSR-3"
+    description: "Use PSR-3 (Monolog, etc.) for structured logging. Include context arrays with log messages. Never log sensitive data (passwords, tokens, PII). Use appropriate log levels."
+    category: "observability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "observability", "logging", "psr-3"]
+    example: |
+      $this->logger->error('Payment failed', [
+          'user_id' => $user->id,
+          'amount' => $payment->amount,
+          'error' => $e->getMessage(),
+      ]);
+
+  - id: PHP050
+    title: "Use health checks and readiness probes"
+    description: "Implement health check endpoints that verify database connectivity, cache availability, and external service status. Use for container orchestration readiness/liveness probes."
+    category: "observability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["php"]
+    tags: ["php", "observability", "health-check", "devops"]

@@ -1,0 +1,732 @@
+# Ant Design Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.37 - Ant Design Framework Support
+# Practice IDs: ANTD001-ANTD050
+# Coverage: Components, Theme, Styling, Hooks, Performance, Accessibility,
+#           Forms, Table, Navigation, Migration
+# Versions: Ant Design v3.x, v4.x, v5.x
+
+practices:
+  # ============================================================================
+  # ANTD COMPONENTS (ANTD001-ANTD010)
+  # ============================================================================
+
+  - id: ANTD001
+    title: "Import antd components with tree-shaking support"
+    description: "Use named imports from 'antd' which supports tree-shaking natively in v5+. For v3/v4, use babel-plugin-import or direct path imports (antd/es/button) to reduce bundle size."
+    category: "antd_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "imports", "bundle-size"]
+    example: |
+      // Good: named imports (v5+ tree-shakeable)
+      import { Button, Table, Form } from 'antd';
+
+      // Good for v3/v4: direct path imports
+      import Button from 'antd/es/button';
+
+      // Avoid: importing entire library without tree-shaking
+      import * as antd from 'antd';
+
+  - id: ANTD002
+    title: "Use composition with sub-components"
+    description: "Ant Design uses a dot notation pattern for sub-components (Form.Item, Menu.SubMenu, Table.Column). Use these for clear parent-child relationships and proper context propagation."
+    category: "antd_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "composition", "sub-components"]
+    example: |
+      // Good: sub-component composition
+      <Form layout="vertical">
+        <Form.Item label="Name" name="name" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item label="Email" name="email">
+          <Input />
+        </Form.Item>
+      </Form>
+
+  - id: ANTD003
+    title: "Wrap application with ConfigProvider"
+    description: "Always wrap your app with ConfigProvider for theming, locale, and global configuration. In v5+, ConfigProvider replaces Less variables for theme customization."
+    category: "antd_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "config-provider", "setup"]
+    example: |
+      import { ConfigProvider } from 'antd';
+
+      function App() {
+        return (
+          <ConfigProvider
+            theme={{
+              token: { colorPrimary: '#1890ff' },
+            }}
+          >
+            <YourApp />
+          </ConfigProvider>
+        );
+      }
+
+  - id: ANTD004
+    title: "Use App component for static method context (v5+)"
+    description: "Wrap with App component to provide context for message, notification, and modal static methods. This ensures they respect ConfigProvider theming."
+    category: "antd_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "app-component", "v5"]
+    example: |
+      import { App, Button } from 'antd';
+
+      function MyComponent() {
+        const { message, notification, modal } = App.useApp();
+        return (
+          <Button onClick={() => message.success('Done!')}>
+            Click me
+          </Button>
+        );
+      }
+
+      // Root
+      <App><MyComponent /></App>
+
+  - id: ANTD005
+    title: "Use @ant-design/icons for consistent iconography"
+    description: "Import icons from @ant-design/icons for consistent sizing, color, and spin behavior. Each icon is individually tree-shakeable."
+    category: "antd_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "icons", "consistency"]
+    example: |
+      import { UserOutlined, SettingFilled, SearchOutlined } from '@ant-design/icons';
+
+      <Button icon={<SearchOutlined />}>Search</Button>
+
+  - id: ANTD006
+    title: "Prefer antd layout components for page structure"
+    description: "Use Layout, Layout.Header, Layout.Sider, Layout.Content, Layout.Footer for page structure. These provide responsive collapsible sidebars and consistent spacing."
+    category: "antd_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "layout", "structure"]
+    example: |
+      import { Layout, Menu } from 'antd';
+      const { Header, Sider, Content } = Layout;
+
+      <Layout>
+        <Sider collapsible>
+          <Menu items={menuItems} />
+        </Sider>
+        <Layout>
+          <Header />
+          <Content>{children}</Content>
+        </Layout>
+      </Layout>
+
+  - id: ANTD007
+    title: "Use Space and Flex for inline layouts"
+    description: "Use Space for horizontal/vertical spacing between inline elements. In v5.10+, use Flex component for flexbox layouts. Avoid manual margin/padding."
+    category: "antd_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "space", "flex", "layout"]
+
+  - id: ANTD008
+    title: "Use ProComponents for admin/enterprise UIs"
+    description: "For admin panels and data-heavy UIs, use @ant-design/pro-components (ProTable, ProForm, ProLayout) which provide integrated search, CRUD, and layout patterns out of the box."
+    category: "antd_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "pro-components", "admin"]
+
+  - id: ANTD009
+    title: "Use items prop for Menu, Dropdown, Breadcrumb (v4.20+)"
+    description: "Prefer the items prop pattern over JSX children for Menu, Dropdown, and Breadcrumb. The items API is more performant and supports better type inference."
+    category: "antd_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "items-pattern", "performance"]
+    example: |
+      // Good: items prop (v4.20+)
+      const items = [
+        { key: '1', label: 'Home', icon: <HomeOutlined /> },
+        { key: '2', label: 'Settings', icon: <SettingOutlined /> },
+      ];
+      <Menu items={items} />
+
+      // Avoid: JSX children (deprecated in v5)
+      <Menu>
+        <Menu.Item key="1">Home</Menu.Item>
+      </Menu>
+
+  - id: ANTD010
+    title: "Use Typography for text rendering"
+    description: "Use Typography.Text, Typography.Title, Typography.Paragraph for consistent text styling with built-in ellipsis, copyable, and editable features."
+    category: "antd_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "typography", "text"]
+
+  # ============================================================================
+  # ANTD THEME (ANTD011-ANTD018)
+  # ============================================================================
+
+  - id: ANTD011
+    title: "Use Design Tokens for theme customization (v5+)"
+    description: "Customize the theme through the token system (Seed Tokens → Map Tokens → Alias Tokens) via ConfigProvider. Avoid direct CSS overrides of antd classes."
+    category: "antd_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "design-tokens", "theming"]
+    example: |
+      <ConfigProvider
+        theme={{
+          token: {
+            colorPrimary: '#1890ff',
+            borderRadius: 6,
+            fontSize: 14,
+          },
+        }}
+      >
+        <App />
+      </ConfigProvider>
+
+  - id: ANTD012
+    title: "Use algorithms for dark mode and compact layouts"
+    description: "Use theme.darkAlgorithm and theme.compactAlgorithm instead of manual dark mode CSS. Algorithms can be composed for dark+compact mode."
+    category: "antd_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "dark-mode", "algorithm"]
+    example: |
+      import { theme, ConfigProvider } from 'antd';
+
+      <ConfigProvider
+        theme={{
+          algorithm: [theme.darkAlgorithm, theme.compactAlgorithm],
+        }}
+      >
+        <App />
+      </ConfigProvider>
+
+  - id: ANTD013
+    title: "Use component-level token overrides for targeted customization"
+    description: "Override tokens at the component level for specific components without affecting the global theme. This is more maintainable than global overrides."
+    category: "antd_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "component-tokens", "customization"]
+    example: |
+      <ConfigProvider
+        theme={{
+          components: {
+            Button: {
+              colorPrimary: '#00b96b',
+              algorithm: true,
+            },
+            Input: {
+              colorBorder: '#d9d9d9',
+            },
+          },
+        }}
+      >
+        <App />
+      </ConfigProvider>
+
+  - id: ANTD014
+    title: "Enable CSS Variables mode for dynamic theming (v5.12+)"
+    description: "Enable cssVar in ConfigProvider theme for runtime theme switching without re-rendering. This is essential for multi-theme and dynamic theme applications."
+    category: "antd_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "css-variables", "dynamic-theme"]
+    example: |
+      <ConfigProvider
+        theme={{
+          cssVar: true,
+          hashed: false,
+        }}
+      >
+        <App />
+      </ConfigProvider>
+
+  - id: ANTD015
+    title: "Use useToken hook to access design tokens in components"
+    description: "Access the full resolved token set using the useToken hook (theme.useToken). This ensures your custom components stay in sync with the global theme."
+    category: "antd_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "useToken", "design-tokens"]
+    example: |
+      import { theme } from 'antd';
+
+      function MyComponent() {
+        const { token } = theme.useToken();
+        return (
+          <div style={{ color: token.colorPrimary, padding: token.padding }}>
+            Themed content
+          </div>
+        );
+      }
+
+  - id: ANTD016
+    title: "Migrate from Less variables to Design Tokens (v3/v4 → v5)"
+    description: "When upgrading from v3/v4, replace Less variable overrides (@primary-color, @font-size-base) with Design Tokens in ConfigProvider. Use @ant-design/compatible for gradual migration."
+    category: "antd_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "migration", "less-to-tokens"]
+
+  - id: ANTD017
+    title: "Nest ConfigProvider for section-level theming"
+    description: "Use nested ConfigProvider components for different theme sections within the same page. Child ConfigProviders inherit and override parent tokens."
+    category: "antd_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "nested-theme", "config-provider"]
+
+  - id: ANTD018
+    title: "Define theme configuration in a centralized file"
+    description: "Keep theme configuration (tokens, algorithms, component overrides) in a dedicated file (e.g., theme.ts). Import it in the root ConfigProvider for consistency."
+    category: "antd_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "centralized-theme", "organization"]
+
+  # ============================================================================
+  # ANTD STYLING (ANTD019-ANTD025)
+  # ============================================================================
+
+  - id: ANTD019
+    title: "Use antd-style createStyles for CSS-in-JS (v5+)"
+    description: "Use antd-style's createStyles for component styles that integrate with design tokens. This provides type-safe token access and proper SSR support."
+    category: "antd_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "css-in-js", "antd-style"]
+    example: |
+      import { createStyles } from 'antd-style';
+
+      const useStyles = createStyles(({ token, css }) => ({
+        container: css`
+          padding: ${token.padding}px;
+          background: ${token.colorBgContainer};
+          border-radius: ${token.borderRadius}px;
+        `,
+      }));
+
+  - id: ANTD020
+    title: "Avoid overriding antd class names directly"
+    description: "Do not style antd components by targeting internal class names (e.g., .ant-btn). These are unstable and change between versions. Use the theme system or className/style props instead."
+    category: "antd_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "class-names", "styling"]
+
+  - id: ANTD021
+    title: "Use className and rootClassName props for customization"
+    description: "Ant Design components support className (outer wrapper) and rootClassName (root element) props for safe style customization using CSS Modules or CSS-in-JS."
+    category: "antd_styling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "className", "customization"]
+
+  - id: ANTD022
+    title: "Use popupClassName for overlay components"
+    description: "For components with popups (Select, DatePicker, Dropdown, Tooltip), use popupClassName to style the overlay. This ensures styles are applied to the portal-rendered content."
+    category: "antd_styling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "popupClassName", "overlay"]
+
+  - id: ANTD023
+    title: "Use CSS Modules for antd style isolation"
+    description: "When overriding antd styles, use CSS Modules (.module.css/.module.less) to prevent global class name collisions. Combine with :global() for antd class targeting."
+    category: "antd_styling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "css-modules", "isolation"]
+
+  - id: ANTD024
+    title: "Configure SSR styles correctly for Next.js/Remix"
+    description: "For SSR frameworks, use @ant-design/cssinjs extractStyle for critical CSS extraction. In Next.js App Router, use StyleProvider with ssrInline."
+    category: "antd_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "ssr", "next-js", "cssinjs"]
+
+  - id: ANTD025
+    title: "Prefer design tokens over inline styles"
+    description: "Use design tokens from useToken or createStyles instead of hardcoded inline styles. This ensures consistency with the theme and supports dark mode automatically."
+    category: "antd_styling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "tokens-over-inline", "consistency"]
+
+  # ============================================================================
+  # ANTD HOOKS (ANTD026-ANTD030)
+  # ============================================================================
+
+  - id: ANTD026
+    title: "Use Form.useForm for form instance management"
+    description: "Create form instances with Form.useForm() instead of ref-based access. The hook provides setFieldsValue, validateFields, resetFields with full type support."
+    category: "antd_hooks"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "useForm", "form"]
+    example: |
+      const [form] = Form.useForm();
+
+      const onFinish = async (values) => {
+        await submitData(values);
+        form.resetFields();
+      };
+
+      <Form form={form} onFinish={onFinish}>
+        <Form.Item name="email" rules={[{ type: 'email' }]}>
+          <Input />
+        </Form.Item>
+      </Form>
+
+  - id: ANTD027
+    title: "Use useWatch for reactive form field observation"
+    description: "Use Form.useWatch to observe specific field values reactively without re-rendering the entire form. This is more efficient than getFieldValue in render."
+    category: "antd_hooks"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "useWatch", "form-observation"]
+    example: |
+      const type = Form.useWatch('type', form);
+
+      return (
+        <Form form={form}>
+          <Form.Item name="type">
+            <Select options={typeOptions} />
+          </Form.Item>
+          {type === 'other' && (
+            <Form.Item name="customType">
+              <Input />
+            </Form.Item>
+          )}
+        </Form>
+      );
+
+  - id: ANTD028
+    title: "Use App.useApp for message/notification/modal"
+    description: "In v5+, use App.useApp() hook to get message, notification, and modal instances that respect ConfigProvider context, instead of static methods."
+    category: "antd_hooks"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "useApp", "feedback"]
+
+  - id: ANTD029
+    title: "Use Grid.useBreakpoint for responsive behavior"
+    description: "Use Grid.useBreakpoint() to detect current breakpoint in components. This integrates with the antd grid system and avoids manual window.matchMedia usage."
+    category: "antd_hooks"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "useBreakpoint", "responsive"]
+    example: |
+      import { Grid } from 'antd';
+
+      function ResponsiveComponent() {
+        const screens = Grid.useBreakpoint();
+        return screens.md ? <DesktopView /> : <MobileView />;
+      }
+
+  - id: ANTD030
+    title: "Use ahooks for extended hook patterns"
+    description: "For patterns beyond antd's built-in hooks, use ahooks (useRequest, useDebounce, useVirtualList) which are designed to work seamlessly with Ant Design."
+    category: "antd_hooks"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "ahooks", "ecosystem"]
+
+  # ============================================================================
+  # ANTD PERFORMANCE (ANTD031-ANTD035)
+  # ============================================================================
+
+  - id: ANTD031
+    title: "Use virtual scrolling for large lists and tables"
+    description: "Enable virtual scrolling on Table with virtual prop (v5.9+) or use rc-virtual-list integration for large datasets. Prevents DOM node explosion."
+    category: "antd_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "virtual-scroll", "performance"]
+    example: |
+      <Table
+        virtual
+        scroll={{ y: 500 }}
+        columns={columns}
+        dataSource={largeData}
+      />
+
+  - id: ANTD032
+    title: "Memoize Table column definitions"
+    description: "Define columns outside the component or wrap with useMemo to prevent unnecessary Table re-renders. Column reference changes trigger full table re-computation."
+    category: "antd_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "table", "memoize"]
+    example: |
+      const columns = useMemo(() => [
+        { title: 'Name', dataIndex: 'name', sorter: true },
+        { title: 'Age', dataIndex: 'age' },
+      ], []);
+
+  - id: ANTD033
+    title: "Lazy-load heavy components"
+    description: "Use React.lazy for heavy antd components (DatePicker, TimePicker, Transfer, Upload) that aren't needed on initial render. This reduces initial bundle size."
+    category: "antd_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "lazy-loading", "code-splitting"]
+
+  - id: ANTD034
+    title: "Use shouldUpdate on Form.Item for targeted re-renders"
+    description: "Add shouldUpdate to Form.Item to control when field re-renders. Use dependencies for cross-field validation instead of re-rendering entire forms."
+    category: "antd_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "form", "shouldUpdate"]
+
+  - id: ANTD035
+    title: "Configure dayjs locale loading to reduce bundle size"
+    description: "Ant Design v5 uses dayjs. Only import needed locales. Use antd-dayjs-webpack-plugin or manual locale imports to avoid bundling all locales."
+    category: "antd_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "dayjs", "locale", "bundle"]
+
+  # ============================================================================
+  # ANTD ACCESSIBILITY (ANTD036-ANTD038)
+  # ============================================================================
+
+  - id: ANTD036
+    title: "Provide aria-label for icon-only buttons and actions"
+    description: "Icon-only Buttons, tooltips, and actions must have aria-label. Antd components support standard ARIA props for accessibility."
+    category: "antd_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "accessibility", "aria"]
+    example: |
+      // Good
+      <Button icon={<DeleteOutlined />} aria-label="Delete item" />
+
+      // Bad
+      <Button icon={<DeleteOutlined />} />
+
+  - id: ANTD037
+    title: "Use Form.Item label and help for form accessibility"
+    description: "Always provide label on Form.Item for screen reader association. Use help, extra, and validateStatus for error messaging. Use htmlFor for custom label elements."
+    category: "antd_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "form", "accessibility"]
+
+  - id: ANTD038
+    title: "Ensure Modal and Drawer have proper focus management"
+    description: "Modal and Drawer components manage focus trapping automatically. Provide title for screen readers and use destroyOnClose to clean up focus state."
+    category: "antd_accessibility"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "modal", "focus", "accessibility"]
+
+  # ============================================================================
+  # ANTD FORMS (ANTD039-ANTD043)
+  # ============================================================================
+
+  - id: ANTD039
+    title: "Use Form.Item rules for declarative validation"
+    description: "Define validation rules declaratively on Form.Item rather than manual validation. Built-in rules include required, type, min, max, pattern, and custom validator."
+    category: "antd_forms"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "form", "validation"]
+    example: |
+      <Form.Item
+        name="email"
+        label="Email"
+        rules={[
+          { required: true, message: 'Email is required' },
+          { type: 'email', message: 'Invalid email format' },
+        ]}
+      >
+        <Input />
+      </Form.Item>
+
+  - id: ANTD040
+    title: "Use Form.List for dynamic form arrays"
+    description: "Use Form.List for repeatable field groups (add/remove rows). It provides add, remove, move operations and integrates with Form validation."
+    category: "antd_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "form-list", "dynamic"]
+    example: |
+      <Form.List name="users">
+        {(fields, { add, remove }) => (
+          <>
+            {fields.map(({ key, name }) => (
+              <Space key={key}>
+                <Form.Item name={[name, 'name']}>
+                  <Input />
+                </Form.Item>
+                <Button onClick={() => remove(name)}>Remove</Button>
+              </Space>
+            ))}
+            <Button onClick={() => add()}>Add User</Button>
+          </>
+        )}
+      </Form.List>
+
+  - id: ANTD041
+    title: "Use dependencies for cross-field validation"
+    description: "Use the dependencies prop on Form.Item for fields that depend on other field values. This triggers re-validation when dependent fields change."
+    category: "antd_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "form", "dependencies"]
+
+  - id: ANTD042
+    title: "Use ProForm for complex form layouts"
+    description: "For step forms, modal forms, drawer forms, and query filter forms, use @ant-design/pro-form (StepsForm, ModalForm, DrawerForm, QueryFilter) for pre-built patterns."
+    category: "antd_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "pro-form", "complex-forms"]
+
+  - id: ANTD043
+    title: "Handle form submission with onFinish and onFinishFailed"
+    description: "Use Form's onFinish (success) and onFinishFailed (validation failure) callbacks. onFinish only fires when all validation passes, eliminating manual validation checks."
+    category: "antd_forms"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "form", "submit"]
+
+  # ============================================================================
+  # ANTD TABLE (ANTD044-ANTD047)
+  # ============================================================================
+
+  - id: ANTD044
+    title: "Define rowKey for Table data binding"
+    description: "Always provide rowKey prop (or ensure data has 'key' field) for proper row identification. This is critical for selection, expansion, and update tracking."
+    category: "antd_table"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "table", "rowKey"]
+
+  - id: ANTD045
+    title: "Use server-side pagination for large datasets"
+    description: "For datasets over 100 rows, implement server-side pagination with onChange callback. Pass total to pagination for proper page count."
+    category: "antd_table"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "table", "pagination", "server-side"]
+    example: |
+      <Table
+        dataSource={data}
+        pagination={{
+          current: page,
+          pageSize: 20,
+          total: totalCount,
+          onChange: (page, pageSize) => fetchData(page, pageSize),
+        }}
+        loading={loading}
+      />
+
+  - id: ANTD046
+    title: "Use ProTable for integrated CRUD tables"
+    description: "For tables with search, filter, and CRUD operations, use ProTable which integrates request, search form, toolbar, and pagination in one component."
+    category: "antd_table"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "pro-table", "crud"]
+
+  - id: ANTD047
+    title: "Use column render for custom cell rendering"
+    description: "Use the render function in column definitions for custom cell content. Access the record, index, and column in render for context-aware rendering."
+    category: "antd_table"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "table", "render"]
+
+  # ============================================================================
+  # ANTD NAVIGATION (ANTD048-ANTD049)
+  # ============================================================================
+
+  - id: ANTD048
+    title: "Use Menu with React Router for SPA navigation"
+    description: "Integrate antd Menu with React Router using selectedKeys synced to location.pathname. Use items prop for better performance."
+    category: "antd_navigation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "menu", "router"]
+
+  - id: ANTD049
+    title: "Use Breadcrumb with route-based items"
+    description: "Generate Breadcrumb items from the current route path. Use the items prop (v5+) with onClick handlers for navigation."
+    category: "antd_navigation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "breadcrumb", "routing"]
+
+  # ============================================================================
+  # ANTD MIGRATION (ANTD050)
+  # ============================================================================
+
+  - id: ANTD050
+    title: "Follow the official v4 to v5 migration guide"
+    description: "When migrating from v4 to v5: replace Less variables with Design Tokens, replace babel-plugin-import with native tree-shaking, migrate Form.create to Form.useForm, use items prop for Menu/Dropdown, use @ant-design/compatible for gradual migration."
+    category: "antd_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["antd", "react"]
+    tags: ["antd", "migration", "v4-to-v5"]

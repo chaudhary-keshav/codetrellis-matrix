@@ -1,0 +1,291 @@
+# Rust Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.14 - Rust Language Support
+# Practice IDs: RS001-RS050
+# Category: rust
+# Frameworks: rust
+
+practices:
+  - id: RS001
+    title: "Prefer owned types for struct fields"
+    description: "Use owned types (String, Vec<T>) in struct fields instead of references unless the struct is explicitly a short-lived view. This avoids lifetime complexity and makes APIs simpler."
+    category: "ownership"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "ownership", "struct"]
+    example: |
+      // Good: Owned data
+      struct User { name: String, email: String }
+      // Careful: Requires lifetime annotations
+      struct UserView<'a> { name: &'a str }
+
+  - id: RS002
+    title: "Use Result<T, E> for recoverable errors, panic! only for bugs"
+    description: "Return Result<T, E> for operations that can fail. Reserve panic! for programming errors and invariant violations. Use unwrap()/expect() only in tests or when failure is truly impossible."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "error-handling", "result"]
+    example: |
+      // Good
+      fn parse_config(path: &str) -> Result<Config, ConfigError> { ... }
+      // Bad: panics on invalid input
+      fn parse_config(path: &str) -> Config { ... unwrap() ... }
+
+  - id: RS003
+    title: "Define custom error types with thiserror or implement std::error::Error"
+    description: "Create domain-specific error enums instead of using String errors. Use thiserror for derive macros or implement Display + Error manually. Use anyhow for application-level error handling."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "error-handling", "thiserror", "anyhow"]
+
+  - id: RS004
+    title: "Use ? operator for error propagation"
+    description: "Use the ? operator instead of match/unwrap chains for propagating errors. Implement From<E> or use thiserror to enable automatic error conversion."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "error-handling", "question-mark"]
+
+  - id: RS005
+    title: "Prefer &str over &String in function parameters"
+    description: "Accept &str instead of &String for string parameters. &str is more general and accepts both String references and string literals without allocation."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "api-design", "string"]
+
+  - id: RS006
+    title: "Use impl Trait for return types to hide concrete types"
+    description: "Return impl Iterator, impl Future, etc. instead of concrete types to hide implementation details and enable future changes without breaking API."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "api-design", "impl-trait"]
+
+  - id: RS007
+    title: "Keep traits small and focused — favor trait composition"
+    description: "Define small, single-purpose traits and compose them with supertraits (trait A: B + C). Avoid large traits with many methods."
+    category: "trait_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "trait", "design"]
+
+  - id: RS008
+    title: "Use derive macros for standard trait implementations"
+    description: "Use #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)] instead of manual implementations. Only implement manually when custom behavior is needed."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "derive", "traits"]
+
+  - id: RS009
+    title: "Use enum variants for state machines instead of boolean flags"
+    description: "Model state with enums and match expressions instead of multiple boolean fields. This makes invalid states unrepresentable."
+    category: "patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "enum", "state-machine"]
+    example: |
+      // Good
+      enum ConnectionState { Connecting, Connected(Stream), Disconnected(Error) }
+      // Bad
+      struct Connection { is_connected: bool, is_error: bool, stream: Option<Stream> }
+
+  - id: RS010
+    title: "Use Option<T> instead of sentinel values"
+    description: "Use Option<T> to represent optional values instead of sentinel values like -1, null, or empty strings. Use if let Some(x) or match for unwrapping."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "option", "type-safety"]
+
+  - id: RS011
+    title: "Minimize use of clone() — prefer references or Cow<T>"
+    description: "Avoid unnecessary cloning. Use references where possible. For mixed ownership scenarios, use Cow<str> or Cow<[T]> to avoid allocation when not needed."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "performance", "clone", "cow"]
+
+  - id: RS012
+    title: "Use iterators and combinators over manual loops"
+    description: "Prefer .iter().map().filter().collect() chains over manual for loops. Iterator adaptors are zero-cost abstractions and often more readable."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "iterators", "functional"]
+
+  - id: RS013
+    title: "Keep unsafe blocks minimal and well-documented"
+    description: "Minimize unsafe code. When necessary, wrap unsafe in safe abstractions with clear invariant documentation. Never expose unsafe to callers without encapsulation."
+    category: "memory_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "unsafe", "safety"]
+
+  - id: RS014
+    title: "Use lifetimes explicitly only when the compiler requires them"
+    description: "Rely on lifetime elision rules. Only add explicit lifetime annotations when the compiler cannot infer them. Avoid unnecessary lifetime parameters."
+    category: "lifetimes"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "lifetimes"]
+
+  - id: RS015
+    title: "Use Arc<Mutex<T>> for shared state across threads, not Rc<RefCell<T>>"
+    description: "Use Arc<Mutex<T>> or Arc<RwLock<T>> for thread-safe shared state. Rc<RefCell<T>> is for single-threaded scenarios only. Consider dashmap or tokio::sync::Mutex for async."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "concurrency", "mutex", "arc"]
+
+  - id: RS016
+    title: "Use tokio for async runtime — avoid mixing runtimes"
+    description: "Pick one async runtime (tokio is standard) and use it consistently. Avoid mixing tokio, async-std, and smol. Configure tokio with #[tokio::main] or Runtime::new()."
+    category: "async_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust", "tokio"]
+    tags: ["rust", "async", "tokio"]
+
+  - id: RS017
+    title: "Use structured logging with tracing instead of println!"
+    description: "Use the tracing crate for structured, leveled logging. Never use println! for production logging. Configure subscribers for different output formats."
+    category: "logging"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "logging", "tracing"]
+
+  - id: RS018
+    title: "Document public items with /// doc comments"
+    description: "Add /// documentation comments to all public structs, enums, traits, functions, and methods. Include examples in doc comments using ```rust blocks for doctests."
+    category: "documentation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "documentation", "rustdoc"]
+
+  - id: RS019
+    title: "Use Cargo workspace for multi-crate projects"
+    description: "Organize large projects as Cargo workspaces with multiple crates. Use shared dependencies in workspace Cargo.toml. Separate concerns into library and binary crates."
+    category: "cargo"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "cargo", "workspace"]
+
+  - id: RS020
+    title: "Use feature flags for optional functionality"
+    description: 'Use Cargo feature flags (#[cfg(feature = "...")]) for optional dependencies and functionality. Keep default features minimal. Document all feature flags.'
+    category: "cargo"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "cargo", "features"]
+
+  - id: RS021
+    title: "Use newtype pattern for type safety"
+    description: "Wrap primitive types in newtype structs (struct UserId(u64)) to prevent accidental misuse. Implement Deref only when the wrapper truly is-a inner type."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "newtype", "type-safety"]
+
+  - id: RS022
+    title: "Use builder pattern for complex struct construction"
+    description: "For structs with many optional fields, use the builder pattern (via derive_builder or manual implementation). This is more ergonomic than constructors with many parameters."
+    category: "patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "builder", "design-pattern"]
+
+  - id: RS023
+    title: "Run clippy and fix all warnings"
+    description: "Use cargo clippy for linting. Fix all warnings. Configure #![deny(clippy::all)] or specific lint groups. Use allow only with justification comments."
+    category: "code_style"
+    severity: "critical"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "clippy", "lint"]
+
+  - id: RS024
+    title: "Format code with rustfmt — never commit unformatted code"
+    description: "Run cargo fmt before every commit. Configure rustfmt.toml for project-specific style. Use CI to enforce formatting."
+    category: "code_style"
+    severity: "critical"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "rustfmt", "formatting"]
+
+  - id: RS025
+    title: "Use serde with rename_all for consistent serialization"
+    description: 'Use #[serde(rename_all = "camelCase")] or "snake_case" for consistent JSON/YAML field naming. Use #[serde(skip_serializing_if = "Option::is_none")] for optional fields.'
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "serde", "serialization"]
+
+  - id: RS026
+    title: "Write unit tests in the same file using #[cfg(test)] mod tests"
+    description: "Place unit tests in a #[cfg(test)] module at the bottom of the source file. This allows testing private functions. Use #[test] attribute and assert macros."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "testing", "unit-test"]
+
+  - id: RS027
+    title: "Use integration tests in tests/ directory"
+    description: "Place integration tests in the tests/ directory for testing public API. Each file is compiled as a separate crate. Use common/ module for shared test utilities."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "testing", "integration"]
+
+  - id: RS028
+    title: "Avoid String in error messages — use &str or format! sparingly"
+    description: "In error types, store structured data instead of pre-formatted strings. Use Display trait for formatting. This enables programmatic error handling."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "error-handling", "performance"]
+
+  - id: RS029
+    title: "Use Into/From for type conversions instead of as casts"
+    description: "Implement From<T> for type conversions and use .into(). Avoid as casts for numeric types as they can silently truncate. Use TryFrom for fallible conversions."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "type-conversion", "from-into"]
+
+  - id: RS030
+    title: "Use type aliases for complex generic types"
+    description: "Create type aliases for complex generic types to improve readability. Example: type Result<T> = std::result::Result<T, MyError>."
+    category: "maintainability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rust"]
+    tags: ["rust", "type-alias", "readability"]

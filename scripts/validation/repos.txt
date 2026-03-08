@@ -1,0 +1,76 @@
+# CodeTrellis Public Repository Validation List
+# Phase D — WS-8: Public Repository Validation Framework
+# 60 repositories across 6 categories for diverse coverage
+# Format: owner/repo
+
+# Category 1: Full-Stack Applications (10 repos)
+calcom/cal.com
+medusajs/medusa
+formbricks/formbricks
+documenso/documenso
+twentyhq/twenty
+hoppscotch/hoppscotch
+immich-app/immich
+maybe-finance/maybe
+appwrite/appwrite
+logto-io/logto
+
+# Category 2: Microservices & Backend (10 repos)
+nestjs/nest
+fastapi/fastapi
+pallets/flask
+tiangolo/full-stack-fastapi-template
+GoogleCloudPlatform/microservices-demo
+dotnet/eShop
+gothinkster/realworld
+amplication/amplication
+backstage/backstage
+supabase/supabase
+
+# Category 3: AI/ML Projects (10 repos)
+langchain-ai/langchain
+openai/openai-cookbook
+run-llama/llama_index
+huggingface/transformers
+mlflow/mlflow
+bentoml/BentoML
+ray-project/ray
+qdrant/qdrant
+chroma-core/chroma
+open-webui/open-webui
+
+# Category 4: DevTools & Infrastructure (10 repos)
+grafana/grafana
+prometheus/prometheus
+traefik/traefik
+hashicorp/terraform
+docker/compose
+pulumi/pulumi
+n8n-io/n8n
+nocodb/nocodb
+strapi/strapi
+directus/directus
+
+# Category 5: Frontend Frameworks (10 repos)
+angular/angular
+vercel/next.js
+vuejs/core
+sveltejs/svelte
+shadcn-ui/ui
+ionic-team/ionic-framework
+ant-design/ant-design
+storybookjs/storybook
+excalidraw/excalidraw
+TanStack/query
+
+# Category 6: Specialized & Edge Cases (10 repos)
+prisma/prisma
+trpc/trpc
+dagger/dagger
+minio/minio
+pocketbase/pocketbase
+tailwindlabs/tailwindcss
+denoland/deno
+gitbutler/gitbutler
+juspay/hyperswitch
+chartdb/chartdb

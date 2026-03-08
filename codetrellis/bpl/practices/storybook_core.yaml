@@ -1,0 +1,1079 @@
+# Storybook Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.70 - Storybook Framework Support
+# Practice IDs: SB001-SB050
+# Coverage: Stories (CSF 1-3, MDX), Components, Addons, Config,
+#           Testing (play, interaction, portable, Chromatic),
+#           Performance, TypeScript, Patterns
+# Versions: Storybook v5.x (storiesOf), v6.x (CSF 2), v7.x (CSF 3),
+#           v8.x (mount, @storybook/test, portable stories)
+
+practices:
+  # ============================================================================
+  # STORY FUNDAMENTALS (SB001-SB010) - CSF and story structure
+  # ============================================================================
+
+  - id: SB001
+    title: "Use CSF 3.0 object notation for stories"
+    description: "Component Story Format 3.0 uses plain object exports instead of Template.bind({}). Object notation is shorter, supports play functions natively, and enables better type inference. Migrate from CSF 2.0 Template.bind patterns."
+    category: "storybook_stories"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "csf3", "stories", "migration"]
+    example: |
+      // ✅ CSF 3.0 - object notation
+      export const Primary: Story = {
+        args: { variant: 'primary', children: 'Click me' },
+      };
+
+      // ❌ CSF 2.0 - Template.bind
+      const Template: ComponentStory<typeof Button> = (args) => <Button {...args} />;
+      export const Primary = Template.bind({});
+      Primary.args = { variant: 'primary', children: 'Click me' };
+
+  - id: SB002
+    title: "Define a Meta default export with component reference"
+    description: "Every story file must have a default export (Meta) that references the component. Include title for sidebar hierarchy, component for auto-arg generation, and argTypes for control customization."
+    category: "storybook_stories"
+    severity: "error"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "meta", "default-export", "component"]
+    example: |
+      // ✅ Typed Meta with satisfies
+      import type { Meta, StoryObj } from '@storybook/react';
+      import { Button } from './Button';
+
+      const meta = {
+        title: 'Components/Button',
+        component: Button,
+        tags: ['autodocs'],
+        argTypes: {
+          variant: { control: 'select', options: ['primary', 'secondary'] },
+        },
+      } satisfies Meta<typeof Button>;
+      export default meta;
+      type Story = StoryObj<typeof meta>;
+
+  - id: SB003
+    title: "Use satisfies for Meta type safety"
+    description: "Use TypeScript 'satisfies' keyword on the meta object for full type inference without losing literal types. This enables autocomplete for args in stories while keeping control types precise."
+    category: "storybook_stories"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "typescript", "satisfies", "type-safety"]
+    example: |
+      // ✅ satisfies preserves literal types
+      const meta = {
+        component: Button,
+        args: { size: 'medium' },
+      } satisfies Meta<typeof Button>;
+      export default meta;
+      type Story = StoryObj<typeof meta>;
+
+      // ❌ 'as' assertion loses type narrowing
+      export default { component: Button } as Meta<typeof Button>;
+
+  - id: SB004
+    title: "Organize stories with hierarchical titles"
+    description: "Use slash-separated titles (e.g., 'Components/Forms/Input') to create a navigable sidebar hierarchy. Group related components under consistent categories. Use autodocs tag to generate documentation pages."
+    category: "storybook_stories"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "title", "organization", "sidebar"]
+    example: |
+      // ✅ Hierarchical title
+      const meta: Meta = {
+        title: 'Components/Forms/Input',
+        component: Input,
+      };
+
+      // ✅ With autodocs
+      const meta: Meta = {
+        title: 'Components/Forms/Input',
+        component: Input,
+        tags: ['autodocs'],
+      };
+
+  - id: SB005
+    title: "Export one story per meaningful component state"
+    description: "Each named export represents a component state. Cover default, interactive, edge-case, and error states. Name stories descriptively (Primary, Disabled, Loading, WithError, Empty, LongContent)."
+    category: "storybook_stories"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "stories", "states", "coverage"]
+    example: |
+      export const Default: Story = { args: { children: 'Button' } };
+      export const Primary: Story = { args: { variant: 'primary' } };
+      export const Disabled: Story = { args: { disabled: true } };
+      export const Loading: Story = { args: { isLoading: true } };
+      export const WithIcon: Story = { args: { icon: <Icon /> } };
+
+  - id: SB006
+    title: "Avoid storiesOf API in new code"
+    description: "The storiesOf API is legacy (Storybook v5). CSF is the standard format since v5.2. storiesOf does not support static analysis, tree-shaking, or autodocs. Migrate existing storiesOf to CSF 3.0."
+    category: "storybook_stories"
+    severity: "error"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "storiesOf", "legacy", "migration"]
+    example: |
+      // ❌ Legacy storiesOf
+      import { storiesOf } from '@storybook/react';
+      storiesOf('Button', module).add('Primary', () => <Button primary />);
+
+      // ✅ CSF 3.0
+      const meta: Meta<typeof Button> = { component: Button };
+      export default meta;
+      export const Primary: Story = { args: { primary: true } };
+
+  - id: SB007
+    title: "Use render function only when args alone are insufficient"
+    description: "CSF 3.0 renders components from args automatically. Only add a render function when you need to compose multiple components, add wrapper elements, or transform args before rendering."
+    category: "storybook_stories"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "render", "args", "composition"]
+    example: |
+      // ✅ Args-only (preferred)
+      export const Primary: Story = {
+        args: { variant: 'primary', children: 'Click' },
+      };
+
+      // ✅ Render when composition needed
+      export const InForm: Story = {
+        render: (args) => (
+          <form>
+            <Button {...args} />
+          </form>
+        ),
+        args: { children: 'Submit' },
+      };
+
+  - id: SB008
+    title: "Type stories with StoryObj for type-safe args"
+    description: "Use StoryObj<typeof meta> to get full type checking on story args, play functions, and render functions. This catches prop type mismatches at compile time."
+    category: "storybook_stories"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "typescript", "StoryObj", "type-safety"]
+    example: |
+      import type { Meta, StoryObj } from '@storybook/react';
+
+      const meta = { component: Button } satisfies Meta<typeof Button>;
+      export default meta;
+      type Story = StoryObj<typeof meta>;
+
+      // ✅ Type error if 'variant' is not a valid prop
+      export const Primary: Story = {
+        args: { variant: 'primary' },
+      };
+
+  - id: SB009
+    title: "Use tags for story categorization and filtering"
+    description: "Tags enable filtering stories in the sidebar and controlling which stories appear in docs. Use 'autodocs' for automatic documentation, '!dev' to hide from dev view, '!test' to exclude from tests."
+    category: "storybook_stories"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "tags", "filtering", "autodocs"]
+    example: |
+      // ✅ Component-level tags
+      const meta: Meta = {
+        component: Button,
+        tags: ['autodocs', 'stable'],
+      };
+
+      // ✅ Story-level tags override
+      export const Experimental: Story = {
+        tags: ['!autodocs', 'experimental'],
+      };
+
+  - id: SB010
+    title: "Use decorators for consistent story wrappers"
+    description: "Decorators wrap stories with providers, layouts, or context. Define at meta level for all stories in the file, or at story level for specific ones. Use preview.ts for global decorators."
+    category: "storybook_stories"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "decorators", "wrappers", "context"]
+    example: |
+      // ✅ Meta-level decorator
+      const meta: Meta = {
+        component: UserProfile,
+        decorators: [
+          (Story) => (
+            <ThemeProvider theme={theme}>
+              <Story />
+            </ThemeProvider>
+          ),
+        ],
+      };
+
+      // ✅ Global decorator in .storybook/preview.ts
+      export const decorators = [withTheme, withRouter];
+
+  # ============================================================================
+  # COMPONENT DOCUMENTATION (SB011-SB018) - ArgTypes, controls, docs
+  # ============================================================================
+
+  - id: SB011
+    title: "Enable autodocs for component documentation"
+    description: "Add 'autodocs' tag to generate a documentation page automatically from component props, stories, and JSDoc/TSDoc comments. This replaces manual MDX docs for most components."
+    category: "storybook_components"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "autodocs", "documentation"]
+    example: |
+      const meta: Meta = {
+        component: Button,
+        tags: ['autodocs'],  // Generates docs page automatically
+        parameters: {
+          docs: {
+            description: { component: 'A versatile button component.' },
+          },
+        },
+      };
+
+  - id: SB012
+    title: "Define argTypes for rich controls"
+    description: "Use argTypes to customize Storybook controls beyond auto-detection. Specify control types (select, radio, color, range), options, descriptions, and table categories for organized prop documentation."
+    category: "storybook_components"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "argTypes", "controls", "props"]
+    example: |
+      const meta: Meta = {
+        component: Button,
+        argTypes: {
+          variant: {
+            control: 'select',
+            options: ['primary', 'secondary', 'danger'],
+            description: 'Visual style variant',
+            table: { category: 'Appearance' },
+          },
+          onClick: { action: 'clicked' },
+          disabled: { control: 'boolean' },
+        },
+      };
+
+  - id: SB013
+    title: "Use action args for event handler props"
+    description: "Use argTypes action annotation or fn() from @storybook/test to log event handler calls in the Actions panel. This documents component events and enables interaction testing assertions."
+    category: "storybook_components"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "actions", "events", "fn"]
+    example: |
+      import { fn } from '@storybook/test';
+
+      const meta: Meta = {
+        component: Button,
+        args: {
+          onClick: fn(),  // Logs calls + enables assertions
+        },
+      };
+
+      // In play function:
+      export const Clicked: Story = {
+        play: async ({ args }) => {
+          await userEvent.click(canvas.getByRole('button'));
+          await expect(args.onClick).toHaveBeenCalled();
+        },
+      };
+
+  - id: SB014
+    title: "Document component props with JSDoc/TSDoc"
+    description: "Storybook extracts JSDoc/TSDoc comments from component prop interfaces to populate the docs page. Write descriptions for every public prop to generate complete documentation."
+    category: "storybook_components"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "jsdoc", "tsdoc", "documentation"]
+    example: |
+      interface ButtonProps {
+        /** The visual style variant */
+        variant?: 'primary' | 'secondary';
+        /** Whether the button is disabled */
+        disabled?: boolean;
+        /** Click event handler */
+        onClick?: () => void;
+        /** Button content */
+        children: React.ReactNode;
+      }
+
+  - id: SB015
+    title: "Group argTypes with table.category"
+    description: "Use table.category in argTypes to group props into collapsible sections in the docs table. Common categories: Appearance, Behavior, Content, Events, Accessibility."
+    category: "storybook_components"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "argTypes", "category", "organization"]
+    example: |
+      argTypes: {
+        variant: { table: { category: 'Appearance' } },
+        size: { table: { category: 'Appearance' } },
+        onClick: { table: { category: 'Events' } },
+        disabled: { table: { category: 'Behavior' } },
+        'aria-label': { table: { category: 'Accessibility' } },
+      }
+
+  - id: SB016
+    title: "Set default args at meta level"
+    description: "Define default args in the meta object to avoid repeating them in every story. Individual stories can override specific args. This reduces duplication and ensures consistency."
+    category: "storybook_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "args", "defaults", "DRY"]
+    example: |
+      const meta: Meta = {
+        component: Button,
+        args: {
+          children: 'Button',
+          variant: 'primary',
+          size: 'medium',
+        },
+      };
+
+      // Stories only override what changes
+      export const Secondary: Story = { args: { variant: 'secondary' } };
+      export const Small: Story = { args: { size: 'small' } };
+
+  - id: SB017
+    title: "Use subcomponents for composite component docs"
+    description: "When documenting a composite component (e.g., List with List.Item), use the subcomponents field to show all related component props in the docs page."
+    category: "storybook_components"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "subcomponents", "composite", "docs"]
+    example: |
+      const meta: Meta = {
+        title: 'Components/List',
+        component: List,
+        subcomponents: { ListItem: List.Item, ListHeader: List.Header },
+      };
+
+  - id: SB018
+    title: "Use parameters.docs for advanced documentation"
+    description: "Customize the docs page with parameters.docs: set canvas backgrounds, control source display, add descriptions, and configure the docs page layout."
+    category: "storybook_components"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "parameters", "docs", "customization"]
+    example: |
+      const meta: Meta = {
+        component: Modal,
+        parameters: {
+          docs: {
+            description: {
+              component: 'Modal dialog with focus trap and backdrop.',
+            },
+            canvas: { sourceState: 'shown' },
+          },
+          layout: 'centered',
+        },
+      };
+
+  # ============================================================================
+  # TESTING (SB019-SB028) - Play functions, interaction, portable, Chromatic
+  # ============================================================================
+
+  - id: SB019
+    title: "Use play functions for interaction testing"
+    description: "Play functions simulate user interactions and assert outcomes directly in stories. They run in the browser with real DOM, making them ideal for interaction testing. Import from @storybook/test."
+    category: "storybook_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "play", "interaction", "testing"]
+    example: |
+      import { expect, userEvent, within } from '@storybook/test';
+
+      export const FilledForm: Story = {
+        play: async ({ canvasElement }) => {
+          const canvas = within(canvasElement);
+          await userEvent.type(canvas.getByLabelText('Email'), 'test@example.com');
+          await userEvent.click(canvas.getByRole('button', { name: 'Submit' }));
+          await expect(canvas.getByText('Success')).toBeInTheDocument();
+        },
+      };
+
+  - id: SB020
+    title: "Use within(canvasElement) for scoped queries"
+    description: "Always use within(canvasElement) to scope queries to the story's canvas. Direct document queries may match elements from other stories or Storybook UI. The canvas provides testing-library queries."
+    category: "storybook_testing"
+    severity: "error"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "within", "canvas", "scoping"]
+    example: |
+      // ✅ Scoped to story canvas
+      play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.getByRole('button');
+      };
+
+      // ❌ Unscoped document query
+      play: async () => {
+        document.querySelector('button');  // May match wrong elements
+      };
+
+  - id: SB021
+    title: "Use step() for readable play function flows"
+    description: "Break complex play functions into named steps for readability and debugging. Steps appear in the Interactions panel with labels, making it easy to trace failures."
+    category: "storybook_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "step", "play", "debugging"]
+    example: |
+      import { expect, userEvent, within, step } from '@storybook/test';
+
+      export const LoginFlow: Story = {
+        play: async ({ canvasElement }) => {
+          const canvas = within(canvasElement);
+          await step('Fill credentials', async () => {
+            await userEvent.type(canvas.getByLabelText('Email'), 'user@test.com');
+            await userEvent.type(canvas.getByLabelText('Password'), 'password123');
+          });
+          await step('Submit form', async () => {
+            await userEvent.click(canvas.getByRole('button', { name: 'Log in' }));
+          });
+          await step('Verify success', async () => {
+            await expect(canvas.getByText('Welcome')).toBeInTheDocument();
+          });
+        },
+      };
+
+  - id: SB022
+    title: "Use fn() for mock functions in play tests"
+    description: "Import fn from @storybook/test to create mock functions for callbacks and event handlers. Use .toHaveBeenCalled() and .toHaveBeenCalledWith() to verify they were invoked correctly."
+    category: "storybook_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "fn", "mock", "assertions"]
+    example: |
+      import { fn, expect, userEvent, within } from '@storybook/test';
+
+      const meta: Meta = {
+        component: Button,
+        args: { onClick: fn() },
+      };
+
+      export const ClickTest: Story = {
+        play: async ({ args, canvasElement }) => {
+          const canvas = within(canvasElement);
+          await userEvent.click(canvas.getByRole('button'));
+          await expect(args.onClick).toHaveBeenCalledTimes(1);
+        },
+      };
+
+  - id: SB023
+    title: "Compose play functions from other stories"
+    description: "Reuse play functions from other stories to build complex interaction flows. Import and call the play function of prerequisite stories to set up state before testing further interactions."
+    category: "storybook_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "play", "composition", "reuse"]
+    example: |
+      export const FilledForm: Story = {
+        play: async ({ canvasElement }) => {
+          const canvas = within(canvasElement);
+          await userEvent.type(canvas.getByLabelText('Name'), 'Jane');
+        },
+      };
+
+      export const SubmittedForm: Story = {
+        play: async (context) => {
+          await FilledForm.play!(context);  // Reuse fill step
+          const canvas = within(context.canvasElement);
+          await userEvent.click(canvas.getByRole('button', { name: 'Submit' }));
+        },
+      };
+
+  - id: SB024
+    title: "Use mount for async setup in play functions (v8)"
+    description: "Storybook 8 mount() lets you run async setup before the component renders. Use it for loading data, setting up providers, or initializing state before the story appears."
+    category: "storybook_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "mount", "async", "v8"]
+    example: |
+      export const WithData: Story = {
+        play: async ({ mount }) => {
+          const data = await fetchTestData();
+          const canvas = await mount(
+            <DataProvider data={data}>
+              <Component />
+            </DataProvider>
+          );
+          await expect(canvas.getByText(data.title)).toBeInTheDocument();
+        },
+      };
+
+  - id: SB025
+    title: "Use beforeEach for story-level test setup (v8)"
+    description: "Storybook 8 beforeEach runs before each story render and supports cleanup via return function. Use for mocking modules, resetting state, or setting up test fixtures."
+    category: "storybook_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "beforeEach", "setup", "cleanup", "v8"]
+    example: |
+      const meta: Meta = {
+        component: Dashboard,
+        beforeEach: async () => {
+          // Setup
+          mockApi.reset();
+          mockApi.get('/user').reply(200, testUser);
+
+          // Cleanup (runs after story unmounts)
+          return () => mockApi.restore();
+        },
+      };
+
+  - id: SB026
+    title: "Use portable stories for unit test integration"
+    description: "composeStories/composeStory from @storybook/react (or framework) lets you reuse stories in Jest/Vitest tests. Stories become test fixtures with all decorators and args applied."
+    category: "storybook_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "portable", "composeStories", "vitest", "jest"]
+    example: |
+      // In test file
+      import { composeStories } from '@storybook/react';
+      import * as stories from './Button.stories';
+
+      const { Primary, Disabled } = composeStories(stories);
+
+      test('renders primary button', () => {
+        render(<Primary />);
+        expect(screen.getByRole('button')).toHaveClass('primary');
+      });
+
+      test('runs play function', async () => {
+        const { container } = render(<Primary />);
+        await Primary.play({ canvasElement: container });
+      });
+
+  - id: SB027
+    title: "Set up project annotations for portable stories"
+    description: "Call setProjectAnnotations with your preview config to ensure portable stories apply global decorators, args, and parameters. Do this once in your test setup file."
+    category: "storybook_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "portable", "setProjectAnnotations", "setup"]
+    example: |
+      // vitest.setup.ts or jest.setup.ts
+      import { setProjectAnnotations } from '@storybook/react';
+      import * as previewAnnotations from './.storybook/preview';
+
+      setProjectAnnotations(previewAnnotations);
+
+  - id: SB028
+    title: "Use Chromatic for visual regression testing"
+    description: "Chromatic captures screenshots of every story and detects visual changes. Configure with chromatic parameters to control snapshots: delay, diffThreshold, viewports, disableSnapshot."
+    category: "storybook_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "chromatic", "visual", "regression"]
+    example: |
+      export const Responsive: Story = {
+        parameters: {
+          chromatic: {
+            viewports: [320, 768, 1200],
+            delay: 300,  // Wait for animations
+            diffThreshold: 0.2,
+          },
+        },
+      };
+
+      // Disable for interactive-only stories
+      export const Interactive: Story = {
+        parameters: { chromatic: { disableSnapshot: true } },
+      };
+
+  # ============================================================================
+  # CONFIGURATION (SB029-SB036) - Main, preview, manager config
+  # ============================================================================
+
+  - id: SB029
+    title: "Use TypeScript for Storybook configuration"
+    description: "Use .storybook/main.ts and preview.ts instead of .js. TypeScript config provides autocomplete, type checking, and catches configuration errors early."
+    category: "storybook_config"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "typescript", "config", "main.ts"]
+    example: |
+      // .storybook/main.ts
+      import type { StorybookConfig } from '@storybook/react-vite';
+
+      const config: StorybookConfig = {
+        stories: ['../src/**/*.stories.@(ts|tsx)'],
+        framework: '@storybook/react-vite',
+        addons: ['@storybook/addon-essentials'],
+      };
+      export default config;
+
+  - id: SB030
+    title: "Configure story globs to match project structure"
+    description: "Set stories globs in main config to match your component file structure. Use co-location (*.stories.tsx next to components) for discoverability. Avoid overly broad globs that scan node_modules."
+    category: "storybook_config"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "stories", "globs", "structure"]
+    example: |
+      // ✅ Co-located stories
+      stories: ['../src/**/*.stories.@(ts|tsx|mdx)']
+
+      // ✅ Dedicated stories directory
+      stories: ['../stories/**/*.stories.@(ts|tsx)']
+
+      // ❌ Too broad - may include node_modules
+      stories: ['../**/*.stories.*']
+
+  - id: SB031
+    title: "Use framework-specific Storybook packages"
+    description: "Install the correct @storybook/framework-* package for your project. This ensures proper component rendering, HMR, and type support. Common: @storybook/react-vite, @storybook/nextjs, @storybook/vue3-vite."
+    category: "storybook_config"
+    severity: "error"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "framework", "package", "setup"]
+    example: |
+      // React + Vite
+      framework: '@storybook/react-vite'
+
+      // Next.js (includes Next.js-specific features)
+      framework: '@storybook/nextjs'
+
+      // Vue 3 + Vite
+      framework: '@storybook/vue3-vite'
+
+      // Angular
+      framework: '@storybook/angular'
+
+  - id: SB032
+    title: "Configure global decorators in preview"
+    description: "Define decorators in .storybook/preview.ts that wrap every story. Common uses: theme providers, router context, i18n providers, store providers. Order matters - first decorator wraps outermost."
+    category: "storybook_config"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "preview", "decorators", "global"]
+    example: |
+      // .storybook/preview.ts
+      import type { Preview } from '@storybook/react';
+
+      const preview: Preview = {
+        decorators: [
+          (Story) => (
+            <ThemeProvider theme={theme}>
+              <MemoryRouter>
+                <Story />
+              </MemoryRouter>
+            </ThemeProvider>
+          ),
+        ],
+        parameters: {
+          layout: 'centered',
+        },
+      };
+      export default preview;
+
+  - id: SB033
+    title: "Enable essential addons for full functionality"
+    description: "@storybook/addon-essentials bundles controls, actions, viewport, backgrounds, docs, toolbars, measure, and outline. Include it in addons unless you need fine-grained control over which addons load."
+    category: "storybook_config"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "essentials", "addons", "controls"]
+    example: |
+      // ✅ Include essentials
+      addons: [
+        '@storybook/addon-essentials',
+        '@storybook/addon-interactions',
+        '@storybook/addon-a11y',
+      ]
+
+      // ✅ Customize which essentials to include
+      addons: [
+        {
+          name: '@storybook/addon-essentials',
+          options: { backgrounds: false },
+        },
+      ]
+
+  - id: SB034
+    title: "Configure interaction addon for play function debugging"
+    description: "Add @storybook/addon-interactions to enable the Interactions panel. This shows play function steps, allows stepping through interactions, and displays assertion results."
+    category: "storybook_config"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "interactions", "addon", "debugging"]
+    example: |
+      // .storybook/main.ts
+      addons: [
+        '@storybook/addon-essentials',
+        '@storybook/addon-interactions',
+      ]
+
+      // Enable coverage
+      features: {
+        interactionsDebugger: true,
+      }
+
+  - id: SB035
+    title: "Use Vite builder for faster builds"
+    description: "The Vite builder (@storybook/builder-vite) is faster than Webpack for development. Use it with framework-specific Vite packages. Migrate webpack-only customizations to viteFinal."
+    category: "storybook_config"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "vite", "builder", "performance"]
+    example: |
+      // ✅ React + Vite (includes Vite builder)
+      framework: '@storybook/react-vite'
+
+      // ✅ Customize Vite config
+      viteFinal: async (config) => {
+        config.resolve.alias = {
+          '@': path.resolve(__dirname, '../src'),
+        };
+        return config;
+      }
+
+  - id: SB036
+    title: "Configure static directories for assets"
+    description: "Use staticDirs in main config to serve static assets (images, fonts, mock data) in Storybook. This replaces the deprecated -s CLI flag."
+    category: "storybook_config"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "static", "assets", "config"]
+    example: |
+      // .storybook/main.ts
+      const config: StorybookConfig = {
+        staticDirs: ['../public', '../assets'],
+        // Or with custom paths:
+        staticDirs: [{ from: '../public', to: '/static' }],
+      };
+
+  # ============================================================================
+  # ADDONS & ECOSYSTEM (SB037-SB042) - Addon patterns, a11y, themes
+  # ============================================================================
+
+  - id: SB037
+    title: "Use addon-a11y for accessibility testing"
+    description: "The @storybook/addon-a11y addon runs axe-core accessibility checks on every story. Configure rules globally or per-story. Address violations before they reach production."
+    category: "storybook_addons"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "a11y", "accessibility", "axe"]
+    example: |
+      // In addons
+      addons: ['@storybook/addon-a11y']
+
+      // Per-story config
+      export const WithA11yIssue: Story = {
+        parameters: {
+          a11y: {
+            config: {
+              rules: [{ id: 'color-contrast', enabled: true }],
+            },
+          },
+        },
+      };
+
+  - id: SB038
+    title: "Configure viewport addon for responsive testing"
+    description: "Use the viewport addon to preview components at different screen sizes. Define custom viewports matching your breakpoints. Test mobile-first responsive designs."
+    category: "storybook_addons"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "viewport", "responsive", "breakpoints"]
+    example: |
+      // .storybook/preview.ts
+      parameters: {
+        viewport: {
+          viewports: {
+            mobile: { name: 'Mobile', styles: { width: '375px', height: '667px' } },
+            tablet: { name: 'Tablet', styles: { width: '768px', height: '1024px' } },
+            desktop: { name: 'Desktop', styles: { width: '1440px', height: '900px' } },
+          },
+        },
+      }
+
+  - id: SB039
+    title: "Use parameters for addon configuration"
+    description: "Configure addon behavior through story parameters rather than addon APIs. Parameters can be set globally (preview), per-component (meta), or per-story. More specific levels override broader ones."
+    category: "storybook_addons"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "parameters", "addons", "configuration"]
+    example: |
+      // Global (preview.ts)
+      parameters: { layout: 'centered', backgrounds: { default: 'light' } }
+
+      // Per-component (meta)
+      const meta: Meta = {
+        parameters: { layout: 'fullscreen' },
+      };
+
+      // Per-story (overrides meta and global)
+      export const Dark: Story = {
+        parameters: { backgrounds: { default: 'dark' } },
+      };
+
+  - id: SB040
+    title: "Write loaders for async data fetching"
+    description: "Use loaders to fetch data before a story renders. The loaded data is available in the story's context. Loaders run before render and are cached per-story."
+    category: "storybook_addons"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "loaders", "async", "data"]
+    example: |
+      export const WithUser: Story = {
+        loaders: [
+          async () => ({
+            user: await fetchUser('test-user-id'),
+          }),
+        ],
+        render: (args, { loaded: { user } }) => (
+          <UserProfile user={user} {...args} />
+        ),
+      };
+
+  - id: SB041
+    title: "Configure Storybook composition for multi-project setups"
+    description: "Use refs in main config to compose multiple Storybook instances into one UI. This enables monorepo setups where each package has its own Storybook but they appear unified."
+    category: "storybook_addons"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "composition", "refs", "monorepo"]
+    example: |
+      // .storybook/main.ts
+      refs: {
+        'design-system': {
+          title: 'Design System',
+          url: 'https://design-system.example.com/storybook',
+        },
+        'shared': {
+          title: 'Shared Components',
+          url: 'http://localhost:6007',
+        },
+      }
+
+  - id: SB042
+    title: "Use addon-themes for dark mode support"
+    description: "Use @storybook/addon-themes to switch between themes in the toolbar. It works with CSS classes, data attributes, or provider-based theming. Configure which themes are available."
+    category: "storybook_addons"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "themes", "dark-mode", "addon"]
+    example: |
+      // .storybook/preview.ts
+      import { withThemeByClassName } from '@storybook/addon-themes';
+
+      export const decorators = [
+        withThemeByClassName({
+          themes: { light: '', dark: 'dark' },
+          defaultTheme: 'light',
+        }),
+      ];
+
+  # ============================================================================
+  # PATTERNS & PERFORMANCE (SB043-SB050) - Patterns, optimization, migration
+  # ============================================================================
+
+  - id: SB043
+    title: "Co-locate stories with components"
+    description: "Place story files next to their component files (Button.tsx / Button.stories.tsx). This improves discoverability, makes refactoring easier, and ensures stories stay up to date."
+    category: "storybook_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "co-location", "structure", "organization"]
+    example: |
+      src/
+        components/
+          Button/
+            Button.tsx
+            Button.stories.tsx    # ✅ Co-located
+            Button.test.tsx
+            Button.module.css
+
+  - id: SB044
+    title: "Use args composition for story variants"
+    description: "Create story variants by spreading args from a base story. This DRY approach ensures variants stay in sync when base props change."
+    category: "storybook_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "args", "composition", "variants"]
+    example: |
+      export const Default: Story = {
+        args: { children: 'Button', variant: 'primary', size: 'medium' },
+      };
+
+      export const Large: Story = {
+        args: { ...Default.args, size: 'large' },
+      };
+
+      export const Secondary: Story = {
+        args: { ...Default.args, variant: 'secondary' },
+      };
+
+  - id: SB045
+    title: "Use MDX for rich documentation pages"
+    description: "Use MDX (.stories.mdx or docs pages) when you need to mix Markdown narrative with live component examples. MDX is ideal for design system documentation, usage guidelines, and tutorials."
+    category: "storybook_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "mdx", "documentation", "design-system"]
+    example: |
+      {/* Button.mdx */}
+      import { Meta, Story, Canvas, Controls } from '@storybook/blocks';
+      import * as ButtonStories from './Button.stories';
+
+      <Meta of={ButtonStories} />
+
+      # Button
+
+      The Button component supports multiple variants.
+
+      <Canvas of={ButtonStories.Primary} />
+      <Controls of={ButtonStories.Primary} />
+
+  - id: SB046
+    title: "Lazy load heavy stories for performance"
+    description: "For stories with large dependencies (charts, maps, editors), use dynamic imports or lazy loading to avoid slowing down the entire Storybook. This improves initial load time."
+    category: "storybook_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "performance", "lazy-load", "optimization"]
+    example: |
+      import { lazy, Suspense } from 'react';
+
+      const HeavyChart = lazy(() => import('./HeavyChart'));
+
+      export const WithChart: Story = {
+        render: (args) => (
+          <Suspense fallback={<div>Loading...</div>}>
+            <HeavyChart {...args} />
+          </Suspense>
+        ),
+      };
+
+  - id: SB047
+    title: "Configure test runner for CI integration"
+    description: "Use @storybook/test-runner to run play functions as tests in CI. Configure it in package.json scripts and ensure a running Storybook instance (use --ci flag)."
+    category: "storybook_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "test-runner", "ci", "automation"]
+    example: |
+      // package.json
+      "scripts": {
+        "storybook": "storybook dev -p 6006",
+        "test-storybook": "test-storybook",
+        "test-storybook:ci": "concurrently -k -s first -n storybook,test 'storybook dev -p 6006 --ci' 'wait-on tcp:6006 && test-storybook'"
+      }
+
+  - id: SB048
+    title: "Isolate stories from global application state"
+    description: "Stories should be self-contained. Mock API calls, provide test data through args/loaders, and use decorators for providers instead of relying on application-level state or singletons."
+    category: "storybook_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "isolation", "mocking", "independence"]
+    example: |
+      // ✅ Self-contained story with mocked API
+      import { http, HttpResponse } from 'msw';
+
+      export const WithMockedAPI: Story = {
+        parameters: {
+          msw: {
+            handlers: [
+              http.get('/api/user', () =>
+                HttpResponse.json({ name: 'Jane' })
+              ),
+            ],
+          },
+        },
+      };
+
+  - id: SB049
+    title: "Use interaction tests over snapshot tests"
+    description: "Play function interaction tests verify behavior and are resilient to visual changes. Snapshot tests are brittle and produce false positives on any markup change. Prefer interaction testing for component behavior."
+    category: "storybook_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "testing", "interaction", "snapshots"]
+    example: |
+      // ✅ Interaction test - verifies behavior
+      export const ToggleTest: Story = {
+        play: async ({ canvasElement }) => {
+          const canvas = within(canvasElement);
+          const toggle = canvas.getByRole('checkbox');
+          await expect(toggle).not.toBeChecked();
+          await userEvent.click(toggle);
+          await expect(toggle).toBeChecked();
+        },
+      };
+
+      // ❌ Snapshot test - brittle, doesn't verify behavior
+      // expect(container).toMatchSnapshot();
+
+  - id: SB050
+    title: "Migrate incrementally from older Storybook versions"
+    description: "When upgrading Storybook (v5→v6→v7→v8), migrate one pattern at a time: storiesOf→CSF, Template.bind→object notation, addon-knobs→controls. Use codemods (npx storybook@latest migrate) for automated help."
+    category: "storybook_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["storybook"]
+    tags: ["storybook", "migration", "upgrade", "codemods"]
+    example: |
+      # Automated migration
+      npx storybook@latest migrate csf-2-to-3 --glob="src/**/*.stories.tsx"
+
+      # Manual checklist:
+      # 1. storiesOf → CSF (default export + named exports)
+      # 2. Template.bind({}) → object notation
+      # 3. ComponentStory → StoryObj
+      # 4. ComponentMeta → Meta
+      # 5. addon-knobs → controls (args + argTypes)
+      # 6. @storybook/testing-library → @storybook/test (v8)

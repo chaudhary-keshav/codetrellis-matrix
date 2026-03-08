@@ -1,0 +1,2111 @@
+# Vue.js Best Practices Library
+# Version: 1.0.0
+# Vue Version: 2.x through 3.5+ (Options API, Composition API, Script Setup)
+# Total Practices: 50
+# Coverage: Components, Composition API, Reactivity, Routing, State, Performance, Testing, Vue 3.5+
+
+version: "1.0.0"
+framework: vue
+framework_version:
+  min_version: "3.0"
+description: "Comprehensive Vue.js 2.x-3.5+ best practices with Composition API, Script Setup, and modern patterns"
+
+practices:
+  # ============================================================================
+  # COMPONENT FUNDAMENTALS (VUE001-VUE010)
+  # ============================================================================
+
+  - id: VUE001
+    title: "Use Script Setup for New Components"
+    category: vue_script_setup
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Prefer <script setup> syntax for all new Vue 3 components. It provides
+        less boilerplate, better TypeScript inference, and improved runtime performance.
+      rationale: |
+        <script setup> compiles to more optimized code, enables better TypeScript
+        support with compiler macros (defineProps, defineEmits, defineExpose), and
+        removes the need for explicit return statements.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import { ref, computed } from 'vue'
+
+          const props = defineProps<{
+            title: string
+            count?: number
+          }>()
+
+          const emit = defineEmits<{
+            (e: 'update', value: number): void
+            (e: 'close'): void
+          }>()
+
+          const localCount = ref(props.count ?? 0)
+          const doubled = computed(() => localCount.value * 2)
+          </script>
+      bad_examples:
+        - |
+          // Avoid verbose Composition API without <script setup>
+          export default defineComponent({
+            props: { title: String, count: Number },
+            emits: ['update', 'close'],
+            setup(props, { emit }) {
+              const localCount = ref(props.count ?? 0)
+              const doubled = computed(() => localCount.value * 2)
+              return { localCount, doubled }
+            }
+          })
+    tags:
+      - components
+      - script-setup
+    python_version:
+      min_version: null
+
+  - id: VUE002
+    title: "Type Props with TypeScript Generics"
+    category: vue_components
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use TypeScript generics with defineProps for type-safe prop definitions.
+        Use withDefaults for default values.
+      rationale: |
+        Generic prop types provide compile-time type checking, IDE autocompletion,
+        and self-documenting component APIs.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          interface Props {
+            title: string
+            items: Item[]
+            loading?: boolean
+            variant?: 'primary' | 'secondary'
+          }
+
+          const props = withDefaults(defineProps<Props>(), {
+            loading: false,
+            variant: 'primary',
+          })
+          </script>
+      bad_examples:
+        - |
+          // Avoid runtime-only prop validation
+          defineProps({
+            title: { type: String, required: true },
+            items: { type: Array, required: true },
+            loading: { type: Boolean, default: false },
+          })
+    tags:
+      - components
+      - typescript
+      - props
+    python_version:
+      min_version: null
+
+  - id: VUE003
+    title: "Use Single File Components"
+    category: vue_components
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Organize components as Single File Components (.vue) with template,
+        script, and style sections. Use scoped styles to prevent CSS leaks.
+      rationale: |
+        SFCs provide colocation of template, logic, and styles. Scoped styles
+        prevent unintended global CSS side effects. Build tools optimize SFC compilation.
+      good_examples:
+        - |
+          <template>
+            <div class="user-card">
+              <h3>{{ user.name }}</h3>
+              <p>{{ user.email }}</p>
+            </div>
+          </template>
+
+          <script setup lang="ts">
+          defineProps<{ user: User }>()
+          </script>
+
+          <style scoped>
+          .user-card {
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+          }
+          </style>
+    tags:
+      - components
+      - sfc
+      - styling
+    python_version:
+      min_version: null
+
+  - id: VUE004
+    title: "Define Explicit Component Events with defineEmits"
+    category: vue_components
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Always define emitted events with defineEmits. Use TypeScript for type-safe
+        event payloads. Prefer emit over direct parent method calls.
+      rationale: |
+        Explicit event declarations serve as documentation, enable Vue Devtools
+        tracking, and provide type safety for parent-child communication.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          const emit = defineEmits<{
+            (e: 'submit', data: FormData): void
+            (e: 'cancel'): void
+            (e: 'validate', field: string, valid: boolean): void
+          }>()
+
+          function handleSubmit() {
+            emit('submit', formData.value)
+          }
+          </script>
+    tags:
+      - components
+      - events
+    python_version:
+      min_version: null
+
+  - id: VUE005
+    title: "Use Slots for Flexible Component Composition"
+    category: vue_components
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use named and scoped slots for flexible component composition. Define
+        slot types with defineSlots for TypeScript support.
+      rationale: |
+        Slots enable the Compound Component pattern, making components more
+        reusable and flexible without excessive prop drilling.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          defineSlots<{
+            default(props: { item: Item }): any
+            header(props: { title: string }): any
+            empty(): any
+          }>()
+          </script>
+
+          <template>
+            <div class="data-list">
+              <div class="header">
+                <slot name="header" :title="title" />
+              </div>
+              <template v-if="items.length">
+                <div v-for="item in items" :key="item.id">
+                  <slot :item="item" />
+                </div>
+              </template>
+              <slot v-else name="empty">
+                <p>No items found</p>
+              </slot>
+            </div>
+          </template>
+    tags:
+      - components
+      - slots
+      - composition
+    python_version:
+      min_version: null
+
+  - id: VUE006
+    title: "Use Provide/Inject for Deep Component Trees"
+    category: vue_components
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use provide/inject for passing data through deep component trees without
+        prop drilling. Use InjectionKey for type safety.
+      rationale: |
+        Provide/inject avoids excessive prop drilling in deep component hierarchies
+        while maintaining reactivity and type safety.
+      good_examples:
+        - |
+          // injection-keys.ts
+          import type { InjectionKey, Ref } from 'vue'
+          export const ThemeKey: InjectionKey<Ref<Theme>> = Symbol('theme')
+
+          // Parent component
+          <script setup lang="ts">
+          import { provide, ref } from 'vue'
+          import { ThemeKey } from './injection-keys'
+
+          const theme = ref<Theme>({ mode: 'dark' })
+          provide(ThemeKey, theme)
+          </script>
+
+          // Child component (any depth)
+          <script setup lang="ts">
+          import { inject } from 'vue'
+          import { ThemeKey } from './injection-keys'
+
+          const theme = inject(ThemeKey)!
+          </script>
+    tags:
+      - components
+      - provide-inject
+      - dependency-injection
+    python_version:
+      min_version: null
+
+  - id: VUE007
+    title: "Use defineModel for Two-Way Binding"
+    category: vue_components
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use defineModel (Vue 3.4+) for clean two-way binding between parent
+        and child components, replacing the manual v-model pattern.
+      rationale: |
+        defineModel eliminates boilerplate for v-model support, providing a
+        cleaner API than manually handling modelValue prop and update:modelValue emit.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          // Simple model
+          const modelValue = defineModel<string>({ required: true })
+
+          // Named model
+          const title = defineModel<string>('title')
+
+          // Model with default
+          const count = defineModel<number>('count', { default: 0 })
+          </script>
+
+          <template>
+            <input v-model="modelValue" />
+          </template>
+    tags:
+      - components
+      - v-model
+      - vue-3.4
+    python_version:
+      min_version: null
+
+  - id: VUE008
+    title: "Use defineExpose Sparingly"
+    category: vue_components
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Only use defineExpose when a parent truly needs to call child methods
+        via template refs. Prefer events and props for communication.
+      rationale: |
+        defineExpose creates tight coupling. Exposed methods should be limited
+        to imperative use cases like focus(), reset(), or validate().
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import { ref } from 'vue'
+
+          const inputRef = ref<HTMLInputElement>()
+
+          function focus() {
+            inputRef.value?.focus()
+          }
+
+          function reset() {
+            inputRef.value!.value = ''
+          }
+
+          defineExpose({ focus, reset })
+          </script>
+    tags:
+      - components
+      - expose
+      - api-design
+    python_version:
+      min_version: null
+
+  - id: VUE009
+    title: "Follow Component Naming Conventions"
+    category: vue_style
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use PascalCase for component names and filenames. Use multi-word names
+        to avoid conflicts with HTML elements. Prefix base components.
+      rationale: |
+        Consistent naming improves codebase navigation, prevents HTML element
+        conflicts, and makes component usage clear in templates.
+      good_examples:
+        - |
+          // Good component names:
+          // BaseButton.vue, BaseIcon.vue (base components)
+          // AppHeader.vue, AppSidebar.vue (app-level)
+          // UserProfile.vue, UserAvatar.vue (feature-level)
+          // TheNavbar.vue, TheSidebar.vue (singleton components)
+      bad_examples:
+        - |
+          // Avoid:
+          // button.vue (conflicts with <button>)
+          // header.vue (conflicts with <header>)
+          // item.vue (too generic)
+          // myComponent.vue (camelCase)
+    tags:
+      - conventions
+      - naming
+    python_version:
+      min_version: null
+
+  - id: VUE010
+    title: "Use Async Components for Code Splitting"
+    category: vue_performance
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use defineAsyncComponent for lazy-loading heavy components. Provide
+        loading and error states for better user experience.
+      rationale: |
+        Async components reduce initial bundle size and improve Time to Interactive
+        by only loading component code when needed.
+      good_examples:
+        - |
+          import { defineAsyncComponent } from 'vue'
+
+          const HeavyChart = defineAsyncComponent({
+            loader: () => import('./HeavyChart.vue'),
+            loadingComponent: LoadingSpinner,
+            errorComponent: ErrorDisplay,
+            delay: 200,
+            timeout: 10000,
+          })
+    tags:
+      - performance
+      - code-splitting
+      - lazy-loading
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # COMPOSITION API & REACTIVITY (VUE011-VUE020)
+  # ============================================================================
+
+  - id: VUE011
+    title: "Choose ref vs reactive Correctly"
+    category: vue_reactivity
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use ref for primitives and reactive for objects. Prefer ref in most
+        cases for consistency and to avoid destructuring pitfalls.
+      rationale: |
+        ref works with all value types and is explicit about reactivity via .value.
+        reactive loses reactivity when destructured. ref is the recommended default.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import { ref, reactive } from 'vue'
+
+          // ✅ ref for primitives and most cases
+          const count = ref(0)
+          const name = ref('')
+          const isLoading = ref(false)
+
+          // ✅ reactive for object state that won't be destructured
+          const form = reactive({
+            email: '',
+            password: '',
+            errors: {} as Record<string, string>,
+          })
+          </script>
+      bad_examples:
+        - |
+          // ❌ Don't destructure reactive objects
+          const state = reactive({ count: 0, name: '' })
+          const { count, name } = state // loses reactivity!
+
+          // ❌ Don't reassign reactive objects
+          let state = reactive({ items: [] })
+          state = reactive({ items: newItems }) // breaks reactivity
+    tags:
+      - reactivity
+      - ref
+      - reactive
+    python_version:
+      min_version: null
+
+  - id: VUE012
+    title: "Use Computed Properties for Derived State"
+    category: vue_reactivity
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use computed() for any value derived from reactive state. Computed
+        values are cached and only re-evaluate when dependencies change.
+      rationale: |
+        Computed properties are more efficient than methods for derived values
+        because they cache results. They also clearly express data dependencies.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import { ref, computed } from 'vue'
+
+          const items = ref<Item[]>([])
+          const searchQuery = ref('')
+
+          // ✅ Computed for derived state
+          const filteredItems = computed(() =>
+            items.value.filter(item =>
+              item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+            )
+          )
+
+          const totalPrice = computed(() =>
+            filteredItems.value.reduce((sum, item) => sum + item.price, 0)
+          )
+
+          // ✅ Writable computed
+          const fullName = computed({
+            get: () => `${firstName.value} ${lastName.value}`,
+            set: (val: string) => {
+              const [first, ...rest] = val.split(' ')
+              firstName.value = first
+              lastName.value = rest.join(' ')
+            },
+          })
+          </script>
+    tags:
+      - reactivity
+      - computed
+      - performance
+    python_version:
+      min_version: null
+
+  - id: VUE013
+    title: "Use watchEffect for Side Effects"
+    category: vue_reactivity
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use watchEffect for side effects that depend on reactive state.
+        Use watch when you need the old value, explicit sources, or lazy execution.
+      rationale: |
+        watchEffect auto-tracks dependencies and runs immediately, making it
+        ideal for sync-style side effects. watch gives more control for complex scenarios.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import { ref, watch, watchEffect } from 'vue'
+
+          const userId = ref(1)
+          const userData = ref<User | null>(null)
+
+          // ✅ watchEffect for simple reactive side effects
+          watchEffect(async () => {
+            userData.value = await fetchUser(userId.value)
+          })
+
+          // ✅ watch when you need old value or explicit sources
+          watch(userId, async (newId, oldId) => {
+            console.log(`User changed from ${oldId} to ${newId}`)
+            userData.value = await fetchUser(newId)
+          }, { immediate: true })
+
+          // ✅ watch multiple sources
+          watch([firstName, lastName], ([first, last]) => {
+            fullName.value = `${first} ${last}`
+          })
+          </script>
+    tags:
+      - reactivity
+      - watchers
+      - side-effects
+    python_version:
+      min_version: null
+
+  - id: VUE014
+    title: "Create Reusable Composables"
+    category: vue_composables
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Extract reusable logic into composable functions (use* convention).
+        Composables encapsulate reactive state, watchers, and lifecycle hooks.
+      rationale: |
+        Composables are Vue's primary code reuse mechanism. They provide better
+        type inference, testability, and composability than mixins or renderless components.
+      good_examples:
+        - |
+          // composables/useFetch.ts
+          import { ref, watchEffect, type Ref } from 'vue'
+
+          export function useFetch<T>(url: Ref<string> | string) {
+            const data = ref<T | null>(null) as Ref<T | null>
+            const error = ref<Error | null>(null)
+            const isLoading = ref(false)
+
+            async function execute() {
+              isLoading.value = true
+              error.value = null
+              try {
+                const response = await fetch(typeof url === 'string' ? url : url.value)
+                data.value = await response.json()
+              } catch (e) {
+                error.value = e as Error
+              } finally {
+                isLoading.value = false
+              }
+            }
+
+            watchEffect(() => { execute() })
+
+            return { data, error, isLoading, refresh: execute }
+          }
+      bad_examples:
+        - |
+          // ❌ Don't use mixins for code reuse
+          export const fetchMixin = {
+            data() { return { data: null, loading: false } },
+            methods: { async fetchData(url) { /* ... */ } },
+          }
+    tags:
+      - composables
+      - code-reuse
+      - patterns
+    python_version:
+      min_version: null
+
+  - id: VUE015
+    title: "Handle Composable Cleanup"
+    category: vue_composables
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Always clean up side effects in composables using onUnmounted or
+        watchEffect's cleanup function. Prevent memory leaks from timers,
+        event listeners, and subscriptions.
+      rationale: |
+        Failing to clean up side effects causes memory leaks, especially in SPAs
+        where components mount and unmount frequently.
+      good_examples:
+        - |
+          import { ref, onMounted, onUnmounted } from 'vue'
+
+          export function useEventListener(
+            target: EventTarget,
+            event: string,
+            handler: EventListener,
+          ) {
+            onMounted(() => target.addEventListener(event, handler))
+            onUnmounted(() => target.removeEventListener(event, handler))
+          }
+
+          export function useInterval(callback: () => void, ms: number) {
+            const id = ref<ReturnType<typeof setInterval>>()
+
+            onMounted(() => {
+              id.value = setInterval(callback, ms)
+            })
+
+            onUnmounted(() => {
+              if (id.value) clearInterval(id.value)
+            })
+          }
+    tags:
+      - composables
+      - cleanup
+      - memory-leaks
+    python_version:
+      min_version: null
+
+  - id: VUE016
+    title: "Use toRef and toRefs for Reactive Prop Handling"
+    category: vue_reactivity
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use toRef/toRefs to create reactive references from props when passing
+        them to composables. Use Reactive Props Destructure (Vue 3.5+).
+      rationale: |
+        Props are reactive but destructuring loses reactivity. toRef/toRefs
+        maintain reactivity. Vue 3.5+ enables direct destructuring with defaults.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import { toRef } from 'vue'
+
+          const props = defineProps<{ userId: string }>()
+
+          // ✅ toRef maintains reactivity
+          const userId = toRef(props, 'userId')
+          const { data } = useFetch(userId)
+
+          // ✅ Vue 3.5+ Reactive Props Destructure
+          const { count = 0, title } = defineProps<{
+            count?: number
+            title: string
+          }>()
+          </script>
+    tags:
+      - reactivity
+      - props
+      - vue-3.5
+    python_version:
+      min_version: null
+
+  - id: VUE017
+    title: "Use shallowRef for Large Objects"
+    category: vue_performance
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use shallowRef/shallowReactive for large objects or collections where
+        deep reactivity is not needed. This avoids expensive deep proxy creation.
+      rationale: |
+        Deep reactivity on large data structures creates proxy overhead for every
+        nested property. shallowRef only tracks .value reassignment.
+      good_examples:
+        - |
+          import { shallowRef, triggerRef } from 'vue'
+
+          // ✅ Large list that replaces entirely
+          const items = shallowRef<Item[]>([])
+
+          // Replace entire array (triggers update)
+          items.value = [...items.value, newItem]
+
+          // For mutations, manually trigger
+          items.value.push(newItem)
+          triggerRef(items)
+    tags:
+      - performance
+      - reactivity
+      - optimization
+    python_version:
+      min_version: null
+
+  - id: VUE018
+    title: "Use useTemplateRef for Template References"
+    category: vue_reactivity
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use useTemplateRef (Vue 3.5+) for type-safe template references.
+        Fall back to ref with template ref attribute for earlier versions.
+      rationale: |
+        useTemplateRef provides better TypeScript inference and clearer intent
+        compared to using ref() for template references.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import { useTemplateRef, onMounted } from 'vue'
+
+          // ✅ Vue 3.5+ useTemplateRef
+          const inputEl = useTemplateRef<HTMLInputElement>('input')
+
+          onMounted(() => {
+            inputEl.value?.focus()
+          })
+          </script>
+
+          <template>
+            <input ref="input" />
+          </template>
+    tags:
+      - reactivity
+      - template-refs
+      - vue-3.5
+    python_version:
+      min_version: null
+
+  - id: VUE019
+    title: "Avoid Mutating Props"
+    category: vue_components
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Never mutate props directly. Use local copies with ref, computed properties,
+        or emit events to request changes from the parent.
+      rationale: |
+        Props follow one-way data flow. Mutating them causes confusing bugs,
+        Vue warnings, and makes component behavior unpredictable.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          const props = defineProps<{ initialCount: number }>()
+          const emit = defineEmits<{ (e: 'update', v: number): void }>()
+
+          // ✅ Local copy of prop
+          const localCount = ref(props.initialCount)
+
+          // ✅ Emit to parent instead of mutating
+          function increment() {
+            emit('update', props.initialCount + 1)
+          }
+          </script>
+      bad_examples:
+        - |
+          // ❌ Never mutate props
+          props.count++ // Vue warning!
+          props.items.push(newItem) // Silent mutation, hard to debug
+    tags:
+      - components
+      - props
+      - one-way-data-flow
+    python_version:
+      min_version: null
+
+  - id: VUE020
+    title: "Use readonly for Immutable Reactive State"
+    category: vue_reactivity
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use readonly() to create immutable views of reactive state. Use it
+        when providing state via provide/inject or from composables.
+      rationale: |
+        readonly prevents accidental mutations of shared state, enforcing
+        clear ownership of data and predictable state management.
+      good_examples:
+        - |
+          import { ref, readonly, provide } from 'vue'
+
+          const state = ref({ count: 0 })
+
+          // ✅ Provide readonly version
+          provide('state', readonly(state))
+
+          // In composable
+          export function useCounter() {
+            const count = ref(0)
+            const increment = () => count.value++
+            return { count: readonly(count), increment }
+          }
+    tags:
+      - reactivity
+      - immutability
+      - patterns
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # ROUTING (VUE021-VUE025)
+  # ============================================================================
+
+  - id: VUE021
+    title: "Use Lazy Route Loading"
+    category: vue_routing
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Always lazy-load route components using dynamic imports. Group related
+        routes with magic comments for named chunks.
+      rationale: |
+        Lazy loading routes reduces initial bundle size dramatically, improving
+        First Contentful Paint and Time to Interactive.
+      good_examples:
+        - |
+          const routes = [
+            {
+              path: '/dashboard',
+              component: () => import('./views/Dashboard.vue'),
+            },
+            {
+              path: '/settings',
+              component: () => import(/* webpackChunkName: "settings" */ './views/Settings.vue'),
+            },
+          ]
+    tags:
+      - routing
+      - performance
+      - code-splitting
+    python_version:
+      min_version: null
+
+  - id: VUE022
+    title: "Use Navigation Guards for Auth and Access Control"
+    category: vue_routing
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use beforeEach for global authentication checks. Use per-route
+        beforeEnter for route-specific authorization. Use route meta for
+        declarative access control.
+      rationale: |
+        Centralized auth guards prevent unauthorized access, ensure consistent
+        redirect behavior, and keep auth logic out of components.
+      good_examples:
+        - |
+          router.beforeEach(async (to, from) => {
+            const auth = useAuthStore()
+
+            if (to.meta.requiresAuth && !auth.isAuthenticated) {
+              return { name: 'login', query: { redirect: to.fullPath } }
+            }
+
+            if (to.meta.roles && !to.meta.roles.includes(auth.user?.role)) {
+              return { name: 'forbidden' }
+            }
+          })
+
+          const routes = [
+            {
+              path: '/admin',
+              meta: { requiresAuth: true, roles: ['admin'] },
+              component: () => import('./views/Admin.vue'),
+            },
+          ]
+    tags:
+      - routing
+      - security
+      - authentication
+    python_version:
+      min_version: null
+
+  - id: VUE023
+    title: "Type Route Params and Query"
+    category: vue_routing
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use typed route params and query parameters. Validate params in
+        route guards or with props: true for type-safe component props.
+      rationale: |
+        Typed route parameters prevent runtime errors from invalid or missing
+        params and improve developer experience with autocomplete.
+      good_examples:
+        - |
+          // Routes with props: true
+          const routes = [
+            {
+              path: '/users/:id',
+              component: () => import('./views/UserDetail.vue'),
+              props: true,  // passes route.params as component props
+            },
+          ]
+
+          // In component
+          <script setup lang="ts">
+          const props = defineProps<{ id: string }>()
+          const { data: user } = useFetch(`/api/users/${props.id}`)
+          </script>
+    tags:
+      - routing
+      - typescript
+      - type-safety
+    python_version:
+      min_version: null
+
+  - id: VUE024
+    title: "Use Named Routes for Navigation"
+    category: vue_routing
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use named routes for programmatic navigation instead of hardcoded
+        path strings. Named routes are refactoring-safe.
+      rationale: |
+        Named routes decouple navigation from URL structure, making route
+        path changes safe without updating every navigation call.
+      good_examples:
+        - |
+          // ✅ Named routes
+          router.push({ name: 'user-detail', params: { id: userId } })
+
+          <RouterLink :to="{ name: 'user-detail', params: { id: user.id } }">
+            {{ user.name }}
+          </RouterLink>
+      bad_examples:
+        - |
+          // ❌ Hardcoded paths
+          router.push(`/users/${userId}`)
+          router.push('/users/' + userId + '/edit')
+    tags:
+      - routing
+      - navigation
+      - maintainability
+    python_version:
+      min_version: null
+
+  - id: VUE025
+    title: "Handle Route Transitions"
+    category: vue_transitions
+    level: intermediate
+    priority: low
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use Vue Transition component with RouterView for page transitions.
+        Use mode="out-in" for smooth sequential transitions.
+      rationale: |
+        Route transitions improve perceived performance and user experience
+        by providing visual feedback during navigation.
+      good_examples:
+        - |
+          <template>
+            <RouterView v-slot="{ Component }">
+              <Transition name="fade" mode="out-in">
+                <component :is="Component" />
+              </Transition>
+            </RouterView>
+          </template>
+
+          <style>
+          .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s ease;
+          }
+          .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+          }
+          </style>
+    tags:
+      - routing
+      - transitions
+      - ux
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # STATE MANAGEMENT (VUE026-VUE032)
+  # ============================================================================
+
+  - id: VUE026
+    title: "Use Pinia for Global State"
+    category: vue_state_management
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use Pinia as the official state management library. Prefer Setup Stores
+        (function syntax) for Composition API consistency.
+      rationale: |
+        Pinia is Vue's official store with TypeScript support, devtools integration,
+        and hot module replacement. It replaces Vuex for Vue 3.
+      good_examples:
+        - |
+          // stores/useUserStore.ts
+          import { defineStore } from 'pinia'
+          import { ref, computed } from 'vue'
+
+          export const useUserStore = defineStore('user', () => {
+            // State
+            const user = ref<User | null>(null)
+            const isLoading = ref(false)
+
+            // Getters
+            const isAuthenticated = computed(() => !!user.value)
+            const fullName = computed(() =>
+              user.value ? `${user.value.firstName} ${user.value.lastName}` : ''
+            )
+
+            // Actions
+            async function login(credentials: Credentials) {
+              isLoading.value = true
+              try {
+                user.value = await authApi.login(credentials)
+              } finally {
+                isLoading.value = false
+              }
+            }
+
+            function logout() {
+              user.value = null
+            }
+
+            return { user, isLoading, isAuthenticated, fullName, login, logout }
+          })
+    tags:
+      - state-management
+      - pinia
+      - stores
+    python_version:
+      min_version: null
+
+  - id: VUE027
+    title: "Keep Store Actions for Async Logic"
+    category: vue_state_management
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Keep async operations and complex mutations in store actions. Components
+        should call actions, not directly modify store state for complex operations.
+      rationale: |
+        Centralizing async logic in stores keeps components simple, makes state
+        changes trackable in devtools, and enables easy testing.
+      good_examples:
+        - |
+          // ✅ In store
+          async function fetchProducts(filters: Filters) {
+            isLoading.value = true
+            error.value = null
+            try {
+              const response = await api.getProducts(filters)
+              products.value = response.data
+              totalCount.value = response.total
+            } catch (e) {
+              error.value = e as Error
+            } finally {
+              isLoading.value = false
+            }
+          }
+
+          // ✅ In component
+          const store = useProductStore()
+          onMounted(() => store.fetchProducts(filters.value))
+    tags:
+      - state-management
+      - actions
+      - async
+    python_version:
+      min_version: null
+
+  - id: VUE028
+    title: "Use storeToRefs for Reactive Store Destructuring"
+    category: vue_state_management
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use storeToRefs() when destructuring reactive state from Pinia stores.
+        Destructure actions directly since they're not reactive.
+      rationale: |
+        Direct destructuring of store state loses reactivity. storeToRefs
+        converts store state and getters to refs while preserving reactivity.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import { storeToRefs } from 'pinia'
+
+          const store = useUserStore()
+
+          // ✅ storeToRefs for reactive state/getters
+          const { user, isAuthenticated, fullName } = storeToRefs(store)
+
+          // ✅ Actions can be destructured directly
+          const { login, logout } = store
+          </script>
+      bad_examples:
+        - |
+          // ❌ Loses reactivity!
+          const { user, isAuthenticated } = useUserStore()
+    tags:
+      - state-management
+      - pinia
+      - reactivity
+    python_version:
+      min_version: null
+
+  - id: VUE029
+    title: "Organize Stores by Domain"
+    category: vue_state_management
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Create separate stores for each domain (auth, products, cart, settings).
+        Avoid monolithic stores. Compose stores when they need to interact.
+      rationale: |
+        Domain-specific stores improve code organization, enable independent
+        testing, and prevent bloated state objects.
+      good_examples:
+        - |
+          // stores/useAuthStore.ts - Authentication state
+          // stores/useCartStore.ts - Shopping cart state
+          // stores/useProductStore.ts - Product catalog state
+
+          // Composing stores
+          export const useCartStore = defineStore('cart', () => {
+            const authStore = useAuthStore()  // Cross-store reference
+
+            async function checkout() {
+              if (!authStore.isAuthenticated) {
+                throw new Error('Must be logged in')
+              }
+              // ...
+            }
+          })
+    tags:
+      - state-management
+      - architecture
+      - organization
+    python_version:
+      min_version: null
+
+  - id: VUE030
+    title: "Use Composables Instead of Stores for Local State"
+    category: vue_composables
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use composables for component-local or feature-local state. Only use
+        stores for truly global state that needs to persist across views.
+      rationale: |
+        Not all state needs to be global. Composables provide scoped state that
+        is automatically cleaned up when the component unmounts.
+      good_examples:
+        - |
+          // ✅ Composable for local state
+          function useFormValidation(rules: ValidationRules) {
+            const errors = ref<Record<string, string>>({})
+            const isValid = computed(() => Object.keys(errors.value).length === 0)
+
+            function validate(field: string, value: unknown) {
+              // validation logic
+            }
+
+            return { errors, isValid, validate }
+          }
+
+          // ✅ Store for global state only
+          // Auth state, user preferences, shopping cart, notifications
+    tags:
+      - state-management
+      - composables
+      - architecture
+    python_version:
+      min_version: null
+
+  - id: VUE031
+    title: "Persist Store State When Needed"
+    category: vue_state_management
+    level: intermediate
+    priority: low
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use pinia-plugin-persistedstate or similar for persisting stores to
+        localStorage/sessionStorage. Only persist necessary state.
+      rationale: |
+        State persistence improves UX for auth tokens, user preferences, and
+        draft content. Avoid persisting sensitive or easily re-fetchable data.
+      good_examples:
+        - |
+          import { defineStore } from 'pinia'
+
+          export const useSettingsStore = defineStore('settings', () => {
+            const theme = ref<'light' | 'dark'>('light')
+            const locale = ref('en')
+            return { theme, locale }
+          }, {
+            persist: {
+              key: 'app-settings',
+              storage: localStorage,
+              pick: ['theme', 'locale'],
+            },
+          })
+    tags:
+      - state-management
+      - persistence
+      - localStorage
+    python_version:
+      min_version: null
+
+  - id: VUE032
+    title: "Use Vuex Modules for Legacy Vue 2 Projects"
+    category: vue_state_management
+    level: intermediate
+    priority: low
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        For Vue 2 projects still using Vuex, organize state into namespaced
+        modules. Plan migration to Pinia for Vue 3 upgrades.
+      rationale: |
+        Vuex modules provide namespace isolation and improve organization in
+        larger apps. Pinia migration is straightforward from Vuex modules.
+      good_examples:
+        - |
+          // store/modules/user.js (Vuex)
+          export default {
+            namespaced: true,
+            state: () => ({ user: null }),
+            mutations: { SET_USER(state, user) { state.user = user } },
+            actions: {
+              async fetchUser({ commit }, id) {
+                const user = await api.getUser(id)
+                commit('SET_USER', user)
+              },
+            },
+            getters: {
+              fullName: (state) => `${state.user?.first} ${state.user?.last}`,
+            },
+          }
+    tags:
+      - state-management
+      - vuex
+      - vue-2
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # DIRECTIVES & TRANSITIONS (VUE033-VUE035)
+  # ============================================================================
+
+  - id: VUE033
+    title: "Create Custom Directives for DOM Operations"
+    category: vue_directives
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use custom directives for reusable low-level DOM manipulations.
+        Prefer composables for most logic; directives are for DOM access only.
+      rationale: |
+        Directives are the right abstraction for focus management, click-outside,
+        intersection observer, and other DOM-level behaviors.
+      good_examples:
+        - |
+          // directives/vFocus.ts
+          import type { Directive } from 'vue'
+
+          export const vFocus: Directive = {
+            mounted(el: HTMLElement) {
+              el.focus()
+            },
+          }
+
+          // directives/vClickOutside.ts
+          export const vClickOutside: Directive = {
+            mounted(el, binding) {
+              el._clickOutside = (event: Event) => {
+                if (!el.contains(event.target as Node)) {
+                  binding.value(event)
+                }
+              }
+              document.addEventListener('click', el._clickOutside)
+            },
+            unmounted(el) {
+              document.removeEventListener('click', el._clickOutside)
+            },
+          }
+    tags:
+      - directives
+      - dom
+      - reusability
+    python_version:
+      min_version: null
+
+  - id: VUE034
+    title: "Use Transition for Smooth State Changes"
+    category: vue_transitions
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use Transition and TransitionGroup for animating element enter/leave.
+        Prefer CSS transitions over JavaScript hooks for performance.
+      rationale: |
+        Vue's Transition component integrates with the reactivity system, ensuring
+        animations play correctly with v-if/v-show and list changes.
+      good_examples:
+        - |
+          <template>
+            <Transition name="slide-fade" mode="out-in">
+              <div v-if="showContent" key="content">
+                {{ content }}
+              </div>
+            </Transition>
+
+            <TransitionGroup name="list" tag="ul">
+              <li v-for="item in items" :key="item.id">
+                {{ item.text }}
+              </li>
+            </TransitionGroup>
+          </template>
+
+          <style scoped>
+          .slide-fade-enter-active { transition: all 0.3s ease-out; }
+          .slide-fade-leave-active { transition: all 0.2s ease-in; }
+          .slide-fade-enter-from { transform: translateX(20px); opacity: 0; }
+          .slide-fade-leave-to { transform: translateX(-20px); opacity: 0; }
+          </style>
+    tags:
+      - transitions
+      - animation
+      - ux
+    python_version:
+      min_version: null
+
+  - id: VUE035
+    title: "Register Directives Properly"
+    category: vue_directives
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Register directives locally in components or globally in app setup.
+        Prefer local registration for tree-shaking.
+      rationale: |
+        Local registration ensures directives are only bundled when used.
+        Global registration is appropriate for widely-used directives.
+      good_examples:
+        - |
+          // Local registration (preferred)
+          <script setup>
+          import { vFocus } from '@/directives/vFocus'
+          </script>
+
+          <template>
+            <input v-focus />
+          </template>
+
+          // Global registration (for widespread use)
+          // main.ts
+          app.directive('focus', vFocus)
+          app.directive('click-outside', vClickOutside)
+    tags:
+      - directives
+      - registration
+      - tree-shaking
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # PERFORMANCE (VUE036-VUE040)
+  # ============================================================================
+
+  - id: VUE036
+    title: "Use v-once and v-memo for Static Content"
+    category: vue_performance
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use v-once for truly static content that never changes. Use v-memo
+        (Vue 3.2+) to memoize sub-trees based on specific dependencies.
+      rationale: |
+        v-once and v-memo skip re-rendering of content that hasn't changed,
+        reducing virtual DOM diffing overhead in large templates.
+      good_examples:
+        - |
+          <template>
+            <!-- ✅ Static header that never changes -->
+            <header v-once>
+              <h1>{{ appTitle }}</h1>
+              <p>{{ appDescription }}</p>
+            </header>
+
+            <!-- ✅ Memoize expensive list items -->
+            <div v-for="item in list" :key="item.id" v-memo="[item.selected]">
+              <ExpensiveComponent :item="item" />
+            </div>
+          </template>
+    tags:
+      - performance
+      - rendering
+      - optimization
+    python_version:
+      min_version: null
+
+  - id: VUE037
+    title: "Use v-show vs v-if Appropriately"
+    category: vue_performance
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use v-if for conditions that rarely change (conditional rendering).
+        Use v-show for frequently toggled elements (CSS display toggle).
+      rationale: |
+        v-if has higher toggle cost (creates/destroys components) but no initial
+        render cost for false. v-show renders always but toggles cheaply with CSS.
+      good_examples:
+        - |
+          <!-- ✅ v-if for auth-dependent content (rarely changes) -->
+          <AdminPanel v-if="isAdmin" />
+
+          <!-- ✅ v-show for frequently toggled UI -->
+          <div v-show="isDropdownOpen" class="dropdown-menu">
+            <!-- menu items -->
+          </div>
+    tags:
+      - performance
+      - rendering
+      - conditional
+    python_version:
+      min_version: null
+
+  - id: VUE038
+    title: "Always Use key with v-for"
+    category: vue_performance
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Always provide a unique key attribute when using v-for. Use stable
+        identifiers (IDs), never array indices, for dynamic lists.
+      rationale: |
+        Keys enable Vue's virtual DOM diffing algorithm to efficiently track
+        element identity. Without keys, Vue uses an inefficient in-place patch strategy.
+      good_examples:
+        - |
+          <!-- ✅ Unique stable key -->
+          <div v-for="user in users" :key="user.id">
+            {{ user.name }}
+          </div>
+
+          <!-- ✅ Composite key when needed -->
+          <div v-for="(item, index) in items" :key="`${item.type}-${item.id}`">
+            {{ item.name }}
+          </div>
+      bad_examples:
+        - |
+          <!-- ❌ No key -->
+          <div v-for="user in users">{{ user.name }}</div>
+
+          <!-- ❌ Index as key with dynamic lists -->
+          <div v-for="(user, index) in users" :key="index">{{ user.name }}</div>
+    tags:
+      - performance
+      - rendering
+      - v-for
+    python_version:
+      min_version: null
+
+  - id: VUE039
+    title: "Use KeepAlive for Caching Components"
+    category: vue_performance
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use KeepAlive to cache component instances when switching between views.
+        Set max to limit cached instances and prevent memory issues.
+      rationale: |
+        KeepAlive preserves component state and avoids expensive re-creation,
+        improving perceived performance for tab-style interfaces.
+      good_examples:
+        - |
+          <template>
+            <KeepAlive :max="5" :include="['Dashboard', 'Profile']">
+              <component :is="currentTab" />
+            </KeepAlive>
+          </template>
+
+          // In kept-alive components
+          <script setup>
+          import { onActivated, onDeactivated } from 'vue'
+
+          onActivated(() => {
+            // refresh data on re-activation
+          })
+
+          onDeactivated(() => {
+            // pause expensive operations
+          })
+          </script>
+    tags:
+      - performance
+      - caching
+      - keep-alive
+    python_version:
+      min_version: null
+
+  - id: VUE040
+    title: "Virtualize Long Lists"
+    category: vue_performance
+    level: advanced
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use virtual scrolling for lists with 100+ items. Libraries like
+        vue-virtual-scroller or @tanstack/vue-virtual render only visible items.
+      rationale: |
+        Rendering thousands of DOM nodes causes jank and high memory usage.
+        Virtual scrolling keeps DOM node count constant regardless of list size.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import { useVirtualList } from '@vueuse/core'
+
+          const { list, containerProps, wrapperProps } = useVirtualList(items, {
+            itemHeight: 48,
+          })
+          </script>
+
+          <template>
+            <div v-bind="containerProps" style="height: 400px; overflow: auto">
+              <div v-bind="wrapperProps">
+                <div v-for="{ data, index } in list" :key="data.id" style="height: 48px">
+                  {{ data.name }}
+                </div>
+              </div>
+            </div>
+          </template>
+    tags:
+      - performance
+      - virtual-scrolling
+      - large-lists
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # TESTING (VUE041-VUE044)
+  # ============================================================================
+
+  - id: VUE041
+    title: "Test Components with Vue Test Utils"
+    category: vue_testing
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use @vue/test-utils with Vitest for component testing. Test behavior,
+        not implementation details. Prefer user-centric assertions.
+      rationale: |
+        Testing behavior ensures tests remain valid during refactoring.
+        Vue Test Utils provides mounting, interaction, and assertion utilities.
+      good_examples:
+        - |
+          import { mount } from '@vue/test-utils'
+          import { describe, it, expect } from 'vitest'
+          import Counter from './Counter.vue'
+
+          describe('Counter', () => {
+            it('increments count when button is clicked', async () => {
+              const wrapper = mount(Counter, {
+                props: { initialCount: 0 },
+              })
+
+              expect(wrapper.text()).toContain('0')
+              await wrapper.find('button').trigger('click')
+              expect(wrapper.text()).toContain('1')
+            })
+
+            it('emits update event', async () => {
+              const wrapper = mount(Counter)
+              await wrapper.find('button').trigger('click')
+              expect(wrapper.emitted('update')).toBeTruthy()
+              expect(wrapper.emitted('update')![0]).toEqual([1])
+            })
+          })
+    tags:
+      - testing
+      - vue-test-utils
+      - vitest
+    python_version:
+      min_version: null
+
+  - id: VUE042
+    title: "Test Composables in Isolation"
+    category: vue_testing
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Test composables by wrapping them in a test component or using
+        testing utilities. Mock external dependencies.
+      rationale: |
+        Composables encapsulate reusable logic and should be tested independently
+        from components that use them.
+      good_examples:
+        - |
+          import { withSetup } from '../test-utils'
+          import { useCounter } from './useCounter'
+
+          // Helper to test composable outside component
+          function withSetup<T>(composable: () => T) {
+            let result: T
+            const app = createApp({
+              setup() {
+                result = composable()
+                return () => {}
+              },
+            })
+            app.mount(document.createElement('div'))
+            return { result: result!, app }
+          }
+
+          describe('useCounter', () => {
+            it('increments count', () => {
+              const { result } = withSetup(() => useCounter(0))
+              expect(result.count.value).toBe(0)
+              result.increment()
+              expect(result.count.value).toBe(1)
+            })
+          })
+    tags:
+      - testing
+      - composables
+      - unit-testing
+    python_version:
+      min_version: null
+
+  - id: VUE043
+    title: "Test Pinia Stores"
+    category: vue_testing
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Test Pinia stores using createTestingPinia or by testing store logic
+        directly. Mock API calls and assert state changes.
+      rationale: |
+        Store tests verify business logic independently from UI. Pinia's testing
+        utilities make it easy to mock and inspect store behavior.
+      good_examples:
+        - |
+          import { setActivePinia, createPinia } from 'pinia'
+          import { useUserStore } from './useUserStore'
+
+          describe('useUserStore', () => {
+            beforeEach(() => {
+              setActivePinia(createPinia())
+            })
+
+            it('logs in user', async () => {
+              const store = useUserStore()
+              expect(store.isAuthenticated).toBe(false)
+
+              await store.login({ email: 'test@test.com', password: 'pass' })
+
+              expect(store.isAuthenticated).toBe(true)
+              expect(store.user?.email).toBe('test@test.com')
+            })
+          })
+    tags:
+      - testing
+      - pinia
+      - stores
+    python_version:
+      min_version: null
+
+  - id: VUE044
+    title: "Snapshot Test Template Output"
+    category: vue_testing
+    level: beginner
+    priority: low
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use snapshot testing for static template output. Keep snapshots small
+        and focused. Prefer behavioral tests for interactive components.
+      rationale: |
+        Snapshots catch unintended template changes but should supplement,
+        not replace, behavioral tests. Large snapshots are brittle.
+      good_examples:
+        - |
+          import { mount } from '@vue/test-utils'
+          import Badge from './Badge.vue'
+
+          it('renders correctly', () => {
+            const wrapper = mount(Badge, {
+              props: { label: 'New', variant: 'success' },
+            })
+            expect(wrapper.html()).toMatchSnapshot()
+          })
+    tags:
+      - testing
+      - snapshots
+      - regression
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # SECURITY & PATTERNS (VUE045-VUE050)
+  # ============================================================================
+
+  - id: VUE045
+    title: "Sanitize Dynamic HTML Rendering"
+    category: vue_security
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Avoid v-html with user-provided content. When v-html is necessary,
+        sanitize input using DOMPurify or similar libraries.
+      rationale: |
+        v-html renders raw HTML and is vulnerable to XSS attacks if user input
+        is not sanitized. Vue's template interpolation auto-escapes by default.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import DOMPurify from 'dompurify'
+
+          const props = defineProps<{ rawHtml: string }>()
+          const safeHtml = computed(() => DOMPurify.sanitize(props.rawHtml))
+          </script>
+
+          <template>
+            <!-- ✅ Sanitized HTML -->
+            <div v-html="safeHtml" />
+
+            <!-- ✅ Prefer template interpolation -->
+            <p>{{ userInput }}</p>
+          </template>
+      bad_examples:
+        - |
+          <!-- ❌ XSS vulnerability! -->
+          <div v-html="userComment" />
+    tags:
+      - security
+      - xss
+      - sanitization
+    python_version:
+      min_version: null
+
+  - id: VUE046
+    title: "Use Suspense for Async Dependencies"
+    category: vue_components
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use Suspense (experimental) to handle async dependencies declaratively.
+        Provide fallback content while async setup resolves.
+      rationale: |
+        Suspense simplifies loading state management for components with async
+        setup() or top-level await in <script setup>.
+      good_examples:
+        - |
+          <template>
+            <Suspense>
+              <template #default>
+                <AsyncDashboard />
+              </template>
+              <template #fallback>
+                <LoadingSpinner />
+              </template>
+            </Suspense>
+          </template>
+
+          // AsyncDashboard.vue
+          <script setup lang="ts">
+          // Top-level await in script setup
+          const data = await fetchDashboardData()
+          </script>
+    tags:
+      - components
+      - suspense
+      - async
+    python_version:
+      min_version: null
+
+  - id: VUE047
+    title: "Implement Error Boundaries"
+    category: vue_components
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use onErrorCaptured or errorCaptured hook to create error boundary
+        components. Prevent child errors from crashing the entire app.
+      rationale: |
+        Error boundaries gracefully handle component errors, display fallback
+        UI, and log errors for debugging without breaking the application.
+      good_examples:
+        - |
+          <script setup lang="ts">
+          import { ref, onErrorCaptured } from 'vue'
+
+          const error = ref<Error | null>(null)
+
+          onErrorCaptured((err) => {
+            error.value = err
+            console.error('Captured error:', err)
+            return false  // prevent propagation
+          })
+          </script>
+
+          <template>
+            <div v-if="error" class="error-boundary">
+              <h2>Something went wrong</h2>
+              <button @click="error = null">Retry</button>
+            </div>
+            <slot v-else />
+          </template>
+    tags:
+      - error-handling
+      - components
+      - resilience
+    python_version:
+      min_version: null
+
+  - id: VUE048
+    title: "Structure Project with Feature-Based Organization"
+    category: vue_style
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Organize Vue projects by feature/domain rather than file type. Colocate
+        components, composables, stores, and tests by feature.
+      rationale: |
+        Feature-based organization scales better than type-based (components/,
+        composables/, stores/) for larger applications. Related code is colocated.
+      good_examples:
+        - |
+          src/
+            features/
+              auth/
+                components/LoginForm.vue
+                composables/useAuth.ts
+                stores/useAuthStore.ts
+                types/auth.ts
+                __tests__/
+              products/
+                components/ProductList.vue
+                composables/useProducts.ts
+                stores/useProductStore.ts
+            shared/
+              components/BaseButton.vue
+              composables/useFetch.ts
+              utils/formatDate.ts
+    tags:
+      - architecture
+      - organization
+      - scalability
+    python_version:
+      min_version: null
+
+  - id: VUE049
+    title: "Use Plugin Pattern for Reusable Functionality"
+    category: vue_plugins
+    level: advanced
+    priority: low
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Create Vue plugins for reusable functionality that needs app-level
+        registration (global components, directives, provide/inject, config).
+      rationale: |
+        Plugins encapsulate reusable setup logic, making it easy to share
+        functionality across projects or publish as npm packages.
+      good_examples:
+        - |
+          // plugins/analytics.ts
+          import type { App, Plugin } from 'vue'
+
+          interface AnalyticsOptions {
+            trackingId: string
+            debug?: boolean
+          }
+
+          export const AnalyticsPlugin: Plugin = {
+            install(app: App, options: AnalyticsOptions) {
+              const analytics = createAnalytics(options)
+
+              // Provide for injection
+              app.provide('analytics', analytics)
+
+              // Global property
+              app.config.globalProperties.$analytics = analytics
+
+              // Global directive
+              app.directive('track-click', {
+                mounted(el, binding) {
+                  el.addEventListener('click', () => {
+                    analytics.track(binding.value)
+                  })
+                },
+              })
+            },
+          }
+    tags:
+      - plugins
+      - reusability
+      - architecture
+    python_version:
+      min_version: null
+
+  - id: VUE050
+    title: "Use Teleport for Portal Rendering"
+    category: vue_components
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - vue
+    content:
+      description: |
+        Use Teleport to render component content outside its parent DOM tree.
+        Ideal for modals, tooltips, and notifications.
+      rationale: |
+        Teleport solves CSS stacking context issues by rendering content at a
+        different DOM location while keeping the component's logical hierarchy.
+      good_examples:
+        - |
+          <template>
+            <button @click="showModal = true">Open Modal</button>
+
+            <Teleport to="body">
+              <div v-if="showModal" class="modal-overlay">
+                <div class="modal-content">
+                  <h2>{{ title }}</h2>
+                  <slot />
+                  <button @click="showModal = false">Close</button>
+                </div>
+              </div>
+            </Teleport>
+          </template>
+    tags:
+      - components
+      - teleport
+      - dom
+    python_version:
+      min_version: null

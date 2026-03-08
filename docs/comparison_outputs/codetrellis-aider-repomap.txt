@@ -1,0 +1,163 @@
+  warnings.warn(
+────────────────────────────────────────────────────────────
+Aider v0.82.3
+Model: none with whole edit format
+Git repo: ../../.git with 122 files
+Repo-map: using 1024 tokens, auto refresh
+Here are summaries of some files present in my git 
+repository.
+Do not propose changes to these files, treat them as 
+*read-only*.
+If you need to edit any of these files, ask me to *add them 
+to the chat* first.
+
+tools/codetrellis/codetrellis/ast_parser.py:
+⋮
+│@dataclass
+│class ASTParseResult:
+⋮
+
+tools/codetrellis/codetrellis/interfaces.py:
+⋮
+│@dataclass
+│class PropertyInfo:
+│    """Information about a property/field"""
+⋮
+│    def to_string(self) -> str:
+⋮
+│@dataclass
+│class InterfaceInfo:
+│    """Parsed interface information"""
+⋮
+│    def to_string(self) -> str:
+⋮
+│@dataclass
+│class TypeAliasInfo:
+│    """Parsed type alias information"""
+⋮
+│    def to_string(self) -> str:
+⋮
+│@dataclass
+│class SignalInfo:
+│    """Parsed signal information"""
+⋮
+│    def to_string(self) -> str:
+⋮
+│@dataclass
+│class MethodInfo:
+│    """Parsed method information"""
+⋮
+│    def to_string(self) -> str:
+⋮
+│@dataclass
+│class InputInfo:
+│    """Parsed input binding information"""
+⋮
+│    def to_string(self) -> str:
+⋮
+│@dataclass
+│class OutputInfo:
+│    """Parsed output event information"""
+⋮
+│    def to_string(self) -> str:
+⋮
+│@dataclass
+│class RouteInfo:
+│    """Parsed route information"""
+⋮
+│    def to_string(self, indent: int = 0) -> str:
+⋮
+│@dataclass
+│class WebSocketEventInfo:
+│    """Parsed WebSocket event information"""
+⋮
+│    def to_string(self) -> str:
+⋮
+│@dataclass
+│class APIEndpointInfo:
+│    """Parsed HTTP API endpoint information"""
+⋮
+│    def to_string(self) -> str:
+⋮
+│@dataclass
+│class ParseResult:
+│    """
+│    Result of parsing a single file.
+│    Contains all extracted information.
+⋮
+│    def has_content(self) -> bool:
+⋮
+│@runtime_checkable
+│class IParser(Protocol):
+│    """
+│    Interface for all file parsers.
+│
+│    Parsers are responsible for extracting structured 
+information
+│    from source files. Each parser handles specific file 
+types.
+│
+│    Following ISP: This is the minimal interface all 
+parsers must implement.
+⋮
+│    def can_parse(self, file_path: Path) -> bool:
+⋮
+│class BaseParser(ABC):
+│    """
+│    Abstract base class for parsers.
+│
+│    Provides common functionality for all parsers.
+│    Subclasses must implement can_parse() and parse().
+⋮
+│    @abstractmethod
+│    def can_parse(self, file_path: Path) -> bool:
+⋮
+
+tools/codetrellis/codetrellis/plugins/base.py:
+⋮
+│@runtime_checkable
+│class ILanguagePlugin(Protocol):
+│    """
+│    Protocol for language plugins.
+│
+│    A language plugin provides basic language support 
+(parsing, AST, etc.)
+│    that framework plugins can build upon.
+⋮
+│    def can_parse(self, file_path: Path) -> bool:
+⋮
+│class BaseLanguagePlugin(ABC):
+│    """
+│    Abstract base class for language plugins.
+⋮
+│    def can_parse(self, file_path: Path) -> bool:
+⋮
+
+tools/codetrellis/codetrellis/streaming.py:
+⋮
+│class StreamingCache:
+│    """
+│    File-based cache for extraction results.
+⋮
+│    def get(self, file_path: Path) -> Optional[Dict[str, 
+Any]]:
+⋮
+
+tools/codetrellis/codetrellis/watcher.py:
+⋮
+│class FileWatcher:
+│    """
+│    Watches project directory for changes and updates 
+matrix.
+│
+│    Usage:
+│        watcher = FileWatcher("/path/to/project")
+│        watcher.start()
+│
+│        # ... watcher runs in background ...
+│
+│        watcher.stop()
+⋮
+│    def start(self):
+⋮
+

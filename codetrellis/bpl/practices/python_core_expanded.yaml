@@ -1,0 +1,1439 @@
+# Python Core Best Practices - Expanded
+# Version-aware practices for Python 3.9+
+# Total: 55+ practices covering all major areas
+# Category: Core Python idioms, patterns, and best practices
+
+practices:
+  # ============================================================================
+  # TYPE SAFETY PRACTICES (10 practices)
+  # ============================================================================
+
+  - id: PYE001
+    title: 'Use Type Hints for All Function Signatures'
+    category: type_safety
+    level: beginner
+    priority: critical
+    python_version:
+      min_version: '3.9'
+    content:
+      description: |
+        Always annotate function parameters and return types with type hints.
+        Type hints improve code readability, enable static analysis, and help
+        catch bugs early through tools like mypy.
+      rationale: |
+        Type hints provide self-documentation, enable IDE autocompletion,
+        and allow static type checkers to catch errors before runtime.
+      good_examples:
+        - |
+          def calculate_total(items: list[float], tax_rate: float = 0.0) -> float:
+              """Calculate total with optional tax."""
+              subtotal = sum(items)
+              return subtotal * (1 + tax_rate)
+      bad_examples:
+        - |
+          def calculate_total(items, tax_rate=0.0):
+              subtotal = sum(items)
+              return subtotal * (1 + tax_rate)
+      references:
+        - 'https://peps.python.org/pep-0484/'
+      tags: [typing, pep484, static-analysis]
+
+  - id: PYE002
+    title: 'Use Modern Union Syntax (3.10+)'
+    category: type_safety
+    level: intermediate
+    priority: high
+    python_version:
+      min_version: '3.10'
+    content:
+      description: |
+        Use the pipe operator (|) for union types instead of Union from typing.
+      good_examples:
+        - |
+          def process(value: int | str | None) -> str:
+              return str(value) if value else "empty"
+      bad_examples:
+        - |
+          from typing import Union, Optional
+          def process(value: Union[int, str, None]) -> str:
+              return str(value) if value else "empty"
+      references:
+        - 'https://peps.python.org/pep-0604/'
+      tags: [typing, pep604, python310]
+
+  - id: PYE003
+    title: 'Use Built-in Generic Types (3.9+)'
+    category: type_safety
+    level: beginner
+    priority: high
+    python_version:
+      min_version: '3.9'
+    content:
+      description: |
+        Use built-in generic types (list, dict, set, tuple) instead of typing imports.
+      good_examples:
+        - |
+          def process_items(items: list[str]) -> dict[str, int]:
+              return {item: len(item) for item in items}
+      bad_examples:
+        - |
+          from typing import List, Dict
+          def process_items(items: List[str]) -> Dict[str, int]:
+              return {item: len(item) for item in items}
+      references:
+        - 'https://peps.python.org/pep-0585/'
+      tags: [typing, pep585, python39]
+
+  - id: PYE004
+    title: 'Use TypeVar for Generic Functions'
+    category: type_safety
+    level: advanced
+    priority: medium
+    content:
+      description: |
+        Use TypeVar to create generic functions that preserve type information.
+      good_examples:
+        - |
+          from typing import TypeVar
+          T = TypeVar('T')
+          
+          def first(items: list[T]) -> T | None:
+              return items[0] if items else None
+      tags: [typing, generics, typevar]
+
+  - id: PYE005
+    title: 'Use Protocol for Structural Typing'
+    category: type_safety
+    level: advanced
+    priority: medium
+    python_version:
+      min_version: '3.8'
+    content:
+      description: |
+        Use Protocol to define interfaces based on structure rather than inheritance.
+      good_examples:
+        - |
+          from typing import Protocol
+          
+          class Readable(Protocol):
+              def read(self) -> str: ...
+          
+          def process_readable(r: Readable) -> str:
+              return r.read().upper()
+      tags: [typing, protocol, duck-typing]
+
+  - id: PYE006
+    title: 'Use Literal Types for Fixed Values'
+    category: type_safety
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Use Literal to restrict values to specific constants.
+      good_examples:
+        - |
+          from typing import Literal
+          
+          def set_mode(mode: Literal["read", "write", "append"]) -> None:
+              ...
+      tags: [typing, literal, validation]
+
+  - id: PYE007
+    title: 'Use TypedDict for Structured Dictionaries'
+    category: type_safety
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use TypedDict to type dictionaries with known keys and value types.
+      good_examples:
+        - |
+          from typing import TypedDict
+          
+          class UserConfig(TypedDict):
+              name: str
+              age: int
+              email: str | None
+      tags: [typing, typeddict, dict]
+
+  - id: PYE008
+    title: 'Use Final for Constants'
+    category: type_safety
+    level: intermediate
+    priority: low
+    content:
+      description: |
+        Use Final to indicate values that should not be reassigned.
+      good_examples:
+        - |
+          from typing import Final
+          
+          MAX_RETRIES: Final = 3
+          API_BASE_URL: Final[str] = "https://api.example.com"
+      tags: [typing, final, constants]
+
+  - id: PYE009
+    title: 'Use Annotated for Rich Type Metadata'
+    category: type_safety
+    level: advanced
+    priority: low
+    python_version:
+      min_version: '3.9'
+    content:
+      description: |
+        Use Annotated to add metadata to types for validation or documentation.
+      good_examples:
+        - |
+          from typing import Annotated
+          
+          Positive = Annotated[int, "Must be positive"]
+          
+          def set_count(count: Annotated[int, ">=0"]) -> None:
+              if count < 0:
+                  raise ValueError("Count must be non-negative")
+      tags: [typing, annotated, pep593]
+
+  # ============================================================================
+  # ERROR HANDLING PRACTICES (8 practices)
+  # ============================================================================
+
+  - id: PYE010
+    title: 'Catch Specific Exceptions'
+    category: error_handling
+    level: beginner
+    priority: critical
+    content:
+      description: |
+        Always catch specific exceptions rather than bare except or Exception.
+      good_examples:
+        - |
+          try:
+              value = config[key]
+          except KeyError:
+              logger.warning(f"Key {key} not found")
+              value = default
+      bad_examples:
+        - |
+          try:
+              value = config[key]
+          except:  # Catches everything!
+              value = default
+      tags: [exceptions, error-handling]
+
+  - id: PYE011
+    title: 'Use Exception Chaining'
+    category: error_handling
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        When re-raising exceptions, use 'from' to chain and preserve context.
+      good_examples:
+        - |
+          try:
+              data = json.loads(raw_data)
+          except json.JSONDecodeError as e:
+              raise ConfigurationError("Invalid format") from e
+      bad_examples:
+        - |
+          try:
+              data = json.loads(raw_data)
+          except json.JSONDecodeError:
+              raise ConfigurationError("Invalid format")  # Lost context!
+      tags: [exceptions, debugging, traceback]
+
+  - id: PYE012
+    title: 'Use Context Managers for Resource Management'
+    category: error_handling
+    level: beginner
+    priority: critical
+    content:
+      description: |
+        Always use context managers (with statement) for resources that need cleanup.
+      good_examples:
+        - |
+          with open("config.json") as f:
+              config = json.load(f)
+          
+          async with aiohttp.ClientSession() as session:
+              response = await session.get(url)
+      bad_examples:
+        - |
+          f = open("config.json")
+          config = json.load(f)
+          f.close()  # May not run if exception occurs!
+      tags: [context-managers, resources]
+
+  - id: PYE013
+    title: 'Create Custom Exceptions for Domain Errors'
+    category: error_handling
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Define custom exception classes for domain-specific error conditions.
+      good_examples:
+        - |
+          class UserNotFoundError(Exception):
+              """Raised when a user is not found in the database."""
+              def __init__(self, user_id: int):
+                  self.user_id = user_id
+                  super().__init__(f"User {user_id} not found")
+      tags: [exceptions, domain-errors]
+
+  - id: PYE014
+    title: 'Use contextlib for Simple Context Managers'
+    category: error_handling
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Use @contextmanager decorator for simple context managers.
+      good_examples:
+        - |
+          from contextlib import contextmanager
+          
+          @contextmanager
+          def timer(name: str):
+              start = time.perf_counter()
+              yield
+              elapsed = time.perf_counter() - start
+              logger.info(f"{name} took {elapsed:.2f}s")
+      tags: [contextlib, context-managers]
+
+  - id: PYE015
+    title: 'Use ExceptionGroup for Multiple Errors (3.11+)'
+    category: error_handling
+    level: advanced
+    priority: low
+    python_version:
+      min_version: '3.11'
+    content:
+      description: |
+        Use ExceptionGroup to handle multiple related exceptions together.
+      good_examples:
+        - |
+          errors = []
+          for item in items:
+              try:
+                  process(item)
+              except ValidationError as e:
+                  errors.append(e)
+          if errors:
+              raise ExceptionGroup("Validation failed", errors)
+      tags: [exceptions, python311, exceptiongroup]
+
+  - id: PYE016
+    title: 'Use suppress() for Expected Exceptions'
+    category: error_handling
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Use contextlib.suppress() to ignore specific expected exceptions.
+      good_examples:
+        - |
+          from contextlib import suppress
+          
+          with suppress(FileNotFoundError):
+              os.remove(temp_file)
+      bad_examples:
+        - |
+          try:
+              os.remove(temp_file)
+          except FileNotFoundError:
+              pass
+      tags: [contextlib, exceptions]
+
+  - id: PYE017
+    title: 'Log Exceptions with Full Context'
+    category: error_handling
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Always log exceptions with exc_info=True to capture full traceback.
+      good_examples:
+        - |
+          try:
+              process_data(data)
+          except ProcessingError as e:
+              logger.exception("Failed to process data", extra={"data_id": data.id})
+              raise
+      bad_examples:
+        - |
+          try:
+              process_data(data)
+          except ProcessingError as e:
+              logger.error(f"Error: {e}")  # No traceback!
+              raise
+      tags: [logging, exceptions, debugging]
+
+  # ============================================================================
+  # CODE STYLE PRACTICES (10 practices)
+  # ============================================================================
+
+  - id: PYE020
+    title: 'Use F-Strings for String Formatting'
+    category: code_style
+    level: beginner
+    priority: high
+    python_version:
+      min_version: '3.6'
+    content:
+      description: |
+        Use f-strings for string interpolation instead of .format() or %.
+      good_examples:
+        - |
+          name = "Alice"
+          age = 30
+          message = f"Hello, {name}! You are {age} years old."
+          debug = f"{value=}"  # Python 3.8+ debug syntax
+      bad_examples:
+        - |
+          message = "Hello, {}! You are {} years old.".format(name, age)
+          message = "Hello, %s! You are %d years old." % (name, age)
+      tags: [strings, formatting, fstrings]
+
+  - id: PYE021
+    title: 'Use Pathlib for File Paths'
+    category: code_style
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Use pathlib.Path instead of os.path for file path manipulation.
+      good_examples:
+        - |
+          from pathlib import Path
+          
+          config_dir = Path.home() / ".config" / "myapp"
+          config_dir.mkdir(parents=True, exist_ok=True)
+          config_file = config_dir / "settings.json"
+          
+          if config_file.exists():
+              content = config_file.read_text()
+      bad_examples:
+        - |
+          import os
+          config_dir = os.path.join(os.path.expanduser("~"), ".config", "myapp")
+          os.makedirs(config_dir, exist_ok=True)
+      tags: [pathlib, files, os]
+
+  - id: PYE022
+    title: 'Use Walrus Operator for Assignment Expressions (3.8+)'
+    category: code_style
+    level: intermediate
+    priority: medium
+    python_version:
+      min_version: '3.8'
+    content:
+      description: |
+        Use the walrus operator (:=) to combine assignment with expression.
+      good_examples:
+        - |
+          if (match := pattern.search(text)):
+              process(match.group(0))
+          
+          while (chunk := file.read(8192)):
+              process(chunk)
+      tags: [walrus-operator, pep572]
+
+  - id: PYE023
+    title: 'Use Structural Pattern Matching (3.10+)'
+    category: code_style
+    level: intermediate
+    priority: medium
+    python_version:
+      min_version: '3.10'
+    content:
+      description: |
+        Use match/case statements for complex conditional logic.
+      good_examples:
+        - |
+          match command:
+              case ["quit"]:
+                  return False
+              case ["load", filename]:
+                  load_file(filename)
+              case ["save", filename, *options]:
+                  save_file(filename, options)
+              case _:
+                  print("Unknown command")
+      tags: [pattern-matching, pep634, python310]
+
+  - id: PYE024
+    title: 'Use Comprehensions Over map/filter'
+    category: code_style
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Prefer list/dict/set comprehensions over map() and filter() for readability.
+      good_examples:
+        - |
+          # List comprehension
+          squares = [x ** 2 for x in range(10)]
+          
+          # Dict comprehension
+          word_lengths = {word: len(word) for word in words}
+          
+          # Filtered comprehension
+          evens = [x for x in numbers if x % 2 == 0]
+      bad_examples:
+        - |
+          squares = list(map(lambda x: x ** 2, range(10)))
+          evens = list(filter(lambda x: x % 2 == 0, numbers))
+      tags: [comprehensions, functional]
+
+  - id: PYE025
+    title: 'Use Named Tuples for Lightweight Data Classes'
+    category: code_style
+    level: beginner
+    priority: medium
+    content:
+      description: |
+        Use NamedTuple for immutable data containers with named fields.
+      good_examples:
+        - |
+          from typing import NamedTuple
+          
+          class Point(NamedTuple):
+              x: float
+              y: float
+              label: str = ""
+          
+          p = Point(1.0, 2.0, "origin")
+          print(p.x, p.y)  # Named access
+      tags: [namedtuple, data-classes]
+
+  - id: PYE026
+    title: 'Use Slots for Memory Efficiency'
+    category: code_style
+    level: advanced
+    priority: low
+    content:
+      description: |
+        Use __slots__ in classes to reduce memory footprint when creating many instances.
+      good_examples:
+        - |
+          class Point:
+              __slots__ = ('x', 'y')
+              
+              def __init__(self, x: float, y: float):
+                  self.x = x
+                  self.y = y
+          
+          # Or with dataclasses
+          @dataclass(slots=True)  # Python 3.10+
+          class Point:
+              x: float
+              y: float
+      tags: [slots, memory, optimization]
+
+  - id: PYE027
+    title: 'Use Enum Instead of String Constants'
+    category: code_style
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Use Enum classes instead of string constants for fixed sets of values.
+      good_examples:
+        - |
+          from enum import Enum, auto
+          
+          class Status(Enum):
+              PENDING = auto()
+              ACTIVE = auto()
+              COMPLETED = auto()
+          
+          def process(status: Status) -> None:
+              if status == Status.PENDING:
+                  ...
+      bad_examples:
+        - |
+          STATUS_PENDING = "pending"
+          STATUS_ACTIVE = "active"
+          
+          def process(status: str) -> None:
+              if status == "pending":  # Typo-prone!
+                  ...
+      tags: [enum, constants, type-safety]
+
+  - id: PYE028
+    title: 'Use StrEnum for String-Value Enums (3.11+)'
+    category: code_style
+    level: intermediate
+    priority: medium
+    python_version:
+      min_version: '3.11'
+    content:
+      description: |
+        Use StrEnum when enum values need to be used as strings.
+      good_examples:
+        - |
+          from enum import StrEnum
+          
+          class Color(StrEnum):
+              RED = "red"
+              GREEN = "green"
+              BLUE = "blue"
+          
+          # Can use directly as string
+          print(f"Color is {Color.RED}")  # "Color is red"
+      tags: [enum, strenum, python311]
+
+  - id: PYE029
+    title: 'Use Property Decorators for Computed Attributes'
+    category: code_style
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Use @property for computed attributes that look like regular attributes.
+      good_examples:
+        - |
+          class Circle:
+              def __init__(self, radius: float):
+                  self._radius = radius
+              
+              @property
+              def radius(self) -> float:
+                  return self._radius
+              
+              @radius.setter
+              def radius(self, value: float) -> None:
+                  if value < 0:
+                      raise ValueError("Radius must be non-negative")
+                  self._radius = value
+              
+              @property
+              def area(self) -> float:
+                  return 3.14159 * self._radius ** 2
+      tags: [property, encapsulation, computed]
+
+  # ============================================================================
+  # DOCUMENTATION PRACTICES (5 practices)
+  # ============================================================================
+
+  - id: PYE030
+    title: 'Write Comprehensive Docstrings'
+    category: documentation
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Document all public functions, classes, and modules with Google-style docstrings.
+      good_examples:
+        - |
+          def calculate_discount(price: float, percentage: float) -> float:
+              """Calculate the discounted price.
+              
+              Args:
+                  price: Original price in dollars.
+                  percentage: Discount percentage (0-100).
+              
+              Returns:
+                  Discounted price.
+              
+              Raises:
+                  ValueError: If percentage is not in valid range.
+              
+              Example:
+                  >>> calculate_discount(100.0, 20)
+                  80.0
+              """
+              if not 0 <= percentage <= 100:
+                  raise ValueError("Percentage must be 0-100")
+              return price * (1 - percentage / 100)
+      tags: [docstrings, documentation, google-style]
+
+  - id: PYE031
+    title: 'Document Module Purpose'
+    category: documentation
+    level: beginner
+    priority: medium
+    content:
+      description: |
+        Add module-level docstrings explaining the module's purpose and contents.
+      good_examples:
+        - |
+          """User authentication and authorization utilities.
+          
+          This module provides functions for:
+          - User authentication via JWT tokens
+          - Role-based access control
+          - Password hashing and validation
+          
+          Example:
+              from auth import authenticate_user, require_role
+              
+              @require_role("admin")
+              def admin_endpoint():
+                  ...
+          """
+      tags: [docstrings, modules, documentation]
+
+  - id: PYE032
+    title: 'Use Type Hints as Documentation'
+    category: documentation
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Let type hints serve as self-documentation, reducing redundant docstring info.
+      good_examples:
+        - |
+          @dataclass
+          class UserCreateRequest:
+              """Request payload for creating a new user."""
+              username: str  # Unique username, 3-20 characters
+              email: str     # Valid email address
+              role: UserRole = UserRole.USER  # Default role for new users
+      tags: [typing, documentation, dataclasses]
+
+  - id: PYE033
+    title: 'Document Exceptions in Docstrings'
+    category: documentation
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Always document what exceptions a function may raise.
+      good_examples:
+        - |
+          def get_user(user_id: int) -> User:
+              """Fetch user by ID.
+              
+              Args:
+                  user_id: The user's unique identifier.
+              
+              Returns:
+                  The User object.
+              
+              Raises:
+                  UserNotFoundError: If no user exists with the given ID.
+                  DatabaseError: If the database connection fails.
+              """
+      tags: [docstrings, exceptions, documentation]
+
+  - id: PYE034
+    title: 'Add Examples to Complex Functions'
+    category: documentation
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Include doctest-compatible examples for complex functions.
+      good_examples:
+        - |
+          def parse_date(date_str: str) -> datetime:
+              """Parse a date string in various formats.
+              
+              Examples:
+                  >>> parse_date("2024-01-15")
+                  datetime(2024, 1, 15)
+                  >>> parse_date("01/15/2024")
+                  datetime(2024, 1, 15)
+                  >>> parse_date("January 15, 2024")
+                  datetime(2024, 1, 15)
+              """
+      tags: [docstrings, doctest, examples]
+
+  # ============================================================================
+  # PERFORMANCE PRACTICES (7 practices)
+  # ============================================================================
+
+  - id: PYE040
+    title: 'Use Generators for Large Datasets'
+    category: performance
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use generators instead of lists when processing large datasets.
+      good_examples:
+        - |
+          def read_large_file(path: Path):
+              """Read file line by line without loading entire file."""
+              with open(path) as f:
+                  for line in f:
+                      yield line.strip()
+          
+          # Process without loading all lines into memory
+          for line in read_large_file(huge_file):
+              process(line)
+      bad_examples:
+        - |
+          def read_large_file(path: Path):
+              with open(path) as f:
+                  return f.readlines()  # Loads entire file into memory!
+      tags: [generators, memory, performance]
+
+  - id: PYE041
+    title: 'Use functools.lru_cache for Memoization'
+    category: performance
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use @lru_cache to cache expensive function results.
+      good_examples:
+        - |
+          from functools import lru_cache
+          
+          @lru_cache(maxsize=128)
+          def fibonacci(n: int) -> int:
+              if n < 2:
+                  return n
+              return fibonacci(n - 1) + fibonacci(n - 2)
+          
+          # For methods, use cached_property
+          from functools import cached_property
+          
+          class User:
+              @cached_property
+              def full_profile(self) -> dict:
+                  return fetch_full_profile(self.id)
+      tags: [caching, lru_cache, memoization]
+
+  - id: PYE042
+    title: 'Use itertools for Efficient Iteration'
+    category: performance
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Use itertools for memory-efficient iteration patterns.
+      good_examples:
+        - |
+          from itertools import islice, chain, groupby
+          
+          # Take first N items without creating list
+          first_10 = islice(huge_generator, 10)
+          
+          # Chain multiple iterables
+          all_items = chain(items1, items2, items3)
+          
+          # Group consecutive items
+          for key, group in groupby(sorted_items, key=lambda x: x.category):
+              process_group(key, list(group))
+      tags: [itertools, generators, performance]
+
+  - id: PYE043
+    title: 'Use __slots__ for Memory-Intensive Classes'
+    category: performance
+    level: advanced
+    priority: medium
+    content:
+      description: |
+        Use __slots__ when creating many instances of a class to reduce memory.
+      good_examples:
+        - |
+          @dataclass(slots=True)
+          class Point:
+              x: float
+              y: float
+          
+          # Creates millions of points with reduced memory
+          points = [Point(i, i*2) for i in range(1_000_000)]
+      tags: [slots, memory, dataclasses]
+
+  - id: PYE044
+    title: 'Use collections.deque for Queues'
+    category: performance
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Use deque instead of list for queue operations (append/pop from both ends).
+      good_examples:
+        - |
+          from collections import deque
+          
+          # Efficient FIFO queue
+          queue = deque()
+          queue.append(item)      # O(1)
+          item = queue.popleft()  # O(1)
+          
+          # Fixed-size buffer
+          recent_items = deque(maxlen=100)
+      bad_examples:
+        - |
+          queue = []
+          queue.append(item)
+          item = queue.pop(0)  # O(n) - inefficient!
+      tags: [deque, collections, queues]
+
+  - id: PYE045
+    title: 'Use set for Membership Testing'
+    category: performance
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Use set instead of list for membership testing (O(1) vs O(n)).
+      good_examples:
+        - |
+          valid_statuses = {"active", "pending", "completed"}
+          
+          if status in valid_statuses:  # O(1)
+              process(status)
+      bad_examples:
+        - |
+          valid_statuses = ["active", "pending", "completed"]
+          
+          if status in valid_statuses:  # O(n)
+              process(status)
+      tags: [set, performance, membership]
+
+  - id: PYE046
+    title: 'Use str.join() for String Concatenation'
+    category: performance
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Use ''.join() instead of += for concatenating many strings.
+      good_examples:
+        - |
+          parts = ["Hello", "World", "!"]
+          result = " ".join(parts)  # Efficient
+          
+          # Build string from items
+          result = "".join(str(item) for item in items)
+      bad_examples:
+        - |
+          result = ""
+          for item in items:
+              result += str(item)  # Creates new string each time!
+      tags: [strings, performance, concatenation]
+
+  # ============================================================================
+  # DATACLASS PRACTICES (5 practices)
+  # ============================================================================
+
+  - id: PYE050
+    title: 'Use Dataclasses for Data Containers'
+    category: maintainability
+    level: beginner
+    priority: critical
+    content:
+      description: |
+        Use @dataclass for classes that primarily hold data.
+      good_examples:
+        - |
+          from dataclasses import dataclass, field
+          
+          @dataclass
+          class User:
+              name: str
+              email: str
+              age: int = 0
+              roles: list[str] = field(default_factory=list)
+      bad_examples:
+        - |
+          class User:
+              def __init__(self, name, email, age=0, roles=None):
+                  self.name = name
+                  self.email = email
+                  self.age = age
+                  self.roles = roles or []
+      tags: [dataclasses, data-containers]
+
+  - id: PYE051
+    title: 'Use Frozen Dataclasses for Immutability'
+    category: maintainability
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use frozen=True for immutable data classes that should not be modified.
+      good_examples:
+        - |
+          @dataclass(frozen=True)
+          class Config:
+              host: str
+              port: int
+              debug: bool = False
+          
+          config = Config("localhost", 8080)
+          # config.port = 9000  # Raises FrozenInstanceError
+      tags: [dataclasses, immutability, frozen]
+
+  - id: PYE052
+    title: 'Use field() for Complex Defaults'
+    category: maintainability
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use field(default_factory=...) for mutable default values.
+      good_examples:
+        - |
+          @dataclass
+          class Order:
+              items: list[str] = field(default_factory=list)
+              metadata: dict = field(default_factory=dict)
+              created_at: datetime = field(default_factory=datetime.now)
+      bad_examples:
+        - |
+          @dataclass
+          class Order:
+              items: list[str] = []  # BUG: Shared mutable default!
+      tags: [dataclasses, field, defaults]
+
+  - id: PYE053
+    title: 'Use kw_only for Dataclass Fields (3.10+)'
+    category: maintainability
+    level: intermediate
+    priority: medium
+    python_version:
+      min_version: '3.10'
+    content:
+      description: |
+        Use kw_only=True to require keyword arguments for certain fields.
+      good_examples:
+        - |
+          @dataclass
+          class APIConfig:
+              url: str
+              timeout: int = field(default=30, kw_only=True)
+              retries: int = field(default=3, kw_only=True)
+          
+          # Must use keywords for timeout and retries
+          config = APIConfig("https://api.example.com", timeout=60)
+      tags: [dataclasses, kw_only, python310]
+
+  - id: PYE054
+    title: 'Use __post_init__ for Validation'
+    category: maintainability
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Use __post_init__ for validation or computed fields in dataclasses.
+      good_examples:
+        - |
+          @dataclass
+          class Rectangle:
+              width: float
+              height: float
+              area: float = field(init=False)
+              
+              def __post_init__(self):
+                  if self.width <= 0 or self.height <= 0:
+                      raise ValueError("Dimensions must be positive")
+                  self.area = self.width * self.height
+      tags: [dataclasses, validation, post_init]
+
+  # ============================================================================
+  # SECURITY PRACTICES (5 practices)
+  # ============================================================================
+
+  - id: PYE060
+    title: 'Never Use eval() or exec() with User Input'
+    category: security
+    level: beginner
+    priority: critical
+    content:
+      description: |
+        Never use eval(), exec(), or compile() with untrusted input.
+      good_examples:
+        - |
+          # For math expressions, use ast.literal_eval or a math parser
+          import ast
+          
+          def safe_eval_literal(expr: str):
+              return ast.literal_eval(expr)
+          
+          # For JSON-like data
+          import json
+          data = json.loads(user_input)
+      bad_examples:
+        - |
+          # DANGEROUS: Code injection vulnerability!
+          result = eval(user_input)
+      tags: [security, eval, injection]
+
+  - id: PYE061
+    title: 'Use Secrets Module for Cryptographic Randomness'
+    category: security
+    level: intermediate
+    priority: critical
+    content:
+      description: |
+        Use secrets module instead of random for security-sensitive operations.
+      good_examples:
+        - |
+          import secrets
+          
+          # Generate a secure token
+          token = secrets.token_urlsafe(32)
+          
+          # Generate a secure password
+          password = secrets.token_hex(16)
+          
+          # Secure comparison to prevent timing attacks
+          if secrets.compare_digest(provided_token, stored_token):
+              ...
+      bad_examples:
+        - |
+          import random
+          token = ''.join(random.choices(string.ascii_letters, k=32))  # Predictable!
+      tags: [security, secrets, cryptography]
+
+  - id: PYE062
+    title: 'Sanitize File Paths'
+    category: security
+    level: intermediate
+    priority: critical
+    content:
+      description: |
+        Always validate and sanitize file paths to prevent directory traversal.
+      good_examples:
+        - |
+          from pathlib import Path
+          
+          def safe_file_access(base_dir: Path, filename: str) -> Path:
+              """Safely construct file path within base directory."""
+              # Resolve to absolute path
+              file_path = (base_dir / filename).resolve()
+              
+              # Ensure it's within base directory
+              if not file_path.is_relative_to(base_dir.resolve()):
+                  raise SecurityError("Path traversal attempt detected")
+              
+              return file_path
+      bad_examples:
+        - |
+          # DANGEROUS: Allows path traversal
+          file_path = base_dir / user_input
+          content = file_path.read_text()
+      tags: [security, path-traversal, files]
+
+  - id: PYE063
+    title: 'Use Parameterized Queries for SQL'
+    category: security
+    level: beginner
+    priority: critical
+    content:
+      description: |
+        Always use parameterized queries to prevent SQL injection.
+      good_examples:
+        - |
+          # SQLAlchemy
+          result = session.execute(
+              text("SELECT * FROM users WHERE id = :id"),
+              {"id": user_id}
+          )
+          
+          # Raw database driver
+          cursor.execute(
+              "SELECT * FROM users WHERE email = %s",
+              (email,)
+          )
+      bad_examples:
+        - |
+          # DANGEROUS: SQL injection vulnerability!
+          query = f"SELECT * FROM users WHERE email = '{email}'"
+          cursor.execute(query)
+      tags: [security, sql-injection, database]
+
+  - id: PYE064
+    title: 'Hash Passwords with bcrypt or argon2'
+    category: security
+    level: intermediate
+    priority: critical
+    content:
+      description: |
+        Use bcrypt or argon2 for password hashing, never MD5/SHA.
+      good_examples:
+        - |
+          import bcrypt
+          
+          def hash_password(password: str) -> bytes:
+              return bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+          
+          def verify_password(password: str, hashed: bytes) -> bool:
+              return bcrypt.checkpw(password.encode(), hashed)
+      bad_examples:
+        - |
+          import hashlib
+          # DANGEROUS: MD5/SHA are not suitable for passwords!
+          hashed = hashlib.md5(password.encode()).hexdigest()
+      tags: [security, passwords, bcrypt]
+
+  # ============================================================================
+  # ASYNC PRACTICES (6 practices)
+  # ============================================================================
+
+  - id: PYE070
+    title: 'Use async/await for I/O-Bound Operations'
+    category: async_patterns
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use async/await for I/O-bound operations to improve concurrency.
+      good_examples:
+        - |
+          import asyncio
+          import aiohttp
+          
+          async def fetch_all(urls: list[str]) -> list[str]:
+              async with aiohttp.ClientSession() as session:
+                  tasks = [fetch_url(session, url) for url in urls]
+                  return await asyncio.gather(*tasks)
+          
+          async def fetch_url(session, url: str) -> str:
+              async with session.get(url) as response:
+                  return await response.text()
+      tags: [async, asyncio, concurrency]
+
+  - id: PYE071
+    title: 'Use asyncio.gather for Concurrent Tasks'
+    category: async_patterns
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use asyncio.gather() to run multiple coroutines concurrently.
+      good_examples:
+        - |
+          async def process_all(items: list[Item]) -> list[Result]:
+              tasks = [process_item(item) for item in items]
+              results = await asyncio.gather(*tasks, return_exceptions=True)
+              
+              # Handle any errors
+              for i, result in enumerate(results):
+                  if isinstance(result, Exception):
+                      logger.error(f"Failed to process {items[i]}: {result}")
+              
+              return [r for r in results if not isinstance(r, Exception)]
+      tags: [async, asyncio, gather]
+
+  - id: PYE072
+    title: 'Use asyncio.TaskGroup (3.11+)'
+    category: async_patterns
+    level: advanced
+    priority: medium
+    python_version:
+      min_version: '3.11'
+    content:
+      description: |
+        Use TaskGroup for structured concurrency with better error handling.
+      good_examples:
+        - |
+          async def process_all(items: list[Item]) -> list[Result]:
+              results = []
+              async with asyncio.TaskGroup() as tg:
+                  for item in items:
+                      tg.create_task(process_and_collect(item, results))
+              return results
+      tags: [async, taskgroup, python311]
+
+  - id: PYE073
+    title: 'Use async Context Managers'
+    category: async_patterns
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use async with for async context managers (connections, sessions).
+      good_examples:
+        - |
+          async with aiohttp.ClientSession() as session:
+              async with session.get(url) as response:
+                  data = await response.json()
+          
+          async with aiosqlite.connect("db.sqlite") as conn:
+              async with conn.execute("SELECT * FROM users") as cursor:
+                  rows = await cursor.fetchall()
+      tags: [async, context-managers, resources]
+
+  - id: PYE074
+    title: 'Use async Generators for Streaming'
+    category: async_patterns
+    level: advanced
+    priority: medium
+    content:
+      description: |
+        Use async generators for streaming data asynchronously.
+      good_examples:
+        - |
+          async def fetch_pages(url: str):
+              page = 1
+              while True:
+                  data = await fetch_page(url, page)
+                  if not data:
+                      break
+                  yield data
+                  page += 1
+          
+          async for page_data in fetch_pages(api_url):
+              process(page_data)
+      tags: [async, generators, streaming]
+
+  - id: PYE075
+    title: 'Use Semaphores to Limit Concurrency'
+    category: async_patterns
+    level: advanced
+    priority: medium
+    content:
+      description: |
+        Use asyncio.Semaphore to limit concurrent operations.
+      good_examples:
+        - |
+          async def fetch_with_limit(urls: list[str], limit: int = 10):
+              semaphore = asyncio.Semaphore(limit)
+              
+              async def fetch_one(url: str):
+                  async with semaphore:
+                      return await fetch(url)
+              
+              return await asyncio.gather(*[fetch_one(url) for url in urls])
+      tags: [async, semaphore, rate-limiting]
+
+  # ============================================================================
+  # TESTING PRACTICES (5 practices)
+  # ============================================================================
+
+  - id: PYE080
+    title: 'Use pytest for Testing'
+    category: testing
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Use pytest as the testing framework with clear test naming.
+      good_examples:
+        - |
+          import pytest
+          
+          def test_calculate_total_returns_sum():
+              result = calculate_total([10.0, 20.0, 30.0])
+              assert result == 60.0
+          
+          def test_calculate_total_with_tax():
+              result = calculate_total([100.0], tax_rate=0.1)
+              assert result == 110.0
+          
+          def test_calculate_total_raises_on_negative_tax():
+              with pytest.raises(ValueError):
+                  calculate_total([100.0], tax_rate=-0.1)
+      tags: [testing, pytest]
+
+  - id: PYE081
+    title: 'Use Fixtures for Test Setup'
+    category: testing
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use pytest fixtures for test setup and dependency injection.
+      good_examples:
+        - |
+          import pytest
+          
+          @pytest.fixture
+          def db_session():
+              session = create_test_session()
+              yield session
+              session.rollback()
+              session.close()
+          
+          @pytest.fixture
+          def sample_user(db_session):
+              user = User(name="Test", email="test@example.com")
+              db_session.add(user)
+              db_session.commit()
+              return user
+          
+          def test_get_user(db_session, sample_user):
+              result = get_user(db_session, sample_user.id)
+              assert result.name == "Test"
+      tags: [testing, pytest, fixtures]
+
+  - id: PYE082
+    title: 'Use Parametrize for Test Cases'
+    category: testing
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use @pytest.mark.parametrize for testing multiple inputs.
+      good_examples:
+        - |
+          @pytest.mark.parametrize("input,expected", [
+              ("hello", "HELLO"),
+              ("World", "WORLD"),
+              ("123", "123"),
+              ("", ""),
+          ])
+          def test_uppercase(input, expected):
+              assert uppercase(input) == expected
+          
+          @pytest.mark.parametrize("a,b,expected", [
+              (1, 2, 3),
+              (0, 0, 0),
+              (-1, 1, 0),
+          ])
+          def test_add(a, b, expected):
+              assert add(a, b) == expected
+      tags: [testing, pytest, parametrize]
+
+  - id: PYE083
+    title: 'Mock External Dependencies'
+    category: testing
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use unittest.mock to isolate tests from external dependencies.
+      good_examples:
+        - |
+          from unittest.mock import Mock, patch, AsyncMock
+          
+          def test_fetch_user_calls_api():
+              with patch("module.http_client.get") as mock_get:
+                  mock_get.return_value.json.return_value = {"id": 1, "name": "Test"}
+                  
+                  result = fetch_user(1)
+                  
+                  mock_get.assert_called_once_with("/users/1")
+                  assert result.name == "Test"
+          
+          @pytest.mark.asyncio
+          async def test_async_fetch():
+              with patch("module.fetch", new_callable=AsyncMock) as mock_fetch:
+                  mock_fetch.return_value = {"data": "test"}
+                  result = await fetch_data()
+                  assert result == {"data": "test"}
+      tags: [testing, mocking, unittest.mock]
+
+  - id: PYE084
+    title: 'Write Integration Tests Separately'
+    category: testing
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Separate unit tests from integration tests using markers.
+      good_examples:
+        - |
+          # Unit test - fast, isolated
+          def test_validate_email():
+              assert validate_email("test@example.com") is True
+              assert validate_email("invalid") is False
+          
+          # Integration test - requires database
+          @pytest.mark.integration
+          def test_create_user_in_database(db_session):
+              user = create_user(db_session, "test@example.com")
+              assert db_session.query(User).count() == 1
+          
+          # In pytest.ini or pyproject.toml:
+          # markers = integration: marks tests as integration tests
+      tags: [testing, integration, markers]

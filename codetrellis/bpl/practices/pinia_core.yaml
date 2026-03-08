@@ -1,0 +1,1191 @@
+# Pinia State Management Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.52 - Pinia State Management Framework Support
+# Practice IDs: PINIA001-PINIA050
+# Coverage: Store Definition, Getters, Actions, Plugins, TypeScript,
+#           Performance, Testing, SSR, Patterns, Migration
+# Versions: Pinia v0.x-v3.x (defineStore Options + Setup API, storeToRefs,
+#           $patch, $subscribe, $onAction, createPinia, plugins)
+
+practices:
+  # ============================================================================
+  # STORE DEFINITION (PINIA001-PINIA010) - Store setup best practices
+  # ============================================================================
+
+  - id: PINIA001
+    title: "Use defineStore with a unique string ID"
+    description: "Always provide a unique string ID as the first argument to defineStore(). This ID is used for DevTools, SSR hydration, and plugin integration. Use kebab-case or camelCase consistently across the project."
+    category: "pinia_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia", "vue"]
+    tags: ["pinia", "defineStore", "store", "id", "naming"]
+    example: |
+      import { defineStore } from 'pinia';
+
+      // ✅ Unique string ID
+      export const useUserStore = defineStore('user', {
+        state: () => ({ name: '', email: '' }),
+      });
+
+      // ✅ Convention: use<Name>Store with matching 'name' ID
+      export const useCartStore = defineStore('cart', () => {
+        const items = ref<CartItem[]>([]);
+        return { items };
+      });
+
+  - id: PINIA002
+    title: "Choose Options API vs Setup API consistently"
+    description: "Pick one store definition style and use it consistently. Options API (object with state/getters/actions) is simpler and familiar to Options API Vue users. Setup API (function returning refs/computed/functions) is more flexible and aligns with Composition API patterns."
+    category: "pinia_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia"]
+    tags:
+      ["pinia", "options-api", "setup-api", "composition-api", "consistency"]
+    example: |
+      // ✅ Options API
+      export const useCounterStore = defineStore('counter', {
+        state: () => ({ count: 0 }),
+        getters: { double: (state) => state.count * 2 },
+        actions: { increment() { this.count++; } },
+      });
+
+      // ✅ Setup API (Composition)
+      export const useCounterStore = defineStore('counter', () => {
+        const count = ref(0);
+        const double = computed(() => count.value * 2);
+        function increment() { count.value++; }
+        return { count, double, increment };
+      });
+
+  - id: PINIA003
+    title: "Name store hooks with use<Name>Store convention"
+    description: "Follow the use<Name>Store naming convention for defineStore exports. This makes stores instantly recognizable as composables and aligns with Vue Composition API naming patterns."
+    category: "pinia_store"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "naming", "convention", "composable"]
+    example: |
+      // ✅ use<Name>Store convention
+      export const useUserStore = defineStore('user', { ... });
+      export const useCartStore = defineStore('cart', { ... });
+      export const useAuthStore = defineStore('auth', { ... });
+
+      // ❌ Avoid non-standard naming
+      export const userStore = defineStore('user', { ... });
+      export const getUsers = defineStore('user', { ... });
+
+  - id: PINIA004
+    title: "State must be a function returning an object in Options API"
+    description: "In Options API stores, state must be a factory function returning a fresh object. This ensures each store instance gets its own state, critical for SSR where stores are shared across requests."
+    category: "pinia_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "state", "factory", "ssr", "options-api"]
+    example: |
+      // ✅ State factory function
+      export const useStore = defineStore('main', {
+        state: () => ({
+          count: 0,
+          items: [] as Item[],
+          user: null as User | null,
+        }),
+      });
+
+      // ❌ Never use a plain object (causes SSR state leak)
+      export const useStore = defineStore('main', {
+        state: { count: 0 },  // WRONG: shared reference
+      });
+
+  - id: PINIA005
+    title: "Use ref() and reactive() for state in Setup stores"
+    description: "In Setup API stores, use ref() for primitive values and reactive() for objects. All returned refs/reactives become the store's state. Use shallowRef() for large non-reactive data."
+    category: "pinia_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "ref", "reactive", "setup-api", "state"]
+    example: |
+      export const useStore = defineStore('main', () => {
+        const count = ref(0);                    // ✅ Primitive → ref
+        const user = ref<User | null>(null);     // ✅ Nullable → ref
+        const filters = reactive({ status: 'all', sort: 'date' }); // ✅ Object → reactive
+        const largeData = shallowRef<BigData[]>([]); // ✅ Large data → shallowRef
+        return { count, user, filters, largeData };
+      });
+
+  - id: PINIA006
+    title: "Export only what consumers need from Setup stores"
+    description: "In Setup API stores, only return values that should be accessible to consumers. Internal helper functions, intermediate variables, and implementation details should not be returned."
+    category: "pinia_store"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "setup-api", "encapsulation", "api-surface"]
+    example: |
+      export const useAuthStore = defineStore('auth', () => {
+        const token = ref<string | null>(null);
+        const user = ref<User | null>(null);
+
+        // Internal — NOT returned
+        function parseToken(raw: string): TokenPayload { ... }
+        const API_URL = 'https://api.example.com';
+
+        // Public — returned
+        const isAuthenticated = computed(() => !!token.value);
+        async function login(credentials: Credentials) { ... }
+        async function logout() { ... }
+
+        return { user, isAuthenticated, login, logout }; // ✅ No internals exposed
+      });
+
+  - id: PINIA007
+    title: "One store per domain or feature"
+    description: "Organize stores by domain or feature, not by data type. Each store should manage a cohesive slice of application state. Avoid a single monolithic store or too many micro-stores."
+    category: "pinia_store"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "architecture", "domain", "feature", "organization"]
+    example: |
+      // ✅ Domain-oriented stores
+      stores/
+        useAuthStore.ts       // Authentication state
+        useCartStore.ts       // Shopping cart
+        useProductStore.ts    // Product catalog
+        useNotificationStore.ts // Notifications
+
+      // ❌ Avoid monolithic stores
+      stores/
+        useGlobalStore.ts     // Everything in one store
+
+  - id: PINIA008
+    title: "Use store composition for cross-store dependencies"
+    description: "When stores need data from other stores, call the other store's hook inside your store's actions or getters. In Options API, call within actions/getters (not state). In Setup API, call at the top of the setup function."
+    category: "pinia_store"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "composition", "cross-store", "dependencies"]
+    example: |
+      // ✅ Options API — cross-store in getters/actions
+      export const useCartStore = defineStore('cart', {
+        state: () => ({ items: [] as CartItem[] }),
+        getters: {
+          totalWithDiscount(): number {
+            const userStore = useUserStore(); // ✅ Inside getter
+            return this.items.reduce((sum, i) => sum + i.price, 0) * (1 - userStore.discount);
+          },
+        },
+      });
+
+      // ✅ Setup API — call at top
+      export const useCartStore = defineStore('cart', () => {
+        const userStore = useUserStore(); // ✅ At top of setup
+        const items = ref<CartItem[]>([]);
+        const total = computed(() => items.value.reduce((s, i) => s + i.price, 0) * (1 - userStore.discount));
+        return { items, total };
+      });
+
+  - id: PINIA009
+    title: "Enable HMR for stores in development"
+    description: "Use Pinia's acceptHMR pattern with import.meta.hot to enable Hot Module Replacement for stores. This preserves store state during development when store code changes."
+    category: "pinia_store"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia", "vite"]
+    tags: ["pinia", "hmr", "development", "vite", "hot-reload"]
+    example: |
+      export const useAuthStore = defineStore('auth', { ... });
+
+      // ✅ HMR support
+      if (import.meta.hot) {
+        import.meta.hot.accept(acceptHMRUpdate(useAuthStore, import.meta.hot));
+      }
+
+  - id: PINIA010
+    title: "Use persist plugin for stores that need localStorage/sessionStorage"
+    description: "Use pinia-plugin-persistedstate instead of manual localStorage code. Configure persist per-store with storage type, key, paths (partial persistence), and serializer options."
+    category: "pinia_store"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia", "pinia-plugin-persistedstate"]
+    tags: ["pinia", "persist", "localStorage", "sessionStorage", "plugin"]
+    example: |
+      export const useSettingsStore = defineStore('settings', {
+        state: () => ({
+          theme: 'light',
+          locale: 'en',
+          sidebarOpen: true,
+        }),
+        persist: {
+          key: 'app-settings',
+          storage: localStorage,
+          paths: ['theme', 'locale'], // ✅ Only persist specific fields
+        },
+      });
+
+  # ============================================================================
+  # GETTERS (PINIA011-PINIA018) - Getter best practices
+  # ============================================================================
+
+  - id: PINIA011
+    title: "Prefer getters over inline computations in components"
+    description: "Define derived state as store getters rather than computing in components. Getters are cached and shared across all components using the store."
+    category: "pinia_getter"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "getter", "computed", "caching", "performance"]
+    example: |
+      // ✅ Getter in store — cached and reusable
+      export const useTodoStore = defineStore('todo', {
+        state: () => ({ todos: [] as Todo[] }),
+        getters: {
+          completedCount: (state) => state.todos.filter(t => t.done).length,
+          pendingTodos: (state) => state.todos.filter(t => !t.done),
+        },
+      });
+
+      // ❌ Computing in every component
+      const todos = todoStore.todos;
+      const completed = computed(() => todos.filter(t => t.done).length); // Duplicated
+
+  - id: PINIA012
+    title: "Use state parameter in Options API getters"
+    description: "In Options API getters, use the state parameter for accessing state. Use 'this' only when accessing other getters. Arrow functions cannot use 'this' — use regular functions for cross-getter access."
+    category: "pinia_getter"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "getter", "state", "this", "options-api"]
+    example: |
+      getters: {
+        // ✅ State parameter — simple, works with arrow functions
+        double: (state) => state.count * 2,
+
+        // ✅ 'this' for accessing other getters (regular function required)
+        quadruple(): number {
+          return this.double * 2;
+        },
+
+        // ❌ Arrow function cannot use 'this' for getters
+        quadruple: (state) => this.double * 2, // 'this' is undefined
+      },
+
+  - id: PINIA013
+    title: "Return functions from getters for parameterized queries"
+    description: "When you need a getter that accepts arguments, return a function. Note: this disables caching — the function runs on every access. Use this sparingly."
+    category: "pinia_getter"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "getter", "arguments", "parameterized", "no-cache"]
+    example: |
+      getters: {
+        // ✅ Getter returning a function (not cached)
+        getItemById: (state) => {
+          return (id: string) => state.items.find(item => item.id === id);
+        },
+
+        // ✅ Setup API equivalent
+        // const getItemById = (id: string) => items.value.find(i => i.id === id);
+      },
+
+      // Usage
+      const item = store.getItemById('abc-123');
+
+  - id: PINIA014
+    title: "Use storeToRefs for reactive destructuring of state and getters"
+    description: "Use storeToRefs() when destructuring state and getters from a store to maintain reactivity. Regular destructuring loses reactivity. Actions can be destructured directly."
+    category: "pinia_getter"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "storeToRefs", "destructuring", "reactivity"]
+    example: |
+      import { storeToRefs } from 'pinia';
+
+      const store = useCounterStore();
+
+      // ✅ storeToRefs for state + getters
+      const { count, double } = storeToRefs(store);
+
+      // ✅ Actions can be destructured directly (they're just functions)
+      const { increment, reset } = store;
+
+      // ❌ Direct destructuring loses reactivity
+      const { count } = store; // count is a plain number, not reactive
+
+  - id: PINIA015
+    title: "Use computed() for getters in Setup stores"
+    description: "In Setup API stores, define getters using computed(). These become store getters with the same caching behavior as Options API getters."
+    category: "pinia_getter"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "setup-api", "computed", "getter"]
+    example: |
+      export const useStore = defineStore('main', () => {
+        const items = ref<Item[]>([]);
+
+        // ✅ Getters as computed
+        const totalPrice = computed(() => items.value.reduce((sum, i) => sum + i.price, 0));
+        const isEmpty = computed(() => items.value.length === 0);
+        const sortedItems = computed(() => [...items.value].sort((a, b) => a.name.localeCompare(b.name)));
+
+        return { items, totalPrice, isEmpty, sortedItems };
+      });
+
+  - id: PINIA016
+    title: "Avoid expensive computations in frequently-accessed getters"
+    description: "Getters are cached but re-evaluated when dependencies change. Avoid O(n²) or heavy operations in getters that depend on frequently changing state. Consider memoization for expensive computations."
+    category: "pinia_getter"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "getter", "performance", "memoization"]
+    example: |
+      // ✅ Efficient getter
+      getters: {
+        // Simple O(n) — fine for most cases
+        activeUsers: (state) => state.users.filter(u => u.active),
+
+        // ❌ Avoid O(n²) in getters
+        // sortedWithRelations: (state) => state.items.map(i =>
+        //   ({ ...i, related: state.items.filter(j => j.category === i.category) })
+        // ),
+      },
+
+  - id: PINIA017
+    title: "Cross-store getters should import and use other store hooks"
+    description: "When a getter needs data from another store, instantiate the other store inside the getter (Options API) or at the setup function top level (Setup API). Never import store state directly."
+    category: "pinia_getter"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "getter", "cross-store", "composition"]
+    example: |
+      // ✅ Options API — use other store in getter
+      getters: {
+        fullName(): string {
+          const settingsStore = useSettingsStore();
+          return settingsStore.showFullName ? `${this.firstName} ${this.lastName}` : this.firstName;
+        },
+      },
+
+  - id: PINIA018
+    title: "Type getter return values explicitly in TypeScript"
+    description: "In Options API stores with TypeScript, explicitly type getter return values when using 'this' to access other getters. TypeScript cannot infer the return type through 'this'."
+    category: "pinia_getter"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "getter", "typescript", "return-type"]
+    example: |
+      getters: {
+        // ✅ Explicit return type when using 'this'
+        formattedTotal(): string {
+          return `$${this.total.toFixed(2)}`;
+        },
+
+        // State-only getters can use arrow functions (inferred)
+        count: (state) => state.items.length,  // ✅ Inferred as number
+      },
+
+  # ============================================================================
+  # ACTIONS (PINIA019-PINIA028) - Action best practices
+  # ============================================================================
+
+  - id: PINIA019
+    title: "Mutate state directly in Options API actions using this"
+    description: "In Options API actions, mutate state directly via 'this'. Pinia actions are not wrapped in immer — you modify state directly. No need for $patch in simple cases."
+    category: "pinia_action"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "action", "state", "mutation", "this"]
+    example: |
+      actions: {
+        increment() {
+          this.count++;          // ✅ Direct mutation
+        },
+        addItem(item: Item) {
+          this.items.push(item); // ✅ Direct array mutation
+        },
+        setUser(user: User) {
+          this.user = user;      // ✅ Direct reassignment
+        },
+      },
+
+  - id: PINIA020
+    title: "Use $patch for batched state updates"
+    description: "Use $patch() when updating multiple state properties at once. $patch triggers a single subscription notification regardless of how many fields change, improving performance."
+    category: "pinia_action"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "$patch", "batch", "performance", "state"]
+    example: |
+      // ✅ $patch with object — simple batch update
+      store.$patch({
+        count: store.count + 1,
+        name: 'New Name',
+        hasChanged: true,
+      });
+
+      // ✅ $patch with function — complex mutations (arrays, nested)
+      store.$patch((state) => {
+        state.items.push(newItem);
+        state.total += newItem.price;
+        state.lastUpdated = Date.now();
+      });
+
+  - id: PINIA021
+    title: "Use async actions for API calls"
+    description: "Pinia actions can be async — use async/await for API calls. Handle loading and error states within the action. Actions can call other actions and access other stores."
+    category: "pinia_action"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "action", "async", "api", "await"]
+    example: |
+      actions: {
+        async fetchUsers() {
+          this.loading = true;
+          this.error = null;
+          try {
+            const response = await api.getUsers();
+            this.users = response.data;
+          } catch (error) {
+            this.error = error instanceof Error ? error.message : 'Failed to fetch';
+          } finally {
+            this.loading = false;
+          }
+        },
+      },
+
+  - id: PINIA022
+    title: "Use $subscribe for state change watchers"
+    description: "Use $subscribe() to react to state changes. Subscriptions are automatically cleaned up when the component unmounts (if called inside setup). Use { detached: true } for subscriptions that should outlive the component."
+    category: "pinia_action"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "$subscribe", "watcher", "state-changes", "cleanup"]
+    example: |
+      // ✅ Auto-cleanup subscription (component lifecycle)
+      const store = useCartStore();
+      store.$subscribe((mutation, state) => {
+        localStorage.setItem('cart', JSON.stringify(state));
+      });
+
+      // ✅ Detached subscription (survives component unmount)
+      store.$subscribe(
+        (mutation, state) => { analytics.track('cart_change', state); },
+        { detached: true }
+      );
+
+      // ✅ Flush timing
+      store.$subscribe(callback, { flush: 'post' }); // After DOM updates
+
+  - id: PINIA023
+    title: "Use $onAction for action lifecycle hooks"
+    description: "Use $onAction() to hook into action calls for logging, error tracking, or side effects. Provides before/after/onError hooks. Auto-cleaned when component unmounts unless detached."
+    category: "pinia_action"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "$onAction", "hooks", "lifecycle", "logging"]
+    example: |
+      store.$onAction(({ name, args, after, onError }) => {
+        const startTime = Date.now();
+        console.log(`Action ${name} called with`, args);
+
+        after((result) => {
+          console.log(`Action ${name} finished in ${Date.now() - startTime}ms`);
+        });
+
+        onError((error) => {
+          console.error(`Action ${name} failed:`, error);
+          errorTracker.capture(error);
+        });
+      });
+
+  - id: PINIA024
+    title: "Use $reset() to restore initial state in Options API stores"
+    description: "$reset() restores the store to its initial state. Only available in Options API stores because the state factory function provides the initial values. For Setup stores, implement reset manually."
+    category: "pinia_action"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "$reset", "initial-state", "options-api"]
+    example: |
+      // ✅ Options API — $reset() works automatically
+      const store = useFormStore();
+      store.$reset(); // Restores to state() return value
+
+      // ✅ Setup API — implement reset manually
+      export const useFormStore = defineStore('form', () => {
+        const name = ref('');
+        const email = ref('');
+
+        function $reset() {
+          name.value = '';
+          email.value = '';
+        }
+
+        return { name, email, $reset };
+      });
+
+  - id: PINIA025
+    title: "Handle errors in async actions with try/catch"
+    description: "Always wrap async operations in try/catch within actions. Set error state in the store and handle loading states. Consider returning the result for component-level handling."
+    category: "pinia_action"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "action", "async", "error-handling", "try-catch"]
+    example: |
+      actions: {
+        async createOrder(items: CartItem[]): Promise<Order | null> {
+          this.submitting = true;
+          this.error = null;
+          try {
+            const order = await api.createOrder(items);
+            this.lastOrder = order;
+            this.items = [];
+            return order;
+          } catch (error) {
+            this.error = error instanceof Error ? error.message : 'Order failed';
+            return null;
+          } finally {
+            this.submitting = false;
+          }
+        },
+      },
+
+  - id: PINIA026
+    title: "Compose actions across stores"
+    description: "Actions can use other stores by calling their hook inside the action. This enables coordinated state changes across multiple stores."
+    category: "pinia_action"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "action", "cross-store", "composition"]
+    example: |
+      // Options API
+      actions: {
+        async checkout() {
+          const userStore = useUserStore();
+          const notifyStore = useNotificationStore();
+
+          try {
+            const order = await api.checkout(this.items, userStore.address);
+            this.items = [];
+            notifyStore.success('Order placed!');
+          } catch (error) {
+            notifyStore.error('Checkout failed');
+          }
+        },
+      },
+
+  - id: PINIA027
+    title: "Prefer $patch function form for array and nested mutations"
+    description: "Use $patch with a callback function for complex mutations involving arrays (push, splice, filter) or deeply nested objects. The function form provides the draft state for direct mutation."
+    category: "pinia_action"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "$patch", "function", "arrays", "nested"]
+    example: |
+      // ✅ Function form for array mutations
+      store.$patch((state) => {
+        state.items.splice(index, 1);          // Remove item
+        state.items[0].quantity += 1;           // Modify nested
+        state.history.push({ action: 'remove', timestamp: Date.now() });
+      });
+
+      // ❌ Object form cannot do array operations
+      // store.$patch({ items: ??? }); // Would replace entire array
+
+  - id: PINIA028
+    title: "Avoid side effects in state mutations"
+    description: "Keep state mutations pure — no API calls, no localStorage writes, no DOM manipulation inside $patch or direct state assignment. Use actions for side effects, $subscribe for reactions."
+    category: "pinia_action"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "action", "purity", "side-effects", "best-practice"]
+    example: |
+      // ✅ Pure action + separate side effect
+      actions: {
+        async saveSettings(settings: Settings) {
+          this.settings = settings;        // Pure mutation
+          await api.saveSettings(settings); // Side effect in action
+        },
+      },
+
+      // ✅ Side effect via $subscribe
+      store.$subscribe((mutation, state) => {
+        localStorage.setItem('settings', JSON.stringify(state.settings));
+      });
+
+  # ============================================================================
+  # PLUGINS & CONFIGURATION (PINIA029-PINIA035) - Plugin best practices
+  # ============================================================================
+
+  - id: PINIA029
+    title: "Create Pinia instance in a separate file"
+    description: "Create the Pinia instance with createPinia() in a dedicated file and export it. Register plugins on this instance before passing it to app.use(). This keeps plugin configuration centralized."
+    category: "pinia_plugin"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia", "vue"]
+    tags: ["pinia", "createPinia", "setup", "configuration"]
+    example: |
+      // stores/index.ts
+      import { createPinia } from 'pinia';
+      import piniaPersistedState from 'pinia-plugin-persistedstate';
+
+      const pinia = createPinia();
+      pinia.use(piniaPersistedState);
+
+      export default pinia;
+
+      // main.ts
+      import pinia from './stores';
+      app.use(pinia);
+
+  - id: PINIA030
+    title: "Use pinia-plugin-persistedstate for state persistence"
+    description: "Use the official pinia-plugin-persistedstate plugin instead of manual localStorage/sessionStorage code. It handles serialization, hydration, and SSR automatically."
+    category: "pinia_plugin"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia", "pinia-plugin-persistedstate"]
+    tags: ["pinia", "persist", "plugin", "localStorage", "sessionStorage"]
+    example: |
+      // ✅ Plugin setup
+      import { createPinia } from 'pinia';
+      import piniaPersistedState from 'pinia-plugin-persistedstate';
+      const pinia = createPinia();
+      pinia.use(piniaPersistedState);
+
+      // ✅ Per-store configuration
+      export const useAuthStore = defineStore('auth', {
+        state: () => ({ token: null as string | null, user: null as User | null }),
+        persist: {
+          storage: sessionStorage,       // Use sessionStorage
+          paths: ['token'],              // Only persist token
+          serializer: {                  // Custom serializer
+            serialize: JSON.stringify,
+            deserialize: JSON.parse,
+          },
+        },
+      });
+
+  - id: PINIA031
+    title: "Write custom plugins using PiniaPluginContext"
+    description: "Custom Pinia plugins receive a context object with { store, app, pinia, options }. Use this to add properties, wrap actions, or subscribe to changes across all stores."
+    category: "pinia_plugin"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "plugin", "custom", "PiniaPluginContext"]
+    example: |
+      import type { PiniaPluginContext } from 'pinia';
+
+      // ✅ Custom plugin with typing
+      function myPlugin({ store, options }: PiniaPluginContext) {
+        // Add a property to every store
+        store.$state.createdAt = Date.now();
+
+        // Subscribe to all state changes
+        store.$subscribe((mutation) => {
+          console.log(`[${store.$id}] ${mutation.type}`);
+        });
+
+        // Add a method to every store
+        store.logState = () => console.log(store.$state);
+      }
+
+      pinia.use(myPlugin);
+
+  - id: PINIA032
+    title: "Augment store types when adding custom properties via plugins"
+    description: "When a plugin adds properties to stores, augment the PiniaCustomProperties and/or PiniaCustomStateProperties interfaces so TypeScript knows about them."
+    category: "pinia_plugin"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags:
+      ["pinia", "plugin", "typescript", "augmentation", "declaration-merging"]
+    example: |
+      // pinia.d.ts
+      import 'pinia';
+
+      declare module 'pinia' {
+        export interface PiniaCustomProperties {
+          $logger: (message: string) => void;
+          createdAt: number;
+        }
+
+        export interface PiniaCustomStateProperties<S> {
+          lastModified: number;
+        }
+      }
+
+  - id: PINIA033
+    title: "Use @pinia/nuxt for Nuxt integration"
+    description: "In Nuxt 3 projects, use @pinia/nuxt module instead of manual Pinia setup. It handles auto-imports, SSR state hydration, and DevTools integration automatically."
+    category: "pinia_plugin"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia", "nuxt"]
+    tags: ["pinia", "nuxt", "@pinia/nuxt", "ssr", "auto-import"]
+    example: |
+      // nuxt.config.ts
+      export default defineNuxtConfig({
+        modules: ['@pinia/nuxt'],
+        pinia: {
+          storesDirs: ['./stores/**'], // Auto-import stores
+        },
+      });
+
+      // stores/counter.ts — auto-imported in Nuxt
+      export const useCounterStore = defineStore('counter', {
+        state: () => ({ count: 0 }),
+      });
+
+  - id: PINIA034
+    title: "Use @pinia/testing for unit tests"
+    description: "Use createTestingPinia() from @pinia/testing to create a testing Pinia instance. It stubs all actions by default and provides initialState for setting up test scenarios."
+    category: "pinia_plugin"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia", "@pinia/testing"]
+    tags: ["pinia", "testing", "createTestingPinia", "unit-test", "vitest"]
+    example: |
+      import { createTestingPinia } from '@pinia/testing';
+      import { mount } from '@vue/test-utils';
+
+      // ✅ Create testing pinia with initial state
+      const wrapper = mount(MyComponent, {
+        global: {
+          plugins: [
+            createTestingPinia({
+              initialState: {
+                counter: { count: 10 },  // Pre-set store state
+              },
+              stubActions: false,  // Set true to auto-stub all actions
+            }),
+          ],
+        },
+      });
+
+      // ✅ Access store in test
+      const store = useCounterStore();
+      expect(store.count).toBe(10);
+
+  - id: PINIA035
+    title: "Configure persist paths to avoid persisting sensitive or transient state"
+    description: "When using persistence, explicitly list paths to persist. Never persist tokens, passwords, or transient UI state like loading/error flags."
+    category: "pinia_plugin"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia", "pinia-plugin-persistedstate"]
+    tags: ["pinia", "persist", "security", "paths", "sensitive"]
+    example: |
+      persist: {
+        paths: [
+          'preferences',    // ✅ User preferences
+          'cart.items',     // ✅ Cart contents
+          // ❌ Never persist:
+          // 'token',       // Security risk
+          // 'loading',     // Transient UI state
+          // 'error',       // Transient error state
+        ],
+      },
+
+  # ============================================================================
+  # TYPESCRIPT (PINIA036-PINIA040) - TypeScript integration best practices
+  # ============================================================================
+
+  - id: PINIA036
+    title: "Type state in Options API with explicit type annotations"
+    description: "In Options API stores, use 'as' assertions or explicit typing for state properties that TypeScript cannot infer, especially arrays, nullables, and union types."
+    category: "pinia_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "typescript", "state", "typing", "options-api"]
+    example: |
+      state: () => ({
+        users: [] as User[],                    // ✅ Typed array
+        selectedUser: null as User | null,      // ✅ Nullable
+        status: 'idle' as 'idle' | 'loading' | 'error', // ✅ Union
+        config: {} as AppConfig,                // ✅ Typed object
+      }),
+
+  - id: PINIA037
+    title: "Use generics with defineStore for full type safety"
+    description: "Pinia infers types from state/getters/actions definitions. For advanced cases, use defineStore generic parameters or extract state/getter/action interfaces."
+    category: "pinia_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "typescript", "generics", "defineStore", "type-safety"]
+    example: |
+      // ✅ Pinia infers types automatically in most cases
+      export const useStore = defineStore('main', {
+        state: () => ({ count: 0, name: 'Eduardo' }),
+        getters: {
+          doubleCount: (state) => state.count * 2,  // inferred as number
+        },
+        actions: {
+          increment() {
+            this.count++;  // 'this' is fully typed
+          },
+        },
+      });
+
+      // ✅ Extract types for reuse
+      type MainState = ReturnType<typeof useStore>['$state'];
+
+  - id: PINIA038
+    title: "Type refs explicitly in Setup stores"
+    description: "In Setup API stores, type ref() and reactive() explicitly when the type cannot be inferred from the initial value (e.g., empty arrays, null, complex objects)."
+    category: "pinia_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "typescript", "ref", "setup-api", "generics"]
+    example: |
+      export const useStore = defineStore('main', () => {
+        const items = ref<Item[]>([]);           // ✅ Generic for empty array
+        const user = ref<User | null>(null);     // ✅ Generic for nullable
+        const count = ref(0);                    // ✅ Inferred as number
+        const name = ref('');                    // ✅ Inferred as string
+        return { items, user, count, name };
+      });
+
+  - id: PINIA039
+    title: "Use ReturnType for extracting store types"
+    description: "Extract the store instance type using ReturnType for typing function parameters, props, or test helpers that accept a store instance."
+    category: "pinia_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "typescript", "ReturnType", "utility-types"]
+    example: |
+      import type { StoreDefinition } from 'pinia';
+
+      // ✅ Extract store type
+      type UserStore = ReturnType<typeof useUserStore>;
+
+      // ✅ Use in function parameters
+      function processUser(store: UserStore) {
+        console.log(store.name, store.email);
+      }
+
+      // ✅ Extract state type
+      type UserState = ReturnType<typeof useUserStore>['$state'];
+
+  - id: PINIA040
+    title: "Use mapState and mapActions type-safely with Options API components"
+    description: "When using map helpers (mapState, mapGetters, mapActions, mapWritableState, mapStores) in Options API Vue components, ensure proper typing by importing them from 'pinia'."
+    category: "pinia_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia", "vue"]
+    tags:
+      ["pinia", "mapState", "mapActions", "mapStores", "options-api-component"]
+    example: |
+      import { mapState, mapActions, mapStores } from 'pinia';
+      import { useCounterStore } from '@/stores/counter';
+
+      export default {
+        computed: {
+          ...mapState(useCounterStore, ['count', 'double']),
+          ...mapStores(useCounterStore), // this.counterStore
+        },
+        methods: {
+          ...mapActions(useCounterStore, ['increment', 'decrement']),
+        },
+      };
+
+  # ============================================================================
+  # PERFORMANCE & PATTERNS (PINIA041-PINIA045) - Performance best practices
+  # ============================================================================
+
+  - id: PINIA041
+    title: "Use storeToRefs to prevent unnecessary re-renders"
+    description: "Always use storeToRefs() for destructuring state/getters in templates. Direct store property access (store.count) in templates is fine, but destructuring without storeToRefs loses reactivity."
+    category: "pinia_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia", "vue"]
+    tags: ["pinia", "storeToRefs", "reactivity", "performance", "re-renders"]
+    example: |
+      <script setup>
+      import { storeToRefs } from 'pinia';
+
+      const store = useCounterStore();
+
+      // ✅ Reactive refs via storeToRefs
+      const { count, double } = storeToRefs(store);
+
+      // ✅ Actions destructured directly (plain functions)
+      const { increment } = store;
+
+      // ✅ Also fine: access directly on store in template
+      // {{ store.count }}
+      </script>
+
+  - id: PINIA042
+    title: "Use shallowRef for large non-reactive collections"
+    description: "In Setup stores, use shallowRef() for large datasets that don't need deep reactivity tracking. This prevents Vue from recursively making every nested property reactive."
+    category: "pinia_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "shallowRef", "performance", "large-data", "setup-api"]
+    example: |
+      export const useDataStore = defineStore('data', () => {
+        // ✅ shallowRef for large datasets
+        const records = shallowRef<Record[]>([]);
+
+        async function fetchRecords() {
+          const data = await api.getRecords();
+          records.value = data; // Triggers reactivity (reference change)
+        }
+
+        // ❌ Avoid: records.value[0].name = 'new'; // Won't trigger update
+        // ✅ Replace entire array: records.value = [...records.value];
+
+        return { records, fetchRecords };
+      });
+
+  - id: PINIA043
+    title: "Avoid watchers on entire store state — watch specific fields"
+    description: "When watching store state changes, watch specific properties instead of the entire store. Watching the full state triggers on every mutation, causing unnecessary computation."
+    category: "pinia_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia", "vue"]
+    tags: ["pinia", "watch", "performance", "granular", "reactivity"]
+    example: |
+      const store = useUserStore();
+      const { name, email } = storeToRefs(store);
+
+      // ✅ Watch specific fields
+      watch(name, (newName) => {
+        document.title = `Profile: ${newName}`;
+      });
+
+      // ❌ Avoid watching entire store state
+      // watch(() => store.$state, (state) => { ... }, { deep: true });
+
+      // ✅ Use $subscribe for broad state changes
+      store.$subscribe((mutation, state) => {
+        // Only called on actual mutations
+      });
+
+  - id: PINIA044
+    title: "Normalize store data for efficient lookups"
+    description: "For collections with frequent lookups by ID, normalize data using a Map or record object instead of arrays. This gives O(1) lookups instead of O(n) array.find()."
+    category: "pinia_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "normalization", "performance", "lookup", "data-structure"]
+    example: |
+      export const useUserStore = defineStore('user', {
+        state: () => ({
+          usersById: {} as Record<string, User>,  // ✅ O(1) lookup
+          userIds: [] as string[],                 // ✅ Ordered list
+        }),
+        getters: {
+          users: (state) => state.userIds.map(id => state.usersById[id]),
+          getUserById: (state) => (id: string) => state.usersById[id], // ✅ O(1)
+        },
+        actions: {
+          setUsers(users: User[]) {
+            this.userIds = users.map(u => u.id);
+            this.usersById = Object.fromEntries(users.map(u => [u.id, u]));
+          },
+        },
+      });
+
+  - id: PINIA045
+    title: "Avoid circular store dependencies"
+    description: "Never create circular dependencies between stores (A uses B which uses A). If two stores need each other, refactor to use a third coordinating store or pass data through actions."
+    category: "pinia_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia"]
+    tags: ["pinia", "circular", "dependency", "architecture", "anti-pattern"]
+    example: |
+      // ❌ Circular dependency — AVOID
+      // useAuthStore → useUserStore → useAuthStore
+
+      // ✅ Extract shared logic to a third store
+      // useAuthStore → useSessionStore (shared)
+      // useUserStore → useSessionStore (shared)
+
+      // ✅ Or pass data through action parameters
+      actions: {
+        async fetchProfile(userId: string) {
+          // Accept userId as param instead of importing useAuthStore
+          const profile = await api.getProfile(userId);
+          this.profile = profile;
+        },
+      },
+
+  # ============================================================================
+  # TESTING & SSR (PINIA046-PINIA050) - Testing and SSR best practices
+  # ============================================================================
+
+  - id: PINIA046
+    title: "Test stores in isolation without components"
+    description: "Pinia stores can be tested without mounting Vue components. Create a testing Pinia instance, call actions, and assert state/getter values directly."
+    category: "pinia_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia", "@pinia/testing"]
+    tags: ["pinia", "testing", "unit-test", "isolation"]
+    example: |
+      import { setActivePinia, createPinia } from 'pinia';
+      import { useCounterStore } from '@/stores/counter';
+
+      describe('Counter Store', () => {
+        beforeEach(() => {
+          setActivePinia(createPinia());
+        });
+
+        it('increments count', () => {
+          const store = useCounterStore();
+          expect(store.count).toBe(0);
+          store.increment();
+          expect(store.count).toBe(1);
+        });
+
+        it('computes double', () => {
+          const store = useCounterStore();
+          store.count = 5;
+          expect(store.double).toBe(10);
+        });
+      });
+
+  - id: PINIA047
+    title: "Mock store actions in component tests"
+    description: "Use createTestingPinia with stubActions: true (default) to auto-stub all actions in component tests. Override specific actions with vi.fn() or jest.fn() for custom behavior."
+    category: "pinia_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["pinia", "@pinia/testing", "vitest"]
+    tags: ["pinia", "testing", "mock", "stub", "component-test"]
+    example: |
+      import { createTestingPinia } from '@pinia/testing';
+      import { vi } from 'vitest';
+
+      const wrapper = mount(MyComponent, {
+        global: {
+          plugins: [createTestingPinia({ createSpy: vi.fn })],
+        },
+      });
+
+      const store = useUserStore();
+      // Actions are auto-stubbed
+      expect(store.fetchUser).not.toHaveBeenCalled();
+
+      // Trigger action via component interaction
+      await wrapper.find('button').trigger('click');
+      expect(store.fetchUser).toHaveBeenCalledOnce();
+
+  - id: PINIA048
+    title: "Handle SSR state hydration properly"
+    description: "In SSR applications, each request must get a fresh Pinia instance. State is serialized on the server and hydrated on the client. Use @pinia/nuxt for automatic handling in Nuxt."
+    category: "pinia_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["pinia", "nuxt", "vue-ssr"]
+    tags: ["pinia", "ssr", "hydration", "server-rendering", "nuxt"]
+    example: |
+      // ✅ Nuxt — automatic (via @pinia/nuxt module)
+      // No special handling needed
+
+      // ✅ Manual SSR — server entry
+      export default function createApp() {
+        const app = createSSRApp(App);
+        const pinia = createPinia();
+        app.use(pinia);
+
+        return { app, pinia };
+      }
+
+      // ✅ Manual SSR — client entry
+      const { app, pinia } = createApp();
+      // Hydrate state from server
+      pinia.state.value = JSON.parse(window.__PINIA_STATE__);
+      app.mount('#app');
+
+  - id: PINIA049
+    title: "Use mapStores for Options API component access"
+    description: "In Options API Vue components, use mapStores() for clean store access. It provides this.<storeId>Store with full typing. Prefer Composition API setup() with storeToRefs for new code."
+    category: "pinia_pattern"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia", "vue"]
+    tags: ["pinia", "mapStores", "options-api", "component", "vue"]
+    example: |
+      import { mapStores, mapState, mapActions } from 'pinia';
+      import { useUserStore } from '@/stores/user';
+      import { useCartStore } from '@/stores/cart';
+
+      export default {
+        computed: {
+          // ✅ Full store access via this.userStore / this.cartStore
+          ...mapStores(useUserStore, useCartStore),
+
+          // ✅ Individual state/getters
+          ...mapState(useUserStore, ['name', 'isAdmin']),
+
+          // ✅ Writable state
+          ...mapWritableState(useUserStore, ['name']),
+        },
+        methods: {
+          ...mapActions(useCartStore, ['addItem', 'checkout']),
+        },
+      };
+
+  - id: PINIA050
+    title: "Migrate from Vuex to Pinia incrementally"
+    description: "Migrate from Vuex to Pinia store by store. Both can coexist in the same app. Map mutations to actions (Pinia has no mutations), modules to standalone stores, and getters directly."
+    category: "pinia_pattern"
+    severity: "info"
+    applicability:
+      frameworks: ["pinia", "vuex"]
+    tags: ["pinia", "vuex", "migration", "incremental", "coexistence"]
+    example: |
+      // Vuex module → Pinia store mapping:
+      // Vuex state      → Pinia state (same)
+      // Vuex getters     → Pinia getters (same)
+      // Vuex mutations   → Pinia actions (direct state mutation)
+      // Vuex actions     → Pinia actions (can be async)
+      // Vuex modules     → Separate Pinia stores (no nesting)
+      // Vuex namespacing → Store IDs (automatic)
+
+      // ✅ Vuex module:
+      // { namespaced: true, state: { count: 0 }, mutations: { SET_COUNT(s, v) { s.count = v } } }
+
+      // ✅ Pinia equivalent:
+      export const useCounterStore = defineStore('counter', {
+        state: () => ({ count: 0 }),
+        actions: {
+          setCount(value: number) { this.count = value; },
+        },
+      });

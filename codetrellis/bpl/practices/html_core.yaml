@@ -1,0 +1,544 @@
+# HTML Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.16 - HTML Language Support
+# Practice IDs: HTML001-HTML050
+# Coverage: Semantic HTML, Accessibility, Forms, SEO, Performance,
+#           Web Components, Template Engines, Security, Responsive Design
+# Versions: HTML5/Living Standard, XHTML, HTML4
+
+practices:
+  # ============================================================================
+  # SEMANTIC HTML (HTML001-HTML008)
+  # ============================================================================
+
+  - id: HTML001
+    title: "Use semantic HTML elements over generic divs"
+    description: "Use <article>, <section>, <nav>, <aside>, <header>, <footer>, <main> instead of <div> with class names. Semantic elements improve accessibility, SEO, and code readability."
+    category: "semantic_html"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "semantic", "structure"]
+    example: |
+      <!-- Good -->
+      <header>...</header>
+      <nav>...</nav>
+      <main>
+        <article>...</article>
+        <aside>...</aside>
+      </main>
+      <footer>...</footer>
+
+      <!-- Bad -->
+      <div class="header">...</div>
+      <div class="nav">...</div>
+      <div class="main">
+        <div class="article">...</div>
+      </div>
+
+  - id: HTML002
+    title: "Use proper heading hierarchy (h1-h6)"
+    description: "Maintain a logical heading hierarchy. Each page should have exactly one <h1>. Do not skip heading levels (e.g., <h1> to <h3>). Headings create a document outline used by assistive technologies."
+    category: "semantic_html"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "semantic", "headings", "accessibility"]
+
+  - id: HTML003
+    title: "Use <figure> and <figcaption> for images with captions"
+    description: "Wrap images, diagrams, and code snippets that have captions in <figure> with a <figcaption> child. This associates the caption semantically with its content."
+    category: "semantic_html"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "semantic", "images"]
+
+  - id: HTML004
+    title: "Use <time> element for dates and times"
+    description: "Use the <time> element with datetime attribute for dates and times. This enables machine-readable time data for SEO and assistive technologies."
+    category: "semantic_html"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "semantic", "datetime"]
+    example: |
+      <time datetime="2024-01-15T09:00:00Z">January 15, 2024</time>
+
+  - id: HTML005
+    title: "Use <details> and <summary> for expandable content"
+    description: "Use native <details>/<summary> elements for accordion/disclosure patterns instead of JavaScript-driven solutions. They provide built-in accessibility and keyboard support."
+    category: "semantic_html"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "semantic", "interactive"]
+
+  - id: HTML006
+    title: "Use <dialog> for modal dialogs"
+    description: "Use the native <dialog> element with showModal() instead of custom modal implementations. It provides built-in focus trapping, Escape key handling, and backdrop."
+    category: "semantic_html"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "semantic", "dialog", "accessibility"]
+
+  - id: HTML007
+    title: "Use <address> for contact information"
+    description: "Wrap contact information in <address> element. It should relate to the nearest <article> or <body> ancestor, providing semantic meaning for contact details."
+    category: "semantic_html"
+    severity: "info"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "semantic"]
+
+  - id: HTML008
+    title: "Use <abbr> for abbreviations"
+    description: "Use <abbr title='...'>...</abbr> for abbreviations and acronyms to provide the full expansion for accessibility and understanding."
+    category: "semantic_html"
+    severity: "info"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "semantic", "accessibility"]
+
+  # ============================================================================
+  # ACCESSIBILITY (HTML009-HTML020)
+  # ============================================================================
+
+  - id: HTML009
+    title: "Always declare document language with lang attribute"
+    description: "Set the lang attribute on the <html> element (e.g., <html lang='en'>). This is essential for screen readers, search engines, and auto-translation. WCAG 3.1.1."
+    category: "accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "wcag", "i18n"]
+
+  - id: HTML010
+    title: "Provide alt text for all images"
+    description: "Every <img> must have an alt attribute. Use descriptive alt text for informative images, empty alt='' for decorative images. Never omit the attribute. WCAG 1.1.1."
+    category: "accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "wcag", "images"]
+    example: |
+      <!-- Informative image -->
+      <img src="chart.png" alt="Q4 revenue grew 23% year over year">
+      <!-- Decorative image -->
+      <img src="divider.png" alt="">
+
+  - id: HTML011
+    title: "Associate form labels with inputs"
+    description: "Every form control must have a visible <label> with a matching for/id pair, or wrap the input inside the label. WCAG 1.3.1."
+    category: "accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "wcag", "forms"]
+    example: |
+      <!-- Good: explicit association -->
+      <label for="email">Email</label>
+      <input id="email" type="email" name="email">
+      <!-- Good: implicit wrapping -->
+      <label>Email <input type="email" name="email"></label>
+
+  - id: HTML012
+    title: "Use ARIA roles and attributes correctly"
+    description: "Use ARIA roles only when native HTML semantics are insufficient. Prefer native elements (e.g., <button> over <div role='button'>). Follow the first rule of ARIA: don't use ARIA if you can use native HTML."
+    category: "accessibility"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "aria"]
+
+  - id: HTML013
+    title: "Ensure sufficient color contrast"
+    description: "Text must have a contrast ratio of at least 4.5:1 against its background (3:1 for large text). Use tools to verify contrast meets WCAG 2.1 AA requirements."
+    category: "accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "wcag", "design"]
+
+  - id: HTML014
+    title: "Support keyboard navigation"
+    description: "All interactive elements must be keyboard accessible. Use native interactive elements (<button>, <a>, <input>), ensure visible focus indicators, and maintain logical tab order."
+    category: "accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "keyboard"]
+
+  - id: HTML015
+    title: "Avoid positive tabindex values"
+    description: "Never use tabindex values greater than 0. Use tabindex='0' to add elements to natural tab order, tabindex='-1' for programmatic focus only. WCAG 2.4.3."
+    category: "accessibility"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "keyboard", "tabindex"]
+
+  - id: HTML016
+    title: "Provide skip navigation links"
+    description: "Include a 'Skip to main content' link at the top of each page for keyboard users to bypass repetitive navigation. It should be the first focusable element."
+    category: "accessibility"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "navigation"]
+
+  - id: HTML017
+    title: "Use landmark regions for page structure"
+    description: "Structure pages with landmark roles: <main>, <nav>, <aside>, <header>, <footer>. Screen readers use landmarks for quick page navigation."
+    category: "accessibility"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "landmarks", "structure"]
+
+  - id: HTML018
+    title: "Provide text alternatives for media"
+    description: "Videos need captions/subtitles (<track>), audio needs transcripts. Live media should have real-time captions. WCAG 1.2.1-1.2.5."
+    category: "accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "media", "wcag"]
+
+  - id: HTML019
+    title: "Do not use autoplay for media with audio"
+    description: "Never autoplay audio or video with sound. If autoplay is needed, ensure it is muted by default and provides controls to unmute. WCAG 1.4.2."
+    category: "accessibility"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "media"]
+
+  - id: HTML020
+    title: "Use aria-live for dynamic content updates"
+    description: "Use aria-live regions to announce dynamic content changes to screen readers. Use aria-live='polite' for non-urgent updates and aria-live='assertive' for critical alerts."
+    category: "accessibility"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "accessibility", "aria", "dynamic"]
+
+  # ============================================================================
+  # FORMS (HTML021-HTML028)
+  # ============================================================================
+
+  - id: HTML021
+    title: "Use appropriate HTML5 input types"
+    description: "Use specific input types (email, tel, url, number, date, search, color) instead of generic text inputs. This provides built-in validation, appropriate mobile keyboards, and semantic meaning."
+    category: "html_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "forms", "input-types"]
+
+  - id: HTML022
+    title: "Use native form validation attributes"
+    description: "Use required, pattern, min, max, minlength, maxlength, step attributes for client-side validation before sending to server. Always validate server-side as well."
+    category: "html_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "forms", "validation"]
+
+  - id: HTML023
+    title: "Group related form fields with fieldset and legend"
+    description: "Use <fieldset> and <legend> to group related inputs (e.g., address fields, payment info). This improves form structure and accessibility."
+    category: "html_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "forms", "accessibility"]
+
+  - id: HTML024
+    title: "Include CSRF tokens in forms"
+    description: "All forms that submit data should include CSRF protection tokens. Use hidden inputs with anti-forgery tokens generated by the server framework."
+    category: "html_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "forms", "security", "csrf"]
+
+  - id: HTML025
+    title: "Use autocomplete attributes for common fields"
+    description: "Set autocomplete attribute on form fields (name, email, address, credit card, etc.) to enable browser autofill and password managers."
+    category: "html_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "forms", "ux", "autofill"]
+
+  - id: HTML026
+    title: "Provide helpful error messages and descriptions"
+    description: "Use aria-describedby to link error messages to inputs. Provide clear, actionable error text near the invalid field. Use aria-invalid='true' for invalid fields."
+    category: "html_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "forms", "accessibility", "ux"]
+
+  - id: HTML027
+    title: "Use the correct form method and enctype"
+    description: "Use POST for data modification, GET for search/filter forms. Set enctype='multipart/form-data' for file uploads. Use action attribute pointing to the correct endpoint."
+    category: "html_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "forms", "http"]
+
+  - id: HTML028
+    title: "Use <button> instead of <input type='submit'>"
+    description: "Prefer <button type='submit'> over <input type='submit'> for form submission. Buttons can contain HTML content (icons, spans) and are more flexible for styling."
+    category: "html_forms"
+    severity: "info"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "forms", "best-practices"]
+
+  # ============================================================================
+  # SEO & META (HTML029-HTML035)
+  # ============================================================================
+
+  - id: HTML029
+    title: "Include essential meta tags"
+    description: "Every page should have: <meta charset='UTF-8'>, <meta name='viewport' content='width=device-width, initial-scale=1'>, <title>, and <meta name='description'>."
+    category: "seo"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "seo", "meta"]
+    example: |
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Page Title - Site Name</title>
+        <meta name="description" content="Concise page description under 160 chars">
+      </head>
+
+  - id: HTML030
+    title: "Use Open Graph and Twitter Card meta tags"
+    description: "Add og:title, og:description, og:image, og:url, og:type and twitter:card meta tags for rich social media previews when pages are shared."
+    category: "seo"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "seo", "social", "open-graph"]
+
+  - id: HTML031
+    title: "Use structured data (JSON-LD) for rich results"
+    description: "Add JSON-LD structured data for Schema.org types (Organization, Product, Article, FAQ, BreadcrumbList) to enable rich search results."
+    category: "seo"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "seo", "structured-data", "json-ld"]
+
+  - id: HTML032
+    title: "Use canonical URLs to prevent duplicate content"
+    description: "Add <link rel='canonical' href='...'> to every page to indicate the preferred URL. This prevents SEO penalties from duplicate content."
+    category: "seo"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "seo", "canonical"]
+
+  - id: HTML033
+    title: "Use descriptive, keyword-rich title tags"
+    description: "Each page should have a unique <title> under 60 characters that includes the primary keyword. Follow the pattern: 'Primary Keyword - Secondary | Brand'."
+    category: "seo"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "seo", "title"]
+
+  - id: HTML034
+    title: "Use hreflang for multi-language sites"
+    description: "Use <link rel='alternate' hreflang='xx'> tags for multi-language or multi-region sites to help search engines serve the correct version."
+    category: "seo"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "seo", "i18n"]
+
+  - id: HTML035
+    title: "Add favicon and touch icons"
+    description: "Include favicons for browsers and touch icons for mobile devices. Use multiple sizes and formats (ICO, PNG, SVG, apple-touch-icon)."
+    category: "seo"
+    severity: "info"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "seo", "branding"]
+
+  # ============================================================================
+  # PERFORMANCE (HTML036-HTML042)
+  # ============================================================================
+
+  - id: HTML036
+    title: "Use async or defer for external scripts"
+    description: "Add async or defer attribute to <script> tags to prevent render-blocking. Use defer for scripts that depend on DOM, async for independent analytics/tracking scripts."
+    category: "html_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "performance", "scripts"]
+    example: |
+      <!-- Defer: executes after DOM parsing, in order -->
+      <script src="app.js" defer></script>
+      <!-- Async: executes as soon as downloaded, no guaranteed order -->
+      <script src="analytics.js" async></script>
+
+  - id: HTML037
+    title: "Use resource hints (preload, prefetch, preconnect)"
+    description: "Use <link rel='preload'> for critical resources, <link rel='prefetch'> for next-page resources, and <link rel='preconnect'> for third-party origins to improve loading performance."
+    category: "html_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "performance", "resource-hints"]
+    example: |
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preload" href="/fonts/main.woff2" as="font" crossorigin>
+      <link rel="prefetch" href="/next-page.html">
+
+  - id: HTML038
+    title: "Use lazy loading for images and iframes"
+    description: "Add loading='lazy' to images and iframes that are below the fold. Use loading='eager' for above-the-fold hero images."
+    category: "html_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "performance", "images", "lazy-loading"]
+
+  - id: HTML039
+    title: "Use <picture> and srcset for responsive images"
+    description: "Use <picture> element with <source> for art direction, and srcset/sizes attributes for resolution switching. Serve WebP/AVIF with fallbacks."
+    category: "html_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "performance", "images", "responsive"]
+
+  - id: HTML040
+    title: "Minimize inline styles and scripts"
+    description: "Avoid large inline <style> and <script> blocks. Move CSS to external stylesheets and JS to external files for caching. Small critical CSS can be inlined."
+    category: "html_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "performance", "optimization"]
+
+  - id: HTML041
+    title: "Use Subresource Integrity (SRI) for CDN resources"
+    description: "Add integrity and crossorigin attributes to <script> and <link> tags that load from CDNs to protect against compromised CDN content."
+    category: "html_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "security", "sri", "cdn"]
+    example: |
+      <script src="https://cdn.example.com/lib.js"
+              integrity="sha384-oqVuAfXRKap..."
+              crossorigin="anonymous"></script>
+
+  - id: HTML042
+    title: "Use module scripts for modern JavaScript"
+    description: "Use <script type='module'> for ES module scripts. Module scripts are deferred by default, support import/export, and run in strict mode."
+    category: "html_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "performance", "javascript", "modules"]
+
+  # ============================================================================
+  # WEB COMPONENTS (HTML043-HTML046)
+  # ============================================================================
+
+  - id: HTML043
+    title: "Use custom element naming convention"
+    description: "Custom element names must contain a hyphen (my-component, not mycomponent). Follow a consistent naming prefix for your project (e.g., app-*, ui-*)."
+    category: "web_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "web-components", "naming"]
+
+  - id: HTML044
+    title: "Use Shadow DOM for style encapsulation"
+    description: "Use Shadow DOM to encapsulate component styles and prevent CSS leakage. Expose customization via CSS custom properties (--var-name) and ::part()."
+    category: "web_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "web-components", "shadow-dom", "css"]
+
+  - id: HTML045
+    title: "Use <slot> for content projection"
+    description: "Use <slot> elements in Shadow DOM for content projection. Use named slots for multiple projection points. Provide fallback content in slots."
+    category: "web_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "web-components", "slots"]
+
+  - id: HTML046
+    title: "Register custom elements with define()"
+    description: "Use customElements.define() to register custom elements. Extend HTMLElement for autonomous elements. Use the is= attribute for customized built-in elements."
+    category: "web_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "web-components", "custom-elements"]
+
+  # ============================================================================
+  # SECURITY & BEST PRACTICES (HTML047-HTML050)
+  # ============================================================================
+
+  - id: HTML047
+    title: "Use Content Security Policy meta tag"
+    description: "Add <meta http-equiv='Content-Security-Policy'> to restrict resource loading sources. This mitigates XSS and data injection attacks."
+    category: "html_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "security", "csp"]
+
+  - id: HTML048
+    title: "Use rel='noopener noreferrer' on external links"
+    description: "Add rel='noopener noreferrer' to <a target='_blank'> links to prevent the opened page from accessing window.opener and to avoid referrer leakage."
+    category: "html_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "security", "links"]
+    example: |
+      <a href="https://external.com" target="_blank" rel="noopener noreferrer">
+        External Link
+      </a>
+
+  - id: HTML049
+    title: "Validate HTML against W3C standards"
+    description: "Regularly validate HTML against W3C standards using the Nu HTML Checker. Fix all errors and warnings. Valid HTML ensures cross-browser compatibility and accessibility."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "validation", "standards"]
+
+  - id: HTML050
+    title: "Use HTML5 DOCTYPE declaration"
+    description: "Always start documents with <!DOCTYPE html>. This ensures standards mode rendering across all browsers and is required for HTML5 features."
+    category: "best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["html"]
+    tags: ["html", "doctype", "standards"]
+    example: |
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        ...

@@ -1,0 +1,648 @@
+# CodeTrellis Best Practice Library - JavaScript Core Practices
+# v4.30: JavaScript Language Support (ES5 through ES2024+)
+# 50 practices covering modern syntax, async patterns, error handling, modules,
+# classes, functions, type safety, security, performance, testing, Node.js,
+# Express, React, API design, data modeling, state management, build tooling, style.
+
+practices:
+  # ════════════════════════════════════════════════════════════════
+  # JS_MODERN_SYNTAX (JS001-JS005)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS001
+    title: "Use const and let instead of var"
+    category: js_modern_syntax
+    level: beginner
+    priority: critical
+    description: >
+      Always prefer const for values that won't be reassigned and let for
+      those that will. Avoid var entirely—it has function-scoped hoisting
+      that causes subtle bugs. const/let are block-scoped and behave
+      predictably. const also signals immutable intent to other developers.
+    tags: [javascript, es6, variables]
+
+  - id: JS002
+    title: "Use template literals for string interpolation"
+    category: js_modern_syntax
+    level: beginner
+    priority: high
+    description: >
+      Use backtick template literals (`Hello, ${name}!`) instead of string
+      concatenation ('Hello, ' + name + '!'). Template literals are more
+      readable, support multi-line strings, and can embed any expression.
+    tags: [javascript, es6, strings]
+
+  - id: JS003
+    title: "Use destructuring for cleaner variable extraction"
+    category: js_modern_syntax
+    level: beginner
+    priority: high
+    description: >
+      Use destructuring assignment for objects ({ name, age } = person) and
+      arrays ([first, second] = items). Supports default values, renaming
+      (name: userName), rest patterns, and nested destructuring. Reduces
+      boilerplate and makes code self-documenting.
+    tags: [javascript, es6, destructuring]
+
+  - id: JS004
+    title: "Use optional chaining and nullish coalescing"
+    category: js_modern_syntax
+    level: intermediate
+    priority: high
+    description: >
+      Use optional chaining (?.) for safe property access (user?.address?.city)
+      and nullish coalescing (??) for default values (value ?? defaultValue).
+      Unlike ||, ?? only activates on null/undefined, preserving 0, '', and
+      false. Combine them: config?.timeout ?? 3000.
+    tags: [javascript, es2020, safety]
+
+  - id: JS005
+    title: "Use modern array/object methods over manual loops"
+    category: js_modern_syntax
+    level: beginner
+    priority: high
+    description: >
+      Prefer map(), filter(), reduce(), find(), some(), every(), flatMap()
+      over for loops. Use Object.entries(), Object.fromEntries(), Object.keys(),
+      Object.values() for objects. Use Array.from() and spread (...) for
+      array creation. These are more declarative and less error-prone.
+    tags: [javascript, es6, arrays, functional]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_ASYNC_PATTERNS (JS006-JS010)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS006
+    title: "Prefer async/await over raw Promises"
+    category: js_async_patterns
+    level: beginner
+    priority: critical
+    description: >
+      Use async/await for asynchronous code instead of .then()/.catch()
+      chains. Async/await reads like synchronous code, makes error handling
+      with try/catch natural, and simplifies debugging with proper stack
+      traces. Reserve .then() for simple one-liners only.
+    tags: [javascript, async, promises]
+
+  - id: JS007
+    title: "Use Promise.all for concurrent operations"
+    category: js_async_patterns
+    level: intermediate
+    priority: high
+    description: >
+      When multiple async operations are independent, use Promise.all([...])
+      to run them concurrently instead of awaiting sequentially. Use
+      Promise.allSettled() when you need all results regardless of failures.
+      Use Promise.race() for timeouts. Avoid the sequential await antipattern.
+    tags: [javascript, async, concurrency, performance]
+
+  - id: JS008
+    title: "Always handle Promise rejections"
+    category: js_async_patterns
+    level: beginner
+    priority: critical
+    description: >
+      Every Promise chain must have a .catch() handler or be in a try/catch
+      block with async/await. Unhandled rejections crash Node.js processes
+      and silently fail in browsers. Add process.on('unhandledRejection')
+      as a safety net in Node.js applications.
+    tags: [javascript, async, error_handling]
+
+  - id: JS009
+    title: "Use AbortController for cancellable operations"
+    category: js_async_patterns
+    level: advanced
+    priority: medium
+    description: >
+      Use AbortController and AbortSignal to cancel fetch requests, timers,
+      and custom async operations. Pass signal to fetch(), addEventListener(),
+      and custom APIs. This prevents memory leaks and stale responses in
+      SPAs and long-lived processes.
+    tags: [javascript, async, cancellation, es2021]
+
+  - id: JS010
+    title: "Avoid async in constructors and getters"
+    category: js_async_patterns
+    level: intermediate
+    priority: medium
+    description: >
+      Constructors cannot be async—use a static factory method instead
+      (static async create()). Getters should not be async as callers
+      expect synchronous access. Use lazy initialization patterns or
+      builder patterns for objects requiring async setup.
+    tags: [javascript, async, patterns, oop]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_ERROR_HANDLING (JS011-JS014)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS011
+    title: "Throw Error objects, never strings or plain objects"
+    category: js_error_handling
+    level: beginner
+    priority: critical
+    description: >
+      Always throw instances of Error or custom Error subclasses, never
+      raw strings or objects. Error objects capture stack traces, have
+      consistent .message and .name properties, and work with monitoring
+      tools. Create custom errors: class AppError extends Error {}.
+    tags: [javascript, errors, debugging]
+
+  - id: JS012
+    title: "Create custom error hierarchies"
+    category: js_error_handling
+    level: intermediate
+    priority: high
+    description: >
+      Define a base AppError class extending Error, then create specific
+      subclasses (ValidationError, NotFoundError, AuthorizationError).
+      Include error codes, HTTP status codes, and metadata. This enables
+      instanceof checks and centralized error handling middleware.
+    tags: [javascript, errors, architecture]
+
+  - id: JS013
+    title: "Use error boundaries in error-prone code"
+    category: js_error_handling
+    level: intermediate
+    priority: high
+    description: >
+      Wrap JSON.parse(), external API calls, file operations, and user
+      input processing in try/catch blocks. Log the error with context,
+      then either recover gracefully or re-throw with additional context.
+      Never swallow errors silently with empty catch blocks.
+    tags: [javascript, errors, reliability]
+
+  - id: JS014
+    title: "Implement global error handlers"
+    category: js_error_handling
+    level: intermediate
+    priority: high
+    description: >
+      In Node.js, handle process.on('uncaughtException') and
+      process.on('unhandledRejection'). In Express, add error-handling
+      middleware (err, req, res, next). In browsers, use window.onerror
+      and window.onunhandledrejection. Log errors before graceful shutdown.
+    tags: [javascript, errors, node, reliability]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_MODULES (JS015-JS018)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS015
+    title: "Prefer ES modules over CommonJS"
+    category: js_modules
+    level: beginner
+    priority: high
+    description: >
+      Use import/export (ESM) instead of require/module.exports (CJS).
+      ESM supports static analysis, tree-shaking, and top-level await.
+      Set "type": "module" in package.json. Use .mjs/.cjs extensions
+      when mixing module systems. ESM is the standard going forward.
+    tags: [javascript, modules, esm, commonjs]
+
+  - id: JS016
+    title: "Use named exports over default exports"
+    category: js_modules
+    level: intermediate
+    priority: medium
+    description: >
+      Prefer named exports (export const foo) over default exports
+      (export default). Named exports enable auto-import in IDEs,
+      ensure consistent naming across the codebase, and make
+      re-exports cleaner. Default exports are fine for React components.
+    tags: [javascript, modules, exports]
+
+  - id: JS017
+    title: "Use dynamic imports for code splitting"
+    category: js_modules
+    level: intermediate
+    priority: medium
+    description: >
+      Use import() for lazy-loading modules, route-based code splitting,
+      and conditional dependencies. Combine with React.lazy() for
+      component-level splitting. Use webpackChunkName comments for
+      meaningful chunk names. This reduces initial bundle size.
+    tags: [javascript, modules, performance, bundling]
+
+  - id: JS018
+    title: "Organize barrel exports carefully"
+    category: js_modules
+    level: advanced
+    priority: low
+    description: >
+      Use index.js barrel files (export * from './module') sparingly.
+      They can break tree-shaking if not configured properly. Prefer
+      direct imports for large libraries. Use package.json "exports"
+      field for package entry points. Avoid circular dependencies.
+    tags: [javascript, modules, architecture]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_CLASSES (JS019-JS022)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS019
+    title: "Use ES6 classes over prototypes for new code"
+    category: js_classes
+    level: beginner
+    priority: high
+    description: >
+      Use class syntax with constructor, methods, getters/setters,
+      and static members. Classes are syntactic sugar over prototypes
+      but provide clearer intent, proper super() handling, and familiar
+      OOP structure. Avoid prototype manipulation in new code.
+    tags: [javascript, es6, oop, classes]
+
+  - id: JS020
+    title: "Use private class fields with # prefix"
+    category: js_classes
+    level: intermediate
+    priority: medium
+    description: >
+      Use #privateField syntax (ES2022) for truly private properties
+      and methods. Unlike _ convention, # fields are enforced by the
+      engine and cannot be accessed outside the class. Use them for
+      internal state, caches, and implementation details.
+    tags: [javascript, es2022, classes, encapsulation]
+
+  - id: JS021
+    title: "Prefer composition over inheritance"
+    category: js_classes
+    level: intermediate
+    priority: high
+    description: >
+      Limit class hierarchies to 2-3 levels. Use mixins, delegation,
+      or composition patterns instead of deep inheritance. Create small
+      focused classes and compose them. Use Object.assign() or spread
+      for mixin patterns. Factory functions are often better than classes.
+    tags: [javascript, oop, patterns, design]
+
+  - id: JS022
+    title: "Use static class features for utility methods"
+    category: js_classes
+    level: beginner
+    priority: medium
+    description: >
+      Use static methods for factory patterns (static create()),
+      utility functions, and singleton access. Use static fields for
+      constants and configuration. Static blocks (ES2022) enable
+      complex static initialization. Keep instance and static concerns separate.
+    tags: [javascript, es2022, classes, patterns]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_FUNCTIONS (JS023-JS026)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS023
+    title: "Use arrow functions for callbacks and short functions"
+    category: js_functions
+    level: beginner
+    priority: high
+    description: >
+      Use arrow functions (=>) for callbacks, array methods, and short
+      expressions. They inherit this from the enclosing scope, avoiding
+      the need for .bind() or self = this. Use function declarations
+      for top-level named functions that need hoisting.
+    tags: [javascript, es6, functions, arrows]
+
+  - id: JS024
+    title: "Use default parameters and rest/spread"
+    category: js_functions
+    level: beginner
+    priority: high
+    description: >
+      Use default parameter values (function f(x = 10)) instead of
+      x = x || 10 (which fails on falsy values). Use rest parameters
+      (...args) instead of arguments object. Use spread (...array) to
+      pass array elements as arguments. These are cleaner and type-safe.
+    tags: [javascript, es6, functions, parameters]
+
+  - id: JS025
+    title: "Keep functions pure when possible"
+    category: js_functions
+    level: intermediate
+    priority: high
+    description: >
+      Write functions that don't mutate their inputs, don't depend on
+      external mutable state, and always return the same output for
+      the same input. Pure functions are easier to test, cache, and
+      parallelize. Isolate side effects at the boundaries.
+    tags: [javascript, functional, testing, patterns]
+
+  - id: JS026
+    title: "Use closures and higher-order functions effectively"
+    category: js_functions
+    level: intermediate
+    priority: medium
+    description: >
+      Leverage closures for data privacy, memoization, and factory
+      patterns. Use higher-order functions (functions returning/accepting
+      functions) for middleware, decorators, and configurators. Avoid
+      closure memory leaks by releasing references when no longer needed.
+    tags: [javascript, functions, closures, patterns]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_TYPE_SAFETY (JS027-JS029)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS027
+    title: "Use strict equality (=== and !==)"
+    category: js_type_safety
+    level: beginner
+    priority: critical
+    description: >
+      Always use === and !== instead of == and !=. Loose equality
+      performs type coercion with surprising results ([] == false,
+      '' == 0, null == undefined). Strict equality checks both value
+      and type. Enable the eqeqeq ESLint rule.
+    tags: [javascript, equality, types, safety]
+
+  - id: JS028
+    title: "Use JSDoc for type annotations in JavaScript"
+    category: js_type_safety
+    level: intermediate
+    priority: high
+    description: >
+      Add JSDoc comments (@param, @returns, @typedef, @type) to function
+      signatures and complex types. This enables IDE IntelliSense,
+      TypeScript-powered type checking (// @ts-check), and auto-generated
+      documentation. Use @typedef for reusable type definitions.
+    tags: [javascript, jsdoc, types, documentation]
+
+  - id: JS029
+    title: "Validate inputs at function boundaries"
+    category: js_type_safety
+    level: intermediate
+    priority: high
+    description: >
+      Validate function arguments at entry points, especially for public
+      APIs. Use typeof, instanceof, Array.isArray(), and validation
+      libraries (Zod, Joi, Yup). Throw TypeError with descriptive messages.
+      Consider using assertion functions for development builds.
+    tags: [javascript, validation, safety, types]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_SECURITY (JS030-JS033)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS030
+    title: "Sanitize user input to prevent XSS"
+    category: js_security
+    level: beginner
+    priority: critical
+    description: >
+      Never insert user input directly into HTML (innerHTML). Use
+      textContent for text, DOM APIs for structure. On the server, use
+      DOMPurify, sanitize-html, or helmet middleware. Encode output
+      contextually (HTML, URL, CSS, JS). Set Content-Security-Policy headers.
+    tags: [javascript, security, xss, sanitization]
+
+  - id: JS031
+    title: "Protect against prototype pollution"
+    category: js_security
+    level: advanced
+    priority: high
+    description: >
+      Guard against prototype pollution in object merging (deep merge,
+      Object.assign with user input). Reject keys like __proto__,
+      constructor, prototype. Use Map instead of plain objects for
+      user-controlled keys. Use Object.create(null) for dictionary objects.
+    tags: [javascript, security, prototype, pollution]
+
+  - id: JS032
+    title: "Use environment variables for secrets"
+    category: js_security
+    level: beginner
+    priority: critical
+    description: >
+      Never hardcode API keys, tokens, or passwords in source code. Use
+      process.env with dotenv for local development. Use secrets managers
+      (AWS Secrets Manager, HashiCorp Vault) in production. Add .env to
+      .gitignore. Validate required env vars at startup.
+    tags: [javascript, security, secrets, configuration]
+
+  - id: JS033
+    title: "Implement rate limiting and input size limits"
+    category: js_security
+    level: intermediate
+    priority: high
+    description: >
+      Apply rate limiting (express-rate-limit) to API endpoints. Set
+      request body size limits (express.json({ limit: '10kb' })). Limit
+      query complexity for GraphQL. Use helmet for security headers.
+      Implement CORS properly with explicit origins.
+    tags: [javascript, security, api, node]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_PERFORMANCE (JS034-JS036)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS034
+    title: "Avoid memory leaks in long-running processes"
+    category: js_performance
+    level: intermediate
+    priority: high
+    description: >
+      Clear intervals/timeouts, remove event listeners, close database
+      connections, and nullify large object references when done. Use
+      WeakMap/WeakSet for caches that should not prevent garbage collection.
+      Profile with --inspect and Chrome DevTools heap snapshots.
+    tags: [javascript, performance, memory, node]
+
+  - id: JS035
+    title: "Use lazy loading and code splitting"
+    category: js_performance
+    level: intermediate
+    priority: medium
+    description: >
+      Split bundles by route with dynamic import(). Lazy-load images with
+      loading="lazy" and IntersectionObserver. Defer non-critical scripts.
+      Use requestIdleCallback for low-priority work. Measure with
+      Lighthouse and Web Vitals (LCP, FID, CLS).
+    tags: [javascript, performance, bundling, frontend]
+
+  - id: JS036
+    title: "Optimize loops and avoid unnecessary allocations"
+    category: js_performance
+    level: intermediate
+    priority: medium
+    description: >
+      Cache array.length in tight loops. Use for...of instead of
+      forEach when you need break/continue. Avoid creating objects in hot
+      loops. Use typed arrays for numeric processing. Pre-allocate arrays
+      with known sizes. Use structuredClone over JSON.parse(JSON.stringify).
+    tags: [javascript, performance, optimization]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_TESTING (JS037-JS040)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS037
+    title: "Write tests with describe/it blocks and clear names"
+    category: js_testing
+    level: beginner
+    priority: high
+    description: >
+      Organize tests with describe() blocks by feature and it()/test()
+      with descriptive names ('should return 404 when user not found').
+      Follow Arrange-Act-Assert pattern. Use beforeEach/afterEach for
+      setup/teardown. Keep tests focused on one behavior each.
+    tags: [javascript, testing, jest, mocha]
+
+  - id: JS038
+    title: "Mock external dependencies, not implementation"
+    category: js_testing
+    level: intermediate
+    priority: medium
+    description: >
+      Mock HTTP clients, databases, file system, and third-party APIs.
+      Don't mock the module under test. Use jest.mock() for module mocks,
+      jest.spyOn() for partial mocks. Use nock or msw for HTTP mocking.
+      Prefer integration tests over extensive mocking.
+    tags: [javascript, testing, mocking, jest]
+
+  - id: JS039
+    title: "Test async code properly"
+    category: js_testing
+    level: intermediate
+    priority: high
+    description: >
+      Return promises from test functions or use async/await. Use
+      expect().resolves and expect().rejects for Promise assertions.
+      Set appropriate timeouts for async tests. Test error paths and
+      timeouts explicitly. Use fake timers (jest.useFakeTimers) for
+      time-dependent code.
+    tags: [javascript, testing, async, jest]
+
+  - id: JS040
+    title: "Achieve meaningful code coverage"
+    category: js_testing
+    level: intermediate
+    priority: medium
+    description: >
+      Aim for 80%+ line coverage but focus on critical paths. Test edge
+      cases (empty inputs, null, boundaries). Cover error handling paths.
+      Use coverage reports to identify untested code, not as a quality
+      metric. Don't write tests just to increase coverage numbers.
+    tags: [javascript, testing, coverage, quality]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_NODE (JS041-JS043)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS041
+    title: "Use streams for large data processing"
+    category: js_node
+    level: intermediate
+    priority: high
+    description: >
+      Use Node.js streams (Readable, Writable, Transform, pipeline()) for
+      processing large files, HTTP responses, and data transformations.
+      Streams process data in chunks, preventing memory exhaustion. Use
+      pipeline() for proper error handling and backpressure management.
+    tags: [javascript, node, streams, performance]
+
+  - id: JS042
+    title: "Handle process signals for graceful shutdown"
+    category: js_node
+    level: intermediate
+    priority: critical
+    description: >
+      Listen for SIGTERM and SIGINT signals to gracefully shut down servers.
+      Close database connections, finish in-flight requests, flush logs,
+      and stop accepting new connections. Set a shutdown timeout to force
+      exit. This is essential for container and Kubernetes deployments.
+    tags: [javascript, node, deployment, reliability]
+
+  - id: JS043
+    title: "Use worker threads for CPU-intensive tasks"
+    category: js_node
+    level: advanced
+    priority: medium
+    description: >
+      Offload CPU-intensive work (image processing, crypto, parsing) to
+      worker_threads. The main event loop should only handle I/O. Use
+      message passing between threads. Consider using a worker pool
+      (piscina, workerpool) for managing multiple workers efficiently.
+    tags: [javascript, node, concurrency, performance]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_EXPRESS (JS044-JS045)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS044
+    title: "Structure Express apps with router modules"
+    category: js_express
+    level: beginner
+    priority: critical
+    description: >
+      Split Express routes into separate router modules (express.Router()).
+      Organize by feature or resource (/routes/users.js, /routes/auth.js).
+      Mount routers with app.use('/api/users', userRouter). Keep route
+      handlers thin—delegate to service/controller layers.
+    tags: [javascript, express, architecture, routing]
+
+  - id: JS045
+    title: "Use middleware chain properly in Express"
+    category: js_express
+    level: intermediate
+    priority: high
+    description: >
+      Order middleware carefully: logging → parsing → auth → routes →
+      error handler. Use app.use() for global middleware. Pass errors
+      to next(err) for centralized handling. Create reusable middleware
+      factories (validateBody(schema)). Always call next() or send response.
+    tags: [javascript, express, middleware, patterns]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_API_DESIGN (JS046-JS047)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS046
+    title: "Design consistent RESTful API responses"
+    category: js_api_design
+    level: intermediate
+    priority: high
+    description: >
+      Use consistent response shapes: { data, meta, errors }. Return
+      appropriate HTTP status codes (201 Created, 204 No Content, 422
+      Unprocessable Entity). Support pagination (cursor or offset),
+      filtering, and sorting. Version APIs (/api/v1/). Document with OpenAPI.
+    tags: [javascript, api, rest, design]
+
+  - id: JS047
+    title: "Validate request data with schemas"
+    category: js_api_design
+    level: intermediate
+    priority: high
+    description: >
+      Validate all request inputs (body, params, query) with schema
+      validation libraries (Joi, Zod, Yup, AJV). Create reusable schemas
+      for common patterns. Return structured validation errors with field
+      names and messages. Never trust client-side validation alone.
+    tags: [javascript, api, validation, security]
+
+  # ════════════════════════════════════════════════════════════════
+  # JS_DATA_MODELING (JS048), JS_BUILD_TOOLING (JS049), JS_STYLE (JS050)
+  # ════════════════════════════════════════════════════════════════
+  - id: JS048
+    title: "Define clear model schemas with validation"
+    category: js_data_modeling
+    level: intermediate
+    priority: high
+    description: >
+      Define explicit schemas for database models (Mongoose Schema,
+      Sequelize define, Prisma schema). Add field-level validation,
+      indexes, and virtual properties. Use migrations for schema changes.
+      Keep models focused on data shape and validation, not business logic.
+    tags: [javascript, models, database, orm]
+
+  - id: JS049
+    title: "Configure build tools for optimal output"
+    category: js_build_tooling
+    level: intermediate
+    priority: medium
+    description: >
+      Configure bundlers (Webpack, Vite, Rollup, esbuild) with tree-shaking,
+      minification, and source maps. Set browserslist for target environments.
+      Use ESLint + Prettier for consistent formatting. Configure path
+      aliases for clean imports. Use .env files per environment.
+    tags: [javascript, tooling, bundling, build]
+
+  - id: JS050
+    title: "Follow consistent code style conventions"
+    category: js_style
+    level: beginner
+    priority: high
+    description: >
+      Use ESLint with a standard config (eslint-config-airbnb, standard).
+      Use Prettier for formatting. Enforce consistent naming: camelCase for
+      variables/functions, PascalCase for classes/components, UPPER_SNAKE
+      for constants. Add linting to CI pipeline. Use husky + lint-staged.
+    tags: [javascript, style, linting, formatting]

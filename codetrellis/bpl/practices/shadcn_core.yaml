@@ -1,0 +1,1251 @@
+# shadcn/ui Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.39 - shadcn/ui Framework Support
+# Practice IDs: SHADCN001-SHADCN050
+# Coverage: Components, Theme, Styling, Hooks, Performance, Accessibility,
+#           Forms, Dialog, DataTable, Migration
+# Versions: shadcn/ui v0.x, v1.x, v2.x, v3.x / latest
+
+practices:
+  # ============================================================================
+  # SHADCN COMPONENTS (SHADCN001-SHADCN005)
+  # ============================================================================
+
+  - id: SHADCN001
+    title: "Use components.json for project configuration"
+    description: "Always initialize shadcn/ui with `npx shadcn@latest init` to create components.json. This file configures aliases, styling preferences (default vs new-york), TypeScript/RSC support, and Tailwind CSS paths."
+    category: "shadcn_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "setup", "components-json"]
+    example: |
+      // components.json
+      {
+        "$schema": "https://ui.shadcn.com/schema.json",
+        "style": "new-york",
+        "rsc": true,
+        "tsx": true,
+        "tailwind": {
+          "config": "tailwind.config.ts",
+          "css": "app/globals.css"
+        },
+        "aliases": {
+          "components": "@/components",
+          "utils": "@/lib/utils"
+        }
+      }
+
+  - id: SHADCN002
+    title: "Install components via CLI instead of manual copy"
+    description: "Use `npx shadcn@latest add <component>` to install components. The CLI handles Radix UI dependencies, cn() utility setup, and proper file placement in components/ui/."
+    category: "shadcn_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "cli", "installation"]
+    example: |
+      # Install individual components
+      npx shadcn@latest add button
+      npx shadcn@latest add dialog
+      npx shadcn@latest add form
+
+      # Install multiple at once
+      npx shadcn@latest add button card dialog form input label
+
+  - id: SHADCN003
+    title: "Keep components in components/ui/ directory"
+    description: "shadcn/ui components should live in the components/ui/ directory (or the alias configured in components.json). Custom components that compose shadcn/ui components should be in a separate directory."
+    category: "shadcn_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "structure", "organization"]
+    example: |
+      // Good: component organization
+      components/
+        ui/              # shadcn/ui primitives (auto-managed)
+          button.tsx
+          dialog.tsx
+          form.tsx
+        custom/           # your compositions
+          user-dialog.tsx
+          settings-form.tsx
+
+  - id: SHADCN004
+    title: "Use component composition patterns"
+    description: "shadcn/ui components follow a composition pattern with sub-components (e.g., Card + CardHeader + CardContent + CardFooter). Use all relevant sub-components for semantic structure."
+    category: "shadcn_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "composition", "patterns"]
+    example: |
+      import {
+        Card, CardHeader, CardTitle, CardDescription,
+        CardContent, CardFooter,
+      } from "@/components/ui/card";
+
+      function UserCard({ user }) {
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>{user.name}</CardTitle>
+              <CardDescription>{user.email}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>{user.bio}</p>
+            </CardContent>
+            <CardFooter>
+              <Button>Edit Profile</Button>
+            </CardFooter>
+          </Card>
+        );
+      }
+
+  - id: SHADCN005
+    title: "Import from @/ alias paths"
+    description: "Use the configured alias paths (@/components/ui/, @/lib/utils) for imports. This ensures consistency and allows path remapping via components.json."
+    category: "shadcn_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "imports", "aliases"]
+    example: |
+      // Good: alias imports
+      import { Button } from "@/components/ui/button";
+      import { cn } from "@/lib/utils";
+
+      // Avoid: relative imports that break with restructuring
+      import { Button } from "../../../components/ui/button";
+
+  # ============================================================================
+  # SHADCN THEME (SHADCN006-SHADCN010)
+  # ============================================================================
+
+  - id: SHADCN006
+    title: "Use CSS variables for theming"
+    description: "shadcn/ui uses HSL CSS variables defined in :root and .dark selectors in globals.css. Always use these variables for consistent theming across light/dark modes."
+    category: "shadcn_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "theme", "css-variables"]
+    example: |
+      /* globals.css */
+      @layer base {
+        :root {
+          --background: 0 0% 100%;
+          --foreground: 222.2 84% 4.9%;
+          --primary: 222.2 47.4% 11.2%;
+          --primary-foreground: 210 40% 98%;
+        }
+        .dark {
+          --background: 222.2 84% 4.9%;
+          --foreground: 210 40% 98%;
+          --primary: 210 40% 98%;
+          --primary-foreground: 222.2 47.4% 11.2%;
+        }
+      }
+
+  - id: SHADCN007
+    title: "Use next-themes for dark mode"
+    description: "Integrate next-themes with shadcn/ui for reliable dark mode toggling. Use ThemeProvider with attribute='class' and the .dark CSS class for variable switching."
+    category: "shadcn_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react", "next-themes"]
+    tags: ["shadcn", "dark-mode", "next-themes"]
+    example: |
+      import { ThemeProvider } from "next-themes";
+
+      export default function RootLayout({ children }) {
+        return (
+          <html lang="en" suppressHydrationWarning>
+            <body>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+              </ThemeProvider>
+            </body>
+          </html>
+        );
+      }
+
+  - id: SHADCN008
+    title: "Define chart and sidebar tokens in v2+"
+    description: "shadcn/ui v2+ introduces chart-1..5 and sidebar-* CSS variable tokens. Define these in globals.css for Chart and Sidebar component support."
+    category: "shadcn_theme"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "v2", "chart", "sidebar", "tokens"]
+    example: |
+      @layer base {
+        :root {
+          --chart-1: 12 76% 61%;
+          --chart-2: 173 58% 39%;
+          --chart-3: 197 37% 24%;
+          --chart-4: 43 74% 66%;
+          --chart-5: 27 87% 67%;
+          --sidebar-background: 0 0% 98%;
+          --sidebar-foreground: 240 5.3% 26.1%;
+          --sidebar-primary: 240 5.9% 10%;
+          --sidebar-primary-foreground: 0 0% 98%;
+        }
+      }
+
+  - id: SHADCN009
+    title: "Use Tailwind config with CSS variable references"
+    description: "Configure tailwind.config to reference shadcn CSS variables via hsl(var(--variable)) pattern for seamless integration between Tailwind utilities and shadcn theming."
+    category: "shadcn_theme"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "tailwindcss"]
+    tags: ["shadcn", "tailwind", "config"]
+    example: |
+      // tailwind.config.ts
+      module.exports = {
+        theme: {
+          extend: {
+            colors: {
+              background: "hsl(var(--background))",
+              foreground: "hsl(var(--foreground))",
+              primary: {
+                DEFAULT: "hsl(var(--primary))",
+                foreground: "hsl(var(--primary-foreground))",
+              },
+            },
+          },
+        },
+      };
+
+  - id: SHADCN010
+    title: "Use @layer base for CSS variable definitions"
+    description: "Wrap CSS variable definitions in @layer base to ensure proper cascade ordering with Tailwind CSS layers."
+    category: "shadcn_theme"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "tailwindcss"]
+    tags: ["shadcn", "css", "layers"]
+    example: |
+      /* Good: proper layering */
+      @layer base {
+        :root {
+          --background: 0 0% 100%;
+          --foreground: 222.2 84% 4.9%;
+        }
+      }
+
+      /* Avoid: variables outside @layer */
+      :root {
+        --background: 0 0% 100%;
+      }
+
+  # ============================================================================
+  # SHADCN STYLING (SHADCN011-SHADCN015)
+  # ============================================================================
+
+  - id: SHADCN011
+    title: "Use cn() utility for conditional classes"
+    description: "Use the cn() utility (clsx + tailwind-merge) for combining class names. It handles class conflicts (e.g., p-2 vs p-4) and conditional classes cleanly."
+    category: "shadcn_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "cn", "utility", "classnames"]
+    example: |
+      import { cn } from "@/lib/utils";
+
+      function MyComponent({ className, variant }) {
+        return (
+          <div
+            className={cn(
+              "rounded-lg border p-4",
+              variant === "destructive" && "border-destructive text-destructive",
+              className
+            )}
+          />
+        );
+      }
+
+  - id: SHADCN012
+    title: "Use CVA for type-safe variant definitions"
+    description: "Use class-variance-authority (CVA) to define component variants with type-safe props. CVA is the standard pattern for shadcn/ui component variants."
+    category: "shadcn_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "class-variance-authority"]
+    tags: ["shadcn", "cva", "variants", "type-safety"]
+    example: |
+      import { cva, type VariantProps } from "class-variance-authority";
+      import { cn } from "@/lib/utils";
+
+      const buttonVariants = cva(
+        "inline-flex items-center justify-center rounded-md text-sm font-medium",
+        {
+          variants: {
+            variant: {
+              default: "bg-primary text-primary-foreground hover:bg-primary/90",
+              destructive: "bg-destructive text-destructive-foreground",
+              outline: "border border-input bg-background hover:bg-accent",
+              ghost: "hover:bg-accent hover:text-accent-foreground",
+            },
+            size: {
+              default: "h-10 px-4 py-2",
+              sm: "h-9 rounded-md px-3",
+              lg: "h-11 rounded-md px-8",
+              icon: "h-10 w-10",
+            },
+          },
+          defaultVariants: {
+            variant: "default",
+            size: "default",
+          },
+        }
+      );
+
+  - id: SHADCN013
+    title: "Forward className prop with cn()"
+    description: "Always accept and forward className props in custom components using cn(). This enables consumers to override styles while maintaining base styles."
+    category: "shadcn_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "className", "forwarding"]
+    example: |
+      interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
+
+      const Card = React.forwardRef<HTMLDivElement, CardProps>(
+        ({ className, ...props }, ref) => (
+          <div
+            ref={ref}
+            className={cn(
+              "rounded-lg border bg-card text-card-foreground shadow-sm",
+              className
+            )}
+            {...props}
+          />
+        )
+      );
+
+  - id: SHADCN014
+    title: "Use data-[state] selectors for Radix states"
+    description: "Radix UI primitives expose state via data attributes (data-[state=open], data-[state=checked]). Use Tailwind's data- modifier for state-based styling."
+    category: "shadcn_styling"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "radix-ui"]
+    tags: ["shadcn", "radix", "data-state", "styling"]
+    example: |
+      <AccordionTrigger
+        className={cn(
+          "flex flex-1 items-center justify-between py-4",
+          "transition-all hover:underline",
+          "data-[state=open]:rotate-180"
+        )}
+      />
+
+  - id: SHADCN015
+    title: "Use Tailwind dark: modifier with shadcn variables"
+    description: "Prefer using shadcn CSS variable tokens (which auto-switch in dark mode) over manual dark: Tailwind classes. Only use dark: for cases not covered by variables."
+    category: "shadcn_styling"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "tailwindcss"]
+    tags: ["shadcn", "dark-mode", "tailwind"]
+    example: |
+      // Good: uses CSS variables (auto dark mode)
+      <div className="bg-background text-foreground" />
+
+      // Only use dark: for non-variable cases
+      <div className="opacity-80 dark:opacity-100" />
+
+  # ============================================================================
+  # SHADCN HOOKS (SHADCN016-SHADCN020)
+  # ============================================================================
+
+  - id: SHADCN016
+    title: "Use useToast for toast notifications"
+    description: "Use the useToast hook from shadcn/ui for toast notifications, or migrate to sonner (toast()) for a simpler API. Both integrate with shadcn's Toaster component."
+    category: "shadcn_hooks"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "toast", "hook"]
+    example: |
+      // Option 1: useToast hook
+      import { useToast } from "@/components/ui/use-toast";
+
+      function MyComponent() {
+        const { toast } = useToast();
+        return (
+          <Button onClick={() => toast({
+            title: "Success",
+            description: "Your changes have been saved.",
+          })}>
+            Save
+          </Button>
+        );
+      }
+
+      // Option 2: sonner (v2+)
+      import { toast } from "sonner";
+
+      function MyComponent() {
+        return (
+          <Button onClick={() => toast.success("Changes saved!")}>
+            Save
+          </Button>
+        );
+      }
+
+  - id: SHADCN017
+    title: "Use useMobile hook for responsive logic"
+    description: "Use the useMobile (or useIsMobile) hook from shadcn/ui for responsive behavior in JavaScript. It uses matchMedia for reliable viewport detection."
+    category: "shadcn_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "responsive", "mobile", "hook"]
+    example: |
+      import { useIsMobile } from "@/hooks/use-mobile";
+
+      function ResponsiveDialog({ children, ...props }) {
+        const isMobile = useIsMobile();
+
+        if (isMobile) {
+          return <Drawer {...props}>{children}</Drawer>;
+        }
+        return <Dialog {...props}>{children}</Dialog>;
+      }
+
+  - id: SHADCN018
+    title: "Extract custom hooks composing shadcn hooks"
+    description: "Create custom hooks that compose shadcn/ui hooks and ecosystem hooks for reusable logic patterns."
+    category: "shadcn_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "custom-hooks", "composition"]
+    example: |
+      import { useToast } from "@/components/ui/use-toast";
+
+      function useApiAction() {
+        const { toast } = useToast();
+
+        const execute = async (action, successMsg) => {
+          try {
+            await action();
+            toast({ title: "Success", description: successMsg });
+          } catch (error) {
+            toast({
+              title: "Error",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+        };
+
+        return { execute };
+      }
+
+  - id: SHADCN019
+    title: "Use next-themes useTheme for theme switching"
+    description: "When implementing theme toggling with shadcn/ui, use the useTheme hook from next-themes for reliable client-side theme management."
+    category: "shadcn_hooks"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "next-themes"]
+    tags: ["shadcn", "theme", "hook", "next-themes"]
+    example: |
+      import { useTheme } from "next-themes";
+      import { Moon, Sun } from "lucide-react";
+      import { Button } from "@/components/ui/button";
+
+      function ThemeToggle() {
+        const { setTheme, theme } = useTheme();
+        return (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+          >
+            <Sun className="h-5 w-5 rotate-0 scale-100 dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 dark:rotate-0 dark:scale-100" />
+          </Button>
+        );
+      }
+
+  - id: SHADCN020
+    title: "Use useForm with shadcn Form components"
+    description: "Pair react-hook-form's useForm with shadcn's Form components for type-safe form handling with built-in validation display."
+    category: "shadcn_hooks"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "react-hook-form"]
+    tags: ["shadcn", "form", "hook", "react-hook-form"]
+    example: |
+      import { useForm } from "react-hook-form";
+      import { zodResolver } from "@hookform/resolvers/zod";
+      import * as z from "zod";
+
+      const schema = z.object({
+        email: z.string().email(),
+        name: z.string().min(2),
+      });
+
+      function MyForm() {
+        const form = useForm<z.infer<typeof schema>>({
+          resolver: zodResolver(schema),
+          defaultValues: { email: "", name: "" },
+        });
+        // ...
+      }
+
+  # ============================================================================
+  # SHADCN PERFORMANCE (SHADCN021-SHADCN025)
+  # ============================================================================
+
+  - id: SHADCN021
+    title: "Install only needed components"
+    description: "shadcn/ui components are copied into your project. Only install components you actually use to minimize bundle size and maintenance burden."
+    category: "shadcn_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "performance", "bundle-size"]
+    example: |
+      # Good: install only what you need
+      npx shadcn@latest add button dialog form
+
+      # Avoid: installing everything
+      npx shadcn@latest add --all
+
+  - id: SHADCN022
+    title: "Use dynamic imports for heavy components"
+    description: "Lazy-load heavy shadcn/ui components (Chart, DataTable, Calendar, Carousel) to reduce initial bundle size."
+    category: "shadcn_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "lazy-loading", "code-splitting"]
+    example: |
+      import dynamic from "next/dynamic";
+
+      const DataTable = dynamic(
+        () => import("@/components/data-table").then(mod => mod.DataTable),
+        { loading: () => <Skeleton className="h-[400px]" /> }
+      );
+
+      const Chart = dynamic(
+        () => import("@/components/ui/chart"),
+        { ssr: false }
+      );
+
+  - id: SHADCN023
+    title: "Memoize DataTable columns definition"
+    description: "Define DataTable columns outside the component or wrap in useMemo to prevent unnecessary re-renders of the @tanstack/react-table instance."
+    category: "shadcn_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "tanstack-react-table"]
+    tags: ["shadcn", "data-table", "memoization"]
+    example: |
+      // Good: columns defined outside component
+      const columns: ColumnDef<User>[] = [
+        { accessorKey: "name", header: "Name" },
+        { accessorKey: "email", header: "Email" },
+      ];
+
+      // Inside component, columns ref is stable
+      function UsersPage() {
+        return <DataTable columns={columns} data={users} />;
+      }
+
+  - id: SHADCN024
+    title: "Use RSC flag for server components"
+    description: "Set rsc: true in components.json when using Next.js App Router. This removes 'use client' from components that don't need client-side interactivity."
+    category: "shadcn_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui", "nextjs"]
+    tags: ["shadcn", "rsc", "server-components"]
+    example: |
+      // components.json
+      {
+        "rsc": true,  // Enable RSC-compatible output
+        "tsx": true
+      }
+
+  - id: SHADCN025
+    title: "Avoid re-exporting all components from barrel file"
+    description: "Don't create barrel exports (index.ts) that re-export all shadcn components. This defeats tree-shaking and increases bundle size."
+    category: "shadcn_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "tree-shaking", "barrel-exports"]
+    example: |
+      // Avoid: barrel export
+      // components/ui/index.ts
+      export * from "./button";
+      export * from "./dialog";
+      export * from "./form";
+
+      // Good: direct imports
+      import { Button } from "@/components/ui/button";
+      import { Dialog } from "@/components/ui/dialog";
+
+  # ============================================================================
+  # SHADCN ACCESSIBILITY (SHADCN026-SHADCN030)
+  # ============================================================================
+
+  - id: SHADCN026
+    title: "Use Radix UI accessibility features"
+    description: "shadcn/ui components are built on Radix UI primitives which provide WAI-ARIA compliance. Don't override or remove accessibility attributes (role, aria-*, tabIndex)."
+    category: "shadcn_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "radix-ui"]
+    tags: ["shadcn", "accessibility", "radix", "aria"]
+    example: |
+      // Good: Radix handles accessibility
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button>Open</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Make changes to your profile here.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
+  - id: SHADCN027
+    title: "Always include DialogTitle and DialogDescription"
+    description: "Radix UI requires DialogTitle for accessibility. Always include DialogTitle and DialogDescription (or use VisuallyHidden if you need to hide them)."
+    category: "shadcn_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "radix-ui"]
+    tags: ["shadcn", "dialog", "accessibility"]
+    example: |
+      // Good: includes title and description
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirm Delete</DialogTitle>
+          <DialogDescription>
+            This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+      </DialogContent>
+
+      // If hiding title visually:
+      <DialogTitle className="sr-only">Navigation Menu</DialogTitle>
+
+  - id: SHADCN028
+    title: "Use Label component with form controls"
+    description: "Always pair form inputs with the Label component. shadcn's Label uses Radix UI Label which provides proper htmlFor/id linking."
+    category: "shadcn_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "forms", "label", "accessibility"]
+    example: |
+      import { Label } from "@/components/ui/label";
+      import { Input } from "@/components/ui/input";
+
+      <div className="grid gap-2">
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" type="email" placeholder="you@example.com" />
+      </div>
+
+  - id: SHADCN029
+    title: "Use asChild for custom trigger elements"
+    description: "Use the asChild prop on Radix-based trigger components to render your custom element while maintaining proper keyboard and screen reader support."
+    category: "shadcn_accessibility"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "radix-ui"]
+    tags: ["shadcn", "asChild", "accessibility"]
+    example: |
+      // Good: asChild forwards behavior to Button
+      <DialogTrigger asChild>
+        <Button variant="outline">Open Dialog</Button>
+      </DialogTrigger>
+
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+
+  - id: SHADCN030
+    title: "Provide keyboard navigation for custom components"
+    description: "When building custom components on top of shadcn/ui, ensure keyboard navigation (Tab, Enter, Escape, Arrow keys) works correctly by using Radix primitives."
+    category: "shadcn_accessibility"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "keyboard", "navigation", "accessibility"]
+    example: |
+      // Command palette with keyboard navigation (built-in)
+      <CommandDialog>
+        <CommandInput placeholder="Type a command..." />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup heading="Actions">
+            <CommandItem onSelect={() => handleAction()}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
+
+  # ============================================================================
+  # SHADCN FORMS (SHADCN031-SHADCN035)
+  # ============================================================================
+
+  - id: SHADCN031
+    title: "Use Form + zod + react-hook-form pattern"
+    description: "shadcn/ui's Form component is designed for react-hook-form + zod. Use this trio for type-safe forms with automatic validation error display."
+    category: "shadcn_forms"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react-hook-form", "zod"]
+    tags: ["shadcn", "form", "zod", "validation"]
+    example: |
+      import { z } from "zod";
+      import { useForm } from "react-hook-form";
+      import { zodResolver } from "@hookform/resolvers/zod";
+      import {
+        Form, FormControl, FormDescription,
+        FormField, FormItem, FormLabel, FormMessage,
+      } from "@/components/ui/form";
+
+      const formSchema = z.object({
+        username: z.string().min(2).max(50),
+      });
+
+      function ProfileForm() {
+        const form = useForm<z.infer<typeof formSchema>>({
+          resolver: zodResolver(formSchema),
+        });
+
+        return (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormDescription>Your public name.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
+        );
+      }
+
+  - id: SHADCN032
+    title: "Use FormField render prop for each field"
+    description: "Wrap each form input in FormField with a render prop. This connects the field to react-hook-form's control and enables automatic error display via FormMessage."
+    category: "shadcn_forms"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react-hook-form"]
+    tags: ["shadcn", "form-field", "render-prop"]
+    example: |
+      <FormField
+        control={form.control}
+        name="email"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Email</FormLabel>
+            <FormControl>
+              <Input placeholder="email@example.com" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+  - id: SHADCN033
+    title: "Define zod schemas as separate constants"
+    description: "Define zod validation schemas as separate constants outside the component for reusability, testing, and type inference with z.infer."
+    category: "shadcn_forms"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "zod"]
+    tags: ["shadcn", "zod", "schema", "validation"]
+    example: |
+      // schemas/user.ts
+      import { z } from "zod";
+
+      export const userFormSchema = z.object({
+        name: z.string().min(1, "Name is required"),
+        email: z.string().email("Invalid email address"),
+        role: z.enum(["admin", "user", "editor"]),
+      });
+
+      export type UserFormValues = z.infer<typeof userFormSchema>;
+
+  - id: SHADCN034
+    title: "Use Select, RadioGroup, Checkbox with FormField"
+    description: "shadcn/ui form controls (Select, RadioGroup, Checkbox, Switch) integrate with FormField using controlled value patterns."
+    category: "shadcn_forms"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "react-hook-form"]
+    tags: ["shadcn", "select", "radio", "checkbox", "form"]
+    example: |
+      <FormField
+        control={form.control}
+        name="role"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Role</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+  - id: SHADCN035
+    title: "Use FormDescription for helper text"
+    description: "Use FormDescription to provide context below form fields. It's automatically associated with the input via aria-describedby."
+    category: "shadcn_forms"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "form", "description", "helper-text"]
+    example: |
+      <FormField
+        control={form.control}
+        name="bio"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Bio</FormLabel>
+            <FormControl>
+              <Textarea {...field} />
+            </FormControl>
+            <FormDescription>
+              Tell us about yourself. Max 500 characters.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+  # ============================================================================
+  # SHADCN DIALOG (SHADCN036-SHADCN040)
+  # ============================================================================
+
+  - id: SHADCN036
+    title: "Use Dialog for modal, Sheet for side panels"
+    description: "Use Dialog for centered modals, Sheet for side panel overlays, and Drawer (vaul) for bottom drawers. Each has the same Radix-based API pattern."
+    category: "shadcn_dialog"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "dialog", "sheet", "drawer"]
+    example: |
+      // Centered modal
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button>Edit</Button>
+        </DialogTrigger>
+        <DialogContent>...</DialogContent>
+      </Dialog>
+
+      // Side panel
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button>Open Menu</Button>
+        </SheetTrigger>
+        <SheetContent side="right">...</SheetContent>
+      </Sheet>
+
+      // Bottom drawer (mobile-friendly)
+      <Drawer>
+        <DrawerTrigger asChild>
+          <Button>Open</Button>
+        </DrawerTrigger>
+        <DrawerContent>...</DrawerContent>
+      </Drawer>
+
+  - id: SHADCN037
+    title: "Use responsive Dialog/Drawer pattern"
+    description: "For mobile-responsive overlays, show a Drawer on mobile and a Dialog on desktop using the useMobile hook."
+    category: "shadcn_dialog"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "responsive", "dialog", "drawer"]
+    example: |
+      import { useIsMobile } from "@/hooks/use-mobile";
+      import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+      import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+
+      function ResponsiveModal({ children, trigger }) {
+        const isMobile = useIsMobile();
+        const Wrapper = isMobile ? Drawer : Dialog;
+        const Content = isMobile ? DrawerContent : DialogContent;
+        const Trigger = isMobile ? DrawerTrigger : DialogTrigger;
+
+        return (
+          <Wrapper>
+            <Trigger asChild>{trigger}</Trigger>
+            <Content>{children}</Content>
+          </Wrapper>
+        );
+      }
+
+  - id: SHADCN038
+    title: "Use AlertDialog for destructive confirmations"
+    description: "Use AlertDialog instead of Dialog for destructive actions (delete, remove). AlertDialog prevents closing on overlay click and requires explicit action."
+    category: "shadcn_dialog"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "alert-dialog", "confirmation", "destructive"]
+    example: |
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive">Delete Account</Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently
+              delete your account and remove your data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+  - id: SHADCN039
+    title: "Use controlled Dialog with open/onOpenChange"
+    description: "Use the open and onOpenChange props for programmatic Dialog control (e.g., closing after form submission or async operations)."
+    category: "shadcn_dialog"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "react"]
+    tags: ["shadcn", "dialog", "controlled"]
+    example: |
+      function EditDialog() {
+        const [open, setOpen] = useState(false);
+
+        const handleSubmit = async (data) => {
+          await saveData(data);
+          setOpen(false);  // Close on success
+          toast.success("Saved!");
+        };
+
+        return (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>Edit</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <MyForm onSubmit={handleSubmit} />
+            </DialogContent>
+          </Dialog>
+        );
+      }
+
+  - id: SHADCN040
+    title: "Use Command for search and command palettes"
+    description: "Use the Command component (cmdk-based) for search interfaces, command palettes, and combobox patterns. It provides built-in keyboard navigation and filtering."
+    category: "shadcn_dialog"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui", "cmdk"]
+    tags: ["shadcn", "command", "search", "combobox"]
+    example: |
+      <Command>
+        <CommandInput placeholder="Search..." />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup heading="Suggestions">
+            <CommandItem>Calendar</CommandItem>
+            <CommandItem>Search</CommandItem>
+            <CommandItem>Settings</CommandItem>
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup heading="Settings">
+            <CommandItem>Profile</CommandItem>
+            <CommandItem>Billing</CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </Command>
+
+  # ============================================================================
+  # SHADCN DATA TABLE (SHADCN041-SHADCN045)
+  # ============================================================================
+
+  - id: SHADCN041
+    title: "Use @tanstack/react-table with shadcn DataTable"
+    description: "shadcn's DataTable pattern uses @tanstack/react-table for headless table logic. Define columns as ColumnDef[] and pass them to useReactTable."
+    category: "shadcn_data_table"
+    severity: "critical"
+    applicability:
+      frameworks: ["shadcn-ui", "tanstack-react-table"]
+    tags: ["shadcn", "data-table", "tanstack", "columns"]
+    example: |
+      import {
+        ColumnDef,
+        useReactTable,
+        getCoreRowModel,
+        flexRender,
+      } from "@tanstack/react-table";
+      import {
+        Table, TableBody, TableCell,
+        TableHead, TableHeader, TableRow,
+      } from "@/components/ui/table";
+
+      const columns: ColumnDef<User>[] = [
+        { accessorKey: "name", header: "Name" },
+        { accessorKey: "email", header: "Email" },
+        { accessorKey: "role", header: "Role" },
+      ];
+
+  - id: SHADCN042
+    title: "Enable sorting, filtering, and pagination separately"
+    description: "Add @tanstack/react-table features incrementally. Import and enable getSortedRowModel, getFilteredRowModel, getPaginationRowModel as needed."
+    category: "shadcn_data_table"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "tanstack-react-table"]
+    tags: ["shadcn", "data-table", "sorting", "filtering", "pagination"]
+    example: |
+      import {
+        getSortedRowModel,
+        getFilteredRowModel,
+        getPaginationRowModel,
+      } from "@tanstack/react-table";
+
+      const table = useReactTable({
+        data,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        onSortingChange: setSorting,
+        onColumnFiltersChange: setColumnFilters,
+        state: { sorting, columnFilters },
+      });
+
+  - id: SHADCN043
+    title: "Use DataTableColumnHeader for sortable columns"
+    description: "Create a reusable DataTableColumnHeader component with sort indicators that integrates with @tanstack/react-table's sorting API."
+    category: "shadcn_data_table"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui", "tanstack-react-table"]
+    tags: ["shadcn", "data-table", "column-header", "sorting"]
+    example: |
+      function DataTableColumnHeader({ column, title }) {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            {title}
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      }
+
+      // Usage in column definition
+      { accessorKey: "name", header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Name" />
+      ) }
+
+  - id: SHADCN044
+    title: "Implement row selection with checkbox column"
+    description: "Add row selection to DataTable using a checkbox column and @tanstack/react-table's row selection state."
+    category: "shadcn_data_table"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui", "tanstack-react-table"]
+    tags: ["shadcn", "data-table", "row-selection", "checkbox"]
+    example: |
+      const columns: ColumnDef<User>[] = [
+        {
+          id: "select",
+          header: ({ table }) => (
+            <Checkbox
+              checked={table.getIsAllPageRowsSelected()}
+              onCheckedChange={(value) =>
+                table.toggleAllPageRowsSelected(!!value)
+              }
+            />
+          ),
+          cell: ({ row }) => (
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+            />
+          ),
+        },
+        // ... other columns
+      ];
+
+  - id: SHADCN045
+    title: "Use column visibility controls"
+    description: "Add a DropdownMenu-based column visibility toggle to allow users to show/hide DataTable columns."
+    category: "shadcn_data_table"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui", "tanstack-react-table"]
+    tags: ["shadcn", "data-table", "column-visibility"]
+    example: |
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline">Columns</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {table.getAllColumns()
+            .filter((col) => col.getCanHide())
+            .map((col) => (
+              <DropdownMenuCheckboxItem
+                key={col.id}
+                checked={col.getIsVisible()}
+                onCheckedChange={(value) => col.toggleVisibility(!!value)}
+              >
+                {col.id}
+              </DropdownMenuCheckboxItem>
+            ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+  # ============================================================================
+  # SHADCN MIGRATION (SHADCN046-SHADCN050)
+  # ============================================================================
+
+  - id: SHADCN046
+    title: "Migrate from v0 to v1 with CLI init"
+    description: "When migrating from shadcn/ui v0 (manual setup) to v1, run `npx shadcn-ui@latest init` and re-install components via CLI instead of manual copying."
+    category: "shadcn_migration"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui"]
+    tags: ["shadcn", "migration", "v0", "v1"]
+    example: |
+      # Step 1: Initialize
+      npx shadcn-ui@latest init
+
+      # Step 2: Re-install components
+      npx shadcn-ui@latest add button dialog form
+
+      # Step 3: Update cn() import to @/lib/utils
+      # Step 4: Move components to components/ui/
+
+  - id: SHADCN047
+    title: "Migrate from v1 to v2 CLI"
+    description: "When upgrading to shadcn/ui v2, use the new CLI without -ui suffix (`npx shadcn@latest`). Update components.json and re-run add for new components."
+    category: "shadcn_migration"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui"]
+    tags: ["shadcn", "migration", "v1", "v2"]
+    example: |
+      # Old v1 CLI
+      npx shadcn-ui@latest add button
+
+      # New v2 CLI
+      npx shadcn@latest add button
+
+      # Add v2 components
+      npx shadcn@latest add sidebar chart drawer breadcrumb
+
+  - id: SHADCN048
+    title: "Adopt Tailwind CSS v4 for v3/latest"
+    description: "shadcn/ui v3/latest supports Tailwind CSS v4 with @theme directive and CSS-first configuration. Migrate from tailwind.config.ts to CSS-based config."
+    category: "shadcn_migration"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui", "tailwindcss"]
+    tags: ["shadcn", "migration", "v3", "tailwind-v4"]
+    example: |
+      /* Tailwind v4: CSS-first config */
+      @import "tailwindcss";
+
+      @theme {
+        --color-background: hsl(var(--background));
+        --color-foreground: hsl(var(--foreground));
+        --color-primary: hsl(var(--primary));
+        --radius-lg: var(--radius);
+      }
+
+  - id: SHADCN049
+    title: "Use shadcn registry for custom components"
+    description: "In v2+, use the shadcn registry system to publish and share custom component packages. Create a registry.json for your component library."
+    category: "shadcn_migration"
+    severity: "info"
+    applicability:
+      frameworks: ["shadcn-ui"]
+    tags: ["shadcn", "registry", "v2", "sharing"]
+    example: |
+      // Custom registry
+      npx shadcn@latest add https://my-registry.com/components/my-button
+
+      // Registry JSON format
+      {
+        "name": "my-button",
+        "type": "registry:ui",
+        "dependencies": ["@radix-ui/react-slot"],
+        "files": [{ "path": "ui/my-button.tsx", "type": "registry:ui" }]
+      }
+
+  - id: SHADCN050
+    title: "Update Radix UI primitives when upgrading"
+    description: "When upgrading shadcn/ui, also update Radix UI primitives to their latest versions. Run npx shadcn@latest diff to see changes."
+    category: "shadcn_migration"
+    severity: "warning"
+    applicability:
+      frameworks: ["shadcn-ui", "radix-ui"]
+    tags: ["shadcn", "radix", "upgrade", "dependencies"]
+    example: |
+      # Check for component updates
+      npx shadcn@latest diff
+
+      # Update specific components
+      npx shadcn@latest add button --overwrite
+
+      # Update Radix dependencies
+      npm update @radix-ui/react-dialog @radix-ui/react-dropdown-menu

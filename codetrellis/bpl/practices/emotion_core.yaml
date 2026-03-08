@@ -1,0 +1,1107 @@
+# Emotion CSS-in-JS Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.43 - Emotion CSS-in-JS Framework Support
+# Practice IDs: EMO001-EMO050
+# Coverage: Components, CSS Prop, Theme, Styling, Performance,
+#           Accessibility, SSR, Testing, Patterns, Migration
+# Versions: @emotion/react v11+, @emotion/styled v11+, @emotion/css v11+,
+#           emotion-theming v10, legacy emotion v9
+
+practices:
+  # ============================================================================
+  # EM COMPONENTS (EMO001-EMO005) - @emotion/styled patterns
+  # ============================================================================
+
+  - id: EMO001
+    title: "Define styled components outside render function"
+    description: "Always define @emotion/styled components outside the component body. Defining inside causes a new component on every render, destroying the DOM tree and defeating reconciliation."
+    category: "em_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/styled", "react"]
+    tags: ["emotion", "styled", "performance", "render"]
+    example: |
+      // ✅ Correct: defined outside component
+      const StyledButton = styled.button`
+        background: blue;
+        color: white;
+      `;
+      function MyComponent() {
+        return <StyledButton>Click</StyledButton>;
+      }
+
+      // ❌ Wrong: re-created every render
+      function MyComponent() {
+        const StyledButton = styled.button`background: blue;`;
+        return <StyledButton>Click</StyledButton>;
+      }
+
+  - id: EMO002
+    title: "Use shouldForwardProp to filter DOM props"
+    description: "In @emotion/styled, use shouldForwardProp option to prevent custom props from being forwarded to the DOM. Unlike styled-components $prefix, Emotion uses an explicit filter function."
+    category: "em_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/styled", "react"]
+    tags: ["emotion", "styled", "shouldForwardProp", "dom"]
+    example: |
+      import isPropValid from '@emotion/is-prop-valid'
+
+      // ✅ Filter with shouldForwardProp
+      const Box = styled('div', {
+        shouldForwardProp: (prop) =>
+          isPropValid(prop) && prop !== 'color' && prop !== 'size',
+      })`
+        background: ${({ color }) => color};
+        padding: ${({ size }) => size === 'large' ? '16px' : '8px'};
+      `;
+
+  - id: EMO003
+    title: "Use the as prop for element polymorphism"
+    description: "Use the 'as' prop to change the rendered HTML element without creating a new component. Works with both styled components and css prop."
+    category: "em_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/styled", "react"]
+    tags: ["emotion", "polymorphism", "as-prop"]
+    example: |
+      const Button = styled.button`
+        padding: 8px 16px;
+      `;
+      // ✅ Render as <a>
+      <Button as="a" href="/page">Link</Button>
+      // ✅ Render as another component
+      <Button as={Link} to="/page">Router Link</Button>
+
+  - id: EMO004
+    title: "Extend components with styled() wrapper"
+    description: "Extend existing styled components by wrapping them with styled(). This creates a new component inheriting all styles. Works across @emotion/styled and styled-components."
+    category: "em_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/styled", "react"]
+    tags: ["emotion", "extending", "composition"]
+    example: |
+      const Base = styled.div`
+        padding: 16px;
+      `;
+      // ✅ Extend with new styles
+      const Extended = styled(Base)`
+        background: blue;
+        color: white;
+      `;
+
+  - id: EMO005
+    title: "Use label option for debugging styled components"
+    description: "Use the label option in @emotion/styled to add descriptive names to generated class names for easier debugging. Alternatively, configure @emotion/babel-plugin for auto-labeling."
+    category: "em_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/styled", "react"]
+    tags: ["emotion", "debugging", "label"]
+    example: |
+      // ✅ Manual label
+      const Button = styled('button', { label: 'PrimaryButton' })`
+        background: blue;
+      `;
+      // Generated class: css-abc123-PrimaryButton
+
+      // ✅ Or use babel plugin for auto-labeling
+      // .babelrc: { "plugins": ["@emotion/babel-plugin"] }
+
+  # ============================================================================
+  # EM CSS PROP (EMO006-EMO010) - Emotion's signature feature
+  # ============================================================================
+
+  - id: EMO006
+    title: "Use css prop with JSX pragma or babel config"
+    description: "The css prop requires either the JSX pragma comment or @emotion/babel-plugin configured. Prefer @emotion/babel-plugin or jsxImportSource in tsconfig for project-wide support."
+    category: "em_css_prop"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "css-prop", "jsx-pragma", "setup"]
+    example: |
+      // Option 1: Per-file pragma (quick start)
+      /** @jsxImportSource @emotion/react */
+      import { css } from '@emotion/react'
+      <div css={css`color: blue;`}>Hello</div>
+
+      // Option 2: tsconfig.json (project-wide, recommended)
+      // { "compilerOptions": { "jsxImportSource": "@emotion/react" } }
+
+      // Option 3: babel plugin
+      // { "plugins": ["@emotion/babel-plugin"] }
+
+  - id: EMO007
+    title: "Prefer object styles over string styles for type safety"
+    description: "Use object syntax with the css prop for TypeScript type checking, autocomplete, and compile-time validation of CSS properties. String (template literal) syntax loses these benefits."
+    category: "em_css_prop"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "css-prop", "typescript", "object-styles"]
+    example: |
+      // ✅ Object syntax: type-safe, autocomplete
+      <div css={{ color: 'blue', fontSize: 16, padding: '8px' }}>
+        Hello
+      </div>
+
+      // ✅ Also good: css() with object for reusable styles
+      const buttonStyle = css({ color: 'blue', padding: '8px' })
+
+      // ⚠️ String syntax: no type checking
+      <div css={css`color: blue; font-size: 16px;`}>Hello</div>
+
+  - id: EMO008
+    title: "Compose styles with arrays in css prop"
+    description: "Use array syntax in the css prop to compose multiple style objects. Styles are merged left-to-right with later values taking precedence. This is Emotion's recommended composition pattern."
+    category: "em_css_prop"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "css-prop", "composition", "array"]
+    example: |
+      const base = css`padding: 8px; color: black;`
+      const danger = css`color: red; font-weight: bold;`
+
+      // ✅ Compose with arrays (later overrides earlier)
+      <div css={[base, danger]}>Error</div>
+      // Result: padding: 8px; color: red; font-weight: bold;
+
+      // ✅ Conditional composition
+      <div css={[base, isError && danger]}>Message</div>
+
+  - id: EMO009
+    title: "Use css function for reusable style objects"
+    description: "Define reusable styles with the css function and compose them. This is more efficient than inline styles and enables sharing across components."
+    category: "em_css_prop"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "css-function", "reusable"]
+    example: |
+      import { css } from '@emotion/react'
+
+      // ✅ Reusable style definitions
+      const flexCenter = css`
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+
+      const card = css`
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 16px;
+      `;
+
+      // ✅ Compose in components
+      <div css={[flexCenter, card]}>Centered Card</div>
+
+  - id: EMO010
+    title: "Access theme in css prop via function syntax"
+    description: "Use a function that receives the theme as its argument to access theme values within the css prop. This enables dynamic theming."
+    category: "em_css_prop"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "css-prop", "theme"]
+    example: |
+      // ✅ Theme function in css prop
+      <div css={(theme) => ({
+        color: theme.colors.primary,
+        padding: theme.spacing.md,
+        borderRadius: theme.radii.sm,
+      })}>
+        Themed content
+      </div>
+
+      // ✅ Also works with template literals
+      <div css={(theme) => css`
+        color: ${theme.colors.primary};
+        padding: ${theme.spacing.md};
+      `}>
+        Themed content
+      </div>
+
+  # ============================================================================
+  # EM THEME (EMO011-EMO015) - Theme system patterns
+  # ============================================================================
+
+  - id: EMO011
+    title: "Define a typed theme object with TypeScript"
+    description: "Create a strongly-typed theme by declaring the theme type and using module augmentation to extend Emotion's Theme interface. This enables autocomplete in css prop and styled components."
+    category: "em_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react", "typescript"]
+    tags: ["emotion", "theme", "typescript", "type-safety"]
+    example: |
+      // theme.ts
+      const theme = {
+        colors: { primary: '#007bff', secondary: '#6c757d' },
+        spacing: { sm: '4px', md: '8px', lg: '16px' },
+        fonts: { body: 'system-ui', heading: 'Georgia' },
+      } as const;
+
+      type AppTheme = typeof theme;
+
+      // emotion.d.ts - module augmentation
+      import '@emotion/react'
+      declare module '@emotion/react' {
+        export interface Theme extends AppTheme {}
+      }
+
+  - id: EMO012
+    title: "Wrap app in ThemeProvider at the root"
+    description: "Place ThemeProvider at the root of your app to make the theme available to all styled components and css prop functions via useTheme and theme interpolation."
+    category: "em_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "theme", "ThemeProvider"]
+    example: |
+      import { ThemeProvider } from '@emotion/react'
+      import { theme } from './theme'
+
+      function App() {
+        return (
+          <ThemeProvider theme={theme}>
+            <MyApp />
+          </ThemeProvider>
+        );
+      }
+
+  - id: EMO013
+    title: "Use useTheme hook instead of withTheme HOC"
+    description: "Prefer the useTheme() hook from @emotion/react over the deprecated withTheme() HOC. The hook is cleaner, more composable, and works with function components."
+    category: "em_theme"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "theme", "useTheme", "hooks"]
+    example: |
+      import { useTheme } from '@emotion/react'
+
+      // ✅ useTheme hook
+      function ThemedButton() {
+        const theme = useTheme();
+        return <button style={{ color: theme.colors.primary }}>Click</button>;
+      }
+
+      // ❌ Avoid withTheme HOC
+      // const ThemedButton = withTheme(({ theme }) => ...)
+
+  - id: EMO014
+    title: "Use Global component for global styles"
+    description: "Use the Global component from @emotion/react to inject global CSS (resets, font-face, root variables). Avoid legacy injectGlobal. Global supports theme access."
+    category: "em_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "Global", "global-styles"]
+    example: |
+      import { Global, css } from '@emotion/react'
+
+      // ✅ Global component with theme access
+      function App() {
+        return (
+          <>
+            <Global styles={(theme) => css`
+              *, *::before, *::after { box-sizing: border-box; }
+              body {
+                margin: 0;
+                font-family: ${theme.fonts.body};
+                color: ${theme.colors.text};
+              }
+            `} />
+            <MyApp />
+          </>
+        );
+      }
+
+  - id: EMO015
+    title: "Use design tokens in theme for consistency"
+    description: "Structure the theme object with design token categories (colors, spacing, typography, breakpoints, shadows). This promotes consistency and makes theme changes propagate throughout the app."
+    category: "em_theme"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "theme", "design-tokens"]
+    example: |
+      const theme = {
+        colors: {
+          primary: '#007bff',
+          secondary: '#6c757d',
+          success: '#28a745',
+          error: '#dc3545',
+          text: '#212529',
+          background: '#ffffff',
+        },
+        spacing: { xs: '4px', sm: '8px', md: '16px', lg: '24px', xl: '32px' },
+        fonts: { body: 'system-ui, sans-serif', mono: 'Menlo, monospace' },
+        fontSizes: { sm: '14px', md: '16px', lg: '20px', xl: '24px' },
+        breakpoints: { sm: '576px', md: '768px', lg: '992px', xl: '1200px' },
+        shadows: { sm: '0 1px 2px rgba(0,0,0,0.1)', md: '0 4px 6px rgba(0,0,0,0.1)' },
+        radii: { sm: '4px', md: '8px', lg: '16px', full: '9999px' },
+      };
+
+  # ============================================================================
+  # EM STYLING (EMO016-EMO020) - CSS patterns and composition
+  # ============================================================================
+
+  - id: EMO016
+    title: "Use cx() for className composition"
+    description: "Use cx() from @emotion/css or the ClassNames component to compose multiple class names. cx() merges Emotion-generated and external class names correctly, resolving specificity conflicts."
+    category: "em_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/css", "react"]
+    tags: ["emotion", "cx", "className", "composition"]
+    example: |
+      import { css, cx } from '@emotion/css'
+
+      const base = css`padding: 8px;`
+      const primary = css`color: blue;`
+
+      // ✅ Compose with cx()
+      <div className={cx(base, primary, 'external-class')}>
+        Composed
+      </div>
+
+      // ✅ Conditional composition
+      <div className={cx(base, isActive && primary)}>Content</div>
+
+  - id: EMO017
+    title: "Use ClassNames render prop for third-party integration"
+    description: "Use the ClassNames component when you need to pass Emotion-generated class names to third-party components that only accept className string prop."
+    category: "em_styling"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "ClassNames", "third-party"]
+    example: |
+      import { ClassNames } from '@emotion/react'
+
+      // ✅ ClassNames for third-party components
+      <ClassNames>
+        {({ css, cx }) => (
+          <SomeLibComponent
+            className={cx(
+              css`color: blue; padding: 8px;`,
+              props.className,
+            )}
+          />
+        )}
+      </ClassNames>
+
+  - id: EMO018
+    title: "Prefer nesting for pseudo-selectors and child selectors"
+    description: "Use CSS nesting with & for pseudo-selectors (:hover, :focus), pseudo-elements (::before, ::after), and child selectors. Emotion supports full CSS nesting."
+    category: "em_styling"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "@emotion/styled"]
+    tags: ["emotion", "nesting", "pseudo-selectors"]
+    example: |
+      const buttonStyle = css`
+        padding: 8px 16px;
+        background: blue;
+        color: white;
+
+        &:hover {
+          background: darkblue;
+        }
+        &:focus-visible {
+          outline: 2px solid blue;
+          outline-offset: 2px;
+        }
+        &::after {
+          content: '';
+          display: block;
+        }
+        & + & {
+          margin-left: 8px;
+        }
+      `;
+
+  - id: EMO019
+    title: "Use CSS variables for dynamic values"
+    description: "Use CSS custom properties (variables) for values that change frequently. This avoids generating new class names for each value, improving performance."
+    category: "em_styling"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "@emotion/styled"]
+    tags: ["emotion", "css-variables", "performance"]
+    example: |
+      // ✅ CSS variable approach (single class, dynamic value)
+      const Slider = styled.div`
+        --progress: ${({ value }) => value}%;
+        background: linear-gradient(
+          to right,
+          blue var(--progress),
+          gray var(--progress)
+        );
+      `;
+
+      // ✅ Also works with css prop
+      <div css={css`
+        --color: ${dynamicColor};
+        color: var(--color);
+      `}>Content</div>
+
+  - id: EMO020
+    title: "Use responsive styles with breakpoints"
+    description: "Use media queries within Emotion styles for responsive design. Consider facepaint for cleaner responsive syntax with arrays."
+    category: "em_styling"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react"]
+    tags: ["emotion", "responsive", "media-queries", "facepaint"]
+    example: |
+      // ✅ Standard media queries
+      const responsive = css`
+        font-size: 14px;
+        @media (min-width: 768px) { font-size: 16px; }
+        @media (min-width: 1024px) { font-size: 18px; }
+      `;
+
+      // ✅ Facepaint for cleaner responsive syntax
+      import facepaint from 'facepaint'
+      const mq = facepaint(['@media(min-width: 768px)', '@media(min-width: 1024px)'])
+      const responsive = mq({ fontSize: [14, 16, 18], padding: [8, 16, 24] })
+
+  # ============================================================================
+  # EM PERFORMANCE (EMO021-EMO025)
+  # ============================================================================
+
+  - id: EMO021
+    title: "Avoid dynamic styles that generate many class names"
+    description: "Avoid interpolating rapidly-changing values (e.g., mouse position, scroll) directly into tagged template literals. Each unique value generates a new class name. Use CSS variables or inline styles instead."
+    category: "em_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "@emotion/styled"]
+    tags: ["emotion", "performance", "dynamic-styles"]
+    example: |
+      // ❌ Generates new class on every pixel of mouse movement
+      <div css={css`transform: translate(${x}px, ${y}px);`} />
+
+      // ✅ Use CSS variable (single class, dynamic value via style)
+      <div
+        css={css`transform: translate(var(--x), var(--y));`}
+        style={{ '--x': `${x}px`, '--y': `${y}px` }}
+      />
+
+      // ✅ Or use inline style for rapidly-changing values
+      <div css={css`will-change: transform;`}
+        style={{ transform: `translate(${x}px, ${y}px)` }} />
+
+  - id: EMO022
+    title: "Use createCache for multi-app or iframe isolation"
+    description: "Use createCache from @emotion/cache with CacheProvider when running multiple Emotion instances (micro-frontends, iframes, Shadow DOM). Each instance needs a unique key to avoid style collisions."
+    category: "em_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/cache", "@emotion/react"]
+    tags: ["emotion", "cache", "CacheProvider", "isolation"]
+    example: |
+      import createCache from '@emotion/cache'
+      import { CacheProvider } from '@emotion/react'
+
+      const myCache = createCache({
+        key: 'my-app',  // unique prefix for classnames
+        prepend: true,   // insert styles at top of <head>
+      });
+
+      function MicroFrontend() {
+        return (
+          <CacheProvider value={myCache}>
+            <App />
+          </CacheProvider>
+        );
+      }
+
+  - id: EMO023
+    title: "Enable speedy mode in production"
+    description: "Emotion uses CSSStyleSheet.insertRule (speedy mode) in production by default for better performance. Ensure you're not disabling it. In development, it uses <style> tags for easier debugging."
+    category: "em_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["emotion", "@emotion/react"]
+    tags: ["emotion", "performance", "speedy"]
+    example: |
+      // Emotion defaults:
+      // Production: speedy=true (CSSStyleSheet.insertRule, faster)
+      // Development: speedy=false (<style> tags, inspectable)
+
+      // Don't disable speedy in production
+      // ❌ createCache({ key: 'app', speedy: false }) // slow in prod!
+
+  - id: EMO024
+    title: "Memoize style computations for expensive styles"
+    description: "Use useMemo to memoize expensive style computations that depend on props or state. This prevents unnecessary recalculation on every render."
+    category: "em_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "react"]
+    tags: ["emotion", "performance", "memoization"]
+    example: |
+      import { useMemo } from 'react'
+      import { css } from '@emotion/react'
+
+      function DataGrid({ columns, theme }) {
+        // ✅ Memoize complex style computation
+        const gridStyle = useMemo(() => css`
+          display: grid;
+          grid-template-columns: ${columns.map(c => c.width).join(' ')};
+          gap: ${theme.spacing.md};
+        `, [columns, theme.spacing.md]);
+
+        return <div css={gridStyle}>...</div>;
+      }
+
+  - id: EMO025
+    title: "Use prepend option for style ordering"
+    description: "Use createCache with prepend: true to insert Emotion styles at the top of <head>, allowing utility CSS (Tailwind) or other stylesheets to override them."
+    category: "em_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/cache"]
+    tags: ["emotion", "cache", "prepend", "style-order"]
+    example: |
+      import createCache from '@emotion/cache'
+
+      // ✅ Emotion styles inserted first, can be overridden
+      const cache = createCache({ key: 'em', prepend: true });
+
+      // Useful when combining with Tailwind or other utility-first CSS
+      // Emotion styles come first, Tailwind utilities can override
+
+  # ============================================================================
+  # EM ACCESSIBILITY (EMO026-EMO030)
+  # ============================================================================
+
+  - id: EMO026
+    title: "Include focus-visible styles for keyboard navigation"
+    description: "Always include :focus-visible styles on interactive styled elements. Use &:focus-visible for keyboard-only focus indicators."
+    category: "em_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/styled", "@emotion/react"]
+    tags: ["emotion", "accessibility", "focus"]
+    example: |
+      const Button = styled.button`
+        padding: 8px 16px;
+        &:focus-visible {
+          outline: 2px solid blue;
+          outline-offset: 2px;
+        }
+        &:focus:not(:focus-visible) {
+          outline: none;
+        }
+      `;
+
+  - id: EMO027
+    title: "Use prefers-reduced-motion for animations"
+    description: "Respect the user's motion preference by using @media (prefers-reduced-motion: reduce) in keyframe animations and transitions."
+    category: "em_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/react"]
+    tags: ["emotion", "accessibility", "motion", "animations"]
+    example: |
+      const fadeIn = keyframes`
+        from { opacity: 0; }
+        to { opacity: 1; }
+      `;
+
+      const AnimatedBox = styled.div`
+        animation: ${fadeIn} 0.3s ease-in;
+        @media (prefers-reduced-motion: reduce) {
+          animation: none;
+        }
+      `;
+
+  - id: EMO028
+    title: "Use prefers-color-scheme for dark mode"
+    description: "Support dark mode with @media (prefers-color-scheme: dark) or by switching ThemeProvider themes. CSS custom properties work well for theme switching."
+    category: "em_accessibility"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react"]
+    tags: ["emotion", "accessibility", "dark-mode", "color-scheme"]
+    example: |
+      // ✅ CSS media query approach
+      const Card = styled.div`
+        background: white;
+        color: black;
+        @media (prefers-color-scheme: dark) {
+          background: #1a1a1a;
+          color: #f0f0f0;
+        }
+      `;
+
+      // ✅ Theme switching approach
+      const lightTheme = { bg: 'white', text: 'black' };
+      const darkTheme = { bg: '#1a1a1a', text: '#f0f0f0' };
+      <ThemeProvider theme={isDark ? darkTheme : lightTheme}>
+
+  - id: EMO029
+    title: "Ensure sufficient color contrast in themed components"
+    description: "When using theme colors for text and backgrounds, ensure WCAG AA contrast ratios (4.5:1 for normal text, 3:1 for large text). Use polished's readableColor() or theme tokens that guarantee contrast."
+    category: "em_accessibility"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react"]
+    tags: ["emotion", "accessibility", "contrast", "color"]
+    example: |
+      import { readableColor } from 'polished'
+
+      const Badge = styled.span`
+        background: ${({ theme, variant }) => theme.colors[variant]};
+        color: ${({ theme, variant }) =>
+          readableColor(theme.colors[variant])};
+        padding: 4px 8px;
+        border-radius: 4px;
+      `;
+
+  - id: EMO030
+    title: "Use semantic HTML elements in styled components"
+    description: "Use semantically appropriate HTML elements (button, nav, main, section, article) as the base for styled components rather than generic div/span."
+    category: "em_accessibility"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/styled"]
+    tags: ["emotion", "accessibility", "semantic-html"]
+    example: |
+      // ✅ Semantic elements
+      const Nav = styled.nav`...`;
+      const Main = styled.main`...`;
+      const Article = styled.article`...`;
+      const Button = styled.button`...`;
+
+      // ❌ Avoid div for everything
+      // const Nav = styled.div`...`; // loses semantic meaning
+
+  # ============================================================================
+  # EM SSR (EMO031-EMO035) - Server-side rendering
+  # ============================================================================
+
+  - id: EMO031
+    title: "Use extractCriticalToChunks for SSR"
+    description: "Use extractCriticalToChunks from @emotion/server for server-side rendering. It extracts CSS per-component for better code splitting than extractCritical."
+    category: "em_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/server", "react"]
+    tags: ["emotion", "ssr", "extractCriticalToChunks"]
+    example: |
+      import createEmotionServer from '@emotion/server/create-instance'
+      import createCache from '@emotion/cache'
+
+      const cache = createCache({ key: 'em' });
+      const { extractCriticalToChunks, constructStyleTagsFromChunks } =
+        createEmotionServer(cache);
+
+      // In SSR handler:
+      const html = renderToString(
+        <CacheProvider value={cache}><App /></CacheProvider>
+      );
+      const chunks = extractCriticalToChunks(html);
+      const styles = constructStyleTagsFromChunks(chunks);
+
+  - id: EMO032
+    title: "Use streaming SSR for large applications"
+    description: "Use renderStylesToNodeStream from @emotion/server with React's renderToPipeableStream for streaming SSR. This delivers faster TTFB for large applications."
+    category: "em_ssr"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/server", "react"]
+    tags: ["emotion", "ssr", "streaming"]
+    example: |
+      import { renderStylesToNodeStream } from '@emotion/server'
+      import { renderToPipeableStream } from 'react-dom/server'
+
+      // ✅ Streaming SSR
+      const { pipe } = renderToPipeableStream(<App />);
+      // Pipe through Emotion's style stream
+      pipe(renderStylesToNodeStream()).pipe(res);
+
+  - id: EMO033
+    title: "Configure Emotion SSR in Next.js correctly"
+    description: "For Next.js, configure Emotion in _document.tsx (Pages Router) or use the compiler.emotion config (Next.js 13+). Use CacheProvider with a shared cache instance."
+    category: "em_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "next"]
+    tags: ["emotion", "ssr", "nextjs"]
+    example: |
+      // next.config.js (Next.js 13+)
+      module.exports = {
+        compiler: {
+          emotion: true,
+          // or with options:
+          // emotion: { sourceMap: true, autoLabel: 'dev-only' }
+        },
+      };
+
+      // For Pages Router: custom _document.tsx
+      // For App Router: use createCache + CacheProvider in root layout
+
+  - id: EMO034
+    title: "Use CacheProvider for consistent SSR/client hydration"
+    description: "Use the same CacheProvider with the same cache key on both server and client to ensure consistent hydration. Mismatched keys cause style flash."
+    category: "em_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/cache", "@emotion/react"]
+    tags: ["emotion", "ssr", "hydration", "CacheProvider"]
+    example: |
+      import createCache from '@emotion/cache'
+      import { CacheProvider } from '@emotion/react'
+
+      // ✅ Same cache key on server and client
+      const cache = createCache({ key: 'em' });
+
+      // Server
+      <CacheProvider value={cache}><App /></CacheProvider>
+
+      // Client
+      <CacheProvider value={cache}><App /></CacheProvider>
+
+  - id: EMO035
+    title: "Configure nonce for CSP-compliant SSR"
+    description: "Pass a nonce to createCache for Content Security Policy (CSP) compliance. The nonce is applied to all style tags generated by Emotion."
+    category: "em_ssr"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/cache"]
+    tags: ["emotion", "ssr", "csp", "nonce", "security"]
+    example: |
+      import createCache from '@emotion/cache'
+
+      // ✅ CSP-compliant cache with nonce
+      const cache = createCache({
+        key: 'em',
+        nonce: serverNonce,  // from CSP header
+      });
+
+      // All generated <style> tags will have nonce attribute:
+      // <style nonce="abc123" data-emotion="em ..." />
+
+  # ============================================================================
+  # EM TESTING (EMO036-EMO040)
+  # ============================================================================
+
+  - id: EMO036
+    title: "Use @emotion/jest for snapshot serialization"
+    description: "Use @emotion/jest's createSerializer to serialize Emotion styles in Jest snapshots. This produces readable CSS in snapshots instead of hashed class names."
+    category: "em_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/jest", "jest"]
+    tags: ["emotion", "testing", "jest", "snapshots"]
+    example: |
+      // jest.setup.ts
+      import { createSerializer } from '@emotion/jest'
+      expect.addSnapshotSerializer(createSerializer())
+
+      // test file
+      import { render } from '@testing-library/react'
+      const { container } = render(<StyledButton>Click</StyledButton>)
+      expect(container.firstChild).toMatchSnapshot()
+      // Snapshot shows actual CSS instead of hashed class names
+
+  - id: EMO037
+    title: "Use toHaveStyleRule for CSS assertions"
+    description: "Use @emotion/jest's toHaveStyleRule matcher to assert CSS properties on rendered elements. This is more reliable than checking class names."
+    category: "em_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/jest", "jest"]
+    tags: ["emotion", "testing", "toHaveStyleRule"]
+    example: |
+      import { matchers } from '@emotion/jest'
+      expect.extend(matchers)
+
+      // ✅ Assert CSS properties
+      const { container } = render(<StyledButton primary />)
+      expect(container.firstChild).toHaveStyleRule(
+        'background-color', 'blue'
+      )
+      expect(container.firstChild).toHaveStyleRule(
+        'color', 'white'
+      )
+
+  - id: EMO038
+    title: "Wrap themed components with ThemeProvider in tests"
+    description: "When testing components that use theme, wrap them with ThemeProvider in the test. Create a test utility for this."
+    category: "em_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "jest"]
+    tags: ["emotion", "testing", "theme", "ThemeProvider"]
+    example: |
+      import { ThemeProvider } from '@emotion/react'
+      import { render } from '@testing-library/react'
+      import { theme } from '../theme'
+
+      // ✅ Reusable render helper with theme
+      function renderWithTheme(ui, options = {}) {
+        return render(
+          <ThemeProvider theme={theme}>{ui}</ThemeProvider>,
+          options,
+        );
+      }
+
+      // In tests:
+      const { getByText } = renderWithTheme(<ThemedButton />)
+
+  - id: EMO039
+    title: "Test responsive styles with media query matchers"
+    description: "Use toHaveStyleRule with the media option to test styles at specific breakpoints."
+    category: "em_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/jest", "jest"]
+    tags: ["emotion", "testing", "responsive", "media-queries"]
+    example: |
+      expect(container.firstChild).toHaveStyleRule(
+        'font-size', '18px',
+        { media: '(min-width: 1024px)' }
+      )
+
+  - id: EMO040
+    title: "Test dynamic prop styling"
+    description: "Test that dynamic props correctly influence CSS output. Render with different prop values and assert the resulting styles."
+    category: "em_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/jest", "jest"]
+    tags: ["emotion", "testing", "dynamic-props"]
+    example: |
+      const { rerender, container } = renderWithTheme(
+        <Button variant="primary" />
+      )
+      expect(container.firstChild).toHaveStyleRule('background', 'blue')
+
+      rerender(
+        <ThemeProvider theme={theme}>
+          <Button variant="secondary" />
+        </ThemeProvider>
+      )
+      expect(container.firstChild).toHaveStyleRule('background', 'gray')
+
+  # ============================================================================
+  # EM PATTERNS (EMO041-EMO045) - Architecture patterns
+  # ============================================================================
+
+  - id: EMO041
+    title: "Co-locate styles with components"
+    description: "Keep styled components and css definitions in the same file as the component that uses them, or in a co-located styles file. Avoid centralizing all styles."
+    category: "em_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "@emotion/styled"]
+    tags: ["emotion", "patterns", "colocation", "organization"]
+    example: |
+      // ✅ Co-located: Button/Button.tsx + Button/Button.styles.ts
+      // Button.styles.ts
+      export const buttonBase = css`
+        padding: 8px 16px;
+        border-radius: 4px;
+      `;
+      export const StyledButton = styled.button`
+        ${buttonBase}
+        background: ${({ theme }) => theme.colors.primary};
+      `;
+
+      // Button.tsx
+      import { StyledButton } from './Button.styles';
+
+  - id: EMO042
+    title: "Choose between css prop and styled consistently"
+    description: "Pick a primary approach (css prop or styled) for your project and use it consistently. Mix only when there's a clear reason (e.g., css prop for one-off styles, styled for reusable components)."
+    category: "em_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react", "@emotion/styled"]
+    tags: ["emotion", "patterns", "consistency"]
+    example: |
+      // ✅ Option A: Primarily css prop (simpler, co-located)
+      function Card({ title }) {
+        return (
+          <div css={{ padding: 16, borderRadius: 8 }}>
+            <h2 css={{ fontSize: 20 }}>{title}</h2>
+          </div>
+        );
+      }
+
+      // ✅ Option B: Primarily styled (reusable, named)
+      const Card = styled.div`padding: 16px; border-radius: 8px;`;
+      const Title = styled.h2`font-size: 20px;`;
+
+  - id: EMO043
+    title: "Use style composition over complex conditionals"
+    description: "Instead of complex ternary chains inside template literals, compose multiple style objects with arrays or cx(). This is more readable and maintainable."
+    category: "em_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react"]
+    tags: ["emotion", "patterns", "composition", "readability"]
+    example: |
+      // ❌ Complex inline conditionals
+      const style = css`
+        color: ${active ? 'blue' : disabled ? 'gray' : 'black'};
+        opacity: ${disabled ? 0.5 : 1};
+        cursor: ${disabled ? 'not-allowed' : 'pointer'};
+      `;
+
+      // ✅ Compose separate concerns
+      const base = css`color: black; cursor: pointer;`
+      const activeStyle = css`color: blue;`
+      const disabledStyle = css`color: gray; opacity: 0.5; cursor: not-allowed;`
+      <div css={[base, active && activeStyle, disabled && disabledStyle]} />
+
+  - id: EMO044
+    title: "Create a variant pattern with style maps"
+    description: "Use a style map object for component variants instead of switch/if chains. This is cleaner and easier to extend."
+    category: "em_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react"]
+    tags: ["emotion", "patterns", "variants"]
+    example: |
+      const variantStyles = {
+        primary: css`background: blue; color: white;`,
+        secondary: css`background: gray; color: white;`,
+        outline: css`background: transparent; border: 1px solid blue; color: blue;`,
+      };
+
+      function Button({ variant = 'primary', children }) {
+        return <button css={[baseStyle, variantStyles[variant]]}>{children}</button>;
+      }
+
+  - id: EMO045
+    title: "Use keyframes for reusable animations"
+    description: "Define keyframes at module scope and reference them in styled components. Compose multiple animations with template literal interpolation."
+    category: "em_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["emotion", "@emotion/react"]
+    tags: ["emotion", "patterns", "keyframes", "animations"]
+    example: |
+      import { keyframes } from '@emotion/react'
+
+      const fadeIn = keyframes`
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      `;
+
+      const FadeInDiv = styled.div`
+        animation: ${fadeIn} 0.3s ease-out;
+      `;
+
+      // ✅ Compose multiple animations
+      const pulse = keyframes`0%, 100% { opacity: 1; } 50% { opacity: 0.5; }`;
+      const PulsingFadeIn = styled.div`
+        animation: ${fadeIn} 0.3s ease-out, ${pulse} 2s infinite;
+      `;
+
+  # ============================================================================
+  # EM MIGRATION (EMO046-EMO050) - Version migration patterns
+  # ============================================================================
+
+  - id: EMO046
+    title: "Migrate from emotion v9 to @emotion/react v11"
+    description: "Migrate from the legacy single 'emotion' package to @emotion/react + @emotion/styled. Replace injectGlobal with Global, hydrate with CacheProvider."
+    category: "em_migration"
+    severity: "info"
+    applicability:
+      frameworks: ["emotion", "react"]
+    tags: ["emotion", "migration", "v9-to-v11"]
+    example: |
+      // v9 (legacy)
+      import { css, injectGlobal } from 'emotion'
+      import styled from 'react-emotion'
+
+      // v11 (current)
+      import { css, Global } from '@emotion/react'
+      import styled from '@emotion/styled'
+      // injectGlobal → <Global styles={...} />
+
+  - id: EMO047
+    title: "Migrate from emotion-theming to @emotion/react"
+    description: "In Emotion v11, ThemeProvider and useTheme moved from 'emotion-theming' to '@emotion/react'. Update imports accordingly."
+    category: "em_migration"
+    severity: "info"
+    applicability:
+      frameworks: ["emotion", "react"]
+    tags: ["emotion", "migration", "v10-to-v11", "theming"]
+    example: |
+      // v10
+      import { ThemeProvider } from 'emotion-theming'
+      import { useTheme } from 'emotion-theming'
+
+      // v11
+      import { ThemeProvider, useTheme } from '@emotion/react'
+
+  - id: EMO048
+    title: "Migrate from @emotion/core to @emotion/react"
+    description: "In Emotion v11, @emotion/core was renamed to @emotion/react. The API is identical; only the package name changed."
+    category: "em_migration"
+    severity: "info"
+    applicability:
+      frameworks: ["emotion", "react"]
+    tags: ["emotion", "migration", "v10-to-v11"]
+    example: |
+      // v10
+      import { css, jsx } from '@emotion/core'
+
+      // v11
+      import { css, jsx } from '@emotion/react'
+
+  - id: EMO049
+    title: "Use @emotion/babel-plugin instead of babel-plugin-emotion"
+    description: "The legacy babel-plugin-emotion was renamed to @emotion/babel-plugin in v11. Update babel config to use the scoped package."
+    category: "em_migration"
+    severity: "info"
+    applicability:
+      frameworks: ["emotion"]
+    tags: ["emotion", "migration", "babel"]
+    example: |
+      // .babelrc (v10 legacy)
+      { "plugins": ["babel-plugin-emotion"] }
+
+      // .babelrc (v11 current)
+      { "plugins": ["@emotion/babel-plugin"] }
+
+      // Or in Next.js 13+
+      // next.config.js
+      module.exports = { compiler: { emotion: true } }
+
+  - id: EMO050
+    title: "Migrate from styled-components to @emotion/styled"
+    description: "@emotion/styled has near-identical API to styled-components. The main differences: shouldForwardProp instead of $ prefix, label option, and @emotion/react for css prop."
+    category: "em_migration"
+    severity: "info"
+    applicability:
+      frameworks: ["emotion", "styled-components"]
+    tags: ["emotion", "migration", "styled-components"]
+    example: |
+      // styled-components → @emotion/styled
+      // 1. Replace import
+      // import styled from 'styled-components' → import styled from '@emotion/styled'
+
+      // 2. Replace $ transient props with shouldForwardProp
+      // styled.div` color: ${({ $color }) => $color}; `
+      // → styled('div', { shouldForwardProp: p => p !== 'color' })`
+      //     color: ${({ color }) => color};
+      //   `
+
+      // 3. Replace createGlobalStyle with Global
+      // createGlobalStyle`...` → <Global styles={css`...`} />
+
+      // 4. Replace ServerStyleSheet with @emotion/server
+      // ServerStyleSheet → extractCriticalToChunks

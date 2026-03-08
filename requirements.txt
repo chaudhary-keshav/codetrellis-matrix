@@ -1,0 +1,29 @@
+# CodeTrellis Dependencies
+
+# Core
+pathlib2>=2.3.7; python_version < "3.4"
+
+# File watching (for auto-sync)
+watchdog>=3.0.0
+
+# CLI colors (optional)
+colorama>=0.4.6
+
+# For YAML config support (optional)
+pyyaml>=6.0
+
+# Token counting (optional, falls back to char/4 heuristic)
+tiktoken>=0.5.0
+
+# AST parsing (optional, graceful fallback to regex)
+tree-sitter>=0.22.0
+tree-sitter-java>=0.23.0
+tree-sitter-python>=0.23.0
+tree-sitter-typescript>=0.23.0
+
+# For development
+pytest>=8.0.0
+pytest-cov>=4.0.0
+black>=24.0.0
+ruff>=0.1.0
+mypy>=1.8.0

@@ -1,0 +1,980 @@
+# Chakra UI Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.38 - Chakra UI Framework Support
+# Practice IDs: CHAKRA001-CHAKRA050
+# Coverage: Components, Theme, Styling, Hooks, Performance, Accessibility,
+#           Forms, Overlay, Navigation, Migration
+# Versions: Chakra UI v1.x, v2.x, v3.x (Ark UI)
+
+practices:
+  # ============================================================================
+  # CHAKRA COMPONENTS (CHAKRA001-CHAKRA005)
+  # ============================================================================
+
+  - id: CHAKRA001
+    title: "Wrap application with ChakraProvider"
+    description: "Always wrap your app root with ChakraProvider to supply the theme context, color mode, and global styles to all Chakra UI components."
+    category: "chakra_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "provider", "setup"]
+    example: |
+      import { ChakraProvider } from '@chakra-ui/react';
+      import theme from './theme';
+
+      function App() {
+        return (
+          <ChakraProvider theme={theme}>
+            <YourApp />
+          </ChakraProvider>
+        );
+      }
+
+  - id: CHAKRA002
+    title: "Use style props instead of inline styles"
+    description: "Chakra UI provides style props (bg, color, p, m, etc.) that integrate with the theme and support responsive values. Prefer style props over CSS-in-JS or inline styles."
+    category: "chakra_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "style-props", "theming"]
+    example: |
+      // Good: style props
+      <Box bg="blue.500" color="white" p={4} borderRadius="md">
+        Content
+      </Box>
+
+      // Avoid: inline styles
+      <Box style={{ backgroundColor: 'blue', padding: '16px' }}>
+        Content
+      </Box>
+
+  - id: CHAKRA003
+    title: "Use composition with layout components"
+    description: "Use Chakra layout primitives (Stack, Flex, Grid, Container, SimpleGrid) for consistent spacing and layout patterns instead of manual CSS."
+    category: "chakra_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "layout", "composition"]
+    example: |
+      // Good: layout composition
+      <VStack spacing={4} align="stretch">
+        <HStack justify="space-between">
+          <Heading size="md">Title</Heading>
+          <Button>Action</Button>
+        </HStack>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+          <Card />
+          <Card />
+          <Card />
+        </SimpleGrid>
+      </VStack>
+
+  - id: CHAKRA004
+    title: "Use as prop for semantic HTML elements"
+    description: "Use the as prop to render Chakra components as different HTML elements for proper semantics while preserving style prop capabilities."
+    category: "chakra_components"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "polymorphism", "semantics"]
+    example: |
+      // Good: semantic element with style props
+      <Box as="section" py={8}>
+        <Heading as="h2" size="xl">Section Title</Heading>
+        <Text as="p">Paragraph content</Text>
+      </Box>
+
+  - id: CHAKRA005
+    title: "Use sub-component patterns for compound components"
+    description: "Chakra UI compound components (Modal, Menu, Accordion, Tabs) use sub-component composition. Always use the designated sub-components for correct context and behavior."
+    category: "chakra_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "compound-components", "composition"]
+    example: |
+      // Good: compound component pattern
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Title</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>Content</ModalBody>
+          <ModalFooter>
+            <Button onClick={onClose}>Close</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+  # ============================================================================
+  # CHAKRA THEME (CHAKRA006-CHAKRA010)
+  # ============================================================================
+
+  - id: CHAKRA006
+    title: "Extend default theme with extendTheme (v1/v2)"
+    description: "Use extendTheme to customize the default Chakra theme rather than creating from scratch. This preserves default values and only overrides what you need."
+    category: "chakra_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "theme", "customization"]
+    example: |
+      import { extendTheme } from '@chakra-ui/react';
+
+      const theme = extendTheme({
+        colors: { brand: { 50: '#f0e4ff', 500: '#7928ca', 900: '#1a0033' } },
+        fonts: { heading: 'Inter, sans-serif', body: 'Inter, sans-serif' },
+      });
+
+  - id: CHAKRA007
+    title: "Use createSystem and defineConfig for v3"
+    description: "In Chakra UI v3 (Ark UI architecture), use createSystem with defineConfig instead of extendTheme. This enables the new recipe-based styling and Panda CSS integration."
+    category: "chakra_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "v3", "create-system", "define-config"]
+    example: |
+      import { createSystem, defineConfig } from '@chakra-ui/react';
+
+      const config = defineConfig({
+        theme: {
+          tokens: { colors: { brand: { value: '#7928ca' } } },
+          semanticTokens: { colors: { primary: { value: '{colors.brand}' } } },
+        },
+      });
+
+      export const system = createSystem(config);
+
+  - id: CHAKRA008
+    title: "Define semantic tokens for color mode"
+    description: "Use semantic tokens to define values that automatically switch between color modes. This centralizes light/dark mode logic in the theme."
+    category: "chakra_theme"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "semantic-tokens", "color-mode"]
+    example: |
+      // v1/v2: semantic tokens in theme
+      const theme = extendTheme({
+        semanticTokens: {
+          colors: {
+            'bg.surface': { default: 'white', _dark: 'gray.800' },
+            'text.primary': { default: 'gray.900', _dark: 'white' },
+          },
+        },
+      });
+
+  - id: CHAKRA009
+    title: "Customize component styles in theme"
+    description: "Define component-level customizations (baseStyle, variants, sizes, defaultProps) in the theme for consistent styling across all instances."
+    category: "chakra_theme"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "component-styles", "variants"]
+    example: |
+      const theme = extendTheme({
+        components: {
+          Button: {
+            baseStyle: { fontWeight: 'bold' },
+            variants: {
+              brand: { bg: 'brand.500', color: 'white', _hover: { bg: 'brand.600' } },
+            },
+            defaultProps: { variant: 'brand' },
+          },
+        },
+      });
+
+  - id: CHAKRA010
+    title: "Use recipes for v3 component styling"
+    description: "In Chakra v3, use defineRecipe and defineSlotRecipe for component styling instead of component theme overrides. Recipes provide type-safe, composable style variants."
+    category: "chakra_theme"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "v3", "recipes", "slot-recipes"]
+    example: |
+      import { defineRecipe } from '@chakra-ui/react';
+
+      export const buttonRecipe = defineRecipe({
+        base: { fontWeight: 'bold', borderRadius: 'md' },
+        variants: {
+          visual: {
+            solid: { bg: 'brand.500', color: 'white' },
+            outline: { border: '2px solid', borderColor: 'brand.500' },
+          },
+          size: {
+            sm: { px: 3, py: 1, fontSize: 'sm' },
+            lg: { px: 6, py: 3, fontSize: 'lg' },
+          },
+        },
+      });
+
+  # ============================================================================
+  # CHAKRA STYLING (CHAKRA011-CHAKRA015)
+  # ============================================================================
+
+  - id: CHAKRA011
+    title: "Use responsive array or object syntax"
+    description: "Use Chakra responsive syntax for mobile-first responsive design. Array syntax applies from smallest breakpoint up, object syntax targets specific breakpoints."
+    category: "chakra_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "responsive", "mobile-first"]
+    example: |
+      // Array syntax: [base, sm, md, lg, xl]
+      <Box fontSize={['sm', 'md', 'lg']} p={[2, 4, 6, 8]}>Content</Box>
+
+      // Object syntax: named breakpoints
+      <Box w={{ base: '100%', md: '50%', lg: '33%' }}>Content</Box>
+
+  - id: CHAKRA012
+    title: "Use pseudo prop syntax for interactive states"
+    description: "Use Chakra pseudo props (_hover, _focus, _active, _disabled) instead of CSS pseudo-selectors for interactive states. They integrate with theme tokens."
+    category: "chakra_styling"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "pseudo-props", "interactive"]
+    example: |
+      <Button
+        bg="blue.500"
+        _hover={{ bg: 'blue.600', transform: 'scale(1.02)' }}
+        _active={{ bg: 'blue.700' }}
+        _disabled={{ opacity: 0.6, cursor: 'not-allowed' }}
+      >
+        Click me
+      </Button>
+
+  - id: CHAKRA013
+    title: "Use theme tokens instead of hardcoded values"
+    description: "Reference theme tokens (colors.blue.500, space.4, sizes.md) in style props instead of raw CSS values. This ensures consistency and easy theme switching."
+    category: "chakra_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "tokens", "consistency"]
+    example: |
+      // Good: theme tokens
+      <Box bg="gray.100" p={4} borderRadius="lg" shadow="md">Content</Box>
+
+      // Avoid: raw values
+      <Box bg="#f7f7f7" p="16px" borderRadius="8px" boxShadow="0 2px 4px rgba(0,0,0,0.1)">
+        Content
+      </Box>
+
+  - id: CHAKRA014
+    title: "Use sx prop for one-off complex styles"
+    description: "The sx prop provides an escape hatch for CSS properties not covered by style props. Use it sparingly for complex selectors or animations."
+    category: "chakra_styling"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "sx-prop", "escape-hatch"]
+    example: |
+      <Box
+        sx={{
+          '&::before': { content: '""', display: 'block' },
+          '@media print': { display: 'none' },
+          scrollbarWidth: 'thin',
+        }}
+      >
+        Content
+      </Box>
+
+  - id: CHAKRA015
+    title: "Use chakra factory for custom styled components"
+    description: "Use the chakra() factory or chakra.element to create custom styled components that accept Chakra style props."
+    category: "chakra_styling"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "factory", "custom-components"]
+    example: |
+      import { chakra } from '@chakra-ui/react';
+
+      // Factory usage
+      const StyledVideo = chakra('video', {
+        baseStyle: { borderRadius: 'lg', objectFit: 'cover' },
+      });
+
+      // Shorthand
+      <chakra.div display="flex" alignItems="center" gap={4}>
+        <StyledVideo src="/demo.mp4" w="full" />
+      </chakra.div>
+
+  # ============================================================================
+  # CHAKRA HOOKS (CHAKRA016-CHAKRA020)
+  # ============================================================================
+
+  - id: CHAKRA016
+    title: "Use useDisclosure for toggle-based UI"
+    description: "Use the useDisclosure hook for managing open/close state of modals, drawers, popovers, and other toggle-based UI. It provides isOpen, onOpen, onClose, and onToggle."
+    category: "chakra_hooks"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "hooks", "disclosure"]
+    example: |
+      const { isOpen, onOpen, onClose } = useDisclosure();
+
+      return (
+        <>
+          <Button onClick={onOpen}>Open</Button>
+          <Modal isOpen={isOpen} onClose={onClose}>
+            <ModalOverlay />
+            <ModalContent>...</ModalContent>
+          </Modal>
+        </>
+      );
+
+  - id: CHAKRA017
+    title: "Use useColorMode and useColorModeValue"
+    description: "Use useColorMode for toggling color mode and useColorModeValue for selecting values based on current mode instead of conditional rendering."
+    category: "chakra_hooks"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "hooks", "color-mode"]
+    example: |
+      const { colorMode, toggleColorMode } = useColorMode();
+      const bg = useColorModeValue('white', 'gray.800');
+      const color = useColorModeValue('gray.800', 'white');
+
+      return (
+        <Box bg={bg} color={color}>
+          <Button onClick={toggleColorMode}>
+            Toggle {colorMode === 'light' ? 'Dark' : 'Light'}
+          </Button>
+        </Box>
+      );
+
+  - id: CHAKRA018
+    title: "Use useBreakpointValue for responsive logic"
+    description: "Use useBreakpointValue when you need responsive values in JavaScript logic (not just styles). For style-only responsive needs, prefer responsive style syntax."
+    category: "chakra_hooks"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "hooks", "responsive"]
+    example: |
+      const variant = useBreakpointValue({ base: 'mobile', md: 'tablet', lg: 'desktop' });
+      const columns = useBreakpointValue({ base: 1, md: 2, lg: 3 });
+
+      return <Grid templateColumns={`repeat(${columns}, 1fr)`} gap={6}>...</Grid>;
+
+  - id: CHAKRA019
+    title: "Use useToast for feedback notifications (v1/v2)"
+    description: "Use the useToast hook to show non-intrusive feedback. Configure position, duration, and status. In v3, use the toaster API instead."
+    category: "chakra_hooks"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "hooks", "toast", "feedback"]
+    example: |
+      // v1/v2: useToast
+      const toast = useToast();
+      toast({ title: 'Saved!', status: 'success', duration: 3000, isClosable: true });
+
+      // v3: toaster API
+      import { toaster } from '@chakra-ui/react';
+      toaster.success({ title: 'Saved!', description: 'Your changes have been saved.' });
+
+  - id: CHAKRA020
+    title: "Use useToken to access theme tokens in JavaScript"
+    description: "Use useToken to access theme token values in JavaScript logic when you need computed values rather than style props."
+    category: "chakra_hooks"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "hooks", "tokens", "theme"]
+    example: |
+      const [brand500, gray200] = useToken('colors', ['brand.500', 'gray.200']);
+      // Use in canvas, SVG, or other non-Chakra elements
+      return <canvas style={{ borderColor: brand500 }} />;
+
+  # ============================================================================
+  # CHAKRA PERFORMANCE (CHAKRA021-CHAKRA025)
+  # ============================================================================
+
+  - id: CHAKRA021
+    title: "Avoid unnecessary re-renders with memo and callbacks"
+    description: "Chakra style props create new objects on every render. Use React.memo and useMemo for components with many style props that re-render frequently."
+    category: "chakra_performance"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "performance", "memoization"]
+    example: |
+      // Good: memoize style objects
+      const cardStyles = useMemo(() => ({
+        bg: 'white', shadow: 'md', borderRadius: 'lg', p: 6,
+      }), []);
+
+      return <Box {...cardStyles}>Content</Box>;
+
+  - id: CHAKRA022
+    title: "Use Show/Hide components for responsive rendering (v2+)"
+    description: "Use Show and Hide components instead of useBreakpointValue for conditional rendering based on breakpoints. They avoid unnecessary hook evaluation."
+    category: "chakra_performance"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "responsive", "conditional-rendering"]
+    example: |
+      import { Show, Hide } from '@chakra-ui/react';
+
+      <Show above="md"><DesktopNav /></Show>
+      <Hide above="md"><MobileNav /></Hide>
+
+  - id: CHAKRA023
+    title: "Lazy load overlay components"
+    description: "Modals, Drawers, and Popovers can be lazy loaded since they're not visible on initial render. Use dynamic import or Suspense for heavy overlay content."
+    category: "chakra_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "performance", "lazy-loading"]
+    example: |
+      const HeavyForm = lazy(() => import('./HeavyForm'));
+
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalContent>
+          <Suspense fallback={<Spinner />}>
+            <HeavyForm />
+          </Suspense>
+        </ModalContent>
+      </Modal>
+
+  - id: CHAKRA024
+    title: "Bundle size optimization with tree-shaking"
+    description: "Import Chakra components directly from @chakra-ui/react which supports tree-shaking. Avoid importing from individual sub-packages unless necessary."
+    category: "chakra_performance"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "bundle-size", "tree-shaking"]
+    example: |
+      // Good: single import source
+      import { Box, Button, Heading, Text } from '@chakra-ui/react';
+
+      // Avoid: multiple sub-package imports (v1 pattern)
+      import { Box } from '@chakra-ui/layout';
+      import { Button } from '@chakra-ui/button';
+
+  - id: CHAKRA025
+    title: "Minimize useColorModeValue calls"
+    description: "Consolidate useColorModeValue calls using semantic tokens in the theme instead of calling the hook for every color value in a component."
+    category: "chakra_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "performance", "color-mode"]
+    example: |
+      // Better: semantic tokens in theme
+      semanticTokens: {
+        colors: {
+          'card.bg': { default: 'white', _dark: 'gray.700' },
+          'card.border': { default: 'gray.200', _dark: 'gray.600' },
+        }
+      }
+      // Then just use:
+      <Box bg="card.bg" borderColor="card.border" />
+
+  # ============================================================================
+  # CHAKRA ACCESSIBILITY (CHAKRA026-CHAKRA030)
+  # ============================================================================
+
+  - id: CHAKRA026
+    title: "Use Chakra's built-in accessibility features"
+    description: "Chakra UI components include ARIA attributes by default. Use components like VisuallyHidden, SkipNavLink, and built-in keyboard navigation."
+    category: "chakra_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "accessibility", "aria"]
+    example: |
+      import { VisuallyHidden, SkipNavLink, SkipNavContent } from '@chakra-ui/react';
+
+      <SkipNavLink>Skip to content</SkipNavLink>
+      <nav>...</nav>
+      <SkipNavContent />
+      <main>
+        <IconButton aria-label="Search" icon={<SearchIcon />} />
+        <VisuallyHidden>Screen reader only text</VisuallyHidden>
+      </main>
+
+  - id: CHAKRA027
+    title: "Provide aria-label for icon-only buttons"
+    description: "Always provide aria-label for IconButton and icon-only interactive elements. Chakra enforces this as a required prop on IconButton."
+    category: "chakra_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "accessibility", "icon-button"]
+    example: |
+      // Good: aria-label provided
+      <IconButton aria-label="Delete item" icon={<DeleteIcon />} onClick={onDelete} />
+
+      // Good: tooltip for additional context
+      <Tooltip label="Settings">
+        <IconButton aria-label="Settings" icon={<SettingsIcon />} />
+      </Tooltip>
+
+  - id: CHAKRA028
+    title: "Use AlertDialog for destructive confirmations"
+    description: "Use AlertDialog instead of Modal for destructive actions. It focuses the least destructive action by default and requires explicit acknowledgment."
+    category: "chakra_accessibility"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "accessibility", "alert-dialog"]
+    example: |
+      <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose}>
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader>Delete Account</AlertDialogHeader>
+            <AlertDialogBody>This action cannot be undone.</AlertDialogBody>
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onClose}>Cancel</Button>
+              <Button colorScheme="red" ml={3} onClick={onDelete}>Delete</Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+
+  - id: CHAKRA029
+    title: "Use FormLabel and FormErrorMessage for form accessibility"
+    description: "Always pair form inputs with FormLabel (linked via FormControl) and FormErrorMessage for screen reader support and validation feedback."
+    category: "chakra_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "accessibility", "forms"]
+    example: |
+      <FormControl isRequired isInvalid={!!errors.email}>
+        <FormLabel>Email</FormLabel>
+        <Input type="email" {...register('email')} />
+        <FormHelperText>We'll never share your email.</FormHelperText>
+        <FormErrorMessage>{errors.email?.message}</FormErrorMessage>
+      </FormControl>
+
+  - id: CHAKRA030
+    title: "Set initialFocusRef on modals"
+    description: "Use initialFocusRef on Modal and Drawer to direct focus to the most important interactive element when the overlay opens, improving keyboard navigation."
+    category: "chakra_accessibility"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "accessibility", "focus-management"]
+    example: |
+      const initialRef = useRef(null);
+
+      <Modal initialFocusRef={initialRef} isOpen={isOpen} onClose={onClose}>
+        <ModalContent>
+          <ModalBody>
+            <Input ref={initialRef} placeholder="Type here first" />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+  # ============================================================================
+  # CHAKRA FORMS (CHAKRA031-CHAKRA035)
+  # ============================================================================
+
+  - id: CHAKRA031
+    title: "Use FormControl for form field structure"
+    description: "Wrap form fields with FormControl to automatically connect labels, inputs, help text, and error messages via React context."
+    category: "chakra_forms"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "forms", "form-control"]
+    example: |
+      <FormControl isRequired isInvalid={!!error}>
+        <FormLabel>Username</FormLabel>
+        <Input placeholder="Enter username" />
+        <FormHelperText>Choose a unique username.</FormHelperText>
+        <FormErrorMessage>{error}</FormErrorMessage>
+      </FormControl>
+
+  - id: CHAKRA032
+    title: "Integrate with react-hook-form or formik"
+    description: "For complex forms, integrate Chakra form components with react-hook-form or formik for validation, submission handling, and state management."
+    category: "chakra_forms"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "forms", "react-hook-form", "formik"]
+    example: |
+      // react-hook-form integration
+      const { register, handleSubmit, formState: { errors } } = useForm();
+
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <FormControl isInvalid={!!errors.name}>
+          <FormLabel>Name</FormLabel>
+          <Input {...register('name', { required: 'Name is required' })} />
+          <FormErrorMessage>{errors.name?.message}</FormErrorMessage>
+        </FormControl>
+      </form>
+
+  - id: CHAKRA033
+    title: "Use Field component in v3"
+    description: "In Chakra v3, use the Field component with Field.Root, Field.Label, Field.ErrorText pattern that replaces the v2 FormControl/FormLabel pattern."
+    category: "chakra_forms"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "v3", "field", "forms"]
+    example: |
+      // v3 Field component
+      <Field.Root required invalid={!!error}>
+        <Field.Label>Email</Field.Label>
+        <Input type="email" />
+        <Field.HelperText>We'll never share your email.</Field.HelperText>
+        <Field.ErrorText>{error}</Field.ErrorText>
+      </Field.Root>
+
+  - id: CHAKRA034
+    title: "Use appropriate input components for data types"
+    description: "Use NumberInput for numeric values, PinInput for OTP codes, Select for dropdowns, Switch for toggles. Each has built-in accessibility and validation."
+    category: "chakra_forms"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "forms", "input-types"]
+    example: |
+      // NumberInput with constraints
+      <NumberInput min={0} max={100} step={5}>
+        <NumberInputField />
+        <NumberInputStepper>
+          <NumberIncrementStepper />
+          <NumberDecrementStepper />
+        </NumberInputStepper>
+      </NumberInput>
+
+      // PinInput for OTP
+      <HStack>
+        <PinInput otp>
+          <PinInputField />
+          <PinInputField />
+          <PinInputField />
+          <PinInputField />
+        </PinInput>
+      </HStack>
+
+  - id: CHAKRA035
+    title: "Handle form loading and disabled states"
+    description: "Use isLoading on Button and isDisabled on FormControl to provide visual feedback during form submission."
+    category: "chakra_forms"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "forms", "loading-state"]
+    example: |
+      <FormControl isDisabled={isSubmitting}>
+        <FormLabel>Email</FormLabel>
+        <Input type="email" />
+      </FormControl>
+      <Button type="submit" isLoading={isSubmitting} loadingText="Submitting...">
+        Submit
+      </Button>
+
+  # ============================================================================
+  # CHAKRA OVERLAY (CHAKRA036-CHAKRA040)
+  # ============================================================================
+
+  - id: CHAKRA036
+    title: "Control modals with useDisclosure"
+    description: "Always use the useDisclosure hook (or v3 Dialog component) for managing modal/drawer open state. Avoid manual boolean state management."
+    category: "chakra_overlay"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "modal", "disclosure"]
+    example: |
+      const { isOpen, onOpen, onClose } = useDisclosure();
+
+      <Button onClick={onOpen}>Open</Button>
+      <Modal isOpen={isOpen} onClose={onClose} size="xl" isCentered>
+        <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
+        <ModalContent>...</ModalContent>
+      </Modal>
+
+  - id: CHAKRA037
+    title: "Use Drawer for side panel navigation"
+    description: "Use Drawer with placement prop for side panels, mobile navigation, and detail views. Choose appropriate placement (left, right, top, bottom)."
+    category: "chakra_overlay"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "drawer", "navigation"]
+    example: |
+      <Drawer placement="right" onClose={onClose} isOpen={isOpen} size="md">
+        <DrawerOverlay />
+        <DrawerContent>
+          <DrawerCloseButton />
+          <DrawerHeader>Detail View</DrawerHeader>
+          <DrawerBody>...</DrawerBody>
+          <DrawerFooter>
+            <Button onClick={onClose}>Close</Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+  - id: CHAKRA038
+    title: "Use Popover for contextual information"
+    description: "Use Popover for contextual actions and information. Use PopoverTrigger with an interactive element and set appropriate trigger behavior."
+    category: "chakra_overlay"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "popover", "contextual"]
+    example: |
+      <Popover trigger="hover" placement="top">
+        <PopoverTrigger>
+          <Button>Hover me</Button>
+        </PopoverTrigger>
+        <PopoverContent>
+          <PopoverArrow />
+          <PopoverHeader>Info</PopoverHeader>
+          <PopoverBody>Additional details here.</PopoverBody>
+        </PopoverContent>
+      </Popover>
+
+  - id: CHAKRA039
+    title: "Configure toast defaults globally"
+    description: "Set default toast configuration (position, duration) at the provider level to ensure consistent notification behavior across the app."
+    category: "chakra_overlay"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "toast", "configuration"]
+    example: |
+      // v2: default toast options
+      const toast = useToast({ position: 'top-right', duration: 5000 });
+
+      // v3: Toaster component placement
+      <Toaster />  // in root layout
+
+      toaster.create({
+        title: 'Action completed',
+        type: 'success',
+        duration: 5000,
+      });
+
+  - id: CHAKRA040
+    title: "Handle Escape key and overlay click behavior"
+    description: "Configure closeOnOverlayClick and closeOnEsc props on Modal/Drawer based on the interaction context. Disable overlay close for forms with unsaved data."
+    category: "chakra_overlay"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "modal", "ux"]
+    example: |
+      // Form modal: prevent accidental close
+      <Modal isOpen={isOpen} onClose={onClose} closeOnOverlayClick={false} closeOnEsc={false}>
+        <ModalContent>
+          <ModalBody>
+            <form onSubmit={handleSubmit}>...</form>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+  # ============================================================================
+  # CHAKRA NAVIGATION (CHAKRA041-CHAKRA045)
+  # ============================================================================
+
+  - id: CHAKRA041
+    title: "Use Breadcrumb for navigation hierarchy"
+    description: "Use Chakra Breadcrumb component for showing navigation paths. It automatically handles separators and current page ARIA attributes."
+    category: "chakra_navigation"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "breadcrumb", "navigation"]
+    example: |
+      <Breadcrumb separator=">">
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/">Home</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/products">Products</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbItem isCurrentPage>
+          <BreadcrumbLink>Details</BreadcrumbLink>
+        </BreadcrumbItem>
+      </Breadcrumb>
+
+  - id: CHAKRA042
+    title: "Use Tabs for content organization"
+    description: "Use Tabs with proper variant and orientation. Use isLazy prop for tabs with heavy content to only render active tab panel."
+    category: "chakra_navigation"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "tabs", "organization"]
+    example: |
+      <Tabs variant="enclosed" isLazy>
+        <TabList>
+          <Tab>Overview</Tab>
+          <Tab>Details</Tab>
+          <Tab>Settings</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel><Overview /></TabPanel>
+          <TabPanel><Details /></TabPanel>
+          <TabPanel><Settings /></TabPanel>
+        </TabPanels>
+      </Tabs>
+
+  - id: CHAKRA043
+    title: "Use Menu for action lists"
+    description: "Use Menu for dropdown action lists. Support keyboard navigation, icons, and dividers. Use MenuOptionGroup for selectable option lists."
+    category: "chakra_navigation"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "menu", "actions"]
+    example: |
+      <Menu>
+        <MenuButton as={Button} rightIcon={<ChevronDownIcon />}>
+          Actions
+        </MenuButton>
+        <MenuList>
+          <MenuItem icon={<EditIcon />} command="⌘E">Edit</MenuItem>
+          <MenuItem icon={<CopyIcon />} command="⌘C">Copy</MenuItem>
+          <MenuDivider />
+          <MenuItem icon={<DeleteIcon />} color="red.500">Delete</MenuItem>
+        </MenuList>
+      </Menu>
+
+  - id: CHAKRA044
+    title: "Use Accordion for collapsible content"
+    description: "Use Accordion with allowMultiple or allowToggle props based on the UX requirement. Use for FAQs, settings panels, and expandable sections."
+    category: "chakra_navigation"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "accordion", "collapsible"]
+    example: |
+      <Accordion allowMultiple>
+        <AccordionItem>
+          <AccordionButton>
+            <Box flex="1" textAlign="left">Section 1</Box>
+            <AccordionIcon />
+          </AccordionButton>
+          <AccordionPanel pb={4}>Content 1</AccordionPanel>
+        </AccordionItem>
+      </Accordion>
+
+  - id: CHAKRA045
+    title: "Use Link component with router integration"
+    description: "Use Chakra Link component with the as prop to integrate with your router (Next.js Link, React Router Link) while keeping Chakra styling."
+    category: "chakra_navigation"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "link", "routing"]
+    example: |
+      import { Link as ChakraLink } from '@chakra-ui/react';
+      import NextLink from 'next/link';
+
+      <ChakraLink as={NextLink} href="/about" color="blue.500" _hover={{ textDecoration: 'underline' }}>
+        About Us
+      </ChakraLink>
+
+  # ============================================================================
+  # CHAKRA MIGRATION (CHAKRA046-CHAKRA050)
+  # ============================================================================
+
+  - id: CHAKRA046
+    title: "Migrate from v1 to v2: update theme tools"
+    description: "When migrating from v1 to v2, replace createBreakpoints with direct object, update theme-tools imports, and adopt new Card/Stepper components."
+    category: "chakra_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "migration", "v1-to-v2"]
+    example: |
+      // v1: createBreakpoints
+      const breakpoints = createBreakpoints({ sm: '30em', md: '48em' });
+      // v2: direct object
+      const theme = extendTheme({ breakpoints: { sm: '30em', md: '48em' } });
+
+  - id: CHAKRA047
+    title: "Migrate from v2 to v3: adopt Ark UI patterns"
+    description: "When migrating to v3, replace extendTheme with createSystem/defineConfig, FormControl with Field, useToast with toaster, and adopt recipes for component styling."
+    category: "chakra_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "migration", "v2-to-v3", "ark-ui"]
+    example: |
+      // v2: extendTheme
+      const theme = extendTheme({ colors: { brand: { 500: '#7928ca' } } });
+      // v3: createSystem + defineConfig
+      const config = defineConfig({
+        theme: { tokens: { colors: { brand: { value: '#7928ca' } } } }
+      });
+      const system = createSystem(config);
+
+  - id: CHAKRA048
+    title: "Migrate useToast to toaster API (v3)"
+    description: "In Chakra v3, replace the useToast hook with the toaster static API. This removes the need for hooks and works outside React components."
+    category: "chakra_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "migration", "toast", "v3"]
+    example: |
+      // v2: useToast
+      const toast = useToast();
+      toast({ title: 'Success', status: 'success' });
+
+      // v3: toaster API
+      import { toaster } from '@chakra-ui/react';
+      toaster.success({ title: 'Success', description: 'Item saved.' });
+
+  - id: CHAKRA049
+    title: "Migrate to recipe-based component styling (v3)"
+    description: "In v3, migrate component theme overrides to defineRecipe/defineSlotRecipe for type-safe, composable component styles with variant support."
+    category: "chakra_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "migration", "recipes", "v3"]
+    example: |
+      // v2: component theme override
+      components: { Button: { baseStyle: {...}, variants: {...} } }
+
+      // v3: recipe
+      import { defineRecipe } from '@chakra-ui/react';
+      const buttonRecipe = defineRecipe({
+        className: 'button',
+        base: { fontWeight: 'bold' },
+        variants: { visual: { solid: {...}, outline: {...} } },
+      });
+
+  - id: CHAKRA050
+    title: "Adopt colorPalette API for color scheme consistency (v3)"
+    description: "In v3, use the colorPalette prop and virtual color system instead of colorScheme. This provides better token integration and automatic shade calculation."
+    category: "chakra_migration"
+    severity: "medium"
+    applicability:
+      frameworks: ["chakra-ui", "react"]
+    tags: ["chakra", "v3", "color-palette", "migration"]
+    example: |
+      // v2: colorScheme
+      <Button colorScheme="blue">Click</Button>
+
+      // v3: colorPalette
+      <Button colorPalette="blue">Click</Button>
+      // Or in theme with virtual colors
+      <Box colorPalette="brand">
+        <Button bg="colorPalette.500">Uses brand.500</Button>
+      </Box>

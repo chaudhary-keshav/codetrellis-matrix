@@ -1,0 +1,920 @@
+# Lit / Web Components Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.65 - Lit / Web Components Framework Support
+# Practice IDs: LIT001-LIT050
+# Coverage: Components, Properties, Templates, Events, Controllers,
+#           Shadow DOM, CSS, Context, SSR, TypeScript, Patterns
+# Versions: Polymer 1.x-3.x, lit-element 2.x, lit 2.x-3.x,
+#           @lit/task, @lit/context, @lit/localize, @lit-labs/ssr
+
+practices:
+  # ============================================================================
+  # LIT COMPONENTS (LIT001-LIT010) - Component best practices
+  # ============================================================================
+
+  - id: LIT001
+    title: "Extend LitElement for custom elements"
+    description: "LitElement provides reactive properties, scoped styles, and declarative templates. Extending HTMLElement directly requires manual property observation, rendering, and style scoping. Use LitElement unless you need the lowest-level control."
+    category: "lit_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "component", "LitElement", "HTMLElement"]
+    example: |
+      // ✅ LitElement
+      import { LitElement, html, css } from 'lit';
+      import { customElement } from 'lit/decorators.js';
+
+      @customElement('my-element')
+      export class MyElement extends LitElement {
+        render() { return html`<p>Hello</p>`; }
+      }
+
+      // ❌ Vanilla HTMLElement (no reactive properties, no scoped styles)
+      class MyElement extends HTMLElement {
+        connectedCallback() {
+          this.innerHTML = '<p>Hello</p>';
+        }
+      }
+
+  - id: LIT002
+    title: "Use @customElement decorator for tag registration"
+    description: "The @customElement decorator registers the custom element with the browser's registry. It's cleaner than calling customElements.define() separately. Ensure tag names contain a hyphen (required by the spec)."
+    category: "lit_components"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "decorator", "customElement", "registration"]
+    example: |
+      // ✅ Decorator registration
+      @customElement('user-profile')
+      export class UserProfile extends LitElement { }
+
+      // ✅ Manual registration (also valid)
+      export class UserProfile extends LitElement { }
+      customElements.define('user-profile', UserProfile);
+
+  - id: LIT003
+    title: "Follow naming conventions for custom elements"
+    description: "Custom element tag names must contain a hyphen. Use a consistent prefix for your project (e.g., 'app-', 'my-'). Class names should be PascalCase. Export the class for external use."
+    category: "lit_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "naming", "tag-name", "convention"]
+    example: |
+      // ✅ Good naming
+      @customElement('app-user-card')
+      export class AppUserCard extends LitElement { }
+
+      // ❌ Missing hyphen (will throw)
+      @customElement('usercard')
+      export class UserCard extends LitElement { }
+
+  - id: LIT004
+    title: "Implement render() for declarative templates"
+    description: "The render() method should return a TemplateResult (from html``). It must be a pure function of component state. Never perform side effects in render()."
+    category: "lit_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "render", "template", "pure"]
+    example: |
+      // ✅ Pure render
+      render() {
+        return html`<p>${this.name}</p>`;
+      }
+
+      // ❌ Side effects in render
+      render() {
+        this.fetchData(); // Side effect!
+        return html`<p>${this.name}</p>`;
+      }
+
+  - id: LIT005
+    title: "Use lifecycle methods correctly"
+    description: "connectedCallback for setup, disconnectedCallback for cleanup, firstUpdated for one-time DOM work after first render, updated for post-render logic. Always call super in connectedCallback and disconnectedCallback."
+    category: "lit_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "lifecycle", "connectedCallback", "firstUpdated"]
+    example: |
+      connectedCallback() {
+        super.connectedCallback();  // ✅ Must call super
+        this.addEventListener('resize', this._handleResize);
+      }
+      disconnectedCallback() {
+        super.disconnectedCallback();  // ✅ Must call super
+        this.removeEventListener('resize', this._handleResize);
+      }
+      firstUpdated() {
+        this.shadowRoot.querySelector('#input')?.focus();
+      }
+
+  - id: LIT006
+    title: "Use ReactiveController for reusable logic"
+    description: "ReactiveControllers encapsulate reusable reactive behavior (timers, observers, data fetching). They hook into the host element's lifecycle without inheritance. Prefer controllers over mixins for composition."
+    category: "lit_components"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "controller", "ReactiveController", "composition"]
+    example: |
+      // ✅ ReactiveController
+      class ClockController {
+        host;
+        value = new Date();
+        _timerID;
+        constructor(host) {
+          (this.host = host).addController(this);
+        }
+        hostConnected() {
+          this._timerID = setInterval(() => {
+            this.value = new Date();
+            this.host.requestUpdate();
+          }, 1000);
+        }
+        hostDisconnected() {
+          clearInterval(this._timerID);
+        }
+      }
+
+  - id: LIT007
+    title: "Prefer composition over inheritance"
+    description: "Use ReactiveControllers and composition instead of deep class hierarchies. Mixins are acceptable for cross-cutting concerns but should be minimal. Avoid extending other LitElement subclasses more than one level deep."
+    category: "lit_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "composition", "mixin", "inheritance"]
+    example: |
+      // ✅ Composition via controllers
+      class MyElement extends LitElement {
+        clock = new ClockController(this);
+        render() { return html`${this.clock.value}`; }
+      }
+
+      // ❌ Deep inheritance chain
+      class MySpecialButton extends MyButton extends BaseButton extends LitElement { }
+
+  - id: LIT008
+    title: "Use @query decorators for DOM access"
+    description: "@query, @queryAll, and @queryAsync provide type-safe DOM access in shadow DOM. They're scoped to the component's shadow root. Use @queryAsync for elements that may not exist during firstUpdated."
+    category: "lit_components"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "query", "decorator", "DOM"]
+    example: |
+      // ✅ @query decorator
+      @query('#input') _input!: HTMLInputElement;
+
+      // ✅ @queryAll for multiple elements
+      @queryAll('.item') _items!: NodeListOf<HTMLElement>;
+
+      // ❌ Manual querySelector
+      this.shadowRoot!.querySelector('#input');
+
+  - id: LIT009
+    title: "Use updateComplete for async lifecycle coordination"
+    description: "updateComplete is a Promise that resolves after the component has finished updating. Use it to coordinate async operations or test component rendering."
+    category: "lit_components"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "updateComplete", "async", "lifecycle"]
+    example: |
+      async firstUpdated() {
+        await this.updateComplete;
+        // DOM is now fully rendered
+        this._measureLayout();
+      }
+
+  - id: LIT010
+    title: "Guard unnecessary updates with shouldUpdate"
+    description: "Override shouldUpdate() to prevent re-renders when non-essential properties change. Return false to skip the update cycle. This is useful for performance optimization."
+    category: "lit_components"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "shouldUpdate", "performance", "optimization"]
+    example: |
+      shouldUpdate(changedProperties) {
+        return changedProperties.has('data') || changedProperties.has('visible');
+      }
+
+  # ============================================================================
+  # LIT PROPERTIES (LIT011-LIT018) - Reactive property best practices
+  # ============================================================================
+
+  - id: LIT011
+    title: "Use @property for public reactive properties"
+    description: "@property() declares reactive properties that trigger re-renders on change. Set type for attribute conversion. Use reflect:true only when the attribute needs to reflect to the DOM."
+    category: "lit_properties"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "property", "reactive", "decorator"]
+    example: |
+      @property({ type: String }) name = '';
+      @property({ type: Number, reflect: true }) count = 0;
+      @property({ type: Boolean }) disabled = false;
+      @property({ type: Array }) items: string[] = [];
+
+  - id: LIT012
+    title: "Use @state for internal reactive state"
+    description: "@state() marks properties as internal reactive state. They trigger re-renders but are not exposed as attributes. Use for UI state that should not be part of the public API."
+    category: "lit_properties"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "state", "internal", "private"]
+    example: |
+      @state() private _isOpen = false;
+      @state() private _selectedIndex = -1;
+
+  - id: LIT013
+    title: "Use proper type converters for complex attributes"
+    description: "For properties beyond String/Number/Boolean/Array/Object, provide a custom converter. The converter handles attribute-to-property and property-to-attribute conversion."
+    category: "lit_properties"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "converter", "attribute", "type"]
+    example: |
+      @property({
+        converter: {
+          fromAttribute: (value) => new Date(value),
+          toAttribute: (value) => value.toISOString(),
+        },
+        reflect: true,
+      })
+      date = new Date();
+
+  - id: LIT014
+    title: "Use hasChanged for fine-grained update control"
+    description: "Override hasChanged on a property to control when changes trigger updates. Useful for object/array properties where reference equality checks are insufficient."
+    category: "lit_properties"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "hasChanged", "property", "performance"]
+    example: |
+      @property({
+        hasChanged: (newVal, oldVal) => {
+          return JSON.stringify(newVal) !== JSON.stringify(oldVal);
+        },
+      })
+      config = {};
+
+  - id: LIT015
+    title: "Avoid reflect:true on frequently changing properties"
+    description: "Reflecting a property to an attribute updates the DOM attribute on every change. This is expensive for frequently updated properties. Only use reflect when external CSS selectors or attribute queries need the value."
+    category: "lit_properties"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "reflect", "performance", "attribute"]
+    example: |
+      // ✅ Reflect for CSS state selectors
+      @property({ type: Boolean, reflect: true }) disabled = false;
+      // CSS can use: :host([disabled]) { opacity: 0.5; }
+
+      // ❌ Don't reflect frequently changing values
+      @property({ type: Number, reflect: true }) scrollY = 0;
+
+  - id: LIT016
+    title: "Initialize properties with default values"
+    description: "Always provide default values for reactive properties to avoid undefined states during rendering. Use class field initializers for clean syntax."
+    category: "lit_properties"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "property", "default", "initialization"]
+    example: |
+      @property({ type: String }) name = '';
+      @property({ type: Array }) items: Item[] = [];
+      @property({ type: Object }) config: Config = {};
+
+  - id: LIT017
+    title: "Use TypeScript types with Lit properties"
+    description: "Combine @property type option (for attribute conversion) with TypeScript type annotations (for compile-time safety). They serve different purposes."
+    category: "lit_properties"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "typescript", "property", "type-safety"]
+    example: |
+      // type: Number is for attribute conversion
+      // : number is for TypeScript
+      @property({ type: Number }) count: number = 0;
+
+  - id: LIT018
+    title: "Avoid mutating object/array properties directly"
+    description: "Lit uses reference equality to detect property changes. Mutating an object/array in-place won't trigger updates. Create new references or call requestUpdate() manually."
+    category: "lit_properties"
+    severity: "critical"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "property", "immutable", "update"]
+    example: |
+      // ✅ New reference triggers update
+      this.items = [...this.items, newItem];
+
+      // ❌ Mutation doesn't trigger update
+      this.items.push(newItem);
+
+  # ============================================================================
+  # LIT TEMPLATES (LIT019-LIT028) - Template and directive best practices
+  # ============================================================================
+
+  - id: LIT019
+    title: "Use html`` tagged template for templates"
+    description: "Always use Lit's html tagged template literal for templates. It provides efficient DOM updates via lit-html's template caching. Never use innerHTML."
+    category: "lit_templates"
+    severity: "critical"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "template", "html", "tagged-template"]
+    example: |
+      // ✅ Tagged template
+      render() {
+        return html`<div class="card">${this.title}</div>`;
+      }
+
+      // ❌ innerHTML (no diffing, XSS risk)
+      this.innerHTML = `<div class="card">${this.title}</div>`;
+
+  - id: LIT020
+    title: "Use property bindings for objects and arrays"
+    description: "Use .property=${value} syntax for object/array values. Attribute bindings (no dot) convert everything to strings. Property bindings pass values directly."
+    category: "lit_templates"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "binding", "property", "attribute"]
+    example: |
+      // ✅ Property binding for objects
+      html`<child-el .items=${this.items} .config=${this.config}></child-el>`
+
+      // ❌ Attribute binding stringifies objects
+      html`<child-el items=${this.items}></child-el>`
+
+  - id: LIT021
+    title: "Use boolean attribute bindings for boolean attributes"
+    description: "Use ?attribute=${value} for boolean attributes like disabled, hidden, checked. This adds/removes the attribute based on truthiness."
+    category: "lit_templates"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "binding", "boolean", "attribute"]
+    example: |
+      // ✅ Boolean binding
+      html`<button ?disabled=${this.isLoading}>Submit</button>`
+
+      // ❌ String binding (always sets the attribute)
+      html`<button disabled=${this.isLoading}>Submit</button>`
+
+  - id: LIT022
+    title: "Use @event bindings for event handlers"
+    description: "Use @event=${handler} syntax for event listeners in templates. Handlers are automatically bound and cleaned up. Pass method references, not arrow functions in render."
+    category: "lit_templates"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "event", "binding", "handler"]
+    example: |
+      // ✅ Method reference (efficient)
+      html`<button @click=${this._handleClick}>Click</button>`
+
+      // ❌ Arrow function in render (creates new function each render)
+      html`<button @click=${() => this.handleClick()}>Click</button>`
+
+  - id: LIT023
+    title: "Use repeat() for keyed list rendering"
+    description: "Use the repeat() directive for lists where items can be reordered, added, or removed. It uses keys for efficient DOM recycling. Use map() for static lists."
+    category: "lit_templates"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "repeat", "directive", "list", "keyed"]
+    example: |
+      // ✅ Keyed list with repeat
+      ${repeat(this.items, (item) => item.id, (item) => html`
+        <div class="item">${item.name}</div>
+      `)}
+
+      // ✅ Simple list with map (no reordering)
+      ${this.items.map(item => html`<span>${item}</span>`)}
+
+  - id: LIT024
+    title: "Use classMap and styleMap for dynamic styling"
+    description: "classMap() conditionally applies CSS classes. styleMap() sets inline styles. Both are more efficient than string interpolation."
+    category: "lit_templates"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "classMap", "styleMap", "directive", "styling"]
+    example: |
+      render() {
+        const classes = { active: this.active, disabled: this.disabled };
+        const styles = { color: this.color, fontSize: `${this.size}px` };
+        return html`<div class=${classMap(classes)} style=${styleMap(styles)}></div>`;
+      }
+
+  - id: LIT025
+    title: "Use when() and choose() for conditional rendering"
+    description: "when() directive provides cleaner conditional rendering than ternary expressions. choose() handles multi-branch conditions. Both support lazy evaluation."
+    category: "lit_templates"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "when", "choose", "conditional", "directive"]
+    example: |
+      // ✅ when() for binary conditions
+      ${when(this.isLoggedIn,
+        () => html`<user-panel></user-panel>`,
+        () => html`<login-form></login-form>`
+      )}
+
+      // ✅ choose() for multiple branches
+      ${choose(this.page, [
+        ['home', () => html`<home-page></home-page>`],
+        ['about', () => html`<about-page></about-page>`],
+      ], () => html`<not-found></not-found>`)}
+
+  - id: LIT026
+    title: "Use ref() for imperative element access"
+    description: "The ref() directive provides access to rendered elements without @query decorators. Useful for third-party library integration and imperative DOM operations."
+    category: "lit_templates"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "ref", "directive", "DOM"]
+    example: |
+      private _inputRef = createRef<HTMLInputElement>();
+      render() {
+        return html`<input ${ref(this._inputRef)}>`;
+      }
+      firstUpdated() {
+        this._inputRef.value?.focus();
+      }
+
+  - id: LIT027
+    title: "Avoid unsafeHTML except for trusted content"
+    description: "unsafeHTML() parses raw HTML strings into the template. Only use with sanitized/trusted content. Never use with user input. Prefer template composition instead."
+    category: "lit_templates"
+    severity: "critical"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "unsafeHTML", "security", "XSS"]
+    example: |
+      // ✅ Trusted content (e.g., from markdown renderer)
+      ${unsafeHTML(this.sanitizedMarkdown)}
+
+      // ❌ User input (XSS vulnerability!)
+      ${unsafeHTML(this.userComment)}
+
+  - id: LIT028
+    title: "Use cache() for preserving DOM across conditionals"
+    description: "The cache() directive preserves the DOM of previously rendered templates when switching between conditions. Useful for tab panels or view transitions."
+    category: "lit_templates"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "cache", "directive", "performance"]
+    example: |
+      // ✅ cache preserves DOM state when switching
+      ${cache(this.activeTab === 'edit'
+        ? html`<editor-view .content=${this.content}></editor-view>`
+        : html`<preview-view .content=${this.content}></preview-view>`
+      )}
+
+  # ============================================================================
+  # LIT EVENTS (LIT029-LIT032) - Event handling best practices
+  # ============================================================================
+
+  - id: LIT029
+    title: "Use composed:true for events crossing shadow boundaries"
+    description: "By default, events don't cross shadow DOM boundaries. Set composed:true and bubbles:true for events that parent components need to hear. Use detail for event data."
+    category: "lit_events"
+    severity: "critical"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "event", "composed", "shadow-dom", "CustomEvent"]
+    example: |
+      this.dispatchEvent(new CustomEvent('item-selected', {
+        detail: { item: this.selectedItem },
+        bubbles: true,
+        composed: true,
+      }));
+
+  - id: LIT030
+    title: "Name events with kebab-case"
+    description: "Custom events should use kebab-case names (e.g., 'my-event'). This aligns with HTML attribute conventions. Prefix with component scope if needed."
+    category: "lit_events"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "event", "naming", "convention"]
+    example: |
+      // ✅ kebab-case event names
+      this.dispatchEvent(new CustomEvent('item-selected', { ... }));
+      this.dispatchEvent(new CustomEvent('dialog-closed', { ... }));
+
+      // ❌ camelCase events
+      this.dispatchEvent(new CustomEvent('itemSelected', { ... }));
+
+  - id: LIT031
+    title: "Use @eventOptions for listener configuration"
+    description: "The @eventOptions decorator configures addEventListener options (passive, capture, once). Use passive:true for scroll/touch handlers."
+    category: "lit_events"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "eventOptions", "passive", "capture"]
+    example: |
+      @eventOptions({ passive: true })
+      private _handleScroll(e: Event) {
+        // passive: true improves scroll performance
+      }
+
+  - id: LIT032
+    title: "Type custom event details with TypeScript"
+    description: "Use TypeScript generics to type CustomEvent details. This provides type safety for event producers and consumers."
+    category: "lit_events"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "event", "typescript", "typing"]
+    example: |
+      // Type the event
+      interface ItemSelectedEvent {
+        item: Item;
+        index: number;
+      }
+      this.dispatchEvent(
+        new CustomEvent<ItemSelectedEvent>('item-selected', {
+          detail: { item: selected, index: idx },
+          bubbles: true, composed: true,
+        })
+      );
+
+  # ============================================================================
+  # LIT SHADOW DOM & CSS (LIT033-LIT038) - Styling best practices
+  # ============================================================================
+
+  - id: LIT033
+    title: "Use css`` tagged template for component styles"
+    description: "Define styles with the css tagged template in a static styles property. Styles are scoped to the shadow DOM and shared across instances. Never use inline style strings."
+    category: "lit_css"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "css", "styles", "tagged-template"]
+    example: |
+      static styles = css`
+        :host { display: block; }
+        .title { font-weight: bold; }
+      `;
+
+  - id: LIT034
+    title: "Use :host for component-level styling"
+    description: ":host styles the custom element itself. :host([attr]) styles based on host attributes. :host-context() styles based on ancestor context (limited browser support)."
+    category: "lit_css"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "css", "host", "shadow-dom"]
+    example: |
+      static styles = css`
+        :host { display: block; padding: 16px; }
+        :host([hidden]) { display: none; }
+        :host([disabled]) { opacity: 0.5; pointer-events: none; }
+      `;
+
+  - id: LIT035
+    title: "Use CSS custom properties for theming"
+    description: "CSS custom properties (--*) pierce shadow DOM boundaries. Use them for themeable values. Document them as part of the component's public API."
+    category: "lit_css"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "css", "custom-properties", "theming"]
+    example: |
+      static styles = css`
+        :host {
+          --card-bg: var(--app-surface, #fff);
+          --card-radius: var(--app-radius, 8px);
+          background: var(--card-bg);
+          border-radius: var(--card-radius);
+        }
+      `;
+
+  - id: LIT036
+    title: "Use ::part() for external styling hooks"
+    description: "Expose shadow DOM elements for external styling with the part attribute and ::part() pseudo-element. This provides controlled style customization without breaking encapsulation."
+    category: "lit_css"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "css", "part", "shadow-dom", "customization"]
+    example: |
+      // Component template
+      render() {
+        return html`<button part="button"><slot></slot></button>`;
+      }
+      // External styling
+      // my-button::part(button) { background: blue; }
+
+  - id: LIT037
+    title: "Use <slot> for content projection"
+    description: "Slots allow parent elements to project content into the shadow DOM. Use named slots for multiple projection points. Style slotted content with ::slotted()."
+    category: "lit_css"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "slot", "content-projection", "shadow-dom"]
+    example: |
+      render() {
+        return html`
+          <header><slot name="header"></slot></header>
+          <main><slot></slot></main>
+          <footer><slot name="footer"></slot></footer>
+        `;
+      }
+      // Usage: <my-card><h2 slot="header">Title</h2>Content</my-card>
+
+  - id: LIT038
+    title: "Prefer shadow DOM over light DOM"
+    description: "Shadow DOM provides style encapsulation and DOM encapsulation. Only use light DOM (createRenderRoot returning this) when you need global styles or framework integration that requires it."
+    category: "lit_css"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "shadow-dom", "light-dom", "encapsulation"]
+    example: |
+      // ✅ Shadow DOM (default)
+      class MyElement extends LitElement { }
+
+      // ⚠ Light DOM (only when necessary)
+      class MyElement extends LitElement {
+        createRenderRoot() { return this; }
+      }
+
+  # ============================================================================
+  # LIT CONTEXT & TASK (LIT039-LIT042) - Context and async patterns
+  # ============================================================================
+
+  - id: LIT039
+    title: "Use @lit/context for dependency injection"
+    description: "The context protocol provides dependency injection across the component tree without prop drilling. Providers set values, consumers request them. Works across shadow DOM boundaries."
+    category: "lit_context"
+    severity: "info"
+    applicability:
+      frameworks: ["lit", "lit-context"]
+    tags: ["lit", "context", "dependency-injection", "provider"]
+    example: |
+      import { createContext, provide, consume } from '@lit/context';
+
+      const themeContext = createContext<Theme>('theme');
+
+      // Provider
+      @provide({ context: themeContext })
+      @property({ attribute: false })
+      theme: Theme = defaultTheme;
+
+      // Consumer
+      @consume({ context: themeContext, subscribe: true })
+      @property({ attribute: false })
+      theme?: Theme;
+
+  - id: LIT040
+    title: "Use @lit/task for async data loading"
+    description: "The Task controller manages async operations with automatic status tracking (pending, complete, error). It re-runs when dependencies change and provides a render method for each status."
+    category: "lit_context"
+    severity: "info"
+    applicability:
+      frameworks: ["lit", "lit-task"]
+    tags: ["lit", "task", "async", "controller", "data-loading"]
+    example: |
+      import { Task } from '@lit/task';
+
+      private _userTask = new Task(this, {
+        task: async ([userId]) => {
+          const res = await fetch(`/api/users/${userId}`);
+          return res.json();
+        },
+        args: () => [this.userId],
+      });
+
+      render() {
+        return this._userTask.render({
+          pending: () => html`<loading-spinner></loading-spinner>`,
+          complete: (user) => html`<user-card .user=${user}></user-card>`,
+          error: (e) => html`<error-message .error=${e}></error-message>`,
+        });
+      }
+
+  - id: LIT041
+    title: "Use @lit/localize for internationalization"
+    description: "@lit/localize provides compile-time or runtime localization for Lit components. Use msg() for translatable strings. Supports XLIFF format."
+    category: "lit_context"
+    severity: "info"
+    applicability:
+      frameworks: ["lit", "lit-localize"]
+    tags: ["lit", "localize", "i18n", "internationalization"]
+    example: |
+      import { msg, localized } from '@lit/localize';
+
+      @localized()
+      @customElement('my-element')
+      class MyElement extends LitElement {
+        render() {
+          return html`<p>${msg('Hello World')}</p>`;
+        }
+      }
+
+  - id: LIT042
+    title: "Subscribe to context changes for reactive updates"
+    description: "When consuming context with @consume, set subscribe:true to receive updates when the provider value changes. Without subscribe, the value is only read once."
+    category: "lit_context"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit", "lit-context"]
+    tags: ["lit", "context", "subscribe", "reactive"]
+    example: |
+      // ✅ Subscribes to updates
+      @consume({ context: themeContext, subscribe: true })
+      @property({ attribute: false })
+      theme?: Theme;
+
+      // ❌ Only reads initial value
+      @consume({ context: themeContext })
+      @property({ attribute: false })
+      theme?: Theme;
+
+  # ============================================================================
+  # LIT SSR & PERFORMANCE (LIT043-LIT046) - SSR and optimization
+  # ============================================================================
+
+  - id: LIT043
+    title: "Design components for SSR compatibility"
+    description: "Avoid accessing window, document, or DOM APIs in property initializers or constructors. Use connectedCallback or firstUpdated for browser-only code. Use isServer from lit for conditional logic."
+    category: "lit_ssr"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit", "lit-ssr"]
+    tags: ["lit", "ssr", "server", "compatibility"]
+    example: |
+      import { isServer } from 'lit';
+
+      constructor() {
+        super();
+        // ❌ Don't access browser APIs in constructor
+        // this._observer = new IntersectionObserver(...);
+      }
+
+      connectedCallback() {
+        super.connectedCallback();
+        if (!isServer) {
+          // ✅ Browser-only code in connectedCallback
+          this._observer = new IntersectionObserver(...);
+        }
+      }
+
+  - id: LIT044
+    title: "Use Declarative Shadow DOM for SSR"
+    description: "Declarative Shadow DOM (<template shadowrootmode='open'>) enables server-rendered shadow roots. This prevents flash of unstyled content (FOUC) before JS loads."
+    category: "lit_ssr"
+    severity: "info"
+    applicability:
+      frameworks: ["lit", "lit-ssr"]
+    tags: ["lit", "ssr", "declarative-shadow-dom", "hydration"]
+    example: |
+      // Server output includes:
+      // <my-element>
+      //   <template shadowrootmode="open">
+      //     <style>:host { display: block; }</style>
+      //     <p>Server rendered content</p>
+      //   </template>
+      // </my-element>
+
+  - id: LIT045
+    title: "Minimize re-renders with granular properties"
+    description: "Split large object properties into smaller primitive properties where possible. Each property change triggers a re-render. Fewer, targeted changes improve performance."
+    category: "lit_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "performance", "property", "optimization"]
+    example: |
+      // ✅ Granular properties
+      @property({ type: String }) userName = '';
+      @property({ type: String }) userEmail = '';
+
+      // ❌ Monolithic object (any change re-renders everything)
+      @property({ type: Object }) user: User = {};
+
+  - id: LIT046
+    title: "Use willUpdate for derived state computation"
+    description: "Compute derived state in willUpdate() instead of render(). This runs once per update cycle before rendering, avoiding redundant computations."
+    category: "lit_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "willUpdate", "derived-state", "performance"]
+    example: |
+      willUpdate(changedProperties) {
+        if (changedProperties.has('items')) {
+          this._sortedItems = [...this.items].sort((a, b) => a.name.localeCompare(b.name));
+          this._totalPrice = this.items.reduce((sum, item) => sum + item.price, 0);
+        }
+      }
+
+  # ============================================================================
+  # LIT PATTERNS & MIGRATION (LIT047-LIT050) - Architecture and migration
+  # ============================================================================
+
+  - id: LIT047
+    title: "Document public API with JSDoc and custom-elements.json"
+    description: "Document properties, events, slots, CSS custom properties, and parts. Generate custom-elements.json manifest for IDE support and documentation."
+    category: "lit_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "documentation", "custom-elements-manifest", "API"]
+    example: |
+      /**
+       * A card component for displaying content.
+       *
+       * @property {string} heading - Card heading text
+       * @fires card-click - Fired when the card is clicked
+       * @slot - Default slot for card content
+       * @slot header - Slot for card header
+       * @csspart card - The card container
+       * @cssprop --card-bg - Card background color
+       */
+
+  - id: LIT048
+    title: "Migrate from Polymer to Lit incrementally"
+    description: "Migrate Polymer components to Lit one at a time. Replace Polymer({}) with LitElement class, static properties with @property decorators, and dom-repeat/dom-if with repeat()/when() directives. Components can coexist."
+    category: "lit_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["lit", "polymer"]
+    tags: ["lit", "polymer", "migration", "upgrade"]
+    example: |
+      // Polymer (before)
+      Polymer({
+        is: 'my-element',
+        properties: { name: { type: String, value: '' } },
+      });
+
+      // Lit (after)
+      @customElement('my-element')
+      class MyElement extends LitElement {
+        @property({ type: String }) name = '';
+      }
+
+  - id: LIT049
+    title: "Use scoped custom element registries for micro-frontends"
+    description: "Scoped registries prevent custom element name collisions in micro-frontend architectures. Use @lit-labs/scoped-registry-mixin or the ScopedElementsMixin from @open-wc."
+    category: "lit_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "scoped-registry", "micro-frontend", "isolation"]
+    example: |
+      import { ScopedElementsMixin } from '@open-wc/scoped-elements';
+
+      class MyApp extends ScopedElementsMixin(LitElement) {
+        static scopedElements = {
+          'my-button': MyButton,
+        };
+      }
+
+  - id: LIT050
+    title: "Test components with @open-wc/testing"
+    description: "Use @open-wc/testing for comprehensive component testing. It provides fixture(), html helper, and assertion utilities. Test properties, events, shadow DOM, slots, and accessibility."
+    category: "lit_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["lit"]
+    tags: ["lit", "testing", "open-wc", "fixture"]
+    example: |
+      import { fixture, html, expect } from '@open-wc/testing';
+
+      it('renders with default values', async () => {
+        const el = await fixture(html`<my-element></my-element>`);
+        expect(el.name).to.equal('');
+        expect(el.shadowRoot!.querySelector('p')).to.exist;
+      });
+
+      it('dispatches custom event', async () => {
+        const el = await fixture(html`<my-element></my-element>`);
+        const handler = sinon.spy();
+        el.addEventListener('item-selected', handler);
+        el.shadowRoot!.querySelector('button')!.click();
+        expect(handler).to.have.been.calledOnce;
+      });

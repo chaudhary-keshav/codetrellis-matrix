@@ -1,0 +1,1008 @@
+# Redux / Redux Toolkit Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.47 - Redux / Redux Toolkit Framework Support
+# Practice IDs: REDUX001-REDUX050
+# Coverage: Store, Slices, Middleware, Selectors, RTK Query,
+#           Sagas, Performance, Testing, Type Safety, Migration
+# Versions: Redux 1.x-5.x, RTK 1.0-2.x, redux-saga, redux-observable,
+#           RTK Query, redux-persist, reselect
+
+practices:
+  # ============================================================================
+  # REDUX STORE (REDUX001-REDUX005) - Store configuration best practices
+  # ============================================================================
+
+  - id: REDUX001
+    title: "Use configureStore instead of createStore"
+    description: "Always use RTK's configureStore instead of legacy createStore. configureStore automatically sets up the Redux DevTools extension, adds thunk middleware, and enables development checks for common mistakes like accidental mutations and non-serializable values."
+    category: "redux_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux", "redux-toolkit", "react-redux"]
+    tags: ["redux", "store", "configureStore", "rtk"]
+    example: |
+      // ✅ Correct: configureStore
+      import { configureStore } from '@reduxjs/toolkit';
+      export const store = configureStore({
+        reducer: { users: usersReducer, posts: postsReducer },
+      });
+
+      // ❌ Avoid: createStore (deprecated)
+      import { createStore } from 'redux';
+      const store = createStore(rootReducer);
+
+  - id: REDUX002
+    title: "Export RootState and AppDispatch types from store"
+    description: "Export RootState and AppDispatch types directly from the store file using ReturnType. This provides a single source of truth for TypeScript types across the entire application."
+    category: "redux_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit", "typescript"]
+    tags: ["redux", "typescript", "types", "RootState", "AppDispatch"]
+    example: |
+      // store.ts
+      export const store = configureStore({ reducer: rootReducer });
+      export type RootState = ReturnType<typeof store.getState>;
+      export type AppDispatch = typeof store.dispatch;
+
+  - id: REDUX003
+    title: "Use Tuple for middleware in RTK 2.0+"
+    description: "In RTK 2.0+, use Tuple instead of array spread for middleware configuration. Tuple replaces getDefaultMiddleware().concat() for better type inference and ESM compatibility."
+    category: "redux_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit-v2"]
+    tags: ["redux", "rtk-v2", "middleware", "Tuple"]
+    example: |
+      // ✅ RTK 2.0+: Tuple
+      import { configureStore, Tuple } from '@reduxjs/toolkit';
+      const store = configureStore({
+        reducer: rootReducer,
+        middleware: () => new Tuple(thunk, logger),
+      });
+
+      // ❌ RTK 2.0: array spread no longer works for types
+      middleware: (getDefaultMiddleware) => [...getDefaultMiddleware(), logger]
+
+  - id: REDUX004
+    title: "Centralize reducer composition in store file"
+    description: "Use a single root reducer file or configure reducers directly in configureStore. Avoid scattered reducer registrations. For code-split apps use combineSlices (RTK 2.0+) or lazy reducer injection."
+    category: "redux_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux", "redux-toolkit"]
+    tags: ["redux", "reducers", "combineReducers", "combineSlices"]
+    example: |
+      // ✅ Direct in configureStore
+      const store = configureStore({
+        reducer: {
+          auth: authReducer,
+          users: usersReducer,
+          posts: postsReducer,
+        },
+      });
+
+      // ✅ RTK 2.0: combineSlices for code splitting
+      const rootReducer = combineSlices(authSlice, usersSlice);
+
+  - id: REDUX005
+    title: "Configure devTools based on environment"
+    description: "Disable Redux DevTools in production for security and performance. configureStore enables devTools by default in development but always disable in production builds."
+    category: "redux_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux", "redux-toolkit"]
+    tags: ["redux", "devtools", "security", "production"]
+    example: |
+      const store = configureStore({
+        reducer: rootReducer,
+        devTools: process.env.NODE_ENV !== 'production',
+      });
+
+  # ============================================================================
+  # REDUX SLICES (REDUX006-REDUX015) - createSlice best practices
+  # ============================================================================
+
+  - id: REDUX006
+    title: "Use createSlice for all reducer logic"
+    description: "Always use createSlice instead of manual action types, action creators, and switch-case reducers. createSlice auto-generates action creators, uses Immer for immutable updates, and integrates with TypeScript."
+    category: "redux_slices"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "createSlice", "reducers", "actions"]
+    example: |
+      const usersSlice = createSlice({
+        name: 'users',
+        initialState: { entities: [], loading: false },
+        reducers: {
+          userAdded(state, action: PayloadAction<User>) {
+            state.entities.push(action.payload);
+          },
+          loadingToggled(state) {
+            state.loading = !state.loading;
+          },
+        },
+      });
+      export const { userAdded, loadingToggled } = usersSlice.actions;
+
+  - id: REDUX007
+    title: "Keep slice state flat and normalized"
+    description: "Avoid deeply nested state in slices. Use flat, normalized shapes with IDs as keys. For entity management, use createEntityAdapter which provides a normalized state shape and CRUD operations automatically."
+    category: "redux_slices"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "normalization", "entityAdapter", "state-shape"]
+    example: |
+      // ✅ Normalized with createEntityAdapter
+      const usersAdapter = createEntityAdapter<User>();
+      const usersSlice = createSlice({
+        name: 'users',
+        initialState: usersAdapter.getInitialState({ loading: false }),
+        reducers: {
+          usersReceived: usersAdapter.setAll,
+          userUpdated: usersAdapter.updateOne,
+        },
+      });
+
+  - id: REDUX008
+    title: "Use extraReducers for cross-slice actions"
+    description: "Handle actions from other slices or createAsyncThunk using extraReducers with builder callback notation. Never import actions between slices in the reducers field."
+    category: "redux_slices"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "extraReducers", "builder", "async"]
+    example: |
+      const postsSlice = createSlice({
+        name: 'posts',
+        initialState,
+        reducers: { /* own reducers */ },
+        extraReducers: (builder) => {
+          builder
+            .addCase(fetchPosts.pending, (state) => { state.loading = true; })
+            .addCase(fetchPosts.fulfilled, (state, action) => {
+              state.loading = false;
+              state.entities = action.payload;
+            })
+            .addCase(fetchPosts.rejected, (state, action) => {
+              state.loading = false;
+              state.error = action.error.message;
+            });
+        },
+      });
+
+  - id: REDUX009
+    title: "Use prepare callbacks for action payload shaping"
+    description: "When action creators need to add metadata (IDs, timestamps), use prepare callbacks in createSlice reducers. This keeps reducer logic pure and moves payload construction to the action creator."
+    category: "redux_slices"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "prepare", "action-creator", "payload"]
+    example: |
+      const todosSlice = createSlice({
+        name: 'todos',
+        initialState: [],
+        reducers: {
+          todoAdded: {
+            reducer(state, action: PayloadAction<Todo>) {
+              state.push(action.payload);
+            },
+            prepare(text: string) {
+              return { payload: { id: nanoid(), text, completed: false } };
+            },
+          },
+        },
+      });
+
+  - id: REDUX010
+    title: "Use slice selectors (RTK 2.0+)"
+    description: "In RTK 2.0+, define selectors directly in createSlice using the selectors option. These selectors are automatically scoped to the slice's state and are type-safe without needing RootState."
+    category: "redux_slices"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit-v2"]
+    tags: ["redux", "rtk-v2", "selectors", "createSlice"]
+    example: |
+      const counterSlice = createSlice({
+        name: 'counter',
+        initialState: { value: 0 },
+        reducers: { incremented: (state) => { state.value += 1; } },
+        selectors: {
+          selectCount: (state) => state.value,
+          selectIsPositive: (state) => state.value > 0,
+        },
+      });
+      export const { selectCount, selectIsPositive } = counterSlice.selectors;
+
+  - id: REDUX011
+    title: "Mutate state safely with Immer in createSlice"
+    description: "Inside createSlice reducers you can write 'mutating' code - Immer converts it to immutable updates. Either mutate the draft OR return a new value, never do both."
+    category: "redux_slices"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit", "immer"]
+    tags: ["redux", "immer", "immutability", "mutations"]
+    example: |
+      reducers: {
+        // ✅ Mutate draft (Immer handles immutability)
+        itemAdded(state, action) { state.items.push(action.payload); },
+        // ✅ Return new value
+        allItemsCleared() { return { items: [], count: 0 }; },
+        // ❌ Don't do both!
+        bad(state, action) { state.items.push(action.payload); return state; },
+      }
+
+  - id: REDUX012
+    title: "Export actions and reducer from slice file"
+    description: "Export both the auto-generated action creators and the slice reducer from the slice file. Export the slice itself only when needed for type inference."
+    category: "redux_slices"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "exports", "actions", "reducer"]
+    example: |
+      // features/users/usersSlice.ts
+      const usersSlice = createSlice({ name: 'users', initialState, reducers: { ... } });
+      export const { userAdded, userUpdated, userRemoved } = usersSlice.actions;
+      export default usersSlice.reducer;
+
+  - id: REDUX013
+    title: "Use createEntityAdapter for CRUD collections"
+    description: "For any slice managing a collection of items, use createEntityAdapter. It provides normalized state shape ({ids: [], entities: {}}), pre-built CRUD reducers (addOne, updateMany, removeAll), and auto-generated selectors."
+    category: "redux_slices"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "entityAdapter", "normalization", "CRUD"]
+    example: |
+      const booksAdapter = createEntityAdapter<Book>({
+        selectId: (book) => book.isbn,
+        sortComparer: (a, b) => a.title.localeCompare(b.title),
+      });
+      const booksSlice = createSlice({
+        name: 'books',
+        initialState: booksAdapter.getInitialState(),
+        reducers: {
+          bookAdded: booksAdapter.addOne,
+          booksReceived: booksAdapter.setAll,
+          bookUpdated: booksAdapter.updateOne,
+        },
+      });
+      export const { selectAll: selectAllBooks, selectById: selectBookById } =
+        booksAdapter.getSelectors((state: RootState) => state.books);
+
+  - id: REDUX014
+    title: "Organize slices by feature, not by type"
+    description: "Structure Redux code by feature (users/, posts/, auth/) not by type (reducers/, actions/, selectors/). Each feature folder contains its slice, selectors, thunks, and related components."
+    category: "redux_slices"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux", "redux-toolkit"]
+    tags: ["redux", "architecture", "feature-folders"]
+    example: |
+      // ✅ Feature-based structure
+      src/features/
+        users/
+          usersSlice.ts       # slice + actions + reducer
+          usersSelectors.ts   # memoized selectors
+          usersThunks.ts      # async thunks
+          UsersList.tsx       # component
+        posts/
+          postsSlice.ts
+          postsApi.ts         # RTK Query API
+
+  - id: REDUX015
+    title: "Handle all async thunk lifecycle states"
+    description: "When using createAsyncThunk, always handle pending, fulfilled, AND rejected states in extraReducers. Missing states leads to stuck loading indicators or unhandled errors."
+    category: "redux_slices"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "async", "thunk", "error-handling"]
+    example: |
+      extraReducers: (builder) => {
+        builder
+          .addCase(fetchUsers.pending, (state) => {
+            state.status = 'loading';
+            state.error = null;
+          })
+          .addCase(fetchUsers.fulfilled, (state, action) => {
+            state.status = 'succeeded';
+            state.entities = action.payload;
+          })
+          .addCase(fetchUsers.rejected, (state, action) => {
+            state.status = 'failed';
+            state.error = action.error.message ?? 'Unknown error';
+          });
+      }
+
+  # ============================================================================
+  # REDUX MIDDLEWARE (REDUX016-REDUX022) - Async patterns
+  # ============================================================================
+
+  - id: REDUX016
+    title: "Use createAsyncThunk for API calls"
+    description: "Use createAsyncThunk for async operations. It auto-generates pending/fulfilled/rejected action types, integrates with extraReducers, handles errors, and provides thunkAPI for dispatch/getState/rejectWithValue."
+    category: "redux_middleware"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "createAsyncThunk", "async", "api"]
+    example: |
+      export const fetchUser = createAsyncThunk(
+        'users/fetchById',
+        async (userId: string, { rejectWithValue }) => {
+          try {
+            const response = await api.getUser(userId);
+            return response.data;
+          } catch (err) {
+            return rejectWithValue(err.response.data);
+          }
+        }
+      );
+
+  - id: REDUX017
+    title: "Use condition to prevent duplicate async requests"
+    description: "Use the condition option in createAsyncThunk to prevent duplicate requests. The condition callback receives the arg and thunkAPI, and can return false to cancel the thunk before execution."
+    category: "redux_middleware"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "thunk", "condition", "deduplication"]
+    example: |
+      const fetchUsers = createAsyncThunk(
+        'users/fetchAll',
+        async (_, { getState }) => { return await api.getUsers(); },
+        {
+          condition: (_, { getState }) => {
+            const { users } = getState() as RootState;
+            return users.status !== 'loading'; // skip if already loading
+          },
+        }
+      );
+
+  - id: REDUX018
+    title: "Use createListenerMiddleware for reactive logic"
+    description: "For effects that respond to dispatched actions (side effects after action), use createListenerMiddleware instead of custom middleware. It supports cancelation, async workflows, and is type-safe."
+    category: "redux_middleware"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "listener", "middleware", "side-effects"]
+    example: |
+      const listenerMiddleware = createListenerMiddleware();
+      listenerMiddleware.startListening({
+        actionCreator: userLoggedIn,
+        effect: async (action, listenerApi) => {
+          const { userId } = action.payload;
+          listenerApi.dispatch(fetchUserProfile(userId));
+          listenerApi.dispatch(trackLogin(userId));
+        },
+      });
+
+  - id: REDUX019
+    title: "Keep saga effects testable with call effect"
+    description: "In redux-saga, always use call() for async operations instead of directly calling functions. call() makes sagas declarative and easily testable without mocking."
+    category: "redux_sagas"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-saga"]
+    tags: ["redux", "saga", "call", "testing"]
+    example: |
+      // ✅ Testable: use call()
+      function* fetchUserSaga(action) {
+        try {
+          const user = yield call(api.fetchUser, action.payload);
+          yield put(fetchUserSuccess(user));
+        } catch (error) {
+          yield put(fetchUserFailure(error.message));
+        }
+      }
+
+  - id: REDUX020
+    title: "Use takeLatest to prevent race conditions"
+    description: "Use takeLatest instead of takeEvery when only the most recent request matters (search, autocomplete). takeLatest automatically cancels previous in-flight sagas for the same action type."
+    category: "redux_sagas"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-saga"]
+    tags: ["redux", "saga", "takeLatest", "race-condition"]
+    example: |
+      function* watchSearch() {
+        yield takeLatest('search/queryChanged', searchSaga);
+      }
+
+  - id: REDUX021
+    title: "Handle errors in epics with catchError"
+    description: "In redux-observable, always handle errors within epics using catchError. An unhandled error kills the epic stream permanently. Always return a recovery observable."
+    category: "redux_middleware"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-observable"]
+    tags: ["redux", "epic", "error-handling", "rxjs"]
+    example: |
+      const fetchUserEpic: Epic = (action$) =>
+        action$.pipe(
+          ofType('users/fetch'),
+          mergeMap((action) =>
+            from(api.fetchUser(action.payload)).pipe(
+              map((user) => fetchUserSuccess(user)),
+              catchError((error) => of(fetchUserFailure(error.message)))
+            )
+          )
+        );
+
+  - id: REDUX022
+    title: "Avoid dispatching actions in reducers"
+    description: "Never dispatch actions from inside reducers. Reducers must be pure functions. Use createListenerMiddleware, createAsyncThunk, or sagas for side effects triggered by state changes."
+    category: "redux_middleware"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux", "redux-toolkit"]
+    tags: ["redux", "purity", "side-effects", "anti-pattern"]
+    example: |
+      // ❌ Never dispatch inside reducer
+      reducers: {
+        itemAdded(state, action) {
+          state.items.push(action.payload);
+          store.dispatch(logAction()); // WRONG!
+        },
+      }
+      // ✅ Use listener middleware
+      listenerMiddleware.startListening({
+        actionCreator: itemAdded,
+        effect: (action, api) => { api.dispatch(logAction()); },
+      });
+
+  # ============================================================================
+  # REDUX SELECTORS (REDUX023-REDUX028) - Selector patterns
+  # ============================================================================
+
+  - id: REDUX023
+    title: "Use createSelector for derived state"
+    description: "Always use createSelector (from RTK or reselect) for computed/derived data. Memoized selectors prevent unnecessary recalculations and re-renders when input state hasn't changed."
+    category: "redux_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit", "reselect"]
+    tags: ["redux", "selectors", "memoization", "performance"]
+    example: |
+      import { createSelector } from '@reduxjs/toolkit';
+      const selectUsers = (state: RootState) => state.users.entities;
+      const selectFilter = (state: RootState) => state.users.filter;
+      export const selectFilteredUsers = createSelector(
+        [selectUsers, selectFilter],
+        (users, filter) => users.filter((u) => u.role === filter)
+      );
+
+  - id: REDUX024
+    title: "Create typed useAppSelector and useAppDispatch hooks"
+    description: "Create pre-typed custom hooks that wrap useSelector and useDispatch. This eliminates the need to import RootState/AppDispatch types throughout the app."
+    category: "redux_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit", "react-redux", "typescript"]
+    tags: ["redux", "hooks", "typescript", "typed"]
+    example: |
+      // hooks.ts (RTK 1.x)
+      import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
+      export const useAppDispatch = () => useDispatch<AppDispatch>();
+      export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+
+      // hooks.ts (RTK 2.0+ with .withTypes)
+      export const useAppSelector = useSelector.withTypes<RootState>();
+      export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+
+  - id: REDUX025
+    title: "Keep selectors co-located with slices"
+    description: "Define selectors in the same file as the slice they read from. Export them alongside actions. For complex cross-slice selectors, create a dedicated selectors file in the feature folder."
+    category: "redux_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "selectors", "colocation", "architecture"]
+    example: |
+      // usersSlice.ts
+      export const selectAllUsers = (state: RootState) => state.users.entities;
+      export const selectUserById = (state: RootState, id: string) =>
+        state.users.entities.find((u) => u.id === id);
+      export const selectActiveUsers = createSelector(
+        selectAllUsers,
+        (users) => users.filter((u) => u.isActive)
+      );
+
+  - id: REDUX026
+    title: "Avoid new object/array creation in selectors"
+    description: "Selectors that create new objects or arrays on every call break memoization. Use createSelector to memoize or restructure to return existing references from state."
+    category: "redux_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit", "react-redux"]
+    tags: ["redux", "selectors", "memoization", "reference-equality"]
+    example: |
+      // ❌ Creates new array every call, causes re-render
+      const selectUserNames = (state) => state.users.map((u) => u.name);
+
+      // ✅ Memoized with createSelector
+      const selectUserNames = createSelector(
+        (state) => state.users,
+        (users) => users.map((u) => u.name)
+      );
+
+  - id: REDUX027
+    title: "Use entity adapter selectors for normalized state"
+    description: "When using createEntityAdapter, use the generated selectors (selectAll, selectById, selectIds, selectEntities, selectTotal). Pass a state selector to scope them to the correct slice."
+    category: "redux_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "entityAdapter", "selectors", "normalization"]
+    example: |
+      const usersAdapter = createEntityAdapter<User>();
+      export const {
+        selectAll: selectAllUsers,
+        selectById: selectUserById,
+        selectIds: selectUserIds,
+        selectTotal: selectUserTotal,
+      } = usersAdapter.getSelectors((state: RootState) => state.users);
+
+  - id: REDUX028
+    title: "Use createDraftSafeSelector inside createSlice"
+    description: "When defining selectors inside createSlice (RTK 2.0+), use createDraftSafeSelector for selectors that might receive Immer draft state. This ensures they work correctly in both reducer and component contexts."
+    category: "redux_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit-v2"]
+    tags: ["redux", "rtk-v2", "draftSafe", "immer"]
+    example: |
+      import { createDraftSafeSelector } from '@reduxjs/toolkit';
+      const selectSelf = (state: CounterState) => state;
+      const selectCount = createDraftSafeSelector(
+        selectSelf,
+        (state) => state.value
+      );
+
+  # ============================================================================
+  # REDUX RTK QUERY (REDUX029-REDUX038) - Data fetching patterns
+  # ============================================================================
+
+  - id: REDUX029
+    title: "Use RTK Query instead of createAsyncThunk for data fetching"
+    description: "For server data fetching and caching, prefer RTK Query (createApi) over manual createAsyncThunk + slice patterns. RTK Query provides automatic caching, deduplication, polling, optimistic updates, and auto-generated hooks."
+    category: "redux_rtk_query"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit", "rtk-query"]
+    tags: ["redux", "rtk-query", "data-fetching", "caching"]
+    example: |
+      export const api = createApi({
+        reducerPath: 'api',
+        baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+        tagTypes: ['Post', 'User'],
+        endpoints: (builder) => ({
+          getPosts: builder.query<Post[], void>({ query: () => '/posts' }),
+          addPost: builder.mutation<Post, NewPost>({ query: (body) => ({ url: '/posts', method: 'POST', body }) }),
+        }),
+      });
+      export const { useGetPostsQuery, useAddPostMutation } = api;
+
+  - id: REDUX030
+    title: "Implement proper cache tag invalidation"
+    description: "Use providesTags on queries and invalidatesTags on mutations for automatic cache invalidation. Use the id-based tag pattern for granular cache control."
+    category: "redux_rtk_query"
+    severity: "critical"
+    applicability:
+      frameworks: ["rtk-query"]
+    tags: ["redux", "rtk-query", "cache", "invalidation"]
+    example: |
+      endpoints: (builder) => ({
+        getPosts: builder.query<Post[], void>({
+          query: () => '/posts',
+          providesTags: (result) =>
+            result
+              ? [...result.map(({ id }) => ({ type: 'Post' as const, id })), { type: 'Post', id: 'LIST' }]
+              : [{ type: 'Post', id: 'LIST' }],
+        }),
+        addPost: builder.mutation<Post, NewPost>({
+          query: (body) => ({ url: '/posts', method: 'POST', body }),
+          invalidatesTags: [{ type: 'Post', id: 'LIST' }],
+        }),
+      })
+
+  - id: REDUX031
+    title: "Use onQueryStarted for optimistic updates"
+    description: "Implement optimistic updates using onQueryStarted lifecycle callback. Update the cache immediately with updateQueryData, then rollback on error using patchResult.undo()."
+    category: "redux_rtk_query"
+    severity: "critical"
+    applicability:
+      frameworks: ["rtk-query"]
+    tags: ["redux", "rtk-query", "optimistic", "cache"]
+    example: |
+      updatePost: builder.mutation<Post, Partial<Post> & Pick<Post, 'id'>>({
+        query: ({ id, ...patch }) => ({ url: `/posts/${id}`, method: 'PATCH', body: patch }),
+        async onQueryStarted({ id, ...patch }, { dispatch, queryFulfilled }) {
+          const patchResult = dispatch(
+            api.util.updateQueryData('getPost', id, (draft) => {
+              Object.assign(draft, patch);
+            })
+          );
+          try { await queryFulfilled; }
+          catch { patchResult.undo(); }
+        },
+      })
+
+  - id: REDUX032
+    title: "Configure baseQuery with proper error handling"
+    description: "Wrap fetchBaseQuery with custom error handling, authentication headers, and response transformation. Use baseQueryWithReauth pattern for automatic token refresh."
+    category: "redux_rtk_query"
+    severity: "critical"
+    applicability:
+      frameworks: ["rtk-query"]
+    tags: ["redux", "rtk-query", "baseQuery", "authentication"]
+    example: |
+      const baseQuery = fetchBaseQuery({
+        baseUrl: '/api',
+        prepareHeaders: (headers, { getState }) => {
+          const token = (getState() as RootState).auth.token;
+          if (token) headers.set('Authorization', `Bearer ${token}`);
+          return headers;
+        },
+      });
+      const baseQueryWithReauth: BaseQueryFn = async (args, api, extraOptions) => {
+        let result = await baseQuery(args, api, extraOptions);
+        if (result.error?.status === 401) {
+          const refreshResult = await baseQuery('/auth/refresh', api, extraOptions);
+          if (refreshResult.data) {
+            api.dispatch(tokenRefreshed(refreshResult.data));
+            result = await baseQuery(args, api, extraOptions);
+          } else { api.dispatch(loggedOut()); }
+        }
+        return result;
+      };
+
+  - id: REDUX033
+    title: "Use code splitting with injectEndpoints"
+    description: "Split large APIs into multiple files using injectEndpoints. Define a base API with createApi and inject endpoints from feature modules. This improves code organization and bundle splitting."
+    category: "redux_rtk_query"
+    severity: "critical"
+    applicability:
+      frameworks: ["rtk-query"]
+    tags: ["redux", "rtk-query", "code-splitting", "injectEndpoints"]
+    example: |
+      // api/baseApi.ts
+      export const baseApi = createApi({
+        reducerPath: 'api',
+        baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+        tagTypes: ['Post', 'User', 'Comment'],
+        endpoints: () => ({}),
+      });
+
+      // features/posts/postsApi.ts
+      export const postsApi = baseApi.injectEndpoints({
+        endpoints: (builder) => ({
+          getPosts: builder.query<Post[], void>({ query: () => '/posts' }),
+        }),
+      });
+      export const { useGetPostsQuery } = postsApi;
+
+  - id: REDUX034
+    title: "Use selectFromResult for partial subscriptions"
+    description: "Use selectFromResult option in RTK Query hooks to subscribe to only a portion of the query result. This prevents unnecessary re-renders when only specific fields change."
+    category: "redux_rtk_query"
+    severity: "critical"
+    applicability:
+      frameworks: ["rtk-query"]
+    tags: ["redux", "rtk-query", "selectFromResult", "performance"]
+    example: |
+      const { user } = useGetUsersQuery(undefined, {
+        selectFromResult: ({ data }) => ({
+          user: data?.find((u) => u.id === userId),
+        }),
+      });
+
+  - id: REDUX035
+    title: "Configure polling for real-time data"
+    description: "Use pollingInterval option for endpoints that need periodic refresh. Combine with skipPollingIfUnfocused for efficiency. For true real-time, use onCacheEntryAdded with WebSocket streaming."
+    category: "redux_rtk_query"
+    severity: "critical"
+    applicability:
+      frameworks: ["rtk-query"]
+    tags: ["redux", "rtk-query", "polling", "real-time"]
+    example: |
+      // Polling
+      const { data } = useGetNotificationsQuery(undefined, {
+        pollingInterval: 30000, // 30 seconds
+        skipPollingIfUnfocused: true,
+      });
+
+      // WebSocket streaming
+      getMessages: builder.query<Message[], string>({
+        query: (channel) => `/messages/${channel}`,
+        async onCacheEntryAdded(arg, { updateCachedData, cacheDataLoaded, cacheEntryRemoved }) {
+          const ws = new WebSocket(`ws://localhost/messages/${arg}`);
+          try {
+            await cacheDataLoaded;
+            ws.addEventListener('message', (event) => {
+              updateCachedData((draft) => { draft.push(JSON.parse(event.data)); });
+            });
+          } catch {}
+          await cacheEntryRemoved;
+          ws.close();
+        },
+      })
+
+  - id: REDUX036
+    title: "Register API middleware and reducer in store"
+    description: "Always add the RTK Query API's reducer and middleware to the store. Missing middleware causes caching, polling, and cleanup to not work."
+    category: "redux_rtk_query"
+    severity: "critical"
+    applicability:
+      frameworks: ["rtk-query"]
+    tags: ["redux", "rtk-query", "store", "middleware"]
+    example: |
+      const store = configureStore({
+        reducer: {
+          [api.reducerPath]: api.reducer,
+          // other reducers
+        },
+        middleware: (getDefaultMiddleware) =>
+          getDefaultMiddleware().concat(api.middleware),
+      });
+
+  - id: REDUX037
+    title: "Use transformResponse for API data transformation"
+    description: "Use transformResponse in endpoint definitions to reshape API responses before they enter the cache. This keeps components clean and centralizes data transformation."
+    category: "redux_rtk_query"
+    severity: "critical"
+    applicability:
+      frameworks: ["rtk-query"]
+    tags: ["redux", "rtk-query", "transform", "response"]
+    example: |
+      getUsers: builder.query<User[], void>({
+        query: () => '/users',
+        transformResponse: (response: ApiResponse<User[]>) => response.data,
+      })
+
+  - id: REDUX038
+    title: "Type RTK Query endpoints properly"
+    description: "Always provide result and argument types to builder.query<ResultType, ArgType> and builder.mutation<ResultType, ArgType>. This ensures auto-generated hooks are fully typed."
+    category: "redux_rtk_query"
+    severity: "critical"
+    applicability:
+      frameworks: ["rtk-query", "typescript"]
+    tags: ["redux", "rtk-query", "typescript", "typing"]
+    example: |
+      endpoints: (builder) => ({
+        getUser: builder.query<User, string>({
+          query: (id) => `/users/${id}`,
+        }),
+        updateUser: builder.mutation<User, { id: string; data: Partial<User> }>({
+          query: ({ id, data }) => ({ url: `/users/${id}`, method: 'PATCH', body: data }),
+        }),
+      })
+
+  # ============================================================================
+  # REDUX PERFORMANCE (REDUX039-REDUX043) - Performance optimization
+  # ============================================================================
+
+  - id: REDUX039
+    title: "Minimize state stored in Redux"
+    description: "Only store state in Redux that is truly global and needed across multiple components. Keep ephemeral UI state (form inputs, tooltips, modals) in local component state or URL params."
+    category: "redux_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux", "redux-toolkit"]
+    tags: ["redux", "state-design", "performance"]
+    example: |
+      // ✅ Redux: shared across app
+      // - Authentication status, user profile
+      // - Server-fetched data caches
+      // - Global UI state (theme, sidebar open)
+
+      // ✅ Local state: component-specific
+      // - Form input values (before submission)
+      // - Dropdown open/closed
+      // - Hover/focus states
+
+  - id: REDUX040
+    title: "Use shallowEqual for array/object selectors"
+    description: "When a selector returns a new object or array, use shallowEqual as the equality function in useSelector to prevent unnecessary re-renders."
+    category: "redux_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["react-redux", "redux-toolkit"]
+    tags: ["redux", "shallowEqual", "performance", "re-renders"]
+    example: |
+      import { shallowEqual } from 'react-redux';
+      const { name, email } = useAppSelector(
+        (state) => ({ name: state.user.name, email: state.user.email }),
+        shallowEqual
+      );
+
+  - id: REDUX041
+    title: "Avoid putting non-serializable values in state"
+    description: "Redux state should only contain serializable data (objects, arrays, primitives). Never store class instances, functions, Promises, Maps, Sets, or Symbols. RTK's serializability middleware warns about this."
+    category: "redux_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux", "redux-toolkit"]
+    tags: ["redux", "serializable", "state", "devtools"]
+    example: |
+      // ❌ Non-serializable
+      { callback: () => {}, date: new Date(), set: new Set() }
+
+      // ✅ Serializable
+      { timestamp: Date.now(), items: ['a', 'b'], config: { key: 'value' } }
+
+  - id: REDUX042
+    title: "Use Redux Toolkit's autoBatchEnhancer for high-frequency updates"
+    description: "For applications with many rapid dispatches (real-time data, animations), use autoBatchEnhancer to batch multiple dispatches into a single re-render. Included by default in RTK 2.0+."
+    category: "redux_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "batching", "performance", "autoBatch"]
+    example: |
+      // RTK 1.9+: opt-in
+      const store = configureStore({
+        reducer: rootReducer,
+        enhancers: (getDefaultEnhancers) =>
+          getDefaultEnhancers().concat(autoBatchEnhancer()),
+      });
+
+  - id: REDUX043
+    title: "Configure redux-persist wisely"
+    description: "When using redux-persist, whitelist only essential slices. Never persist sensitive data. Use transforms for data migration and encryption. Configure version for state migrations."
+    category: "redux_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-persist"]
+    tags: ["redux", "persist", "storage", "whitelist"]
+    example: |
+      const persistConfig = {
+        key: 'root',
+        version: 1,
+        storage,
+        whitelist: ['auth', 'settings'], // only persist these
+        transforms: [encryptTransform({ secretKey: process.env.SECRET_KEY })],
+        migrate: createMigrate(migrations, { debug: false }),
+      };
+
+  # ============================================================================
+  # REDUX TESTING (REDUX044-REDUX046) - Testing patterns
+  # ============================================================================
+
+  - id: REDUX044
+    title: "Test slices with reducer and action creator"
+    description: "Test slice reducers by dispatching actions and asserting the resulting state. Test initial state, each reducer case, and extraReducer cases independently."
+    category: "redux_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit"]
+    tags: ["redux", "testing", "reducers", "unit-test"]
+    example: |
+      describe('counterSlice', () => {
+        it('should handle initial state', () => {
+          expect(counterReducer(undefined, { type: 'unknown' })).toEqual({ value: 0 });
+        });
+        it('should handle increment', () => {
+          const actual = counterReducer({ value: 3 }, increment());
+          expect(actual.value).toEqual(4);
+        });
+      });
+
+  - id: REDUX045
+    title: "Use renderWithProviders helper for component tests"
+    description: "Create a reusable renderWithProviders helper that wraps components with a real Redux store. Pass preloadedState to set up test scenarios without mocking the store."
+    category: "redux_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit", "testing-library"]
+    tags: ["redux", "testing", "integration", "renderWithProviders"]
+    example: |
+      function renderWithProviders(
+        ui: React.ReactElement,
+        { preloadedState, store = configureStore({ reducer: rootReducer, preloadedState }), ...options } = {}
+      ) {
+        function Wrapper({ children }: { children: React.ReactNode }) {
+          return <Provider store={store}>{children}</Provider>;
+        }
+        return { store, ...render(ui, { wrapper: Wrapper, ...options }) };
+      }
+
+  - id: REDUX046
+    title: "Test RTK Query with MSW for API mocking"
+    description: "Use MSW (Mock Service Worker) to mock API responses when testing RTK Query endpoints. MSW intercepts network requests, providing realistic test scenarios without a running backend."
+    category: "redux_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["rtk-query", "msw"]
+    tags: ["redux", "rtk-query", "msw", "testing"]
+    example: |
+      import { setupServer } from 'msw/node';
+      import { http, HttpResponse } from 'msw';
+      const server = setupServer(
+        http.get('/api/users', () => HttpResponse.json([{ id: '1', name: 'Alice' }]))
+      );
+      beforeAll(() => server.listen());
+      afterEach(() => server.resetHandlers());
+      afterAll(() => server.close());
+
+  # ============================================================================
+  # REDUX TYPE SAFETY (REDUX047-REDUX049) - TypeScript patterns
+  # ============================================================================
+
+  - id: REDUX047
+    title: "Use PayloadAction type for action parameters"
+    description: "Always type action parameters with PayloadAction<T> in createSlice reducers. This ensures both the reducer and auto-generated action creators are properly typed."
+    category: "redux_type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit", "typescript"]
+    tags: ["redux", "typescript", "PayloadAction", "typing"]
+    example: |
+      import { PayloadAction } from '@reduxjs/toolkit';
+      reducers: {
+        userUpdated(state, action: PayloadAction<{ id: string; changes: Partial<User> }>) {
+          const { id, changes } = action.payload;
+          Object.assign(state.entities[id], changes);
+        },
+      }
+
+  - id: REDUX048
+    title: "Type createAsyncThunk return and argument types"
+    description: "Provide explicit generic types to createAsyncThunk for the return type and argument type. For thunkAPI typing, use the third generic parameter with an object containing state, dispatch, and rejectValue types."
+    category: "redux_type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit", "typescript"]
+    tags: ["redux", "typescript", "thunk", "typing"]
+    example: |
+      export const fetchUser = createAsyncThunk<
+        User,          // Return type
+        string,        // Argument type
+        { state: RootState; rejectValue: ApiError }  // ThunkAPI config
+      >(
+        'users/fetchById',
+        async (userId, { rejectWithValue }) => {
+          try { return await api.getUser(userId); }
+          catch (err) { return rejectWithValue(err as ApiError); }
+        }
+      );
+
+  - id: REDUX049
+    title: "Use withTypes for typed hooks in RTK 2.0+"
+    description: "In RTK 2.0+, use .withTypes<>() on useSelector, useDispatch, and useStore to create pre-typed hooks. This replaces the manual TypedUseSelectorHook pattern from RTK 1.x."
+    category: "redux_type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux-toolkit-v2", "typescript"]
+    tags: ["redux", "rtk-v2", "typescript", "withTypes"]
+    example: |
+      // RTK 2.0+ typed hooks
+      import { useSelector, useDispatch, useStore } from 'react-redux';
+      export const useAppSelector = useSelector.withTypes<RootState>();
+      export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+      export const useAppStore = useStore.withTypes<AppStore>();
+
+  # ============================================================================
+  # REDUX MIGRATION (REDUX050) - Migration patterns
+  # ============================================================================
+
+  - id: REDUX050
+    title: "Migrate from legacy Redux to RTK incrementally"
+    description: "Migrate from createStore/switch-case to configureStore/createSlice incrementally. Start by swapping createStore with configureStore (drop-in compatible). Then convert one slice at a time from switch-case to createSlice."
+    category: "redux_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["redux", "redux-toolkit"]
+    tags: ["redux", "migration", "legacy", "incremental"]
+    example: |
+      // Step 1: Replace createStore with configureStore
+      // const store = createStore(rootReducer, middleware);
+      const store = configureStore({ reducer: rootReducer }); // includes thunk + devtools
+
+      // Step 2: Convert reducers one by one to createSlice
+      // Each createSlice replaces: action types + action creators + reducer case

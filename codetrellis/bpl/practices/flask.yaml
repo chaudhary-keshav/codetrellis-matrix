@@ -1,0 +1,1771 @@
+# Flask Best Practices Library
+# Version: 1.0.0
+# Flask Version: 2.3+ (with latest features)
+# Total Practices: 20
+# Coverage: Application Structure, Routing, Extensions, Request Handling, Testing
+
+version: '1.0.0'
+framework: flask
+framework_version:
+  min_version: '2.3'
+description: 'Comprehensive Flask best practices for web application development'
+
+practices:
+  # ============================================================================
+  # APPLICATION STRUCTURE (FLASK001-FLASK005)
+  # ============================================================================
+
+  - id: FLASK001
+    title: 'Use Application Factory Pattern'
+    category: architecture
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Use the application factory pattern to create Flask apps. This enables
+        testing with different configurations and running multiple instances.
+      rationale: |
+        Application factories make testing easier, allow multiple app instances,
+        and enable proper configuration management.
+      good_examples:
+        - |
+          # ✅ Application factory pattern
+          # app/__init__.py
+          from flask import Flask
+          from flask_sqlalchemy import SQLAlchemy
+          from flask_migrate import Migrate
+          from flask_login import LoginManager
+
+          db = SQLAlchemy()
+          migrate = Migrate()
+          login_manager = LoginManager()
+
+          def create_app(config_name: str = 'default') -> Flask:
+              """Create and configure Flask application."""
+              app = Flask(__name__)
+
+              # Load configuration
+              config_mapping = {
+                  'development': 'config.DevelopmentConfig',
+                  'testing': 'config.TestingConfig',
+                  'production': 'config.ProductionConfig',
+                  'default': 'config.DevelopmentConfig',
+              }
+              app.config.from_object(config_mapping.get(config_name, config_mapping['default']))
+
+              # Initialize extensions
+              db.init_app(app)
+              migrate.init_app(app, db)
+              login_manager.init_app(app)
+              login_manager.login_view = 'auth.login'
+
+              # Register blueprints
+              from app.main import bp as main_bp
+              app.register_blueprint(main_bp)
+
+              from app.auth import bp as auth_bp
+              app.register_blueprint(auth_bp, url_prefix='/auth')
+
+              from app.api import bp as api_bp
+              app.register_blueprint(api_bp, url_prefix='/api/v1')
+
+              # Register error handlers
+              register_error_handlers(app)
+
+              # Register CLI commands
+              register_commands(app)
+
+              return app
+
+          def register_error_handlers(app: Flask) -> None:
+              """Register error handlers."""
+              @app.errorhandler(404)
+              def not_found(error):
+                  return {'error': 'Not found'}, 404
+
+              @app.errorhandler(500)
+              def internal_error(error):
+                  db.session.rollback()
+                  return {'error': 'Internal server error'}, 500
+      bad_examples:
+        - |
+          # ❌ Global app without factory
+          app = Flask(__name__)
+          db = SQLAlchemy(app)
+
+          @app.route('/')
+          def index():
+              return 'Hello'
+
+          # Difficult to test and configure differently
+      references:
+        - 'https://flask.palletsprojects.com/en/2.3.x/patterns/appfactories/'
+      tags:
+        - application-factory
+        - architecture
+        - flask
+
+  - id: FLASK002
+    title: 'Use Blueprints for Modularity'
+    category: architecture
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Organize routes into blueprints. Each feature or area of your
+        application should have its own blueprint.
+      rationale: |
+        Blueprints enable modular application design, making code
+        more maintainable and reusable.
+      good_examples:
+        - |
+          # ✅ Blueprint organization
+          # app/auth/__init__.py
+          from flask import Blueprint
+
+          bp = Blueprint('auth', __name__)
+
+          from app.auth import routes  # noqa: F401, E402
+
+          # app/auth/routes.py
+          from flask import render_template, redirect, url_for, flash, request
+          from flask_login import login_user, logout_user, login_required, current_user
+          from app.auth import bp
+          from app.auth.forms import LoginForm, RegisterForm
+          from app.models import User
+          from app import db
+
+          @bp.route('/login', methods=['GET', 'POST'])
+          def login():
+              if current_user.is_authenticated:
+                  return redirect(url_for('main.index'))
+
+              form = LoginForm()
+              if form.validate_on_submit():
+                  user = User.query.filter_by(email=form.email.data).first()
+                  if user and user.check_password(form.password.data):
+                      login_user(user, remember=form.remember.data)
+                      next_page = request.args.get('next')
+                      return redirect(next_page or url_for('main.index'))
+                  flash('Invalid email or password', 'error')
+
+              return render_template('auth/login.html', form=form)
+
+          @bp.route('/logout')
+          @login_required
+          def logout():
+              logout_user()
+              return redirect(url_for('main.index'))
+
+          # app/api/__init__.py
+          from flask import Blueprint
+
+          bp = Blueprint('api', __name__)
+
+          from app.api import users, articles  # noqa: F401, E402
+      bad_examples:
+        - |
+          # ❌ All routes in one file
+          @app.route('/login')
+          def login():
+              pass
+
+          @app.route('/api/users')
+          def api_users():
+              pass
+
+          @app.route('/admin')
+          def admin():
+              pass
+          # Hundreds of routes in one file!
+      references:
+        - 'https://flask.palletsprojects.com/en/2.3.x/blueprints/'
+      tags:
+        - blueprints
+        - modularity
+        - architecture
+
+  - id: FLASK003
+    title: 'Follow Flask Project Structure'
+    category: architecture
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Organize Flask projects with a clear structure: app factory,
+        blueprints, models, templates, and static files.
+      rationale: |
+        Consistent structure makes projects navigable and follows
+        community conventions.
+      good_examples:
+        - |
+          # ✅ Recommended project structure
+          """
+          myproject/
+          ├── app/                        # Application package
+          │   ├── __init__.py            # App factory
+          │   ├── extensions.py          # Extension instances
+          │   ├── models/                # Database models
+          │   │   ├── __init__.py
+          │   │   ├── user.py
+          │   │   └── article.py
+          │   ├── auth/                  # Auth blueprint
+          │   │   ├── __init__.py
+          │   │   ├── routes.py
+          │   │   └── forms.py
+          │   ├── main/                  # Main blueprint
+          │   │   ├── __init__.py
+          │   │   └── routes.py
+          │   ├── api/                   # API blueprint
+          │   │   ├── __init__.py
+          │   │   ├── v1/
+          │   │   │   ├── __init__.py
+          │   │   │   ├── users.py
+          │   │   │   └── articles.py
+          │   │   └── decorators.py
+          │   ├── templates/             # Jinja2 templates
+          │   │   ├── base.html
+          │   │   ├── auth/
+          │   │   └── main/
+          │   ├── static/                # Static files
+          │   │   ├── css/
+          │   │   ├── js/
+          │   │   └── images/
+          │   └── utils/                 # Utility functions
+          │       ├── __init__.py
+          │       └── helpers.py
+          ├── config.py                  # Configuration classes
+          ├── migrations/                # Database migrations
+          ├── tests/                     # Test package
+          │   ├── __init__.py
+          │   ├── conftest.py
+          │   ├── test_auth.py
+          │   └── test_api.py
+          ├── requirements/
+          │   ├── base.txt
+          │   ├── dev.txt
+          │   └── prod.txt
+          ├── .env.example
+          ├── .flaskenv
+          ├── wsgi.py
+          └── pytest.ini
+          """
+
+          # wsgi.py
+          from app import create_app
+
+          app = create_app()
+
+          # .flaskenv
+          """
+          FLASK_APP=wsgi.py
+          FLASK_ENV=development
+          """
+      bad_examples:
+        - |
+          # ❌ Flat structure
+          """
+          myproject/
+          ├── app.py           # Everything in one file
+          ├── templates/
+          └── static/
+          """
+      references:
+        - 'https://flask.palletsprojects.com/en/2.3.x/tutorial/layout/'
+      tags:
+        - project-structure
+        - organization
+        - flask
+
+  - id: FLASK004
+    title: 'Use Configuration Classes'
+    category: configuration
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Use configuration classes with inheritance for different environments.
+        Load sensitive values from environment variables.
+      rationale: |
+        Configuration classes provide type safety, validation,
+        and clear separation of environments.
+      good_examples:
+        - |
+          # ✅ Configuration with classes
+          # config.py
+          import os
+          from datetime import timedelta
+
+          class Config:
+              """Base configuration."""
+              SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-prod'
+
+              SQLALCHEMY_TRACK_MODIFICATIONS = False
+              SQLALCHEMY_ENGINE_OPTIONS = {
+                  'pool_pre_ping': True,
+                  'pool_recycle': 300,
+              }
+
+              # Session
+              PERMANENT_SESSION_LIFETIME = timedelta(days=7)
+              SESSION_COOKIE_SECURE = True
+              SESSION_COOKIE_HTTPONLY = True
+              SESSION_COOKIE_SAMESITE = 'Lax'
+
+              # Mail
+              MAIL_SERVER = os.environ.get('MAIL_SERVER', 'localhost')
+              MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+              MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
+
+              @staticmethod
+              def init_app(app):
+                  """Initialize application-specific configuration."""
+                  pass
+
+          class DevelopmentConfig(Config):
+              """Development configuration."""
+              DEBUG = True
+              SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
+                  'sqlite:///dev.db'
+              SESSION_COOKIE_SECURE = False
+
+          class TestingConfig(Config):
+              """Testing configuration."""
+              TESTING = True
+              SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+              WTF_CSRF_ENABLED = False
+              SESSION_COOKIE_SECURE = False
+
+          class ProductionConfig(Config):
+              """Production configuration."""
+              SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+
+              @classmethod
+              def init_app(cls, app):
+                  Config.init_app(app)
+
+                  # Log to stderr in production
+                  import logging
+                  from logging import StreamHandler
+                  handler = StreamHandler()
+                  handler.setLevel(logging.INFO)
+                  app.logger.addHandler(handler)
+      bad_examples:
+        - |
+          # ❌ Hardcoded configuration
+          app.config['SECRET_KEY'] = 'hardcoded-secret'
+          app.config['DATABASE_URL'] = 'postgresql://user:pass@localhost/db'
+      references:
+        - 'https://flask.palletsprojects.com/en/2.3.x/config/'
+      tags:
+        - configuration
+        - environment
+        - security
+
+  - id: FLASK005
+    title: 'Initialize Extensions Properly'
+    category: architecture
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Initialize Flask extensions in a separate module and use init_app
+        pattern for deferred initialization.
+      rationale: |
+        Proper extension initialization prevents circular imports
+        and works with application factory pattern.
+      good_examples:
+        - |
+          # ✅ Extension initialization
+          # app/extensions.py
+          from flask_sqlalchemy import SQLAlchemy
+          from flask_migrate import Migrate
+          from flask_login import LoginManager
+          from flask_mail import Mail
+          from flask_wtf.csrf import CSRFProtect
+          from flask_limiter import Limiter
+          from flask_limiter.util import get_remote_address
+          from flask_caching import Cache
+
+          # Initialize extensions without app
+          db = SQLAlchemy()
+          migrate = Migrate()
+          login_manager = LoginManager()
+          mail = Mail()
+          csrf = CSRFProtect()
+          limiter = Limiter(key_func=get_remote_address)
+          cache = Cache()
+
+          # Configure login manager
+          login_manager.login_view = 'auth.login'
+          login_manager.login_message = 'Please log in to access this page.'
+          login_manager.login_message_category = 'info'
+
+          @login_manager.user_loader
+          def load_user(user_id):
+              from app.models import User
+              return User.query.get(int(user_id))
+
+          # app/__init__.py
+          from app.extensions import db, migrate, login_manager, mail, csrf, limiter, cache
+
+          def create_app(config_name='default'):
+              app = Flask(__name__)
+              app.config.from_object(config_mapping[config_name])
+
+              # Initialize all extensions with app
+              db.init_app(app)
+              migrate.init_app(app, db)
+              login_manager.init_app(app)
+              mail.init_app(app)
+              csrf.init_app(app)
+              limiter.init_app(app)
+              cache.init_app(app)
+
+              return app
+      bad_examples:
+        - |
+          # ❌ Extensions tied to app at import time
+          from flask import Flask
+          from flask_sqlalchemy import SQLAlchemy
+
+          app = Flask(__name__)
+          db = SQLAlchemy(app)  # Can't use different configs!
+      tags:
+        - extensions
+        - initialization
+        - architecture
+
+  # ============================================================================
+  # REQUEST HANDLING (FLASK006-FLASK010)
+  # ============================================================================
+
+  - id: FLASK006
+    title: 'Use Request Context Properly'
+    category: patterns
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Understand and use Flask's request context properly. Access
+        request data through flask.request and use context locals correctly.
+      rationale: |
+        Proper request context handling prevents bugs and enables
+        thread-safe request processing.
+      good_examples:
+        - |
+          # ✅ Proper request context usage
+          from flask import request, g, current_app
+
+          @bp.route('/api/users', methods=['POST'])
+          def create_user():
+              # Access request data
+              data = request.get_json()
+              if not data:
+                  return {'error': 'JSON body required'}, 400
+
+              # Validate content type
+              if not request.is_json:
+                  return {'error': 'Content-Type must be application/json'}, 415
+
+              # Access headers
+              auth_token = request.headers.get('Authorization')
+
+              # Access query parameters
+              include_details = request.args.get('include_details', 'false') == 'true'
+
+              # Use g for request-scoped data
+              user = User(
+                  email=data['email'],
+                  created_by_ip=request.remote_addr,
+              )
+
+              return {'id': user.id}, 201
+
+          # ✅ Using g for request-scoped data
+          @bp.before_request
+          def load_user():
+              """Load user before each request."""
+              token = request.headers.get('X-Auth-Token')
+              if token:
+                  g.current_user = User.query.filter_by(token=token).first()
+              else:
+                  g.current_user = None
+
+          @bp.route('/profile')
+          def profile():
+              if not g.current_user:
+                  return {'error': 'Unauthorized'}, 401
+              return {'user': g.current_user.to_dict()}
+
+          # ✅ Using current_app for app-level data
+          @bp.route('/info')
+          def app_info():
+              return {
+                  'version': current_app.config['VERSION'],
+                  'debug': current_app.debug,
+              }
+      bad_examples:
+        - |
+          # ❌ Storing request data globally
+          current_request_user = None  # Global variable!
+
+          def get_user():
+              global current_request_user
+              return current_request_user
+      references:
+        - 'https://flask.palletsprojects.com/en/2.3.x/reqcontext/'
+      tags:
+        - request-context
+        - g-object
+        - flask
+
+  - id: FLASK007
+    title: 'Implement Input Validation'
+    category: validation
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Validate all user input using WTForms for forms and marshmallow
+        or pydantic for API data. Never trust client data.
+      rationale: |
+        Input validation prevents security vulnerabilities and
+        ensures data integrity.
+      good_examples:
+        - |
+          # ✅ WTForms for HTML forms
+          from flask_wtf import FlaskForm
+          from wtforms import StringField, PasswordField, BooleanField
+          from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError
+          from app.models import User
+
+          class RegistrationForm(FlaskForm):
+              email = StringField('Email', validators=[
+                  DataRequired(),
+                  Email(),
+                  Length(max=120),
+              ])
+              password = PasswordField('Password', validators=[
+                  DataRequired(),
+                  Length(min=8, message='Password must be at least 8 characters'),
+              ])
+              confirm_password = PasswordField('Confirm Password', validators=[
+                  DataRequired(),
+                  EqualTo('password', message='Passwords must match'),
+              ])
+
+              def validate_email(self, field):
+                  if User.query.filter_by(email=field.data.lower()).first():
+                      raise ValidationError('Email already registered.')
+
+          # ✅ Marshmallow for API validation
+          from marshmallow import Schema, fields, validate, validates, ValidationError
+
+          class UserSchema(Schema):
+              id = fields.Int(dump_only=True)
+              email = fields.Email(required=True)
+              username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
+              password = fields.Str(load_only=True, required=True, validate=validate.Length(min=8))
+              created_at = fields.DateTime(dump_only=True)
+
+              @validates('username')
+              def validate_username(self, value):
+                  if User.query.filter_by(username=value).first():
+                      raise ValidationError('Username already taken.')
+
+          @bp.route('/api/users', methods=['POST'])
+          def create_user():
+              schema = UserSchema()
+              try:
+                  data = schema.load(request.get_json())
+              except ValidationError as err:
+                  return {'errors': err.messages}, 400
+
+              user = User(**data)
+              db.session.add(user)
+              db.session.commit()
+
+              return schema.dump(user), 201
+      bad_examples:
+        - |
+          # ❌ No validation
+          @app.route('/api/users', methods=['POST'])
+          def create_user():
+              data = request.get_json()
+              user = User(
+                  email=data['email'],  # Could be anything!
+                  password=data['password'],  # No length check!
+              )
+              db.session.add(user)
+              db.session.commit()
+      references:
+        - 'https://flask-wtf.readthedocs.io/'
+        - 'https://marshmallow.readthedocs.io/'
+      tags:
+        - validation
+        - security
+        - forms
+
+  - id: FLASK008
+    title: 'Handle Errors Gracefully'
+    category: error_handling
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Implement proper error handling with custom error pages and
+        API error responses. Log errors appropriately.
+      rationale: |
+        Good error handling improves user experience and helps
+        with debugging.
+      good_examples:
+        - |
+          # ✅ Comprehensive error handling
+          from flask import jsonify, render_template, request
+          from werkzeug.exceptions import HTTPException
+
+          class APIError(Exception):
+              """Custom API exception."""
+              def __init__(self, message, status_code=400, payload=None):
+                  super().__init__()
+                  self.message = message
+                  self.status_code = status_code
+                  self.payload = payload
+
+              def to_dict(self):
+                  rv = dict(self.payload or ())
+                  rv['error'] = self.message
+                  rv['status'] = self.status_code
+                  return rv
+
+          def register_error_handlers(app):
+              """Register error handlers."""
+
+              @app.errorhandler(APIError)
+              def handle_api_error(error):
+                  response = jsonify(error.to_dict())
+                  response.status_code = error.status_code
+                  return response
+
+              @app.errorhandler(HTTPException)
+              def handle_http_exception(error):
+                  if request.path.startswith('/api/'):
+                      return jsonify({
+                          'error': error.description,
+                          'status': error.code,
+                      }), error.code
+                  return render_template(f'errors/{error.code}.html'), error.code
+
+              @app.errorhandler(Exception)
+              def handle_exception(error):
+                  app.logger.exception('Unhandled exception: %s', error)
+
+                  if request.path.startswith('/api/'):
+                      return jsonify({
+                          'error': 'Internal server error',
+                          'status': 500,
+                      }), 500
+                  return render_template('errors/500.html'), 500
+
+              @app.errorhandler(404)
+              def not_found(error):
+                  if request.path.startswith('/api/'):
+                      return jsonify({'error': 'Resource not found'}), 404
+                  return render_template('errors/404.html'), 404
+
+          # Usage in views
+          @bp.route('/api/users/<int:user_id>')
+          def get_user(user_id):
+              user = User.query.get(user_id)
+              if not user:
+                  raise APIError('User not found', status_code=404)
+              return user.to_dict()
+      bad_examples:
+        - |
+          # ❌ No error handling
+          @app.route('/api/users/<int:user_id>')
+          def get_user(user_id):
+              user = User.query.get(user_id)
+              return user.to_dict()  # Crashes if user is None!
+      references:
+        - 'https://flask.palletsprojects.com/en/2.3.x/errorhandling/'
+      tags:
+        - error-handling
+        - exceptions
+        - logging
+
+  - id: FLASK009
+    title: 'Use Response Helpers'
+    category: patterns
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Use Flask's response helpers (jsonify, make_response, redirect)
+        for proper response construction.
+      rationale: |
+        Response helpers ensure correct content types, headers,
+        and status codes.
+      good_examples:
+        - |
+          # ✅ Proper response construction
+          from flask import jsonify, make_response, redirect, url_for, send_file
+
+          @bp.route('/api/users')
+          def list_users():
+              users = User.query.all()
+              return jsonify({
+                  'users': [u.to_dict() for u in users],
+                  'total': len(users),
+              })
+
+          @bp.route('/api/users', methods=['POST'])
+          def create_user():
+              # ... create user ...
+              response = jsonify(user.to_dict())
+              response.status_code = 201
+              response.headers['Location'] = url_for('api.get_user', user_id=user.id)
+              return response
+
+          @bp.route('/api/users/<int:user_id>', methods=['DELETE'])
+          def delete_user(user_id):
+              # ... delete user ...
+              return '', 204  # No content
+
+          # Custom response with headers
+          @bp.route('/api/export')
+          def export_data():
+              data = generate_csv()
+              response = make_response(data)
+              response.headers['Content-Type'] = 'text/csv'
+              response.headers['Content-Disposition'] = 'attachment; filename=export.csv'
+              return response
+
+          # File download
+          @bp.route('/download/<int:file_id>')
+          def download_file(file_id):
+              file = File.query.get_or_404(file_id)
+              return send_file(
+                  file.path,
+                  as_attachment=True,
+                  download_name=file.original_name,
+              )
+
+          # Redirect
+          @bp.route('/old-path')
+          def old_path():
+              return redirect(url_for('main.new_path'), code=301)
+      bad_examples:
+        - |
+          # ❌ Manual JSON without proper content type
+          import json
+
+          @app.route('/api/users')
+          def list_users():
+              users = User.query.all()
+              return json.dumps([u.to_dict() for u in users])  # Wrong content type!
+      tags:
+        - response
+        - jsonify
+        - helpers
+
+  - id: FLASK010
+    title: 'Implement Rate Limiting'
+    category: security
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Use Flask-Limiter to protect endpoints from abuse. Apply
+        different limits to different endpoints.
+      rationale: |
+        Rate limiting prevents abuse, protects resources, and
+        mitigates DoS attacks.
+      good_examples:
+        - |
+          # ✅ Rate limiting with Flask-Limiter
+          from flask_limiter import Limiter
+          from flask_limiter.util import get_remote_address
+
+          limiter = Limiter(
+              key_func=get_remote_address,
+              default_limits=['200 per day', '50 per hour'],
+              storage_uri='redis://localhost:6379/0',
+          )
+
+          # In app factory
+          def create_app():
+              app = Flask(__name__)
+              limiter.init_app(app)
+              return app
+
+          # Apply to specific endpoints
+          @bp.route('/api/login', methods=['POST'])
+          @limiter.limit('5 per minute')
+          def login():
+              # Strict limit on login attempts
+              pass
+
+          @bp.route('/api/search')
+          @limiter.limit('30 per minute')
+          def search():
+              # Moderate limit on expensive operation
+              pass
+
+          @bp.route('/api/data')
+          @limiter.limit('100 per minute', key_func=lambda: current_user.id)
+          def get_data():
+              # Per-user rate limiting
+              pass
+
+          # Blueprint-level limit
+          @bp.before_request
+          @limiter.limit('1000 per hour')
+          def before_request():
+              pass
+
+          # Exempt certain endpoints
+          @bp.route('/health')
+          @limiter.exempt
+          def health_check():
+              return {'status': 'healthy'}
+
+          # Custom error handler for rate limit exceeded
+          @app.errorhandler(429)
+          def ratelimit_handler(e):
+              return jsonify({
+                  'error': 'Rate limit exceeded',
+                  'retry_after': e.description,
+              }), 429
+      bad_examples:
+        - |
+          # ❌ No rate limiting
+          @app.route('/api/login', methods=['POST'])
+          def login():
+              # Can be brute-forced!
+              pass
+      references:
+        - 'https://flask-limiter.readthedocs.io/'
+      tags:
+        - rate-limiting
+        - security
+        - flask-limiter
+
+  # ============================================================================
+  # DATABASE & MODELS (FLASK011-FLASK014)
+  # ============================================================================
+
+  - id: FLASK011
+    title: 'Use Flask-SQLAlchemy Best Practices'
+    category: database
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Follow Flask-SQLAlchemy best practices: model mixins, query
+        optimization, and proper session management.
+      rationale: |
+        Good database practices prevent performance issues and
+        ensure data integrity.
+      good_examples:
+        - |
+          # ✅ Model with mixins and best practices
+          from datetime import datetime
+          from app.extensions import db
+
+          class TimestampMixin:
+              """Mixin for created_at and updated_at."""
+              created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+              updated_at = db.Column(
+                  db.DateTime,
+                  default=datetime.utcnow,
+                  onupdate=datetime.utcnow,
+                  nullable=False,
+              )
+
+          class SoftDeleteMixin:
+              """Mixin for soft delete."""
+              deleted_at = db.Column(db.DateTime, nullable=True, index=True)
+
+              @property
+              def is_deleted(self):
+                  return self.deleted_at is not None
+
+              def soft_delete(self):
+                  self.deleted_at = datetime.utcnow()
+                  db.session.commit()
+
+          class User(TimestampMixin, SoftDeleteMixin, db.Model):
+              __tablename__ = 'users'
+
+              id = db.Column(db.Integer, primary_key=True)
+              email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+              username = db.Column(db.String(50), unique=True, nullable=False)
+              password_hash = db.Column(db.String(256), nullable=False)
+
+              # Relationships with lazy loading control
+              articles = db.relationship(
+                  'Article',
+                  backref=db.backref('author', lazy='joined'),
+                  lazy='dynamic',
+                  cascade='all, delete-orphan',
+              )
+
+              def __repr__(self):
+                  return f'<User {self.username}>'
+
+              def to_dict(self):
+                  return {
+                      'id': self.id,
+                      'email': self.email,
+                      'username': self.username,
+                      'created_at': self.created_at.isoformat(),
+                  }
+
+          # ✅ Query optimization
+          # Eager loading
+          users = User.query.options(
+              db.joinedload(User.articles)
+          ).all()
+
+          # Pagination
+          page = request.args.get('page', 1, type=int)
+          users = User.query.paginate(page=page, per_page=20, error_out=False)
+      bad_examples:
+        - |
+          # ❌ N+1 query problem
+          users = User.query.all()
+          for user in users:
+              print(user.articles.count())  # Query per user!
+      references:
+        - 'https://flask-sqlalchemy.palletsprojects.com/'
+      tags:
+        - sqlalchemy
+        - database
+        - models
+
+  - id: FLASK012
+    title: 'Manage Database Sessions Properly'
+    category: database
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Manage database sessions properly: commit/rollback, handle
+        exceptions, and understand session scope.
+      rationale: |
+        Proper session management prevents data corruption and
+        connection leaks.
+      good_examples:
+        - |
+          # ✅ Proper session management
+          from app.extensions import db
+
+          @bp.route('/api/users', methods=['POST'])
+          def create_user():
+              data = request.get_json()
+
+              try:
+                  user = User(**data)
+                  db.session.add(user)
+                  db.session.commit()
+                  return user.to_dict(), 201
+              except IntegrityError:
+                  db.session.rollback()
+                  return {'error': 'User already exists'}, 409
+              except Exception as e:
+                  db.session.rollback()
+                  current_app.logger.exception('Failed to create user')
+                  raise
+
+          # ✅ Context manager for complex operations
+          from contextlib import contextmanager
+
+          @contextmanager
+          def transaction():
+              """Context manager for database transactions."""
+              try:
+                  yield db.session
+                  db.session.commit()
+              except Exception:
+                  db.session.rollback()
+                  raise
+
+          def transfer_funds(from_id, to_id, amount):
+              with transaction():
+                  from_account = Account.query.get(from_id)
+                  to_account = Account.query.get(to_id)
+
+                  from_account.balance -= amount
+                  to_account.balance += amount
+
+          # ✅ Teardown handler
+          @app.teardown_appcontext
+          def shutdown_session(exception=None):
+              db.session.remove()
+      bad_examples:
+        - |
+          # ❌ No error handling
+          @app.route('/api/users', methods=['POST'])
+          def create_user():
+              user = User(**request.get_json())
+              db.session.add(user)
+              db.session.commit()  # No rollback if this fails!
+              return user.to_dict()
+      tags:
+        - session
+        - transaction
+        - database
+
+  - id: FLASK013
+    title: 'Use Database Migrations'
+    category: database
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Use Flask-Migrate (Alembic) for database migrations. Version
+        control your schema changes.
+      rationale: |
+        Migrations track schema changes, enable rollbacks, and
+        ensure consistent deployments.
+      good_examples:
+        - |
+          # ✅ Flask-Migrate setup
+          # app/__init__.py
+          from flask_migrate import Migrate
+
+          migrate = Migrate()
+
+          def create_app():
+              app = Flask(__name__)
+              db.init_app(app)
+              migrate.init_app(app, db)
+              return app
+
+          # ✅ Migration commands
+          """
+          # Initialize migrations
+          flask db init
+
+          # Generate migration after model changes
+          flask db migrate -m "Add user email verified field"
+
+          # Apply migrations
+          flask db upgrade
+
+          # Rollback last migration
+          flask db downgrade
+
+          # Show migration history
+          flask db history
+          """
+
+          # ✅ Custom migration with data
+          # migrations/versions/xxx_add_slug.py
+          """
+          def upgrade():
+              # Add column
+              op.add_column('articles', sa.Column('slug', sa.String(200)))
+
+              # Populate data
+              connection = op.get_bind()
+              articles = connection.execute(text('SELECT id, title FROM articles'))
+              for article in articles:
+                  slug = slugify(article.title)
+                  connection.execute(
+                      text('UPDATE articles SET slug = :slug WHERE id = :id'),
+                      {'slug': slug, 'id': article.id}
+                  )
+
+              # Make non-nullable and add index
+              op.alter_column('articles', 'slug', nullable=False)
+              op.create_index('ix_articles_slug', 'articles', ['slug'], unique=True)
+
+          def downgrade():
+              op.drop_index('ix_articles_slug', 'articles')
+              op.drop_column('articles', 'slug')
+          """
+      bad_examples:
+        - |
+          # ❌ Manual schema changes
+          db.create_all()  # Doesn't track changes!
+
+          # ❌ Direct SQL without migrations
+          cursor.execute('ALTER TABLE users ADD COLUMN phone VARCHAR(20)')
+      references:
+        - 'https://flask-migrate.readthedocs.io/'
+      tags:
+        - migrations
+        - alembic
+        - database
+
+  - id: FLASK014
+    title: 'Implement Query Scopes'
+    category: patterns
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Create query scopes as class methods or custom query classes
+        for reusable, chainable queries.
+      rationale: |
+        Query scopes encapsulate common query logic, making code
+        DRY and more readable.
+      good_examples:
+        - |
+          # ✅ Query scopes with custom query class
+          from flask_sqlalchemy import BaseQuery
+
+          class ArticleQuery(BaseQuery):
+              """Custom query class for Article."""
+
+              def published(self):
+                  return self.filter(Article.status == 'published')
+
+              def by_author(self, user):
+                  return self.filter(Article.author_id == user.id)
+
+              def recent(self, days=7):
+                  cutoff = datetime.utcnow() - timedelta(days=days)
+                  return self.filter(Article.created_at >= cutoff)
+
+              def search(self, query):
+                  return self.filter(
+                      db.or_(
+                          Article.title.ilike(f'%{query}%'),
+                          Article.content.ilike(f'%{query}%'),
+                      )
+                  )
+
+          class Article(db.Model):
+              query_class = ArticleQuery
+
+              id = db.Column(db.Integer, primary_key=True)
+              title = db.Column(db.String(200), nullable=False)
+              content = db.Column(db.Text)
+              status = db.Column(db.String(20), default='draft')
+              author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+              created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+          # ✅ Usage with chaining
+          articles = (
+              Article.query
+              .published()
+              .by_author(current_user)
+              .recent(30)
+              .order_by(Article.created_at.desc())
+              .paginate(page=1, per_page=10)
+          )
+
+          # ✅ Alternative: class methods
+          class User(db.Model):
+              @classmethod
+              def find_by_email(cls, email):
+                  return cls.query.filter_by(email=email.lower()).first()
+
+              @classmethod
+              def active_users(cls):
+                  return cls.query.filter_by(is_active=True)
+      bad_examples:
+        - |
+          # ❌ Repeated query logic
+          # In view 1:
+          articles = Article.query.filter(
+              Article.status == 'published',
+              Article.created_at >= cutoff
+          ).all()
+
+          # In view 2: (same query repeated)
+          articles = Article.query.filter(
+              Article.status == 'published',
+              Article.created_at >= cutoff
+          ).all()
+      tags:
+        - query-scopes
+        - patterns
+        - database
+
+  # ============================================================================
+  # SECURITY & TESTING (FLASK015-FLASK020)
+  # ============================================================================
+
+  - id: FLASK015
+    title: 'Implement Authentication Securely'
+    category: security
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Use Flask-Login for session authentication or JWT for API
+        authentication. Hash passwords properly.
+      rationale: |
+        Secure authentication protects user accounts and
+        prevents unauthorized access.
+      good_examples:
+        - |
+          # ✅ Flask-Login setup
+          from flask_login import UserMixin
+          from werkzeug.security import generate_password_hash, check_password_hash
+
+          class User(UserMixin, db.Model):
+              id = db.Column(db.Integer, primary_key=True)
+              email = db.Column(db.String(120), unique=True, nullable=False)
+              password_hash = db.Column(db.String(256), nullable=False)
+
+              def set_password(self, password):
+                  self.password_hash = generate_password_hash(password)
+
+              def check_password(self, password):
+                  return check_password_hash(self.password_hash, password)
+
+          # ✅ JWT authentication for APIs
+          from flask_jwt_extended import (
+              JWTManager, create_access_token, create_refresh_token,
+              jwt_required, get_jwt_identity
+          )
+
+          jwt = JWTManager()
+
+          @bp.route('/api/auth/login', methods=['POST'])
+          def api_login():
+              data = request.get_json()
+              user = User.query.filter_by(email=data.get('email')).first()
+
+              if not user or not user.check_password(data.get('password')):
+                  return {'error': 'Invalid credentials'}, 401
+
+              access_token = create_access_token(identity=user.id)
+              refresh_token = create_refresh_token(identity=user.id)
+
+              return {
+                  'access_token': access_token,
+                  'refresh_token': refresh_token,
+              }
+
+          @bp.route('/api/protected')
+          @jwt_required()
+          def protected():
+              user_id = get_jwt_identity()
+              return {'user_id': user_id}
+      bad_examples:
+        - |
+          # ❌ Plain text passwords
+          class User(db.Model):
+              password = db.Column(db.String(100))  # Plain text!
+
+              def check_password(self, password):
+                  return self.password == password
+      references:
+        - 'https://flask-login.readthedocs.io/'
+        - 'https://flask-jwt-extended.readthedocs.io/'
+      tags:
+        - authentication
+        - security
+        - jwt
+
+  - id: FLASK016
+    title: 'Protect Against CSRF'
+    category: security
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Use Flask-WTF's CSRF protection for all forms. Handle CSRF
+        tokens in AJAX requests properly.
+      rationale: |
+        CSRF protection prevents attackers from tricking users
+        into performing unwanted actions.
+      good_examples:
+        - |
+          # ✅ CSRF protection setup
+          from flask_wtf.csrf import CSRFProtect
+
+          csrf = CSRFProtect()
+
+          def create_app():
+              app = Flask(__name__)
+              csrf.init_app(app)
+              return app
+
+          # ✅ In templates
+          """
+          <form method="post">
+              {{ form.csrf_token }}
+              <!-- or -->
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {{ form.email.label }} {{ form.email() }}
+              <button type="submit">Submit</button>
+          </form>
+          """
+
+          # ✅ AJAX with CSRF
+          """
+          <meta name="csrf-token" content="{{ csrf_token() }}">
+
+          <script>
+          const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+          fetch('/api/data', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrfToken,
+              },
+              body: JSON.stringify(data),
+          });
+          </script>
+          """
+
+          # ✅ Exempt API endpoints using JWT
+          @csrf.exempt
+          @bp.route('/api/webhook', methods=['POST'])
+          def webhook():
+              # External webhook - verify differently
+              signature = request.headers.get('X-Signature')
+              # ... verify signature ...
+              pass
+      bad_examples:
+        - |
+          # ❌ CSRF disabled globally
+          WTF_CSRF_ENABLED = False
+
+          # ❌ Form without CSRF token
+          """
+          <form method="post">
+              <input name="email" type="email">
+              <button type="submit">Submit</button>
+          </form>
+          """
+      references:
+        - 'https://flask-wtf.readthedocs.io/en/latest/csrf.html'
+      tags:
+        - csrf
+        - security
+        - forms
+
+  - id: FLASK017
+    title: 'Secure File Uploads'
+    category: security
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Validate file uploads: check file types, limit sizes,
+        sanitize filenames, and store securely.
+      rationale: |
+        Insecure file uploads can lead to code execution and
+        other security vulnerabilities.
+      good_examples:
+        - |
+          # ✅ Secure file upload handling
+          import os
+          from werkzeug.utils import secure_filename
+          from flask import current_app
+
+          ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
+          MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+
+          def allowed_file(filename):
+              return '.' in filename and \
+                  filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+          @bp.route('/upload', methods=['POST'])
+          @login_required
+          def upload_file():
+              if 'file' not in request.files:
+                  return {'error': 'No file provided'}, 400
+
+              file = request.files['file']
+
+              if file.filename == '':
+                  return {'error': 'No file selected'}, 400
+
+              if not allowed_file(file.filename):
+                  return {'error': 'File type not allowed'}, 400
+
+              # Secure the filename
+              filename = secure_filename(file.filename)
+
+              # Add unique prefix to prevent overwrites
+              unique_filename = f'{uuid.uuid4().hex}_{filename}'
+
+              # Store in designated upload folder
+              upload_path = os.path.join(
+                  current_app.config['UPLOAD_FOLDER'],
+                  unique_filename
+              )
+              file.save(upload_path)
+
+              # Verify file content (magic bytes)
+              import magic
+              mime = magic.from_file(upload_path, mime=True)
+              allowed_mimes = {'image/png', 'image/jpeg', 'image/gif', 'application/pdf'}
+
+              if mime not in allowed_mimes:
+                  os.remove(upload_path)
+                  return {'error': 'Invalid file content'}, 400
+
+              return {'filename': unique_filename}, 201
+
+          # Configuration
+          app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
+          app.config['UPLOAD_FOLDER'] = '/var/www/uploads'
+      bad_examples:
+        - |
+          # ❌ Insecure upload
+          @app.route('/upload', methods=['POST'])
+          def upload():
+              file = request.files['file']
+              file.save(f'/uploads/{file.filename}')  # Path traversal!
+              return 'Uploaded'
+      references:
+        - 'https://flask.palletsprojects.com/en/2.3.x/patterns/fileuploads/'
+      tags:
+        - file-upload
+        - security
+        - validation
+
+  - id: FLASK018
+    title: 'Write Comprehensive Tests'
+    category: testing
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Write unit and integration tests using pytest. Use fixtures
+        for test data and app instances.
+      rationale: |
+        Tests catch bugs, document behavior, and enable confident
+        refactoring.
+      good_examples:
+        - |
+          # ✅ Test configuration
+          # tests/conftest.py
+          import pytest
+          from app import create_app, db
+          from app.models import User
+
+          @pytest.fixture(scope='session')
+          def app():
+              """Create application for testing."""
+              app = create_app('testing')
+
+              with app.app_context():
+                  db.create_all()
+                  yield app
+                  db.drop_all()
+
+          @pytest.fixture
+          def client(app):
+              """Test client."""
+              return app.test_client()
+
+          @pytest.fixture
+          def runner(app):
+              """CLI runner."""
+              return app.test_cli_runner()
+
+          @pytest.fixture
+          def user(app):
+              """Create test user."""
+              with app.app_context():
+                  user = User(email='test@example.com', username='testuser')
+                  user.set_password('password123')
+                  db.session.add(user)
+                  db.session.commit()
+                  yield user
+                  db.session.delete(user)
+                  db.session.commit()
+
+          @pytest.fixture
+          def auth_client(client, user):
+              """Authenticated test client."""
+              client.post('/auth/login', data={
+                  'email': user.email,
+                  'password': 'password123',
+              })
+              return client
+
+          # tests/test_auth.py
+          def test_login_success(client, user):
+              response = client.post('/auth/login', data={
+                  'email': 'test@example.com',
+                  'password': 'password123',
+              })
+              assert response.status_code == 302
+              assert '/dashboard' in response.headers['Location']
+
+          def test_login_invalid_password(client, user):
+              response = client.post('/auth/login', data={
+                  'email': 'test@example.com',
+                  'password': 'wrongpassword',
+              })
+              assert response.status_code == 200
+              assert b'Invalid' in response.data
+
+          def test_protected_route_requires_login(client):
+              response = client.get('/dashboard')
+              assert response.status_code == 302
+              assert 'login' in response.headers['Location']
+      bad_examples:
+        - |
+          # ❌ No tests or minimal tests
+          def test_app():
+              assert True  # Useless!
+      references:
+        - 'https://flask.palletsprojects.com/en/2.3.x/testing/'
+      tags:
+        - testing
+        - pytest
+        - fixtures
+
+  - id: FLASK019
+    title: 'Implement Background Tasks'
+    category: async_patterns
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Use Celery or RQ for background task processing. Don't block
+        requests with long-running operations.
+      rationale: |
+        Background tasks improve response times and handle
+        unreliable operations gracefully.
+      good_examples:
+        - |
+          # ✅ Celery integration
+          # app/celery.py
+          from celery import Celery
+
+          celery = Celery(__name__)
+
+          def init_celery(app):
+              """Initialize Celery with Flask app context."""
+              celery.conf.update(app.config)
+
+              class ContextTask(celery.Task):
+                  def __call__(self, *args, **kwargs):
+                      with app.app_context():
+                          return self.run(*args, **kwargs)
+
+              celery.Task = ContextTask
+              return celery
+
+          # app/tasks.py
+          from app.celery import celery
+          from app.extensions import db, mail
+          from app.models import User
+
+          @celery.task(bind=True, max_retries=3)
+          def send_welcome_email(self, user_id):
+              """Send welcome email to new user."""
+              try:
+                  user = User.query.get(user_id)
+                  if not user:
+                      return
+
+                  msg = Message(
+                      subject='Welcome!',
+                      recipients=[user.email],
+                      body=f'Welcome {user.username}!',
+                  )
+                  mail.send(msg)
+              except Exception as exc:
+                  self.retry(exc=exc, countdown=60)
+
+          @celery.task
+          def generate_report(report_id):
+              """Generate report in background."""
+              report = Report.query.get(report_id)
+              report.status = 'processing'
+              db.session.commit()
+
+              try:
+                  data = process_data(report)
+                  report.file_path = save_report(data)
+                  report.status = 'completed'
+              except Exception as e:
+                  report.status = 'failed'
+                  report.error = str(e)
+              finally:
+                  db.session.commit()
+
+          # In views
+          @bp.route('/register', methods=['POST'])
+          def register():
+              user = create_user(request.form)
+              send_welcome_email.delay(user.id)  # Non-blocking
+              return redirect(url_for('main.index'))
+      bad_examples:
+        - |
+          # ❌ Blocking request with slow operation
+          @app.route('/register', methods=['POST'])
+          def register():
+              user = create_user(request.form)
+              send_email(user.email)  # Blocks for seconds!
+              generate_welcome_pdf(user)  # Even longer!
+              return redirect(url_for('main.index'))
+      references:
+        - 'https://flask.palletsprojects.com/en/2.3.x/patterns/celery/'
+      tags:
+        - celery
+        - background-tasks
+        - async
+
+  - id: FLASK020
+    title: 'Implement Logging and Monitoring'
+    category: monitoring
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - flask
+    content:
+      description: |
+        Configure structured logging and monitoring. Include request
+        context in logs and implement health checks.
+      rationale: |
+        Good logging enables debugging and monitoring, while
+        health checks enable automated failover.
+      good_examples:
+        - |
+          # ✅ Logging configuration
+          import logging
+          from logging.handlers import RotatingFileHandler
+          from flask import request, g
+          import time
+
+          def configure_logging(app):
+              """Configure application logging."""
+
+              # Remove default handler
+              app.logger.handlers.clear()
+
+              # Format
+              formatter = logging.Formatter(
+                  '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+              )
+
+              # File handler
+              file_handler = RotatingFileHandler(
+                  'logs/app.log',
+                  maxBytes=10 * 1024 * 1024,
+                  backupCount=10,
+              )
+              file_handler.setFormatter(formatter)
+              file_handler.setLevel(logging.INFO)
+
+              app.logger.addHandler(file_handler)
+              app.logger.setLevel(logging.INFO)
+
+          # ✅ Request logging middleware
+          @app.before_request
+          def before_request():
+              g.start_time = time.time()
+              g.request_id = request.headers.get('X-Request-ID', str(uuid.uuid4()))
+
+          @app.after_request
+          def after_request(response):
+              duration = time.time() - g.start_time
+              app.logger.info(
+                  '%s %s %s %s %.3fs',
+                  g.request_id,
+                  request.method,
+                  request.path,
+                  response.status_code,
+                  duration,
+              )
+              response.headers['X-Request-ID'] = g.request_id
+              return response
+
+          # ✅ Health check endpoint
+          @bp.route('/health')
+          def health_check():
+              checks = {
+                  'database': check_database(),
+                  'cache': check_cache(),
+              }
+
+              status = 'healthy' if all(checks.values()) else 'unhealthy'
+              code = 200 if status == 'healthy' else 503
+
+              return {'status': status, 'checks': checks}, code
+
+          def check_database():
+              try:
+                  db.session.execute('SELECT 1')
+                  return True
+              except Exception:
+                  return False
+      bad_examples:
+        - |
+          # ❌ Using print for logging
+          @app.route('/api/data')
+          def get_data():
+              print('Getting data...')  # Not production-ready!
+              return {'data': []}
+      references:
+        - 'https://flask.palletsprojects.com/en/2.3.x/logging/'
+      tags:
+        - logging
+        - monitoring
+        - health-checks

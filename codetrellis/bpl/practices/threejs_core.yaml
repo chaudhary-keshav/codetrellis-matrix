@@ -1,0 +1,1067 @@
+# Three.js / React Three Fiber Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.71 - Three.js / R3F Framework Support
+# Practice IDs: THREEJS001-THREEJS050
+# Coverage: Scene Setup, Components, Materials, Shaders, Animations,
+#           Performance, Physics, Post-Processing, Accessibility,
+#           TypeScript, Patterns, R3F Ecosystem
+# Versions: Three.js r73-r162+, React Three Fiber v1-v8+,
+#           Drei, Postprocessing, Rapier, XR
+
+practices:
+  # ============================================================================
+  # SCENE SETUP & CANVAS (THREEJS001-THREEJS010)
+  # ============================================================================
+
+  - id: THREEJS001
+    title: "Use R3F Canvas instead of manual WebGLRenderer setup"
+    description: "React Three Fiber's <Canvas> component handles renderer creation, resize, pixel ratio, and render loop automatically. Avoid manual THREE.WebGLRenderer instantiation in React apps. Canvas also provides a declarative scene graph."
+    category: "threejs_scene"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "r3f", "canvas", "scene", "setup"]
+    example: |
+      // ✅ R3F Canvas
+      import { Canvas } from '@react-three/fiber';
+      function App() {
+        return (
+          <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
+            <ambientLight />
+            <MyScene />
+          </Canvas>
+        );
+      }
+
+      // ❌ Manual renderer in React
+      useEffect(() => {
+        const renderer = new THREE.WebGLRenderer();
+        document.body.appendChild(renderer.domElement);
+      }, []);
+
+  - id: THREEJS002
+    title: "Configure Canvas with proper defaults for performance"
+    description: "Set dpr={[1, 2]} for responsive pixel ratio, gl={{ antialias: true }} for smooth edges, and shadows when needed. Use frameloop='demand' for non-animated scenes to save battery."
+    category: "threejs_scene"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "r3f", "canvas", "performance", "dpr"]
+    example: |
+      // ✅ Optimized Canvas config
+      <Canvas
+        dpr={[1, 2]}
+        gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
+        shadows
+        camera={{ position: [0, 5, 10], fov: 50 }}
+        frameloop="demand"
+      >
+
+  - id: THREEJS003
+    title: "Use PerspectiveCamera for 3D scenes, OrthographicCamera for 2D/isometric"
+    description: "PerspectiveCamera mimics human vision with depth. OrthographicCamera renders objects at the same size regardless of distance — ideal for isometric views, 2D games, UI overlays. Use drei's camera helpers for easy setup."
+    category: "threejs_scene"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "camera", "perspective", "orthographic"]
+    example: |
+      // ✅ PerspectiveCamera via drei
+      import { PerspectiveCamera } from '@react-three/drei';
+      <PerspectiveCamera makeDefault position={[0, 5, 10]} fov={50} />
+
+      // ✅ OrthographicCamera for isometric
+      import { OrthographicCamera } from '@react-three/drei';
+      <OrthographicCamera makeDefault zoom={50} position={[10, 10, 10]} />
+
+  - id: THREEJS004
+    title: "Use OrbitControls for interactive camera controls"
+    description: "drei's OrbitControls provides mouse/touch camera interaction out of the box. Configure enableDamping for smooth rotation, minDistance/maxDistance for zoom limits, and enablePan for panning."
+    category: "threejs_scene"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "controls", "orbit", "interaction"]
+    example: |
+      // ✅ OrbitControls with damping
+      import { OrbitControls } from '@react-three/drei';
+      <OrbitControls
+        enableDamping
+        dampingFactor={0.05}
+        minDistance={2}
+        maxDistance={20}
+        maxPolarAngle={Math.PI / 2}
+      />
+
+  - id: THREEJS005
+    title: "Combine ambient and directional lights for realistic lighting"
+    description: "Use ambientLight for base illumination and directionalLight for sun-like shadows. Add pointLight or spotLight for local effects. For PBR materials, use Environment from drei for image-based lighting."
+    category: "threejs_scene"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "lighting", "ambient", "directional", "pbr"]
+    example: |
+      // ✅ Balanced lighting setup
+      <ambientLight intensity={0.4} />
+      <directionalLight
+        position={[10, 10, 5]}
+        intensity={1}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+      />
+      <Environment preset="city" />
+
+  - id: THREEJS006
+    title: "Enable shadows selectively for performance"
+    description: "Shadows are expensive. Enable castShadow only on lights and objects that need it. Enable receiveShadow on ground planes. Use shadow-mapSize judiciously (1024 or 2048). Consider baked shadows for static scenes."
+    category: "threejs_scene"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "shadows", "performance", "castShadow"]
+    example: |
+      // ✅ Selective shadows
+      <Canvas shadows>
+        <directionalLight castShadow shadow-mapSize={[1024, 1024]} />
+        <mesh castShadow>  {/* Moving object */}
+          <boxGeometry />
+          <meshStandardMaterial />
+        </mesh>
+        <mesh receiveShadow rotation-x={-Math.PI / 2}>  {/* Ground */}
+          <planeGeometry args={[50, 50]} />
+          <meshStandardMaterial />
+        </mesh>
+      </Canvas>
+
+  - id: THREEJS007
+    title: "Use Environment from drei for PBR/IBL lighting"
+    description: "Environment provides image-based lighting (IBL) that makes PBR materials look realistic. Use presets ('sunset', 'city', 'studio') or custom HDR files. Set background={true} to also render the environment as skybox."
+    category: "threejs_scene"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f", "drei"]
+    tags: ["threejs", "drei", "environment", "ibl", "pbr", "hdri"]
+    example: |
+      // ✅ Environment with preset
+      import { Environment } from '@react-three/drei';
+      <Environment preset="sunset" background />
+
+      // ✅ Custom HDR
+      <Environment files="/hdri/venice_sunset_1k.hdr" background />
+
+  - id: THREEJS008
+    title: "Use fog for depth perception and atmosphere"
+    description: "Add <fog> for linear fog or <fogExp2> for exponential fog to create depth and atmosphere. Fog hides distant objects and improves perceived realism."
+    category: "threejs_scene"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "fog", "atmosphere", "depth"]
+    example: |
+      // ✅ Linear fog
+      <fog attach="fog" args={['#f0f0f0', 10, 50]} />
+
+      // ✅ Exponential fog
+      <fogExp2 attach="fog" args={['#cccccc', 0.02]} />
+
+  - id: THREEJS009
+    title: "Configure tone mapping for HDR rendering"
+    description: "Set toneMapping on the renderer for proper HDR-to-LDR conversion. ACESFilmicToneMapping gives cinematic results. AgXToneMapping (r160+) provides improved color handling. Set toneMappingExposure to control brightness."
+    category: "threejs_scene"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "tonemapping", "hdr", "aces", "agx"]
+    example: |
+      // ✅ ACES Filmic tone mapping
+      <Canvas gl={{
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 1.2,
+      }}>
+
+      // ✅ AgX tone mapping (r160+)
+      <Canvas gl={{
+        toneMapping: THREE.AgXToneMapping,
+      }}>
+
+  - id: THREEJS010
+    title: "Use color management (SRGBColorSpace) correctly"
+    description: "Three.js r152+ defaults to SRGBColorSpace for textures and renderer output. Ensure color textures use SRGBColorSpace and data textures (normal maps, roughness) use LinearSRGBColorSpace. Set gl.outputColorSpace."
+    category: "threejs_scene"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "color", "srgb", "colorspace", "linear"]
+    example: |
+      // ✅ Color space setup (r152+)
+      <Canvas gl={{ outputColorSpace: THREE.SRGBColorSpace }}>
+
+      // ✅ Texture color spaces
+      const colorMap = useTexture('/textures/diffuse.jpg');  // auto SRGBColorSpace
+      const normalMap = useTexture('/textures/normal.jpg');
+      normalMap.colorSpace = THREE.LinearSRGBColorSpace;
+
+  # ============================================================================
+  # COMPONENTS & GEOMETRY (THREEJS011-THREEJS020)
+  # ============================================================================
+
+  - id: THREEJS011
+    title: "Use R3F declarative JSX for Three.js objects"
+    description: "R3F lets you use Three.js classes as JSX elements. Use <mesh>, <group>, <boxGeometry>, <meshStandardMaterial> instead of imperative new THREE.Mesh(). Props map directly to Three.js properties."
+    category: "threejs_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "r3f", "jsx", "declarative", "mesh"]
+    example: |
+      // ✅ Declarative R3F
+      <mesh position={[0, 1, 0]} castShadow>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="orange" />
+      </mesh>
+
+      // ❌ Imperative in React
+      const geo = new THREE.BoxGeometry(1, 1, 1);
+      const mat = new THREE.MeshStandardMaterial({ color: 'orange' });
+      const mesh = new THREE.Mesh(geo, mat);
+
+  - id: THREEJS012
+    title: "Group related objects with <group>"
+    description: "Use <group> to transform multiple objects together. Groups inherit position, rotation, and scale to children. Useful for organizing scene hierarchy and applying collective transforms."
+    category: "threejs_components"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "group", "hierarchy", "transform"]
+    example: |
+      // ✅ Group for collective transforms
+      <group position={[0, 2, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <mesh position={[-1, 0, 0]}>
+          <sphereGeometry />
+          <meshStandardMaterial color="red" />
+        </mesh>
+        <mesh position={[1, 0, 0]}>
+          <sphereGeometry />
+          <meshStandardMaterial color="blue" />
+        </mesh>
+      </group>
+
+  - id: THREEJS013
+    title: "Use InstancedMesh for repeated identical objects"
+    description: "InstancedMesh renders many copies of the same geometry/material in a single draw call. Essential for forests, particles, crowds, buildings. Use drei's <Instances> for declarative API or <instancedMesh> directly."
+    category: "threejs_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "instanced", "performance", "batching"]
+    example: |
+      // ✅ drei Instances (declarative)
+      import { Instances, Instance } from '@react-three/drei';
+      <Instances limit={1000}>
+        <boxGeometry />
+        <meshStandardMaterial />
+        {positions.map((pos, i) => (
+          <Instance key={i} position={pos} color="orange" />
+        ))}
+      </Instances>
+
+      // ✅ Raw instancedMesh
+      <instancedMesh ref={meshRef} args={[geometry, material, count]} />
+
+  - id: THREEJS014
+    title: "Use useGLTF for loading 3D models (with preload)"
+    description: "drei's useGLTF loads GLTF/GLB models with automatic caching and Suspense support. Always call useGLTF.preload() at module level to start loading before render. Use Draco compression for smaller files."
+    category: "threejs_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f", "drei"]
+    tags: ["threejs", "gltf", "model", "loading", "preload", "draco"]
+    example: |
+      // ✅ useGLTF with preload
+      import { useGLTF } from '@react-three/drei';
+
+      function Model() {
+        const { scene, nodes, materials } = useGLTF('/model.glb');
+        return <primitive object={scene} />;
+      }
+      useGLTF.preload('/model.glb');
+
+      // ✅ With Draco decoder
+      const { scene } = useGLTF('/model.glb', '/draco/');
+
+  - id: THREEJS015
+    title: "Use drei helper components for common 3D UI patterns"
+    description: "drei provides 100+ ready-made components: Text, Html, Billboard, Float, MeshReflectorMaterial, Sparkles, Stars, Sky, etc. Check drei docs before building custom solutions."
+    category: "threejs_components"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f", "drei"]
+    tags: ["threejs", "drei", "helpers", "text", "html", "billboard"]
+    example: |
+      import { Text, Html, Float, Sparkles } from '@react-three/drei';
+
+      // ✅ 3D Text
+      <Text fontSize={0.5} color="white">Hello World</Text>
+
+      // ✅ HTML overlay in 3D
+      <Html position={[0, 2, 0]} center>
+        <div className="label">Player 1</div>
+      </Html>
+
+      // ✅ Floating animation
+      <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
+        <mesh><torusKnotGeometry /><meshStandardMaterial /></mesh>
+      </Float>
+
+  - id: THREEJS016
+    title: "Use extend() to register custom Three.js classes in R3F"
+    description: "When using custom or third-party Three.js classes, register them with R3F's extend() function to use as JSX elements. This enables the declarative API for any Three.js-compatible class."
+    category: "threejs_components"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "r3f", "extend", "custom", "register"]
+    example: |
+      // ✅ Register custom class
+      import { extend } from '@react-three/fiber';
+      import { CustomGeometry } from './CustomGeometry';
+
+      extend({ CustomGeometry });
+
+      // Now use as JSX
+      <mesh>
+        <customGeometry args={[10, 20]} />
+        <meshStandardMaterial />
+      </mesh>
+
+  - id: THREEJS017
+    title: "Use BufferGeometry for custom geometry (never legacy Geometry)"
+    description: "THREE.Geometry was removed in r125. Always use BufferGeometry with Float32Array attributes. For R3F, use <bufferGeometry> with <bufferAttribute> children. drei's mergeBufferGeometries helps combine geometries."
+    category: "threejs_components"
+    severity: "error"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "geometry", "buffer", "attributes", "custom"]
+    example: |
+      // ✅ Custom BufferGeometry in R3F
+      <mesh>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={vertices.length / 3}
+            array={new Float32Array(vertices)}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <meshStandardMaterial />
+      </mesh>
+
+  - id: THREEJS018
+    title: "Dispose geometries and materials when unmounting"
+    description: "Three.js objects (geometries, materials, textures) must be manually disposed to free GPU memory. R3F handles this automatically for declarative elements. For imperative refs, dispose in cleanup functions."
+    category: "threejs_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "dispose", "memory", "cleanup", "gpu"]
+    example: |
+      // ✅ R3F handles disposal automatically for declarative elements
+
+      // ✅ Manual disposal for imperative objects
+      useEffect(() => {
+        const geometry = new THREE.BoxGeometry();
+        const material = new THREE.MeshStandardMaterial();
+        return () => {
+          geometry.dispose();
+          material.dispose();
+        };
+      }, []);
+
+  - id: THREEJS019
+    title: "Use Suspense and Loading for async 3D assets"
+    description: "Wrap components that load assets (useGLTF, useTexture) in <Suspense> with a fallback. Use drei's useProgress for loading bars. Handle loading states gracefully with placeholders."
+    category: "threejs_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "suspense", "loading", "async", "progress"]
+    example: |
+      // ✅ Suspense with loading fallback
+      import { useProgress, Html } from '@react-three/drei';
+
+      function Loader() {
+        const { progress } = useProgress();
+        return <Html center>{progress.toFixed(0)}% loaded</Html>;
+      }
+
+      <Canvas>
+        <Suspense fallback={<Loader />}>
+          <Model />
+        </Suspense>
+      </Canvas>
+
+  - id: THREEJS020
+    title: "Use primitive for existing Three.js objects"
+    description: "Use <primitive object={...} /> to insert pre-built Three.js objects into the R3F scene graph. Essential for GLTF scenes, cloned objects, and external Three.js instances."
+    category: "threejs_components"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "r3f", "primitive", "object", "gltf"]
+    example: |
+      // ✅ Insert GLTF scene
+      const { scene } = useGLTF('/model.glb');
+      return <primitive object={scene} position={[0, 0, 0]} />;
+
+      // ✅ Clone for multiple instances
+      const { scene } = useGLTF('/model.glb');
+      return <primitive object={scene.clone()} />;
+
+  # ============================================================================
+  # MATERIALS & SHADERS (THREEJS021-THREEJS030)
+  # ============================================================================
+
+  - id: THREEJS021
+    title: "Use MeshStandardMaterial for PBR rendering"
+    description: "MeshStandardMaterial is the default PBR material with roughness/metalness workflow. It responds to lights and environment maps. Use for most 3D objects. MeshPhysicalMaterial adds clearcoat, sheen, and transmission for advanced effects."
+    category: "threejs_materials"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "material", "pbr", "standard", "metalness"]
+    example: |
+      // ✅ Standard PBR material
+      <meshStandardMaterial
+        color="#ff6600"
+        roughness={0.4}
+        metalness={0.6}
+        envMapIntensity={1}
+      />
+
+      // ✅ Physical material for glass
+      <meshPhysicalMaterial
+        transmission={0.9}
+        roughness={0.1}
+        thickness={0.5}
+        ior={1.5}
+      />
+
+  - id: THREEJS022
+    title: "Use MeshBasicMaterial or MeshMatcapMaterial for unlit/stylized rendering"
+    description: "MeshBasicMaterial ignores lights — use for UI elements, wireframes, or when lighting is baked. MeshMatcapMaterial gives stylized lighting from a matcap texture without scene lights."
+    category: "threejs_materials"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "material", "basic", "matcap", "unlit"]
+    example: |
+      // ✅ Basic for UI/debug
+      <meshBasicMaterial color="red" wireframe />
+
+      // ✅ Matcap for stylized look
+      import { useMatcapTexture } from '@react-three/drei';
+      const [matcap] = useMatcapTexture('7B5254_E9DCC7_B19986_C8AC91');
+      <meshMatcapMaterial matcap={matcap} />
+
+  - id: THREEJS023
+    title: "Use useTexture from drei for texture loading"
+    description: "drei's useTexture loads textures with Suspense support and automatic caching. Pass an object for multiple maps. Set proper color space (sRGB for color, Linear for normal/roughness)."
+    category: "threejs_materials"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f", "drei"]
+    tags: ["threejs", "texture", "useTexture", "maps", "loading"]
+    example: |
+      // ✅ Multiple texture maps
+      import { useTexture } from '@react-three/drei';
+      const textures = useTexture({
+        map: '/textures/diffuse.jpg',
+        normalMap: '/textures/normal.jpg',
+        roughnessMap: '/textures/roughness.jpg',
+        aoMap: '/textures/ao.jpg',
+      });
+      <meshStandardMaterial {...textures} />
+
+  - id: THREEJS024
+    title: "Use ShaderMaterial for custom GPU effects"
+    description: "ShaderMaterial lets you write custom GLSL vertex and fragment shaders. Use for procedural effects, custom post-processing, and unique visual styles. Pass uniforms for dynamic values."
+    category: "threejs_materials"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "shader", "glsl", "custom", "gpu"]
+    example: |
+      // ✅ Custom ShaderMaterial in R3F
+      <shaderMaterial
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
+        uniforms={{
+          uTime: { value: 0 },
+          uColor: { value: new THREE.Color('#ff6600') },
+        }}
+      />
+
+  - id: THREEJS025
+    title: "Use drei's shaderMaterial for reusable shader components"
+    description: "drei's shaderMaterial() factory creates a reusable R3F-compatible material from shader code. It handles uniform typing and supports TypeScript. Better than raw ShaderMaterial for reusable effects."
+    category: "threejs_materials"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f", "drei"]
+    tags: ["threejs", "drei", "shaderMaterial", "reusable", "factory"]
+    example: |
+      // ✅ drei shaderMaterial factory
+      import { shaderMaterial } from '@react-three/drei';
+      import { extend } from '@react-three/fiber';
+
+      const WaveMaterial = shaderMaterial(
+        { uTime: 0, uColor: new THREE.Color('hotpink') },
+        vertexShader,
+        fragmentShader
+      );
+      extend({ WaveMaterial });
+
+      // Use in JSX
+      <mesh>
+        <planeGeometry args={[10, 10, 32, 32]} />
+        <waveMaterial uTime={clock.elapsedTime} />
+      </mesh>
+
+  - id: THREEJS026
+    title: "Keep shader uniforms updated via useFrame, not setState"
+    description: "Update shader uniforms directly via refs in useFrame, not through React state. React re-renders are too slow for per-frame updates. Use ref.current.uniforms.uTime.value directly."
+    category: "threejs_materials"
+    severity: "error"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "shader", "uniforms", "useFrame", "performance"]
+    example: |
+      // ✅ Update uniforms via ref in useFrame
+      const matRef = useRef();
+      useFrame((state) => {
+        matRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+      });
+      <shaderMaterial ref={matRef} uniforms={uniforms} ... />
+
+      // ❌ Never use setState for per-frame values
+      const [time, setTime] = useState(0);
+      useFrame(() => setTime(t => t + 0.01)); // Causes re-render every frame!
+
+  - id: THREEJS027
+    title: "Share materials across meshes for performance"
+    description: "Reuse materials by declaring them once and referencing via ref or attach. Shared materials reduce GPU state changes. drei's materials auto-share when possible."
+    category: "threejs_materials"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "material", "sharing", "reuse", "performance"]
+    example: |
+      // ✅ Share material via useMemo
+      const material = useMemo(() => new THREE.MeshStandardMaterial({
+        color: 'orange', roughness: 0.5,
+      }), []);
+
+      <mesh material={material} position={[0, 0, 0]}>
+        <boxGeometry />
+      </mesh>
+      <mesh material={material} position={[2, 0, 0]}>
+        <sphereGeometry />
+      </mesh>
+
+  - id: THREEJS028
+    title: "Use MeshReflectorMaterial for reflective floors"
+    description: "drei's MeshReflectorMaterial creates realistic floor reflections with blur, resolution, and color controls. Much cheaper than full ray-traced reflections."
+    category: "threejs_materials"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f", "drei"]
+    tags: ["threejs", "drei", "reflector", "floor", "reflection"]
+    example: |
+      // ✅ Reflective floor
+      import { MeshReflectorMaterial } from '@react-three/drei';
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[50, 50]} />
+        <MeshReflectorMaterial
+          blur={[300, 100]}
+          resolution={2048}
+          mixBlur={1}
+          mixStrength={40}
+          roughness={1}
+          depthScale={1.2}
+          color="#101010"
+          metalness={0.5}
+        />
+      </mesh>
+
+  - id: THREEJS029
+    title: "Compress textures with KTX2 for production"
+    description: "KTX2/Basis Universal textures are GPU-compressed and load 4-8x faster than PNG/JPEG. Use toktx or gltf-transform to convert. drei's useKTX2 loads KTX2 textures with proper decoder setup."
+    category: "threejs_materials"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "texture", "ktx2", "compression", "production"]
+    example: |
+      // ✅ KTX2 texture loading
+      import { useKTX2 } from '@react-three/drei';
+      const texture = useKTX2('/textures/diffuse.ktx2');
+
+      // CLI: Convert textures
+      // npx gltf-transform etc1s input.png output.ktx2
+
+  - id: THREEJS030
+    title: "Use MeshTransmissionMaterial for glass and refraction"
+    description: "drei's MeshTransmissionMaterial provides physically accurate glass, water, and gem rendering with refraction, chromatic aberration, and thickness. More performant than custom refraction shaders."
+    category: "threejs_materials"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f", "drei"]
+    tags: ["threejs", "drei", "glass", "refraction", "transmission"]
+    example: |
+      // ✅ Glass material
+      import { MeshTransmissionMaterial } from '@react-three/drei';
+      <mesh>
+        <sphereGeometry args={[1, 64, 64]} />
+        <MeshTransmissionMaterial
+          backside
+          thickness={0.5}
+          roughness={0.05}
+          transmission={1}
+          ior={1.5}
+          chromaticAberration={0.06}
+        />
+      </mesh>
+
+  # ============================================================================
+  # ANIMATION & INTERACTION (THREEJS031-THREEJS040)
+  # ============================================================================
+
+  - id: THREEJS031
+    title: "Use useFrame for per-frame animation logic"
+    description: "useFrame runs on every rendered frame (typically 60fps). Use it for continuous animations, camera updates, and physics-related movement. Access delta time for frame-rate independent animation."
+    category: "threejs_animation"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "useFrame", "animation", "loop", "delta"]
+    example: |
+      // ✅ Frame-rate independent rotation
+      import { useFrame } from '@react-three/fiber';
+      const meshRef = useRef();
+      useFrame((state, delta) => {
+        meshRef.current.rotation.y += delta * 0.5;
+      });
+      <mesh ref={meshRef}><boxGeometry /><meshStandardMaterial /></mesh>
+
+  - id: THREEJS032
+    title: "Mutate objects directly in useFrame, never setState"
+    description: "In useFrame, mutate Three.js object properties directly via refs (ref.current.position.x += delta). Never call setState or trigger React re-renders in the render loop — this destroys performance."
+    category: "threejs_animation"
+    severity: "error"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "useFrame", "performance", "mutation", "refs"]
+    example: |
+      // ✅ Direct mutation in useFrame
+      useFrame((state, delta) => {
+        ref.current.position.x = Math.sin(state.clock.elapsedTime) * 2;
+        ref.current.material.opacity = 0.5 + Math.sin(state.clock.elapsedTime) * 0.5;
+      });
+
+      // ❌ NEVER use React state in render loop
+      useFrame(() => {
+        setPosition(prev => ({ ...prev, x: prev.x + 0.01 }));  // 60 re-renders/sec!
+      });
+
+  - id: THREEJS033
+    title: "Use react-spring/three for physics-based animations"
+    description: "@react-spring/three provides spring-based animations for Three.js properties. Use useSpring for smooth transitions, animated for R3F components. Springs handle interruption gracefully."
+    category: "threejs_animation"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "react-spring", "spring", "physics", "animated"]
+    example: |
+      // ✅ Spring animation
+      import { useSpring, animated } from '@react-spring/three';
+
+      function AnimatedBox({ active }) {
+        const springs = useSpring({
+          scale: active ? 1.5 : 1,
+          color: active ? 'hotpink' : 'orange',
+        });
+        return (
+          <animated.mesh scale={springs.scale}>
+            <boxGeometry />
+            <animated.meshStandardMaterial color={springs.color} />
+          </animated.mesh>
+        );
+      }
+
+  - id: THREEJS034
+    title: "Use AnimationMixer for GLTF/skeletal animations"
+    description: "AnimationMixer plays animations embedded in GLTF models. drei's useAnimations simplifies setup. Always clean up mixers on unmount. Control playback with actions, crossFade for blending."
+    category: "threejs_animation"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "animation", "mixer", "gltf", "skeletal"]
+    example: |
+      // ✅ drei useAnimations
+      import { useGLTF, useAnimations } from '@react-three/drei';
+
+      function Character() {
+        const { scene, animations } = useGLTF('/character.glb');
+        const { actions } = useAnimations(animations, scene);
+
+        useEffect(() => {
+          actions['walk']?.play();
+          return () => actions['walk']?.stop();
+        }, [actions]);
+
+        return <primitive object={scene} />;
+      }
+
+  - id: THREEJS035
+    title: "Use delta time for frame-rate independent animation"
+    description: "Always multiply animation speeds by delta (time since last frame) to ensure consistent speed across different frame rates. Without delta, animations run faster on high-refresh-rate monitors."
+    category: "threejs_animation"
+    severity: "error"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "delta", "framerate", "independence", "timing"]
+    example: |
+      // ✅ Frame-rate independent
+      useFrame((state, delta) => {
+        ref.current.rotation.y += 1.0 * delta;  // 1 radian per second regardless of FPS
+        ref.current.position.x += velocity * delta;
+      });
+
+      // ❌ Frame-rate dependent
+      useFrame(() => {
+        ref.current.rotation.y += 0.01;  // Faster on 144Hz than 60Hz!
+      });
+
+  - id: THREEJS036
+    title: "Use event handlers for 3D interaction (onClick, onPointerOver)"
+    description: "R3F meshes support pointer events like React DOM: onClick, onPointerOver, onPointerOut, onPointerMove, onPointerDown, onPointerUp. Events include intersection info (point, face, distance)."
+    category: "threejs_interaction"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "events", "click", "pointer", "interaction"]
+    example: |
+      // ✅ R3F pointer events
+      <mesh
+        onClick={(e) => {
+          e.stopPropagation();
+          console.log('Hit point:', e.point);
+        }}
+        onPointerOver={(e) => {
+          document.body.style.cursor = 'pointer';
+          e.object.material.color.set('hotpink');
+        }}
+        onPointerOut={(e) => {
+          document.body.style.cursor = 'default';
+          e.object.material.color.set('orange');
+        }}
+      >
+
+  - id: THREEJS037
+    title: "Use useThree for accessing the R3F state"
+    description: "useThree provides access to the renderer (gl), scene, camera, viewport, clock, and more. Use it for imperative operations that need direct Three.js access. Subscribe selectively to avoid re-renders."
+    category: "threejs_interaction"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "r3f", "useThree", "state", "renderer"]
+    example: |
+      // ✅ Access Three.js state
+      import { useThree } from '@react-three/fiber';
+      const { gl, scene, camera, viewport, size } = useThree();
+
+      // ✅ Selective subscription (no re-render on other changes)
+      const camera = useThree((state) => state.camera);
+
+  - id: THREEJS038
+    title: "Stop event propagation to prevent click-through"
+    description: "In nested meshes, events bubble up through the scene graph. Call e.stopPropagation() to prevent parent meshes from receiving the event. This prevents unintended interactions on background objects."
+    category: "threejs_interaction"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "events", "propagation", "bubbling", "nested"]
+    example: |
+      // ✅ Stop propagation on nested clicks
+      <group onClick={() => console.log('background')}>
+        <mesh onClick={(e) => {
+          e.stopPropagation();  // Only this mesh handles the click
+          console.log('foreground');
+        }}>
+          <boxGeometry />
+          <meshStandardMaterial />
+        </mesh>
+      </group>
+
+  - id: THREEJS039
+    title: "Use Raycaster for custom hit testing"
+    description: "For complex interaction beyond R3F events, use THREE.Raycaster directly. Useful for line-of-sight checks, custom selection, and physics ray casts. Access via useThree or create standalone."
+    category: "threejs_interaction"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "raycaster", "hit-testing", "selection", "physics"]
+    example: |
+      // ✅ Custom raycasting
+      import { useThree } from '@react-three/fiber';
+      const { raycaster, camera, scene } = useThree();
+
+      function checkHits(pointer) {
+        raycaster.setFromCamera(pointer, camera);
+        const intersects = raycaster.intersectObjects(scene.children, true);
+        return intersects;
+      }
+
+  - id: THREEJS040
+    title: "Use GSAP or Tween.js for timeline-based animations"
+    description: "For complex sequenced animations (camera flythroughs, UI transitions), use GSAP or Tween.js. Integrate with useFrame for smooth updates. GSAP's ScrollTrigger works well with three.js scroll scenes."
+    category: "threejs_animation"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "gsap", "tween", "timeline", "sequence"]
+    example: |
+      // ✅ GSAP with R3F
+      import gsap from 'gsap';
+
+      function AnimatedMesh() {
+        const ref = useRef();
+        useEffect(() => {
+          gsap.to(ref.current.position, {
+            x: 5, duration: 2, ease: 'power2.inOut',
+          });
+          gsap.to(ref.current.rotation, {
+            y: Math.PI * 2, duration: 3, repeat: -1,
+          });
+        }, []);
+        return <mesh ref={ref}><boxGeometry /><meshStandardMaterial /></mesh>;
+      }
+
+  # ============================================================================
+  # PERFORMANCE & OPTIMIZATION (THREEJS041-THREEJS050)
+  # ============================================================================
+
+  - id: THREEJS041
+    title: "Use drei's Perf or r3f-perf for performance monitoring"
+    description: "Add performance monitors during development to track FPS, draw calls, triangles, and GPU memory. Remove or disable in production. r3f-perf provides detailed Three.js-specific metrics."
+    category: "threejs_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "perf", "fps", "monitoring", "debug"]
+    example: |
+      // ✅ r3f-perf monitoring
+      import { Perf } from 'r3f-perf';
+      <Canvas>
+        {process.env.NODE_ENV === 'development' && <Perf position="top-left" />}
+        <Scene />
+      </Canvas>
+
+      // ✅ drei Stats
+      import { Stats } from '@react-three/drei';
+      <Stats />
+
+  - id: THREEJS042
+    title: "Use Level of Detail (LOD) for complex scenes"
+    description: "Render high-detail models when close, low-detail when far. drei's <Detailed> component simplifies LOD setup. Essential for large outdoor scenes, terrain, and complex environments."
+    category: "threejs_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "lod", "detail", "distance", "optimization"]
+    example: |
+      // ✅ drei Detailed (LOD)
+      import { Detailed } from '@react-three/drei';
+      <Detailed distances={[0, 25, 50, 100]}>
+        <HighDetailModel />
+        <MediumDetailModel />
+        <LowDetailModel />
+        <BillboardModel />
+      </Detailed>
+
+  - id: THREEJS043
+    title: "Use frustum culling (enabled by default, don't disable)"
+    description: "Three.js automatically culls objects outside the camera frustum. Don't set frustumCulled=false unless you have a specific reason (e.g., custom shader displacement). For large scenes, also use spatial partitioning."
+    category: "threejs_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "frustum", "culling", "visibility", "optimization"]
+    example: |
+      // ✅ Default behavior (frustumCulled=true)
+      <mesh>  {/* Automatically culled when off-screen */}
+        <boxGeometry />
+        <meshStandardMaterial />
+      </mesh>
+
+      // ⚠️ Only disable when needed (e.g., vertex displacement)
+      <mesh frustumCulled={false}>
+        <planeGeometry args={[100, 100, 128, 128]} />
+        <displacementMaterial />  {/* Vertices move beyond bounding box */}
+      </mesh>
+
+  - id: THREEJS044
+    title: "Merge static geometries to reduce draw calls"
+    description: "Each mesh is a draw call. Merge static meshes with BufferGeometryUtils.mergeBufferGeometries() or drei's <Merged> component. Essential when draw calls exceed 100-200."
+    category: "threejs_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "merge", "drawcalls", "batch", "static"]
+    example: |
+      // ✅ drei Merged for GLTF nodes
+      import { Merged, useGLTF } from '@react-three/drei';
+      const { nodes } = useGLTF('/city.glb');
+      <Merged meshes={nodes}>
+        {(models) => (
+          <>
+            <models.Building position={[0, 0, 0]} />
+            <models.Building position={[10, 0, 0]} />
+            <models.Tree position={[5, 0, 3]} />
+          </>
+        )}
+      </Merged>
+
+  - id: THREEJS045
+    title: "Use @react-three/rapier for physics simulation"
+    description: "Rapier provides high-performance WASM-based physics. Use <RigidBody> for dynamic objects, <CuboidCollider>/<BallCollider> for collision shapes. Rapier handles continuous collision detection automatically."
+    category: "threejs_physics"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f", "rapier"]
+    tags: ["threejs", "physics", "rapier", "rigidbody", "collider"]
+    example: |
+      // ✅ Rapier physics
+      import { Physics, RigidBody } from '@react-three/rapier';
+
+      <Physics gravity={[0, -9.81, 0]}>
+        <RigidBody type="dynamic">
+          <mesh><boxGeometry /><meshStandardMaterial /></mesh>
+        </RigidBody>
+        <RigidBody type="fixed">
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[50, 50]} />
+            <meshStandardMaterial />
+          </mesh>
+        </RigidBody>
+      </Physics>
+
+  - id: THREEJS046
+    title: "Use post-processing via @react-three/postprocessing"
+    description: "R3F's postprocessing package wraps pmndrs/postprocessing for efficient multi-pass effects. Use EffectComposer with individual effect components. Effects are merged into fewer passes automatically."
+    category: "threejs_postprocessing"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "postprocessing", "effects", "bloom", "ssao"]
+    example: |
+      // ✅ Post-processing effects
+      import { EffectComposer, Bloom, SSAO, Vignette } from '@react-three/postprocessing';
+
+      <EffectComposer>
+        <Bloom luminanceThreshold={0.9} intensity={1.5} />
+        <SSAO radius={0.1} intensity={15} />
+        <Vignette offset={0.3} darkness={0.7} />
+      </EffectComposer>
+
+  - id: THREEJS047
+    title: "Use BVH (Bounding Volume Hierarchy) for raycasting performance"
+    description: "drei's useBVH or <Bvh> component accelerates raycasting on complex meshes from O(n) to O(log n). Essential for scenes with >10k triangles that need mouse interaction."
+    category: "threejs_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f", "drei"]
+    tags: ["threejs", "bvh", "raycast", "performance", "spatial"]
+    example: |
+      // ✅ BVH acceleration
+      import { Bvh } from '@react-three/drei';
+      <Canvas>
+        <Bvh firstHitOnly>
+          <ComplexScene />  {/* All meshes get BVH acceleration */}
+        </Bvh>
+      </Canvas>
+
+  - id: THREEJS048
+    title: "Optimize GLTF models with gltf-transform or gltfjsx"
+    description: "Optimize 3D models before bundling: compress with Draco/KTX2, remove unused data, merge meshes. Use @gltf-transform/cli or gltfjsx to generate typed React components from GLTF files."
+    category: "threejs_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "gltf", "optimize", "draco", "gltfjsx"]
+    example: |
+      # ✅ Optimize GLTF from CLI
+      # npx gltf-transform optimize input.glb output.glb --compress draco --texture-compress ktx2
+
+      # ✅ Generate typed React component
+      # npx gltfjsx model.glb --types --transform
+
+      // Generated component (auto-typed)
+      export function Model(props: JSX.IntrinsicElements['group']) {
+        const { nodes, materials } = useGLTF('/model-transformed.glb');
+        return (
+          <group {...props}>
+            <mesh geometry={nodes.Body.geometry} material={materials.Skin} />
+          </group>
+        );
+      }
+
+  - id: THREEJS049
+    title: "Use WebGPU renderer for modern GPU features (r160+)"
+    description: "Three.js r160+ supports WebGPURenderer for compute shaders, storage buffers, and better performance. Use when targeting modern browsers. Fall back to WebGLRenderer for compatibility."
+    category: "threejs_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs"]
+    tags: ["threejs", "webgpu", "renderer", "compute", "modern"]
+    example: |
+      // ✅ WebGPU renderer (vanilla Three.js)
+      import * as THREE from 'three/webgpu';
+      const renderer = new THREE.WebGPURenderer();
+      await renderer.init();
+
+      // ✅ Feature detection
+      if (navigator.gpu) {
+        // Use WebGPU path
+      } else {
+        // Fallback to WebGL
+      }
+
+  - id: THREEJS050
+    title: "Use @react-three/xr for WebXR/VR/AR experiences"
+    description: "R3F's XR package provides VR/AR support with controller tracking, hand tracking, and hit testing. Use <XR> provider, <Controllers>, and <Hands> components. Test with WebXR emulator extension."
+    category: "threejs_xr"
+    severity: "info"
+    applicability:
+      frameworks: ["threejs", "r3f"]
+    tags: ["threejs", "xr", "vr", "ar", "webxr", "controllers"]
+    example: |
+      // ✅ WebXR setup
+      import { XR, Controllers, Hands, createXRStore } from '@react-three/xr';
+
+      const store = createXRStore();
+
+      function App() {
+        return (
+          <>
+            <button onClick={() => store.enterVR()}>Enter VR</button>
+            <Canvas>
+              <XR store={store}>
+                <Controllers />
+                <Hands />
+                <Scene />
+              </XR>
+            </Canvas>
+          </>
+        );
+      }

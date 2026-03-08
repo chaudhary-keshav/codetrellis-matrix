@@ -1,0 +1,802 @@
+# Jotai Atomic State Management Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.49 - Jotai Atomic State Management Framework Support
+# Practice IDs: JOTAI001-JOTAI050
+# Coverage: Atom Creation, Selectors/Derived, Middleware/Extensions, Actions/Hooks,
+#           TypeScript, Performance, Testing, SSR, Patterns, Migration
+# Versions: Jotai v1.x-v2.x (atom, useAtom, useAtomValue, useSetAtom,
+#           createStore, getDefaultStore, atomFamily, atomWithStorage,
+#           selectAtom, focusAtom, splitAtom, loadable, unwrap)
+
+practices:
+  # ============================================================================
+  # JOTAI ATOM CREATION (JOTAI001-JOTAI008) - Atom definition best practices
+  # ============================================================================
+
+  - id: JOTAI001
+    title: "Define atoms at module scope, not inside components"
+    description: "Atoms should be defined at module level (outside components) so they have stable references. Defining atoms inside components creates new atom instances on every render, causing infinite loops and memory leaks."
+    category: "jotai_atoms"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai", "react"]
+    tags: ["jotai", "atom", "module-scope", "stable-reference"]
+    example: |
+      // ✅ Module scope
+      const countAtom = atom(0);
+      function Counter() { const [count, setCount] = useAtom(countAtom); }
+
+      // ❌ Inside component — new atom every render
+      function Counter() {
+        const countAtom = atom(0);  // BUG: infinite loop
+        const [count, setCount] = useAtom(countAtom);
+      }
+
+  - id: JOTAI002
+    title: "Use primitive atoms for independent state values"
+    description: "Create primitive atoms with atom(initialValue) for simple independent state. Primitive atoms are the building blocks — keep them small and focused on a single concern rather than creating monolithic state objects."
+    category: "jotai_atoms"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "atom", "primitive", "bottom-up"]
+    example: |
+      // ✅ Bottom-up atomic state
+      const countAtom = atom(0);
+      const nameAtom = atom('');
+      const isDarkAtom = atom(false);
+
+      // ❌ Monolithic state object (use Redux/Zustand instead)
+      const stateAtom = atom({ count: 0, name: '', isDark: false, items: [], ... });
+
+  - id: JOTAI003
+    title: "Use derived atoms for computed state"
+    description: "Create read-only derived atoms with atom((get) => ...) for computed values. Derived atoms automatically track dependencies and re-evaluate only when source atoms change. Prefer derived atoms over computing values in components."
+    category: "jotai_atoms"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "derived", "computed", "read-only"]
+    example: |
+      const priceAtom = atom(100);
+      const taxRateAtom = atom(0.1);
+      const totalAtom = atom((get) => get(priceAtom) * (1 + get(taxRateAtom)));
+
+  - id: JOTAI004
+    title: "Use writable derived atoms for custom write logic"
+    description: "Create writable derived atoms with atom(readFn, writeFn) when you need custom write logic that affects multiple atoms. The write function receives get, set, and the update value."
+    category: "jotai_atoms"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "writable", "derived", "write-function"]
+    example: |
+      const temperatureCAtom = atom(25);
+      const temperatureFAtom = atom(
+        (get) => get(temperatureCAtom) * 9 / 5 + 32,
+        (get, set, fahrenheit) => set(temperatureCAtom, (fahrenheit - 32) * 5 / 9)
+      );
+
+  - id: JOTAI005
+    title: "Use atomFamily for parameterized atoms"
+    description: "Use atomFamily from jotai/utils to create parameterized atom factories. atomFamily returns a function that creates or retrieves atoms based on a parameter, enabling dynamic atom creation for lists and maps."
+    category: "jotai_atoms"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "atomFamily", "parameterized", "dynamic"]
+    example: |
+      import { atomFamily } from 'jotai/utils';
+      const todoAtom = atomFamily((id: string) => atom({ id, text: '', done: false }));
+      // Usage: useAtom(todoAtom('todo-1'))
+
+  - id: JOTAI006
+    title: "Use atomWithReset for resettable state"
+    description: "Use atomWithReset from jotai/utils for state that needs to be reset to its initial value. Use the RESET symbol from jotai/utils to trigger reset. Prefer this over manually tracking initial values."
+    category: "jotai_atoms"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "atomWithReset", "RESET", "resettable"]
+    example: |
+      import { atomWithReset, RESET } from 'jotai/utils';
+      const filterAtom = atomWithReset('all');
+      // Usage: setFilter(RESET) to reset to 'all'
+
+  - id: JOTAI007
+    title: "Use atomWithReducer for complex update logic"
+    description: "Use atomWithReducer from jotai/utils when state updates follow a reducer pattern (similar to useReducer). This centralizes update logic and makes state transitions explicit."
+    category: "jotai_atoms"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "atomWithReducer", "reducer", "dispatch"]
+    example: |
+      import { atomWithReducer } from 'jotai/utils';
+      const countAtom = atomWithReducer(0, (prev, action) => {
+        if (action.type === 'inc') return prev + 1;
+        if (action.type === 'dec') return prev - 1;
+        return prev;
+      });
+
+  - id: JOTAI008
+    title: "Use async atoms for data fetching"
+    description: "Create async atoms with atom(async (get) => ...) for data fetching. Jotai supports Suspense natively — async atoms suspend the component until the promise resolves. Wrap with loadable() or unwrap() to avoid Suspense."
+    category: "jotai_atoms"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "react"]
+    tags: ["jotai", "async", "fetch", "suspense", "loadable"]
+    example: |
+      const userIdAtom = atom(1);
+      const userAtom = atom(async (get) => {
+        const id = get(userIdAtom);
+        const res = await fetch(`/api/users/${id}`);
+        return res.json();
+      });
+
+  # ============================================================================
+  # JOTAI SELECTORS / DERIVED (JOTAI009-JOTAI015) - Selector best practices
+  # ============================================================================
+
+  - id: JOTAI009
+    title: "Use selectAtom for fine-grained subscriptions"
+    description: "Use selectAtom from jotai/utils to subscribe to a subset of an atom's value. This prevents unnecessary re-renders when only a specific field changes. Provide an equality function for object comparisons."
+    category: "jotai_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "selectAtom", "selector", "fine-grained"]
+    example: |
+      import { selectAtom } from 'jotai/utils';
+      const userAtom = atom({ name: '', age: 0, email: '' });
+      const nameAtom = selectAtom(userAtom, (user) => user.name);
+      // Only re-renders when name changes, not age or email
+
+  - id: JOTAI010
+    title: "Use focusAtom with jotai-optics for lens-based access"
+    description: "Use focusAtom from jotai-optics to create read-write atoms that focus on a specific path within a larger atom. This uses optics (lenses) for type-safe nested state access and modification."
+    category: "jotai_selectors"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-optics"]
+    tags: ["jotai", "focusAtom", "optics", "lens", "nested"]
+    example: |
+      import { focusAtom } from 'jotai-optics';
+      const formAtom = atom({ user: { name: '', address: { city: '' } } });
+      const cityAtom = focusAtom(formAtom, (o) => o.prop('user').prop('address').prop('city'));
+
+  - id: JOTAI011
+    title: "Use splitAtom for list rendering"
+    description: "Use splitAtom from jotai/utils to split an array atom into individual item atoms. Each item gets its own atom, enabling efficient list rendering where only changed items re-render."
+    category: "jotai_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "splitAtom", "list", "array", "performance"]
+    example: |
+      import { splitAtom } from 'jotai/utils';
+      const todosAtom = atom([{ id: 1, text: 'Buy milk', done: false }]);
+      const todoAtomsAtom = splitAtom(todosAtom);
+      // Each todo item gets its own atom for independent updates
+
+  - id: JOTAI012
+    title: "Use loadable for handling async atom loading states"
+    description: "Wrap async atoms with loadable() from jotai/utils to avoid Suspense and handle loading/error states explicitly. loadable returns { state: 'loading' | 'hasData' | 'hasError', data?, error? }."
+    category: "jotai_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "loadable", "async", "loading", "error-handling"]
+    example: |
+      import { loadable } from 'jotai/utils';
+      const asyncUserAtom = atom(async () => fetch('/api/user').then(r => r.json()));
+      const loadableUserAtom = loadable(asyncUserAtom);
+      // { state: 'loading' } | { state: 'hasData', data: User } | { state: 'hasError', error: Error }
+
+  - id: JOTAI013
+    title: "Use unwrap for async atoms with fallback"
+    description: "Use unwrap() from jotai/utils to unwrap async atoms with a synchronous fallback value. This avoids Suspense while providing an immediate fallback during loading."
+    category: "jotai_selectors"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "unwrap", "async", "fallback"]
+    example: |
+      import { unwrap } from 'jotai/utils';
+      const asyncCountAtom = atom(async () => fetchCount());
+      const countAtom = unwrap(asyncCountAtom, (prev) => prev ?? 0);
+
+  - id: JOTAI014
+    title: "Provide equality functions for selectAtom with objects"
+    description: "When selectAtom returns objects or arrays, provide a custom equality function as the third argument to prevent unnecessary re-renders from reference inequality."
+    category: "jotai_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "selectAtom", "equality", "shallow-equal"]
+    example: |
+      import { selectAtom } from 'jotai/utils';
+      const tagsAtom = selectAtom(
+        userAtom,
+        (user) => user.tags,
+        (a, b) => JSON.stringify(a) === JSON.stringify(b)  // or shallow equal
+      );
+
+  - id: JOTAI015
+    title: "Compose atoms bottom-up for modular state"
+    description: "Build complex state by composing small atoms bottom-up. Derived atoms should depend on other atoms, creating a dependency graph. Avoid circular dependencies between atoms."
+    category: "jotai_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "composition", "bottom-up", "dependency-graph"]
+    example: |
+      const itemsAtom = atom([]);
+      const filterAtom = atom('all');
+      const filteredItemsAtom = atom((get) => {
+        const items = get(itemsAtom);
+        const filter = get(filterAtom);
+        return filter === 'all' ? items : items.filter(i => i.status === filter);
+      });
+
+  # ============================================================================
+  # JOTAI MIDDLEWARE / EXTENSIONS (JOTAI016-JOTAI023) - Extension best practices
+  # ============================================================================
+
+  - id: JOTAI016
+    title: "Use atomWithStorage for persistent state"
+    description: "Use atomWithStorage from jotai/utils to persist atom state to localStorage, sessionStorage, or AsyncStorage. Specify the storage key as the first argument and initial value as second."
+    category: "jotai_middleware"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "atomWithStorage", "persistence", "localStorage"]
+    example: |
+      import { atomWithStorage } from 'jotai/utils';
+      const themeAtom = atomWithStorage('theme', 'light');
+      const langAtom = atomWithStorage('language', 'en', sessionStorage);
+
+  - id: JOTAI017
+    title: "Use custom storage with atomWithStorage for SSR"
+    description: "For SSR/SSG environments (Next.js), provide a custom storage implementation that handles the server-side case where localStorage is unavailable. Use createJSONStorage with getItem/setItem/removeItem."
+    category: "jotai_middleware"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-utils", "nextjs"]
+    tags: ["jotai", "atomWithStorage", "SSR", "custom-storage"]
+    example: |
+      import { atomWithStorage, createJSONStorage } from 'jotai/utils';
+      const storage = createJSONStorage(() =>
+        typeof window !== 'undefined' ? localStorage : undefined
+      );
+      const themeAtom = atomWithStorage('theme', 'light', storage);
+
+  - id: JOTAI018
+    title: "Use atomEffect for side effects"
+    description: "Use atomEffect from jotai-effect for declarative side effects that react to atom changes. Effects run when their dependency atoms change and can return a cleanup function."
+    category: "jotai_middleware"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-effect"]
+    tags: ["jotai", "atomEffect", "side-effect", "cleanup"]
+    example: |
+      import { atomEffect } from 'jotai-effect';
+      const logEffect = atomEffect((get, set) => {
+        const count = get(countAtom);
+        console.log('Count changed:', count);
+        return () => { /* cleanup */ };
+      });
+
+  - id: JOTAI019
+    title: "Use onMount for atom initialization"
+    description: "Use the onMount property on writable atoms to run initialization logic when an atom is first subscribed to. The onMount callback receives a setAtom function and can return a cleanup function."
+    category: "jotai_middleware"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "onMount", "initialization", "lifecycle"]
+    example: |
+      const wsAtom = atom(null);
+      wsAtom.onMount = (setAtom) => {
+        const ws = new WebSocket('ws://...');
+        ws.onmessage = (e) => setAtom(JSON.parse(e.data));
+        return () => ws.close();
+      };
+
+  - id: JOTAI020
+    title: "Use atomWithImmer for immutable updates"
+    description: "Use atomWithImmer from jotai-immer for atoms with complex nested state that benefits from Immer's draft-based immutable updates. The write function receives a draft that can be mutated directly."
+    category: "jotai_middleware"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-immer", "immer"]
+    tags: ["jotai", "atomWithImmer", "immer", "immutable"]
+    example: |
+      import { atomWithImmer } from 'jotai-immer';
+      const todosAtom = atomWithImmer([{ text: 'Buy milk', done: false }]);
+      // Can mutate draft directly: set((draft) => { draft[0].done = true; });
+
+  - id: JOTAI021
+    title: "Use atomWithMachine for complex state transitions"
+    description: "Use atomWithMachine from jotai-xstate for state that follows a state machine pattern. This integrates XState machines with Jotai atoms for predictable state transitions."
+    category: "jotai_middleware"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-xstate", "xstate"]
+    tags: ["jotai", "atomWithMachine", "xstate", "state-machine"]
+    example: |
+      import { atomWithMachine } from 'jotai-xstate';
+      const toggleMachineAtom = atomWithMachine(toggleMachine);
+
+  - id: JOTAI022
+    title: "Use atomWithObservable for RxJS integration"
+    description: "Use atomWithObservable from jotai/utils to create atoms from RxJS Observables or any observable-like source. The atom value updates whenever the observable emits."
+    category: "jotai_middleware"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-utils", "rxjs"]
+    tags: ["jotai", "atomWithObservable", "rxjs", "observable"]
+    example: |
+      import { atomWithObservable } from 'jotai/utils';
+      const tickAtom = atomWithObservable(() => interval(1000));
+
+  - id: JOTAI023
+    title: "Use jotai-devtools for debugging"
+    description: "Install jotai-devtools and use useAtomsDebugValue() or useAtomDevtools() to inspect atom values in React DevTools. In development, the DevTools component provides a visual atom inspector."
+    category: "jotai_middleware"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-devtools"]
+    tags: ["jotai", "devtools", "debugging", "development"]
+    example: |
+      import { DevTools, useAtomsDebugValue } from 'jotai-devtools';
+      function App() {
+        useAtomsDebugValue();  // Exposes all atoms in React DevTools
+        return <><DevTools /><MyApp /></>;
+      }
+
+  # ============================================================================
+  # JOTAI ACTIONS / HOOKS (JOTAI024-JOTAI031) - Hook usage best practices
+  # ============================================================================
+
+  - id: JOTAI024
+    title: "Use useAtomValue for read-only subscriptions (v2)"
+    description: "In Jotai v2, use useAtomValue(atom) instead of useAtom(atom)[0] when you only need to read the value. This avoids creating an unnecessary setter function and clearly communicates intent."
+    category: "jotai_actions"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai", "jotai-v2"]
+    tags: ["jotai", "useAtomValue", "read-only", "v2"]
+    example: |
+      // ✅ Read-only — clear intent
+      const count = useAtomValue(countAtom);
+
+      // ❌ Wasteful — creates unused setter
+      const [count] = useAtom(countAtom);
+
+  - id: JOTAI025
+    title: "Use useSetAtom for write-only access (v2)"
+    description: "In Jotai v2, use useSetAtom(atom) when you only need to write to an atom. This avoids subscribing to value changes and prevents re-renders when the atom value changes."
+    category: "jotai_actions"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai", "jotai-v2"]
+    tags: ["jotai", "useSetAtom", "write-only", "v2", "performance"]
+    example: |
+      // ✅ Write-only — no re-renders on count changes
+      const setCount = useSetAtom(countAtom);
+      return <button onClick={() => setCount((c) => c + 1)}>+</button>;
+
+  - id: JOTAI026
+    title: "Use useAtom for read-write access"
+    description: "Use useAtom(atom) when you need both reading and writing an atom. Returns [value, setValue] similar to useState. Prefer useAtomValue/useSetAtom when you only need one."
+    category: "jotai_actions"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "useAtom", "read-write"]
+    example: |
+      const [count, setCount] = useAtom(countAtom);
+
+  - id: JOTAI027
+    title: "Use createStore for custom store instances (v2)"
+    description: "In Jotai v2, use createStore() to create isolated store instances. Pass the store to Provider's store prop. Use getDefaultStore() to access the default store for testing or outside-React usage."
+    category: "jotai_actions"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-v2"]
+    tags: ["jotai", "createStore", "Provider", "isolation", "v2"]
+    example: |
+      import { createStore, Provider } from 'jotai';
+      const myStore = createStore();
+      myStore.set(countAtom, 42);
+      function App() { return <Provider store={myStore}><Counter /></Provider>; }
+
+  - id: JOTAI028
+    title: "Use useHydrateAtoms for SSR hydration (v2)"
+    description: "Use useHydrateAtoms from jotai/utils to hydrate atoms with server-side values. Call it once at the top of your component tree with an array of [atom, value] pairs."
+    category: "jotai_actions"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-v2", "nextjs"]
+    tags: ["jotai", "useHydrateAtoms", "SSR", "hydration"]
+    example: |
+      import { useHydrateAtoms } from 'jotai/utils';
+      function Page({ initialCount }) {
+        useHydrateAtoms([[countAtom, initialCount]]);
+        return <Counter />;
+      }
+
+  - id: JOTAI029
+    title: "Use store API for outside-React access"
+    description: "Use the store API (store.get, store.set, store.sub) for accessing atom values outside React components — in middleware, API calls, WebSocket handlers, or tests."
+    category: "jotai_actions"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-v2"]
+    tags: ["jotai", "store", "getDefaultStore", "outside-react"]
+    example: |
+      import { getDefaultStore } from 'jotai';
+      const store = getDefaultStore();
+      const count = store.get(countAtom);
+      store.set(countAtom, count + 1);
+      const unsub = store.sub(countAtom, () => console.log(store.get(countAtom)));
+
+  - id: JOTAI030
+    title: "Use useAtomCallback for event handlers"
+    description: "Use useAtomCallback from jotai/utils to create callbacks that can read/write atoms without subscribing to their values. Ideal for event handlers that need atom access but shouldn't cause re-renders."
+    category: "jotai_actions"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "useAtomCallback", "callback", "event-handler"]
+    example: |
+      import { useAtomCallback } from 'jotai/utils';
+      const handleSubmit = useAtomCallback((get, set) => {
+        const data = get(formDataAtom);
+        set(submittingAtom, true);
+        await submitForm(data);
+        set(submittingAtom, false);
+      });
+
+  - id: JOTAI031
+    title: "Avoid calling set inside read functions"
+    description: "Never call set() inside a read function (the first argument to atom()). Read functions should be pure — they compute values from dependencies. Use writable derived atoms or atomEffect for side effects."
+    category: "jotai_actions"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "pure-read", "side-effect", "anti-pattern"]
+    example: |
+      // ❌ Side effect in read function
+      const badAtom = atom((get) => {
+        set(otherAtom, 'value');  // DON'T DO THIS
+        return get(sourceAtom);
+      });
+
+      // ✅ Use writable derived atom
+      const goodAtom = atom(
+        (get) => get(sourceAtom),
+        (get, set, value) => { set(otherAtom, value); }
+      );
+
+  # ============================================================================
+  # JOTAI TYPESCRIPT (JOTAI032-JOTAI036) - Type safety best practices
+  # ============================================================================
+
+  - id: JOTAI032
+    title: "Let TypeScript infer atom types when possible"
+    description: "Jotai has excellent TypeScript inference — let types be inferred from initial values rather than annotating explicitly. Only add explicit generics when the initial value doesn't fully describe the type."
+    category: "jotai_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "typescript", "inference", "generics"]
+    example: |
+      // ✅ Inferred as Atom<number>
+      const countAtom = atom(0);
+
+      // ✅ Explicit when initial value doesn't describe full type
+      const userAtom = atom<User | null>(null);
+
+  - id: JOTAI033
+    title: "Use PrimitiveAtom type for writable primitive atoms"
+    description: "Use PrimitiveAtom<T> type from jotai when passing atoms as props or storing them. PrimitiveAtom is a WritableAtom where the write value matches the read value."
+    category: "jotai_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "PrimitiveAtom", "typescript", "type-safety"]
+    example: |
+      import type { PrimitiveAtom } from 'jotai';
+      function Toggle({ atom }: { atom: PrimitiveAtom<boolean> }) {
+        const [value, setValue] = useAtom(atom);
+      }
+
+  - id: JOTAI034
+    title: "Use WritableAtom type for atoms with custom write"
+    description: "Use WritableAtom<Value, Args, Result> for atoms that accept specific arguments in their write function. This ensures type safety when passing writable atoms as props."
+    category: "jotai_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "WritableAtom", "typescript", "generics"]
+    example: |
+      import type { WritableAtom } from 'jotai';
+      type CounterAtom = WritableAtom<number, [number], void>;
+
+  - id: JOTAI035
+    title: "Use Atom type for read-only atoms"
+    description: "Use Atom<T> type from jotai for atoms that are read-only (derived atoms without write function). This prevents accidentally trying to write to a read-only atom."
+    category: "jotai_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "Atom", "read-only", "typescript"]
+    example: |
+      import type { Atom } from 'jotai';
+      function Display({ atom }: { atom: Atom<string> }) {
+        const value = useAtomValue(atom);
+      }
+
+  - id: JOTAI036
+    title: "Type atomFamily parameters explicitly"
+    description: "When using atomFamily, explicitly type the parameter to ensure type safety. Also provide a custom equality function for non-primitive parameters to avoid creating duplicate atoms."
+    category: "jotai_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "atomFamily", "typescript", "parameter-type"]
+    example: |
+      const todoAtomFamily = atomFamily(
+        (id: string) => atom<Todo>({ id, text: '', done: false }),
+        (a, b) => a === b
+      );
+
+  # ============================================================================
+  # JOTAI PERFORMANCE (JOTAI037-JOTAI041) - Performance best practices
+  # ============================================================================
+
+  - id: JOTAI037
+    title: "Split large atoms into smaller ones"
+    description: "Avoid putting all state in one large atom. Split state into multiple small atoms so components only subscribe to the data they need, minimizing unnecessary re-renders."
+    category: "jotai_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "granularity", "performance", "re-renders"]
+    example: |
+      // ✅ Granular atoms
+      const nameAtom = atom('');
+      const ageAtom = atom(0);
+
+      // ❌ Single large atom — all subscribers re-render on any change
+      const profileAtom = atom({ name: '', age: 0, email: '', avatar: '', ... });
+
+  - id: JOTAI038
+    title: "Use useAtomValue/useSetAtom to minimize subscriptions"
+    description: "Use useAtomValue when you only read and useSetAtom when you only write. useSetAtom does not subscribe to value changes, preventing re-renders in write-only components."
+    category: "jotai_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai", "jotai-v2"]
+    tags: ["jotai", "useAtomValue", "useSetAtom", "subscription", "re-render"]
+    example: |
+      // ✅ Write-only — no re-renders
+      const AddButton = () => {
+        const add = useSetAtom(addItemAtom);
+        return <button onClick={() => add(newItem)}>Add</button>;
+      };
+
+  - id: JOTAI039
+    title: "Memoize derived atom computations"
+    description: "For expensive computations in derived atoms, ensure the computation is only re-run when dependencies actually change. Jotai's dependency tracking handles this automatically for atom-level changes."
+    category: "jotai_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "memoization", "derived", "expensive"]
+    example: |
+      // ✅ Automatic — only re-computes when itemsAtom or filterAtom changes
+      const expensiveAtom = atom((get) => {
+        const items = get(itemsAtom);
+        const filter = get(filterAtom);
+        return items.filter(i => complexFilterFn(i, filter));
+      });
+
+  - id: JOTAI040
+    title: "Use splitAtom for efficient list rendering"
+    description: "For lists where individual items update independently, use splitAtom to give each item its own atom. This prevents re-rendering the entire list when a single item changes."
+    category: "jotai_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "splitAtom", "list", "virtual-list", "performance"]
+    example: |
+      const itemsAtom = atom(items);
+      const itemAtomsAtom = splitAtom(itemsAtom);
+      function List() {
+        const [itemAtoms] = useAtom(itemAtomsAtom);
+        return itemAtoms.map((itemAtom) => <Item key={`${itemAtom}`} atom={itemAtom} />);
+      }
+
+  - id: JOTAI041
+    title: "Avoid creating atoms in render loops"
+    description: "Never create atoms inside map/filter/reduce or render loops. Use atomFamily for dynamic atom creation, which caches atoms by parameter to avoid recreating them."
+    category: "jotai_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "render-loop", "anti-pattern", "atomFamily"]
+    example: |
+      // ❌ Creates new atom every render iteration
+      items.map(item => <Component atom={atom(item)} />);
+
+      // ✅ Use atomFamily
+      const itemAtomFamily = atomFamily((id) => atom(getItem(id)));
+      items.map(item => <Component atom={itemAtomFamily(item.id)} />);
+
+  # ============================================================================
+  # JOTAI TESTING (JOTAI042-JOTAI044) - Testing best practices
+  # ============================================================================
+
+  - id: JOTAI042
+    title: "Use Provider for test isolation"
+    description: "Wrap components with Provider (without store prop) in tests to create isolated atom state. Each Provider creates a fresh store, preventing test pollution."
+    category: "jotai_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai", "react"]
+    tags: ["jotai", "Provider", "testing", "isolation"]
+    example: |
+      import { Provider } from 'jotai';
+      import { render } from '@testing-library/react';
+      test('counter', () => {
+        const { getByText } = render(
+          <Provider><Counter /></Provider>
+        );
+      });
+
+  - id: JOTAI043
+    title: "Use createStore for testing atom logic"
+    description: "Use createStore() to test atom logic in isolation without rendering components. Get and set atom values directly on the store."
+    category: "jotai_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-v2"]
+    tags: ["jotai", "createStore", "unit-test", "atom-logic"]
+    example: |
+      import { createStore } from 'jotai';
+      test('derived atom', () => {
+        const store = createStore();
+        store.set(priceAtom, 100);
+        store.set(taxAtom, 0.1);
+        expect(store.get(totalAtom)).toBe(110);
+      });
+
+  - id: JOTAI044
+    title: "Use useHydrateAtoms for setting initial test values"
+    description: "Use useHydrateAtoms to set initial atom values in tests without needing to interact with the component. Wrap in Provider for isolation."
+    category: "jotai_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-utils"]
+    tags: ["jotai", "useHydrateAtoms", "testing", "initial-values"]
+    example: |
+      function TestProvider({ children, initialValues }) {
+        useHydrateAtoms(initialValues);
+        return children;
+      }
+      render(
+        <Provider>
+          <TestProvider initialValues={[[countAtom, 10]]}><Counter /></TestProvider>
+        </Provider>
+      );
+
+  # ============================================================================
+  # JOTAI SSR (JOTAI045-JOTAI046) - Server-side rendering best practices
+  # ============================================================================
+
+  - id: JOTAI045
+    title: "Use Provider with useHydrateAtoms for Next.js SSR"
+    description: "In Next.js, use Provider at the layout level and useHydrateAtoms to set server-fetched data. This ensures atoms are hydrated before components read them."
+    category: "jotai_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["jotai", "nextjs"]
+    tags: ["jotai", "nextjs", "SSR", "hydration", "Provider"]
+    example: |
+      // app/providers.tsx
+      'use client';
+      import { Provider } from 'jotai';
+      export function Providers({ children }) {
+        return <Provider>{children}</Provider>;
+      }
+
+  - id: JOTAI046
+    title: "Handle atomWithStorage SSR hydration mismatch"
+    description: "atomWithStorage can cause hydration mismatches in SSR because the server doesn't have access to localStorage. Use the onMount pattern or disable SSR for storage atoms."
+    category: "jotai_ssr"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-utils", "nextjs"]
+    tags: ["jotai", "atomWithStorage", "SSR", "hydration-mismatch"]
+    example: |
+      // Use createJSONStorage with getItem returning initial on server
+      const storage = createJSONStorage(() =>
+        typeof window !== 'undefined' ? localStorage : ({
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        })
+      );
+
+  # ============================================================================
+  # JOTAI PATTERNS (JOTAI047-JOTAI048) - Architecture patterns
+  # ============================================================================
+
+  - id: JOTAI047
+    title: "Organize atoms by feature, not by type"
+    description: "Co-locate atoms with the features that use them rather than grouping all atoms in a single file. This improves discoverability and enables tree-shaking of unused atoms."
+    category: "jotai_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai"]
+    tags: ["jotai", "organization", "feature-based", "co-location"]
+    example: |
+      // ✅ Feature-based
+      src/features/auth/atoms.ts   → userAtom, tokenAtom, isAuthenticatedAtom
+      src/features/cart/atoms.ts   → cartItemsAtom, totalAtom, cartCountAtom
+      src/features/theme/atoms.ts  → themeAtom, isDarkAtom
+
+      // ❌ Type-based (hard to find, no tree-shaking)
+      src/atoms.ts   → ALL atoms in one file
+
+  - id: JOTAI048
+    title: "Use ScopeProvider for atom scoping"
+    description: "Use ScopeProvider from jotai-scope to create isolated atom scopes within the same component tree. Scoped atoms have independent state for each scope instance."
+    category: "jotai_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "jotai-scope"]
+    tags: ["jotai", "ScopeProvider", "scoping", "isolation"]
+    example: |
+      import { ScopeProvider } from 'jotai-scope';
+      <ScopeProvider atoms={[countAtom]}>
+        <Counter />  {/* Has its own countAtom instance */}
+      </ScopeProvider>
+
+  # ============================================================================
+  # JOTAI MIGRATION (JOTAI049-JOTAI050) - Migration best practices
+  # ============================================================================
+
+  - id: JOTAI049
+    title: "Migrate from Jotai v1 to v2: use subpath exports"
+    description: "In Jotai v2, import hooks from 'jotai/react' and vanilla APIs from 'jotai/vanilla'. The 'jotai' entry point re-exports from both. Replace useUpdateAtom with useSetAtom, useAtomValue stays."
+    category: "jotai_migration"
+    severity: "warning"
+    applicability:
+      frameworks: ["jotai", "jotai-v1"]
+    tags: ["jotai", "migration", "v1-to-v2", "subpath-exports"]
+    example: |
+      // v1
+      import { atom, useAtom } from 'jotai';
+      import { useUpdateAtom } from 'jotai/utils';
+
+      // v2
+      import { atom, useAtom } from 'jotai';  // still works
+      import { useSetAtom } from 'jotai';       // replaces useUpdateAtom
+
+  - id: JOTAI050
+    title: "Migrate from useState/Redux to Jotai incrementally"
+    description: "Jotai can coexist with useState and Redux. Migrate incrementally: start with shared state that causes prop drilling, convert to atoms, then expand. Don't rewrite everything at once."
+    category: "jotai_migration"
+    severity: "info"
+    applicability:
+      frameworks: ["jotai", "react"]
+    tags: ["jotai", "migration", "incremental", "useState", "redux"]
+    example: |
+      // Step 1: Identify prop-drilled state
+      // Step 2: Create atom: const themeAtom = atom('light');
+      // Step 3: Replace prop drilling with useAtomValue(themeAtom)
+      // Step 4: Remove context providers for migrated state

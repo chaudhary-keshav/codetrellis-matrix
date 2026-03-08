@@ -1,0 +1,1686 @@
+# DevOps & CI/CD Best Practices Library
+# Version: 1.0.0
+# Coverage: CI/CD Pipelines, Docker, Deployment, Monitoring, Infrastructure
+# Total Practices: 15
+
+version: '1.0.0'
+framework: devops
+framework_version:
+  min_version: '1.0'
+description: 'Comprehensive DevOps and CI/CD best practices for modern development'
+
+practices:
+  # ============================================================================
+  # CI/CD PIPELINES (DEVOPS001-DEVOPS005)
+  # ============================================================================
+
+  - id: DEVOPS001
+    title: 'Design Effective CI/CD Pipelines'
+    category: automation
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - github-actions
+        - gitlab-ci
+        - jenkins
+    content:
+      description: |
+        Design CI/CD pipelines with clear stages: build, test, security scan,
+        and deploy. Fail fast and provide clear feedback.
+      rationale: |
+        Well-designed pipelines catch issues early, provide fast feedback,
+        and ensure consistent deployments.
+      good_examples:
+        - |
+          # ✅ GitHub Actions - Complete CI/CD pipeline
+          # .github/workflows/ci-cd.yml
+          name: CI/CD Pipeline
+
+          on:
+            push:
+              branches: [main, develop]
+            pull_request:
+              branches: [main]
+
+          env:
+            PYTHON_VERSION: '3.11'
+            NODE_VERSION: '20'
+
+          jobs:
+            lint:
+              name: Lint & Format Check
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - uses: actions/setup-python@v5
+                  with:
+                    python-version: ${{ env.PYTHON_VERSION }}
+                - name: Install dependencies
+                  run: pip install ruff mypy
+                - name: Run linter
+                  run: ruff check .
+                - name: Run type checker
+                  run: mypy src/
+
+            test:
+              name: Test
+              runs-on: ubuntu-latest
+              needs: lint
+              services:
+                postgres:
+                  image: postgres:15
+                  env:
+                    POSTGRES_PASSWORD: postgres
+                  options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+              steps:
+                - uses: actions/checkout@v4
+                - uses: actions/setup-python@v5
+                  with:
+                    python-version: ${{ env.PYTHON_VERSION }}
+                    cache: 'pip'
+                - name: Install dependencies
+                  run: pip install -r requirements-dev.txt
+                - name: Run tests
+                  run: pytest --cov=src --cov-report=xml
+                - name: Upload coverage
+                  uses: codecov/codecov-action@v4
+
+            security:
+              name: Security Scan
+              runs-on: ubuntu-latest
+              needs: lint
+              steps:
+                - uses: actions/checkout@v4
+                - name: Run Trivy
+                  uses: aquasecurity/trivy-action@master
+                  with:
+                    scan-type: 'fs'
+                    severity: 'HIGH,CRITICAL'
+
+            build:
+              name: Build & Push
+              runs-on: ubuntu-latest
+              needs: [test, security]
+              if: github.ref == 'refs/heads/main'
+              steps:
+                - uses: actions/checkout@v4
+                - name: Build and push Docker image
+                  uses: docker/build-push-action@v5
+                  with:
+                    push: true
+                    tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+            deploy:
+              name: Deploy
+              runs-on: ubuntu-latest
+              needs: build
+              environment: production
+              steps:
+                - name: Deploy to production
+                  run: |
+                    # Deployment commands here
+                    kubectl set image deployment/app app=ghcr.io/${{ github.repository }}:${{ github.sha }}
+      bad_examples:
+        - |
+          # ❌ Pipeline without proper stages
+          name: CI
+          on: push
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - run: pip install -r requirements.txt
+                - run: pytest
+                - run: docker build .
+                - run: docker push  # No security scan, no staging!
+      references:
+        - 'https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions'
+      tags:
+        - ci-cd
+        - pipelines
+        - automation
+
+  - id: DEVOPS002
+    title: 'Implement Automated Testing in CI'
+    category: testing
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - github-actions
+        - gitlab-ci
+    content:
+      description: |
+        Run comprehensive automated tests in CI: unit tests, integration tests,
+        and end-to-end tests. Report coverage and fail on regressions.
+      rationale: |
+        Automated testing in CI catches regressions early and ensures
+        code quality before merging.
+      good_examples:
+        - |
+          # ✅ Comprehensive test job
+          test:
+            name: Test Suite
+            runs-on: ubuntu-latest
+            strategy:
+              matrix:
+                python-version: ['3.10', '3.11', '3.12']
+
+            services:
+              postgres:
+                image: postgres:15
+                env:
+                  POSTGRES_DB: test_db
+                  POSTGRES_PASSWORD: postgres
+                ports:
+                  - 5432:5432
+                options: >-
+                  --health-cmd pg_isready
+                  --health-interval 10s
+
+              redis:
+                image: redis:7
+                ports:
+                  - 6379:6379
+
+            steps:
+              - uses: actions/checkout@v4
+
+              - name: Set up Python
+                uses: actions/setup-python@v5
+                with:
+                  python-version: ${{ matrix.python-version }}
+                  cache: 'pip'
+
+              - name: Install dependencies
+                run: |
+                  pip install -r requirements-dev.txt
+                  pip install pytest-cov pytest-xdist
+
+              - name: Run unit tests
+                run: |
+                  pytest tests/unit -v \
+                    --cov=src \
+                    --cov-report=xml \
+                    --cov-fail-under=80 \
+                    -n auto
+
+              - name: Run integration tests
+                env:
+                  DATABASE_URL: postgresql://postgres:postgres@localhost/test_db
+                  REDIS_URL: redis://localhost:6379
+                run: |
+                  pytest tests/integration -v --tb=short
+
+              - name: Upload coverage
+                uses: codecov/codecov-action@v4
+                with:
+                  files: ./coverage.xml
+                  fail_ci_if_error: true
+
+              - name: Check coverage diff
+                uses: orgoro/coverage@v3
+                with:
+                  coverageFile: coverage.xml
+                  thresholdAll: 0.8
+                  thresholdNew: 0.9
+      bad_examples:
+        - |
+          # ❌ Minimal testing
+          test:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v4
+              - run: pip install pytest
+              - run: pytest  # No coverage, no parallel, no services
+      tags:
+        - testing
+        - ci
+        - coverage
+
+  - id: DEVOPS003
+    title: 'Implement Security Scanning in CI'
+    category: security
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - github-actions
+        - gitlab-ci
+    content:
+      description: |
+        Integrate security scanning in CI: dependency vulnerabilities,
+        SAST, secrets detection, and container scanning.
+      rationale: |
+        Automated security scanning catches vulnerabilities before
+        they reach production.
+      good_examples:
+        - |
+          # ✅ Comprehensive security scanning
+          security:
+            name: Security Scans
+            runs-on: ubuntu-latest
+
+            steps:
+              - uses: actions/checkout@v4
+                with:
+                  fetch-depth: 0  # Full history for secret scanning
+
+              # Dependency vulnerability scanning
+              - name: Run Snyk
+                uses: snyk/actions/python@master
+                env:
+                  SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+                with:
+                  args: --severity-threshold=high
+
+              # SAST scanning
+              - name: Run Semgrep
+                uses: semgrep/semgrep-action@v1
+                with:
+                  config: >-
+                    p/security-audit
+                    p/python
+                    p/owasp-top-ten
+
+              # Secret detection
+              - name: Run Gitleaks
+                uses: gitleaks/gitleaks-action@v2
+                env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+              # Container scanning
+              - name: Build image
+                run: docker build -t app:scan .
+
+              - name: Run Trivy container scan
+                uses: aquasecurity/trivy-action@master
+                with:
+                  image-ref: 'app:scan'
+                  format: 'sarif'
+                  output: 'trivy-results.sarif'
+                  severity: 'HIGH,CRITICAL'
+                  exit-code: '1'
+
+              - name: Upload Trivy scan results
+                uses: github/codeql-action/upload-sarif@v3
+                with:
+                  sarif_file: 'trivy-results.sarif'
+
+              # Dependency review
+              - name: Dependency Review
+                uses: actions/dependency-review-action@v4
+                with:
+                  fail-on-severity: high
+      bad_examples:
+        - |
+          # ❌ No security scanning
+          build:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v4
+              - run: docker build .
+              - run: docker push  # Could contain vulnerabilities!
+      references:
+        - 'https://docs.github.com/en/code-security/supply-chain-security'
+      tags:
+        - security
+        - scanning
+        - vulnerabilities
+
+  - id: DEVOPS004
+    title: 'Implement Deployment Strategies'
+    category: deployment
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - kubernetes
+        - docker
+    content:
+      description: |
+        Use safe deployment strategies: blue-green, canary, or rolling
+        updates. Implement automatic rollbacks.
+      rationale: |
+        Safe deployment strategies minimize downtime and enable
+        quick recovery from failed deployments.
+      good_examples:
+        - |
+          # ✅ Kubernetes Rolling Update
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: app
+          spec:
+            replicas: 4
+            strategy:
+              type: RollingUpdate
+              rollingUpdate:
+                maxSurge: 1
+                maxUnavailable: 0
+            selector:
+              matchLabels:
+                app: myapp
+            template:
+              spec:
+                containers:
+                  - name: app
+                    image: myapp:v2
+                    ports:
+                      - containerPort: 8080
+                    readinessProbe:
+                      httpGet:
+                        path: /health
+                        port: 8080
+                      initialDelaySeconds: 5
+                      periodSeconds: 5
+                    livenessProbe:
+                      httpGet:
+                        path: /health
+                        port: 8080
+                      initialDelaySeconds: 15
+                      periodSeconds: 10
+
+          # ✅ GitHub Actions deployment with rollback
+          deploy:
+            name: Deploy
+            runs-on: ubuntu-latest
+            environment: production
+
+            steps:
+              - name: Deploy new version
+                id: deploy
+                run: |
+                  kubectl set image deployment/app \
+                    app=${{ env.IMAGE }}:${{ github.sha }}
+                  kubectl rollout status deployment/app --timeout=5m
+                continue-on-error: true
+
+              - name: Rollback on failure
+                if: steps.deploy.outcome == 'failure'
+                run: |
+                  kubectl rollout undo deployment/app
+                  echo "::error::Deployment failed, rolled back to previous version"
+                  exit 1
+
+              - name: Health check
+                run: |
+                  for i in {1..30}; do
+                    if curl -sf https://api.example.com/health; then
+                      echo "Health check passed"
+                      exit 0
+                    fi
+                    sleep 10
+                  done
+                  kubectl rollout undo deployment/app
+                  exit 1
+
+          # ✅ Canary deployment
+          """
+          # Deploy canary (10% traffic)
+          kubectl apply -f canary-deployment.yaml
+
+          # Monitor error rates
+          if error_rate > threshold:
+              kubectl delete -f canary-deployment.yaml
+          else:
+              # Gradually increase traffic
+              kubectl scale deployment/app-canary --replicas=2
+          """
+      bad_examples:
+        - |
+          # ❌ Direct deployment without strategy
+          deploy:
+            steps:
+              - run: |
+                  kubectl delete deployment app
+                  kubectl apply -f deployment.yaml
+                  # Downtime! No rollback!
+      tags:
+        - deployment
+        - rollback
+        - kubernetes
+
+  - id: DEVOPS005
+    title: 'Manage Secrets Securely in CI/CD'
+    category: security
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - github-actions
+        - gitlab-ci
+    content:
+      description: |
+        Store secrets securely using platform secret management. Never
+        hardcode secrets in code or logs.
+      rationale: |
+        Proper secret management prevents credential exposure and
+        unauthorized access.
+      good_examples:
+        - |
+          # ✅ GitHub Actions secrets
+          jobs:
+            deploy:
+              runs-on: ubuntu-latest
+              steps:
+                - name: Configure AWS credentials
+                  uses: aws-actions/configure-aws-credentials@v4
+                  with:
+                    aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                    aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                    aws-region: us-east-1
+
+                - name: Login to ECR
+                  uses: aws-actions/amazon-ecr-login@v2
+
+                - name: Deploy
+                  env:
+                    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+                    API_KEY: ${{ secrets.API_KEY }}
+                  run: |
+                    # Secrets available as env vars
+                    # Never echo secrets!
+                    echo "Deploying with configured credentials"
+
+          # ✅ Using OIDC instead of long-lived credentials
+          permissions:
+            id-token: write
+            contents: read
+
+          jobs:
+            deploy:
+              runs-on: ubuntu-latest
+              steps:
+                - name: Configure AWS credentials (OIDC)
+                  uses: aws-actions/configure-aws-credentials@v4
+                  with:
+                    role-to-assume: arn:aws:iam::123456789:role/github-actions
+                    aws-region: us-east-1
+
+          # ✅ Mask secrets in logs
+          - name: Deploy with masked secret
+            run: |
+              echo "::add-mask::${{ secrets.API_KEY }}"
+              ./deploy.sh
+
+          # ✅ Environment-specific secrets
+          jobs:
+            deploy-staging:
+              environment: staging
+              steps:
+                - run: echo "Using staging secrets"
+                  env:
+                    API_URL: ${{ vars.API_URL }}  # Non-secret variable
+                    API_KEY: ${{ secrets.API_KEY }}  # Staging secret
+
+            deploy-production:
+              environment: production
+              steps:
+                - run: echo "Using production secrets"
+                  env:
+                    API_KEY: ${{ secrets.API_KEY }}  # Different secret!
+      bad_examples:
+        - |
+          # ❌ Hardcoded secrets
+          - run: |
+              export API_KEY="sk-1234567890abcdef"
+              ./deploy.sh
+
+          # ❌ Echoing secrets
+          - run: |
+              echo "API Key: ${{ secrets.API_KEY }}"  # Exposed in logs!
+      references:
+        - 'https://docs.github.com/en/actions/security-guides/encrypted-secrets'
+      tags:
+        - secrets
+        - security
+        - credentials
+
+  # ============================================================================
+  # DOCKER & CONTAINERS (DEVOPS006-DEVOPS009)
+  # ============================================================================
+
+  - id: DEVOPS006
+    title: 'Write Efficient Dockerfiles'
+    category: containers
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - docker
+    content:
+      description: |
+        Write efficient Dockerfiles: use multi-stage builds, minimize layers,
+        leverage build cache, and reduce image size.
+      rationale: |
+        Efficient Dockerfiles result in smaller images, faster builds,
+        and improved security.
+      good_examples:
+        - |
+          # ✅ Multi-stage Python Dockerfile
+          # syntax=docker/dockerfile:1
+
+          # Build stage
+          FROM python:3.11-slim as builder
+
+          WORKDIR /app
+
+          # Install build dependencies
+          RUN apt-get update && apt-get install -y --no-install-recommends \
+              gcc \
+              libpq-dev \
+              && rm -rf /var/lib/apt/lists/*
+
+          # Install Python dependencies
+          COPY requirements.txt .
+          RUN pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
+
+          # Production stage
+          FROM python:3.11-slim as production
+
+          # Security: run as non-root user
+          RUN groupadd --gid 1000 appgroup \
+              && useradd --uid 1000 --gid appgroup --shell /bin/bash appuser
+
+          WORKDIR /app
+
+          # Install runtime dependencies only
+          RUN apt-get update && apt-get install -y --no-install-recommends \
+              libpq5 \
+              && rm -rf /var/lib/apt/lists/* \
+              && apt-get clean
+
+          # Copy wheels from builder and install
+          COPY --from=builder /app/wheels /wheels
+          RUN pip install --no-cache-dir /wheels/* \
+              && rm -rf /wheels
+
+          # Copy application code
+          COPY --chown=appuser:appgroup . .
+
+          # Switch to non-root user
+          USER appuser
+
+          # Health check
+          HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+              CMD curl -f http://localhost:8000/health || exit 1
+
+          EXPOSE 8000
+
+          CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "app:app"]
+
+          # ✅ .dockerignore
+          """
+          .git
+          .gitignore
+          .env*
+          __pycache__
+          *.pyc
+          .pytest_cache
+          .coverage
+          htmlcov
+          .venv
+          venv
+          node_modules
+          Dockerfile*
+          docker-compose*
+          .dockerignore
+          README.md
+          docs/
+          tests/
+          """
+      bad_examples:
+        - |
+          # ❌ Inefficient Dockerfile
+          FROM python:3.11
+
+          COPY . /app
+          WORKDIR /app
+
+          RUN pip install -r requirements.txt  # Cache busted on any code change
+          RUN apt-get update && apt-get install -y gcc  # Development deps in prod
+
+          CMD python app.py  # Running as root!
+      references:
+        - 'https://docs.docker.com/develop/develop-images/dockerfile_best-practices/'
+      tags:
+        - docker
+        - containers
+        - optimization
+
+  - id: DEVOPS007
+    title: 'Secure Docker Images'
+    category: security
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - docker
+    content:
+      description: |
+        Secure Docker images: use minimal base images, run as non-root,
+        scan for vulnerabilities, and follow least privilege.
+      rationale: |
+        Secure container images reduce attack surface and prevent
+        security breaches.
+      good_examples:
+        - |
+          # ✅ Security-focused Dockerfile
+          # Use distroless or minimal base image
+          FROM python:3.11-slim-bookworm as builder
+
+          # ... build stage ...
+
+          FROM gcr.io/distroless/python3-debian12 as production
+
+          # Copy only what's needed
+          COPY --from=builder /app/dist /app
+          COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+
+          WORKDIR /app
+
+          # Distroless runs as nonroot by default
+          USER nonroot
+
+          ENTRYPOINT ["python", "-m", "app"]
+
+          # ✅ Security scanning in CI
+          """
+          - name: Build image
+            run: docker build -t app:${{ github.sha }} .
+
+          - name: Run Trivy vulnerability scanner
+            uses: aquasecurity/trivy-action@master
+            with:
+              image-ref: 'app:${{ github.sha }}'
+              format: 'table'
+              exit-code: '1'
+              severity: 'HIGH,CRITICAL'
+              ignore-unfixed: true
+
+          - name: Run Snyk container scan
+            uses: snyk/actions/docker@master
+            with:
+              image: app:${{ github.sha }}
+              args: --severity-threshold=high
+          """
+
+          # ✅ Read-only filesystem
+          """
+          docker run --read-only \
+            --tmpfs /tmp \
+            --tmpfs /var/run \
+            app:latest
+          """
+
+          # ✅ Limit container capabilities
+          """
+          docker run --cap-drop=ALL \
+            --cap-add=NET_BIND_SERVICE \
+            --security-opt=no-new-privileges:true \
+            app:latest
+          """
+      bad_examples:
+        - |
+          # ❌ Insecure Dockerfile
+          FROM ubuntu:latest  # Large, unpatched
+
+          RUN apt-get update && apt-get install -y python3 ssh  # Unnecessary services
+
+          COPY . /app
+
+          # Running as root with all capabilities!
+          CMD ["python3", "/app/main.py"]
+      tags:
+        - security
+        - docker
+        - containers
+
+  - id: DEVOPS008
+    title: 'Use Docker Compose for Development'
+    category: containers
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - docker
+    content:
+      description: |
+        Use Docker Compose for local development environments with all
+        dependencies. Keep dev and prod configurations separate.
+      rationale: |
+        Docker Compose simplifies local development by providing
+        consistent environments with all dependencies.
+      good_examples:
+        - |
+          # ✅ docker-compose.yml for development
+          version: '3.8'
+
+          services:
+            app:
+              build:
+                context: .
+                dockerfile: Dockerfile.dev
+              volumes:
+                - .:/app
+                - /app/node_modules  # Prevent overwrite
+              ports:
+                - "8000:8000"
+              environment:
+                - DEBUG=true
+                - DATABASE_URL=postgresql://postgres:postgres@db/app
+                - REDIS_URL=redis://redis:6379
+              depends_on:
+                db:
+                  condition: service_healthy
+                redis:
+                  condition: service_started
+              command: ["python", "-m", "flask", "run", "--reload", "--host=0.0.0.0"]
+
+            db:
+              image: postgres:15-alpine
+              volumes:
+                - postgres_data:/var/lib/postgresql/data
+              environment:
+                POSTGRES_USER: postgres
+                POSTGRES_PASSWORD: postgres
+                POSTGRES_DB: app
+              ports:
+                - "5432:5432"
+              healthcheck:
+                test: ["CMD-SHELL", "pg_isready -U postgres"]
+                interval: 5s
+                timeout: 5s
+                retries: 5
+
+            redis:
+              image: redis:7-alpine
+              ports:
+                - "6379:6379"
+
+            worker:
+              build:
+                context: .
+                dockerfile: Dockerfile.dev
+              volumes:
+                - .:/app
+              environment:
+                - DATABASE_URL=postgresql://postgres:postgres@db/app
+                - REDIS_URL=redis://redis:6379
+              depends_on:
+                - db
+                - redis
+              command: ["celery", "-A", "app.celery", "worker", "--loglevel=info"]
+
+          volumes:
+            postgres_data:
+
+          # ✅ docker-compose.override.yml for local customization
+          version: '3.8'
+
+          services:
+            app:
+              environment:
+                - LOG_LEVEL=DEBUG
+              volumes:
+                - ./logs:/app/logs
+      bad_examples:
+        - |
+          # ❌ Missing health checks and dependencies
+          version: '3'
+          services:
+            app:
+              build: .
+              ports:
+                - "8000:8000"
+            db:
+              image: postgres
+              # No health check, app might start before db is ready
+      references:
+        - 'https://docs.docker.com/compose/'
+      tags:
+        - docker-compose
+        - development
+        - containers
+
+  - id: DEVOPS009
+    title: 'Tag Docker Images Properly'
+    category: containers
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - docker
+    content:
+      description: |
+        Use meaningful, immutable image tags. Avoid 'latest' in production.
+        Include version information and commit SHA.
+      rationale: |
+        Proper tagging enables reliable deployments, rollbacks,
+        and audit trails.
+      good_examples:
+        - |
+          # ✅ Semantic versioning + commit SHA
+          """
+          # Build and tag
+          docker build -t myapp:1.2.3 -t myapp:1.2.3-abc1234 .
+
+          # Push both tags
+          docker push myapp:1.2.3
+          docker push myapp:1.2.3-abc1234
+          """
+
+          # ✅ GitHub Actions tagging
+          - name: Docker meta
+            id: meta
+            uses: docker/metadata-action@v5
+            with:
+              images: ghcr.io/${{ github.repository }}
+              tags: |
+                type=semver,pattern={{version}}
+                type=semver,pattern={{major}}.{{minor}}
+                type=sha,prefix=
+                type=ref,event=branch
+
+          - name: Build and push
+            uses: docker/build-push-action@v5
+            with:
+              push: true
+              tags: ${{ steps.meta.outputs.tags }}
+              labels: ${{ steps.meta.outputs.labels }}
+
+          # ✅ Environment-specific tags
+          """
+          # Development
+          myapp:develop-abc1234
+          myapp:develop-latest
+
+          # Staging
+          myapp:staging-abc1234
+          myapp:rc-1.2.3
+
+          # Production
+          myapp:1.2.3
+          myapp:1.2.3-abc1234
+          myapp:stable
+          """
+
+          # ✅ Kubernetes deployment with specific tag
+          """
+          apiVersion: apps/v1
+          kind: Deployment
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: app
+                    image: myapp:1.2.3-abc1234  # Immutable tag
+                    imagePullPolicy: IfNotPresent
+          """
+      bad_examples:
+        - |
+          # ❌ Using 'latest' in production
+          docker build -t myapp:latest .
+          docker push myapp:latest
+
+          # Kubernetes deployment
+          """
+          containers:
+            - name: app
+              image: myapp:latest  # Which version? When was it built?
+              imagePullPolicy: Always  # Forces pull but no guarantee of version
+          """
+      tags:
+        - tagging
+        - docker
+        - versioning
+
+  # ============================================================================
+  # MONITORING & INFRASTRUCTURE (DEVOPS010-DEVOPS015)
+  # ============================================================================
+
+  - id: DEVOPS010
+    title: 'Implement Application Monitoring'
+    category: monitoring
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - prometheus
+        - datadog
+        - newrelic
+    content:
+      description: |
+        Implement comprehensive monitoring: metrics, logs, traces, and
+        alerts. Use the four golden signals.
+      rationale: |
+        Monitoring enables proactive issue detection and faster
+        incident resolution.
+      good_examples:
+        - |
+          # ✅ Python app with Prometheus metrics
+          from prometheus_client import Counter, Histogram, Gauge, start_http_server
+          import time
+
+          # Define metrics
+          REQUEST_COUNT = Counter(
+              'http_requests_total',
+              'Total HTTP requests',
+              ['method', 'endpoint', 'status']
+          )
+
+          REQUEST_LATENCY = Histogram(
+              'http_request_duration_seconds',
+              'HTTP request latency',
+              ['method', 'endpoint'],
+              buckets=[.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10]
+          )
+
+          ACTIVE_REQUESTS = Gauge(
+              'http_requests_active',
+              'Active HTTP requests'
+          )
+
+          DB_POOL_SIZE = Gauge(
+              'db_pool_size',
+              'Database connection pool size'
+          )
+
+          # Middleware to collect metrics
+          def metrics_middleware(func):
+              def wrapper(*args, **kwargs):
+                  ACTIVE_REQUESTS.inc()
+                  start_time = time.time()
+                  try:
+                      response = func(*args, **kwargs)
+                      REQUEST_COUNT.labels(
+                          method=request.method,
+                          endpoint=request.path,
+                          status=response.status_code
+                      ).inc()
+                      return response
+                  finally:
+                      REQUEST_LATENCY.labels(
+                          method=request.method,
+                          endpoint=request.path
+                      ).observe(time.time() - start_time)
+                      ACTIVE_REQUESTS.dec()
+              return wrapper
+
+          # Start metrics endpoint
+          start_http_server(9090)
+
+          # ✅ Prometheus scrape config
+          """
+          # prometheus.yml
+          scrape_configs:
+            - job_name: 'app'
+              static_configs:
+                - targets: ['app:9090']
+              scrape_interval: 15s
+
+          # Alert rules
+          groups:
+            - name: app
+              rules:
+                - alert: HighErrorRate
+                  expr: |
+                    sum(rate(http_requests_total{status=~"5.."}[5m]))
+                    / sum(rate(http_requests_total[5m])) > 0.05
+                  for: 5m
+                  labels:
+                    severity: critical
+                  annotations:
+                    summary: High error rate detected
+          """
+      bad_examples:
+        - |
+          # ❌ No monitoring
+          @app.route('/api/data')
+          def get_data():
+              return data  # No metrics, no logging
+
+          # ❌ Only logging (no metrics)
+          logger.info(f'Request received: {request.path}')
+      references:
+        - 'https://prometheus.io/docs/practices/instrumentation/'
+      tags:
+        - monitoring
+        - prometheus
+        - metrics
+
+  - id: DEVOPS011
+    title: 'Implement Structured Logging'
+    category: monitoring
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - python
+        - nodejs
+    content:
+      description: |
+        Use structured JSON logging for machine-parseable logs. Include
+        context like request IDs, user IDs, and timestamps.
+      rationale: |
+        Structured logging enables efficient log aggregation, searching,
+        and analysis.
+      good_examples:
+        - |
+          # ✅ Python structured logging with structlog
+          import structlog
+          import logging
+
+          structlog.configure(
+              processors=[
+                  structlog.stdlib.filter_by_level,
+                  structlog.stdlib.add_logger_name,
+                  structlog.stdlib.add_log_level,
+                  structlog.stdlib.PositionalArgumentsFormatter(),
+                  structlog.processors.TimeStamper(fmt="iso"),
+                  structlog.processors.StackInfoRenderer(),
+                  structlog.processors.format_exc_info,
+                  structlog.processors.UnicodeDecoder(),
+                  structlog.processors.JSONRenderer()
+              ],
+              wrapper_class=structlog.stdlib.BoundLogger,
+              context_class=dict,
+              logger_factory=structlog.stdlib.LoggerFactory(),
+              cache_logger_on_first_use=True,
+          )
+
+          logger = structlog.get_logger()
+
+          # Usage with context
+          logger = logger.bind(
+              request_id=request.headers.get('X-Request-ID'),
+              user_id=current_user.id if current_user else None,
+          )
+
+          logger.info(
+              'order_created',
+              order_id=order.id,
+              total=float(order.total),
+              items_count=len(order.items),
+          )
+
+          # Output:
+          # {"event": "order_created", "order_id": 123, "total": 99.99,
+          #  "items_count": 3, "request_id": "abc-123", "user_id": 42,
+          #  "timestamp": "2024-01-15T10:30:00Z", "level": "info"}
+
+          # ✅ Middleware to add request context
+          @app.before_request
+          def add_request_context():
+              g.request_id = request.headers.get('X-Request-ID', str(uuid.uuid4()))
+              g.logger = logger.bind(
+                  request_id=g.request_id,
+                  method=request.method,
+                  path=request.path,
+                  ip=request.remote_addr,
+              )
+
+          # ✅ Exception logging with context
+          @app.errorhandler(Exception)
+          def handle_exception(error):
+              g.logger.exception(
+                  'unhandled_exception',
+                  error_type=type(error).__name__,
+                  error_message=str(error),
+              )
+              return {'error': 'Internal server error'}, 500
+      bad_examples:
+        - |
+          # ❌ Unstructured logging
+          print(f'Order created: {order.id}')
+
+          # ❌ No context
+          logger.info('Request received')  # Which request? From who?
+      references:
+        - 'https://www.structlog.org/'
+      tags:
+        - logging
+        - structured
+        - observability
+
+  - id: DEVOPS012
+    title: 'Implement Health Checks'
+    category: reliability
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - kubernetes
+        - docker
+    content:
+      description: |
+        Implement health check endpoints for liveness and readiness probes.
+        Check all critical dependencies.
+      rationale: |
+        Health checks enable automated recovery, load balancing,
+        and zero-downtime deployments.
+      good_examples:
+        - |
+          # ✅ Comprehensive health check endpoint
+          from flask import Flask, jsonify
+          import redis
+          import psycopg2
+
+          app = Flask(__name__)
+
+          @app.route('/health')
+          def health():
+              """Comprehensive health check."""
+              checks = {
+                  'database': check_database(),
+                  'redis': check_redis(),
+                  'disk': check_disk_space(),
+                  'memory': check_memory(),
+              }
+
+              status = 'healthy' if all(checks.values()) else 'unhealthy'
+              code = 200 if status == 'healthy' else 503
+
+              return jsonify({
+                  'status': status,
+                  'checks': checks,
+                  'version': app.config.get('VERSION'),
+                  'timestamp': datetime.utcnow().isoformat(),
+              }), code
+
+          @app.route('/health/live')
+          def liveness():
+              """Liveness probe - is the app running?"""
+              return jsonify({'status': 'alive'}), 200
+
+          @app.route('/health/ready')
+          def readiness():
+              """Readiness probe - can the app serve traffic?"""
+              if not check_database():
+                  return jsonify({'status': 'not ready', 'reason': 'database'}), 503
+              return jsonify({'status': 'ready'}), 200
+
+          def check_database():
+              try:
+                  conn = psycopg2.connect(os.environ['DATABASE_URL'])
+                  cur = conn.cursor()
+                  cur.execute('SELECT 1')
+                  conn.close()
+                  return True
+              except Exception:
+                  return False
+
+          def check_redis():
+              try:
+                  r = redis.from_url(os.environ['REDIS_URL'])
+                  r.ping()
+                  return True
+              except Exception:
+                  return False
+
+          # ✅ Kubernetes deployment with probes
+          """
+          apiVersion: apps/v1
+          kind: Deployment
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: app
+                    livenessProbe:
+                      httpGet:
+                        path: /health/live
+                        port: 8000
+                      initialDelaySeconds: 15
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                      failureThreshold: 3
+                    readinessProbe:
+                      httpGet:
+                        path: /health/ready
+                        port: 8000
+                      initialDelaySeconds: 5
+                      periodSeconds: 5
+                      timeoutSeconds: 3
+                      failureThreshold: 3
+                    startupProbe:
+                      httpGet:
+                        path: /health/live
+                        port: 8000
+                      initialDelaySeconds: 10
+                      periodSeconds: 5
+                      failureThreshold: 30
+          """
+      bad_examples:
+        - |
+          # ❌ No health checks
+          # Kubernetes has no way to know if app is healthy
+
+          # ❌ Health check that always returns 200
+          @app.route('/health')
+          def health():
+              return 'OK'  # Doesn't check dependencies!
+      tags:
+        - health-checks
+        - kubernetes
+        - reliability
+
+  - id: DEVOPS013
+    title: 'Implement Infrastructure as Code'
+    category: infrastructure
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - terraform
+        - pulumi
+        - cloudformation
+    content:
+      description: |
+        Define infrastructure using code. Version control infrastructure,
+        use modules, and implement proper state management.
+      rationale: |
+        Infrastructure as Code enables reproducible, auditable,
+        and version-controlled infrastructure.
+      good_examples:
+        - |
+          # ✅ Terraform module structure
+          """
+          infrastructure/
+          ├── environments/
+          │   ├── dev/
+          │   │   ├── main.tf
+          │   │   ├── variables.tf
+          │   │   └── terraform.tfvars
+          │   └── prod/
+          │       ├── main.tf
+          │       ├── variables.tf
+          │       └── terraform.tfvars
+          └── modules/
+              ├── vpc/
+              ├── database/
+              └── kubernetes/
+          """
+
+          # ✅ Terraform main.tf
+          """
+          terraform {
+            required_version = ">= 1.5"
+
+            required_providers {
+              aws = {
+                source  = "hashicorp/aws"
+                version = "~> 5.0"
+              }
+            }
+
+            backend "s3" {
+              bucket         = "my-terraform-state"
+              key            = "prod/terraform.tfstate"
+              region         = "us-east-1"
+              encrypt        = true
+              dynamodb_table = "terraform-locks"
+            }
+          }
+
+          module "vpc" {
+            source = "../../modules/vpc"
+
+            environment = var.environment
+            cidr_block  = var.vpc_cidr
+
+            tags = local.common_tags
+          }
+
+          module "database" {
+            source = "../../modules/database"
+
+            environment     = var.environment
+            vpc_id          = module.vpc.vpc_id
+            subnet_ids      = module.vpc.private_subnet_ids
+            instance_class  = var.db_instance_class
+
+            tags = local.common_tags
+          }
+
+          locals {
+            common_tags = {
+              Environment = var.environment
+              ManagedBy   = "terraform"
+              Project     = var.project_name
+            }
+          }
+          """
+
+          # ✅ CI/CD for Terraform
+          """
+          plan:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v4
+
+              - name: Setup Terraform
+                uses: hashicorp/setup-terraform@v3
+
+              - name: Terraform Init
+                run: terraform init
+
+              - name: Terraform Plan
+                run: terraform plan -out=tfplan
+
+              - name: Upload Plan
+                uses: actions/upload-artifact@v4
+                with:
+                  name: tfplan
+                  path: tfplan
+
+          apply:
+            needs: plan
+            runs-on: ubuntu-latest
+            environment: production  # Requires approval
+            steps:
+              - name: Download Plan
+                uses: actions/download-artifact@v4
+                with:
+                  name: tfplan
+
+              - name: Terraform Apply
+                run: terraform apply -auto-approve tfplan
+          """
+      bad_examples:
+        - |
+          # ❌ Manual infrastructure
+          # aws ec2 run-instances ...  # Not reproducible
+
+          # ❌ No state management
+          terraform {
+            # No backend - state stored locally!
+          }
+
+          # ❌ Hardcoded values
+          resource "aws_instance" "app" {
+            ami           = "ami-12345"  # Hardcoded!
+            instance_type = "t3.large"   # Hardcoded!
+          }
+      references:
+        - 'https://developer.hashicorp.com/terraform/language'
+      tags:
+        - terraform
+        - iac
+        - infrastructure
+
+  - id: DEVOPS014
+    title: 'Implement GitOps'
+    category: deployment
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - kubernetes
+        - argocd
+        - flux
+    content:
+      description: |
+        Use GitOps for declarative, version-controlled deployments.
+        Git is the source of truth for infrastructure and applications.
+      rationale: |
+        GitOps provides auditability, rollback capability, and
+        consistent deployments through Git workflows.
+      good_examples:
+        - |
+          # ✅ ArgoCD Application
+          """
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: myapp
+            namespace: argocd
+          spec:
+            project: default
+            source:
+              repoURL: https://github.com/org/app-config
+              targetRevision: HEAD
+              path: environments/production
+            destination:
+              server: https://kubernetes.default.svc
+              namespace: myapp
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+              syncOptions:
+                - CreateNamespace=true
+          """
+
+          # ✅ Kustomize structure for GitOps
+          """
+          app-config/
+          ├── base/
+          │   ├── deployment.yaml
+          │   ├── service.yaml
+          │   └── kustomization.yaml
+          └── environments/
+              ├── dev/
+              │   ├── kustomization.yaml
+              │   └── patches/
+              │       └── replicas.yaml
+              └── production/
+                  ├── kustomization.yaml
+                  └── patches/
+                      ├── replicas.yaml
+                      └── resources.yaml
+          """
+
+          # ✅ base/kustomization.yaml
+          """
+          apiVersion: kustomize.config.k8s.io/v1beta1
+          kind: Kustomization
+
+          resources:
+            - deployment.yaml
+            - service.yaml
+
+          commonLabels:
+            app: myapp
+          """
+
+          # ✅ environments/production/kustomization.yaml
+          """
+          apiVersion: kustomize.config.k8s.io/v1beta1
+          kind: Kustomization
+
+          resources:
+            - ../../base
+
+          namespace: production
+
+          images:
+            - name: myapp
+              newTag: v1.2.3
+
+          patches:
+            - path: patches/replicas.yaml
+            - path: patches/resources.yaml
+          """
+
+          # ✅ CI pipeline that updates config repo
+          """
+          update-deployment:
+            runs-on: ubuntu-latest
+            needs: build
+            steps:
+              - name: Checkout config repo
+                uses: actions/checkout@v4
+                with:
+                  repository: org/app-config
+                  token: ${{ secrets.CONFIG_REPO_TOKEN }}
+
+              - name: Update image tag
+                run: |
+                  cd environments/production
+                  kustomize edit set image myapp=myapp:${{ github.sha }}
+
+              - name: Commit and push
+                run: |
+                  git config user.name "GitHub Actions"
+                  git config user.email "actions@github.com"
+                  git add .
+                  git commit -m "Update myapp to ${{ github.sha }}"
+                  git push
+          """
+      bad_examples:
+        - |
+          # ❌ Imperative deployments
+          kubectl apply -f deployment.yaml  # Not tracked in Git
+          kubectl set image deployment/app app=myapp:v2  # Ad-hoc changes
+      references:
+        - 'https://argo-cd.readthedocs.io/'
+      tags:
+        - gitops
+        - argocd
+        - kubernetes
+
+  - id: DEVOPS015
+    title: 'Implement Disaster Recovery'
+    category: reliability
+    level: advanced
+    priority: high
+    applicability:
+      frameworks:
+        - aws
+        - kubernetes
+    content:
+      description: |
+        Implement disaster recovery: automated backups, multi-region
+        deployment, and tested recovery procedures.
+      rationale: |
+        Disaster recovery ensures business continuity and minimizes
+        data loss during outages.
+      good_examples:
+        - |
+          # ✅ Automated database backups
+          """
+          # Kubernetes CronJob for backup
+          apiVersion: batch/v1
+          kind: CronJob
+          metadata:
+            name: db-backup
+          spec:
+            schedule: "0 2 * * *"  # Daily at 2 AM
+            concurrencyPolicy: Forbid
+            jobTemplate:
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: backup
+                        image: postgres:15
+                        command:
+                          - /bin/sh
+                          - -c
+                          - |
+                            pg_dump $DATABASE_URL | gzip > /backup/db-$(date +%Y%m%d).sql.gz
+                            # Upload to S3
+                            aws s3 cp /backup/ s3://backups/ --recursive
+                            # Clean old backups (keep 30 days)
+                            aws s3 ls s3://backups/ | while read -r line; do
+                              create_date=$(echo $line | awk '{print $1}')
+                              if [[ $(date -d "$create_date" +%s) -lt $(date -d "-30 days" +%s) ]]; then
+                                aws s3 rm "s3://backups/$(echo $line | awk '{print $4}')"
+                              fi
+                            done
+                        volumeMounts:
+                          - name: backup-volume
+                            mountPath: /backup
+                    restartPolicy: OnFailure
+          """
+
+          # ✅ Multi-region deployment (Terraform)
+          """
+          # Primary region
+          module "primary" {
+            source = "./modules/app"
+
+            providers = {
+              aws = aws.primary
+            }
+
+            region     = "us-east-1"
+            is_primary = true
+          }
+
+          # DR region
+          module "dr" {
+            source = "./modules/app"
+
+            providers = {
+              aws = aws.dr
+            }
+
+            region     = "us-west-2"
+            is_primary = false
+          }
+
+          # Global database with read replica
+          resource "aws_rds_cluster" "main" {
+            cluster_identifier = "main-cluster"
+            engine             = "aurora-postgresql"
+
+            # Enable global database for cross-region replication
+            global_cluster_identifier = aws_rds_global_cluster.global.id
+          }
+
+          resource "aws_rds_global_cluster" "global" {
+            global_cluster_identifier = "global-cluster"
+            engine                    = "aurora-postgresql"
+          }
+          """
+
+          # ✅ Backup verification
+          """
+          verify-backup:
+            runs-on: ubuntu-latest
+            schedule:
+              - cron: '0 4 * * 0'  # Weekly
+            steps:
+              - name: Download latest backup
+                run: |
+                  aws s3 cp s3://backups/$(aws s3 ls s3://backups/ | tail -1 | awk '{print $4}') backup.sql.gz
+
+              - name: Restore to test database
+                run: |
+                  gunzip backup.sql.gz
+                  psql $TEST_DATABASE_URL < backup.sql
+
+              - name: Verify data integrity
+                run: |
+                  python scripts/verify_backup.py
+
+              - name: Alert on failure
+                if: failure()
+                uses: slackapi/slack-github-action@v1
+                with:
+                  payload: |
+                    {"text": "Backup verification failed!"}
+          """
+      bad_examples:
+        - |
+          # ❌ No backups
+          # Hope the database never fails!
+
+          # ❌ Untested backups
+          # Backups exist but never verified - might be corrupt
+
+          # ❌ No multi-region
+          # Single region = single point of failure
+      tags:
+        - disaster-recovery
+        - backups
+        - multi-region

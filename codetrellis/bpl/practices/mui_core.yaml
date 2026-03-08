@@ -1,0 +1,610 @@
+# Material UI (MUI) Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.36 - Material UI (MUI) Framework Support
+# Practice IDs: MUI001-MUI050
+# Coverage: Components, Theme, Styling, Hooks, Performance, Accessibility,
+#           Forms, DataGrid, Navigation, Migration
+# Versions: MUI v4.x, v5.x, v6.x
+
+practices:
+  # ============================================================================
+  # MUI COMPONENTS (MUI001-MUI010)
+  # ============================================================================
+
+  - id: MUI001
+    title: "Import MUI components from top-level paths"
+    description: "Use named imports from @mui/material instead of deep path imports. Barrel imports with tree-shaking support produce optimal bundles. Deep imports like @mui/material/Button are only needed for specific bundle size concerns."
+    category: "mui_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "imports", "bundle-size"]
+    example: |
+      // Good: named imports (tree-shakeable)
+      import { Button, TextField, Box } from '@mui/material';
+
+      // Also acceptable: direct imports
+      import Button from '@mui/material/Button';
+
+      // Avoid: importing entire library
+      import * as MUI from '@mui/material';
+
+  - id: MUI002
+    title: "Use composition over configuration for complex components"
+    description: "Build complex UIs by composing smaller MUI components instead of over-configuring a single component. Composition is more maintainable and testable."
+    category: "mui_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "composition", "components"]
+    example: |
+      // Good: composition
+      <Card>
+        <CardHeader title="Settings" />
+        <CardContent>
+          <TextField label="Name" />
+        </CardContent>
+        <CardActions>
+          <Button>Save</Button>
+        </CardActions>
+      </Card>
+
+  - id: MUI003
+    title: "Use slots API for component customization"
+    description: "Prefer the slots and slotProps API for customizing sub-components over component-level props. The slots API provides type-safe, granular control over each internal element."
+    category: "mui_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "slots", "customization"]
+    example: |
+      // Good: slots API
+      <TextField
+        slotProps={{
+          input: { startAdornment: <SearchIcon /> },
+          inputLabel: { shrink: true },
+        }}
+      />
+
+  - id: MUI004
+    title: "Prefer MUI layout components for responsive design"
+    description: "Use Box, Stack, Grid, and Container for layout. These integrate with the MUI theme system for breakpoints and spacing, ensuring consistent responsive behavior."
+    category: "mui_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "layout", "responsive"]
+    example: |
+      // Good: MUI layout components
+      <Container maxWidth="lg">
+        <Stack spacing={2}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Card>...</Card>
+            </Grid>
+          </Grid>
+        </Stack>
+      </Container>
+
+  - id: MUI005
+    title: "Use MUI icons from @mui/icons-material"
+    description: "Import icons from @mui/icons-material for consistent sizing, theming, and accessibility. Avoid mixing icon libraries unless necessary."
+    category: "mui_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "icons", "consistency"]
+
+  - id: MUI006
+    title: "Wrap application with ThemeProvider and CssBaseline"
+    description: "Always wrap your app with ThemeProvider and include CssBaseline for consistent baseline styles. This normalizes browser defaults and enables theme propagation."
+    category: "mui_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "theme-provider", "setup"]
+    example: |
+      import { ThemeProvider, CssBaseline } from '@mui/material';
+      import theme from './theme';
+
+      function App() {
+        return (
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <YourApp />
+          </ThemeProvider>
+        );
+      }
+
+  - id: MUI007
+    title: "Use controlled components for form inputs"
+    description: "MUI form components (TextField, Select, Checkbox, etc.) should be controlled with value/onChange for predictable state. Use FormControl for validation states."
+    category: "mui_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "forms", "controlled"]
+
+  - id: MUI008
+    title: "Use proper variant props for visual hierarchy"
+    description: "Choose component variants (contained, outlined, text for Button; filled, outlined, standard for TextField) to establish clear visual hierarchy."
+    category: "mui_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "variants", "design"]
+
+  - id: MUI009
+    title: "Use MUI X components for advanced data patterns"
+    description: "Use MUI X DataGrid for tables with sorting/filtering/pagination, DatePicker for dates, TreeView for hierarchies. These are optimized for performance and accessibility."
+    category: "mui_data_grid"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "mui-x", "data-grid"]
+
+  - id: MUI010
+    title: "Use Skeleton components for loading states"
+    description: "Provide visual loading feedback with Skeleton components matching the shape of expected content. This improves perceived performance."
+    category: "mui_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "loading", "skeleton"]
+
+  # ============================================================================
+  # MUI THEME (MUI011-MUI020)
+  # ============================================================================
+
+  - id: MUI011
+    title: "Centralize theme configuration with createTheme"
+    description: "Define all design tokens (palette, typography, spacing, breakpoints) in a single createTheme call. Avoid scattered inline style overrides."
+    category: "mui_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "theme", "design-tokens"]
+    example: |
+      const theme = createTheme({
+        palette: {
+          primary: { main: '#1976d2' },
+          secondary: { main: '#dc004e' },
+        },
+        typography: {
+          fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+          h1: { fontSize: '2.5rem', fontWeight: 500 },
+        },
+        spacing: 8,
+      });
+
+  - id: MUI012
+    title: "Use theme.palette for all colors"
+    description: "Reference theme palette colors (primary, secondary, error, warning, info, success) instead of hardcoded hex values. This ensures dark mode compatibility and consistent branding."
+    category: "mui_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "palette", "colors"]
+
+  - id: MUI013
+    title: "Define custom typography variants in theme"
+    description: "Extend the typography system via createTheme for project-specific variants. Avoid ad-hoc font styling scattered across components."
+    category: "mui_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "typography", "theme"]
+
+  - id: MUI014
+    title: "Use theme component overrides for global styling"
+    description: "Use theme.components[MuiComponent].styleOverrides for global component styling instead of repeated sx/styled overrides. This centralizes design decisions."
+    category: "mui_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "overrides", "global-styles"]
+    example: |
+      const theme = createTheme({
+        components: {
+          MuiButton: {
+            styleOverrides: {
+              root: { textTransform: 'none', borderRadius: 8 },
+            },
+            defaultProps: { disableElevation: true },
+          },
+        },
+      });
+
+  - id: MUI015
+    title: "Use theme.breakpoints for responsive values"
+    description: "Use theme.breakpoints.up/down/between/only for media queries. These integrate with the theme's breakpoint system for consistent responsiveness."
+    category: "mui_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "breakpoints", "responsive"]
+
+  - id: MUI016
+    title: "Enable CSS variables for better performance"
+    description: "Use cssVariables: true in createTheme (v5.1+) to enable CSS custom properties. This improves SSR, prevents flickering, and enables non-React styling integration."
+    category: "mui_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "css-variables", "performance"]
+
+  - id: MUI017
+    title: "Support dark mode via colorSchemes"
+    description: "Implement dark mode using theme colorSchemes (v6) or palette.mode. Avoid conditional styling; let the theme system handle light/dark switching."
+    category: "mui_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "dark-mode", "color-schemes"]
+    example: |
+      // v6: colorSchemes
+      const theme = createTheme({
+        colorSchemes: {
+          light: { palette: { primary: { main: '#1976d2' } } },
+          dark: { palette: { primary: { main: '#90caf9' } } },
+        },
+      });
+
+  - id: MUI018
+    title: "Use theme.spacing for consistent spacing"
+    description: "Use the theme spacing function (theme.spacing(2)) or spacing props (p={2}, m={3}) for consistent spacing. Avoid arbitrary pixel values."
+    category: "mui_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "spacing", "consistency"]
+
+  - id: MUI019
+    title: "Keep theme file separate and importable"
+    description: "Define the theme in a dedicated file (theme.ts) and import it into the root App component. This enables reuse across test setups, Storybook, and SSR configurations."
+    category: "mui_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "theme", "organization"]
+
+  - id: MUI020
+    title: "Use augmentColor for custom palette colors"
+    description: "When adding custom palette colors beyond primary/secondary, use augmentColor or provide main/light/dark/contrastText for full component compatibility."
+    category: "mui_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "palette", "custom-colors"]
+
+  # ============================================================================
+  # MUI STYLING (MUI021-MUI030)
+  # ============================================================================
+
+  - id: MUI021
+    title: "Prefer sx prop for one-off styles"
+    description: "Use the sx prop for component-specific styles that don't warrant a styled component. The sx prop supports theme access, responsive arrays, and pseudo-selectors."
+    category: "mui_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "sx-prop", "styling"]
+    example: |
+      <Box
+        sx={{
+          p: 2,
+          bgcolor: 'primary.main',
+          color: 'primary.contrastText',
+          borderRadius: 1,
+          '&:hover': { bgcolor: 'primary.dark' },
+        }}
+      />
+
+  - id: MUI022
+    title: "Use styled() API for reusable styled components"
+    description: "Use the styled() utility from @mui/material/styles for components reused across files. Include name and slot for DevTools and override support."
+    category: "mui_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "styled", "reusable"]
+    example: |
+      const StyledCard = styled(Card, {
+        name: 'AppCard',
+        slot: 'Root',
+      })(({ theme }) => ({
+        borderRadius: theme.shape.borderRadius * 2,
+        boxShadow: theme.shadows[4],
+      }));
+
+  - id: MUI023
+    title: "Migrate from makeStyles to styled/sx in v5+"
+    description: "In MUI v5+, replace makeStyles/withStyles with the styled() API or sx prop. Use tss-react as a migration bridge if needed."
+    category: "mui_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "migration", "makeStyles"]
+
+  - id: MUI024
+    title: "Use theme callbacks in sx for dynamic styles"
+    description: "Access the theme in sx via callback syntax: sx={(theme) => ({...})}. This enables type-safe, theme-aware dynamic styling."
+    category: "mui_styling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "sx-prop", "theme-callback"]
+
+  - id: MUI025
+    title: "Use system props for common styling shortcuts"
+    description: "Leverage system props (p, m, display, width, etc.) directly on Box, Stack, and Grid for concise styling without sx overhead."
+    category: "mui_styling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "system-props", "shortcuts"]
+
+  - id: MUI026
+    title: "Avoid inline style objects in render"
+    description: "Extract style objects outside the render function or use useMemo to prevent unnecessary re-renders from new object references."
+    category: "mui_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "performance", "inline-styles"]
+
+  - id: MUI027
+    title: "Use responsive values in sx with array syntax"
+    description: "Express responsive values with array syntax in sx: [mobile, tablet, desktop]. This aligns with theme breakpoints for clean responsive styling."
+    category: "mui_styling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "responsive", "sx-prop"]
+    example: |
+      <Box sx={{ width: [1, 1/2, 1/3], p: [1, 2, 3] }}>
+        Responsive box
+      </Box>
+
+  - id: MUI028
+    title: "Use shouldForwardProp in styled components"
+    description: "Filter custom props from DOM elements with shouldForwardProp in styled() to avoid React warnings for unknown DOM attributes."
+    category: "mui_styling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "styled", "shouldForwardProp"]
+
+  - id: MUI029
+    title: "Consider Pigment CSS for zero-runtime styling in v6"
+    description: "In MUI v6, evaluate Pigment CSS (@pigment-css/react) for build-time CSS extraction, eliminating runtime CSS-in-JS overhead."
+    category: "mui_styling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "pigment-css", "performance"]
+
+  - id: MUI030
+    title: "Use overridesResolver for theme-aware styled components"
+    description: "Include overridesResolver in styled() options to enable theme component overrides on custom components, making them first-class theme citizens."
+    category: "mui_styling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "styled", "overrides"]
+
+  # ============================================================================
+  # MUI HOOKS (MUI031-MUI035)
+  # ============================================================================
+
+  - id: MUI031
+    title: "Use useTheme for dynamic theme access"
+    description: "Access theme values in component logic with useTheme(). Avoid duplicating theme values in component state."
+    category: "mui_hooks"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "useTheme", "hooks"]
+
+  - id: MUI032
+    title: "Use useMediaQuery for responsive logic"
+    description: "Use useMediaQuery with theme breakpoints for responsive component logic (show/hide, layout changes). Combine with theme.breakpoints.up/down for consistency."
+    category: "mui_hooks"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "useMediaQuery", "responsive"]
+    example: |
+      const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+      return isMobile ? <MobileLayout /> : <DesktopLayout />;
+
+  - id: MUI033
+    title: "Use MUI Base hooks for headless components"
+    description: "For fully custom UI, use @mui/base hooks (useMenu, useSelect, useTabs, etc.) for accessible behavior without MUI styling."
+    category: "mui_hooks"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "headless", "mui-base"]
+
+  - id: MUI034
+    title: "Use useColorScheme for dark mode toggle"
+    description: "In MUI v6, use useColorScheme() to read and toggle between light/dark/system modes. This integrates with the colorSchemes theme API."
+    category: "mui_hooks"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "useColorScheme", "dark-mode"]
+
+  - id: MUI035
+    title: "Use useGridApiRef for programmatic DataGrid control"
+    description: "Use useGridApiRef for imperative DataGrid operations (scrolling, selection, export). Store apiRef in component and pass to DataGrid."
+    category: "mui_data_grid"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "data-grid", "apiRef"]
+
+  # ============================================================================
+  # MUI PERFORMANCE (MUI036-MUI040)
+  # ============================================================================
+
+  - id: MUI036
+    title: "Lazy load heavy MUI X components"
+    description: "Use React.lazy/Suspense for MUI X components (DataGrid, DatePicker, Charts) to reduce initial bundle size. These are large components that may not be needed immediately."
+    category: "mui_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "lazy-loading", "bundle-size"]
+
+  - id: MUI037
+    title: "Use virtualization for large lists"
+    description: "For long lists, use DataGrid's built-in row virtualization or pair MUI List with react-window/react-virtualized. Never render 100+ items without virtualization."
+    category: "mui_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "virtualization", "performance"]
+
+  - id: MUI038
+    title: "Memoize DataGrid column definitions"
+    description: "Define DataGrid columns outside the render function or wrap with useMemo. Column definition changes trigger full grid re-renders."
+    category: "mui_data_grid"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "data-grid", "memoization"]
+    example: |
+      // Good: stable column definition
+      const columns = useMemo<GridColDef[]>(() => [
+        { field: 'id', headerName: 'ID', width: 90 },
+        { field: 'name', headerName: 'Name', flex: 1 },
+      ], []);
+
+  - id: MUI039
+    title: "Use disableRipple selectively for performance"
+    description: "Disable ripple effects on frequently clicked components in performance-critical areas. Apply via theme defaultProps for consistency."
+    category: "mui_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "ripple", "performance"]
+
+  - id: MUI040
+    title: "Minimize theme nesting depth"
+    description: "Avoid deeply nested ThemeProvider components. Use a single ThemeProvider at the root with component overrides instead of nesting themes for localized changes."
+    category: "mui_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "theme-nesting", "performance"]
+
+  # ============================================================================
+  # MUI ACCESSIBILITY (MUI041-MUI044)
+  # ============================================================================
+
+  - id: MUI041
+    title: "Provide accessible labels for all interactive elements"
+    description: "Ensure all MUI inputs have associated labels (via InputLabel, aria-label, or aria-labelledby). IconButton must have aria-label."
+    category: "mui_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "accessibility", "labels"]
+    example: |
+      // Good: labeled IconButton
+      <IconButton aria-label="delete item">
+        <DeleteIcon />
+      </IconButton>
+
+      // Good: TextField with label
+      <TextField label="Email" />
+
+  - id: MUI042
+    title: "Use proper Dialog accessibility patterns"
+    description: "Dialogs must have aria-labelledby pointing to DialogTitle and aria-describedby pointing to DialogContentText. Manage focus trap and return focus on close."
+    category: "mui_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "dialog", "accessibility"]
+
+  - id: MUI043
+    title: "Ensure color contrast meets WCAG standards"
+    description: "Custom palette colors must meet WCAG 2.1 AA contrast ratios (4.5:1 for text, 3:1 for UI). Use theme.palette.getContrastText() for automatic contrast text."
+    category: "mui_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "contrast", "wcag"]
+
+  - id: MUI044
+    title: "Use Alert component with proper roles"
+    description: "MUI Alert includes role='alert' by default. For non-critical info, use severity='info' with role='status'. Use Snackbar with auto-hide for temporary messages."
+    category: "mui_accessibility"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "alert", "roles"]
+
+  # ============================================================================
+  # MUI FORMS & NAVIGATION (MUI045-MUI048)
+  # ============================================================================
+
+  - id: MUI045
+    title: "Use FormControl for coordinated form field state"
+    description: "Wrap related inputs with FormControl to coordinate error, disabled, and required states. Use FormHelperText for validation messages."
+    category: "mui_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "forms", "form-control"]
+
+  - id: MUI046
+    title: "Integrate MUI with form libraries properly"
+    description: "When using React Hook Form or Formik with MUI, wrap MUI inputs with Controller (RHF) or use Field components. Avoid managing duplicate state."
+    category: "mui_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "forms", "integration"]
+
+  - id: MUI047
+    title: "Use responsive Drawer with proper breakpoints"
+    description: "Implement responsive navigation with Drawer variant switching: permanent on desktop, temporary on mobile. Use useMediaQuery with theme breakpoints."
+    category: "mui_navigation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "drawer", "responsive"]
+
+  - id: MUI048
+    title: "Use Tabs with proper keyboard navigation"
+    description: "MUI Tabs support keyboard navigation by default. Ensure TabPanel content is associated via role='tabpanel' and aria-labelledby for accessibility."
+    category: "mui_navigation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "tabs", "keyboard-navigation"]
+
+  # ============================================================================
+  # MUI MIGRATION (MUI049-MUI050)
+  # ============================================================================
+
+  - id: MUI049
+    title: "Follow MUI v4 to v5 migration guide"
+    description: "When migrating from v4 to v5: replace @material-ui/* with @mui/*, migrate makeStyles to styled/sx, update ThemeProvider, replace fade() with alpha(), update component APIs per codemods."
+    category: "mui_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "migration", "v4-to-v5"]
+
+  - id: MUI050
+    title: "Prepare for MUI v6 features"
+    description: "In v6: adopt colorSchemes for dark mode, evaluate Pigment CSS for zero-runtime, use Grid v2, update to new slot naming conventions. Test with cssVariables: true."
+    category: "mui_migration"
+    severity: "recommended"
+    applicability:
+      frameworks: ["mui", "react"]
+    tags: ["mui", "migration", "v5-to-v6"]

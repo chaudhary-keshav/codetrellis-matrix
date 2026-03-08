@@ -1,0 +1,564 @@
+# CodeTrellis Best Practice Library - PowerShell Core Practices
+# v4.29: PowerShell Language Support (Windows PowerShell 1.0-5.1, PowerShell Core 6.0-7.4+)
+# 50 practices covering cmdlet design, pipeline, DSC, error handling, modules,
+# security, remoting, classes, Pester, performance, style, scripting, cloud, web.
+
+practices:
+  # ════════════════════════════════════════════════════════════════
+  # PS_CMDLET_DESIGN (PS001-PS005)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS001
+    title: "Use approved verbs for function names"
+    category: ps_cmdlet_design
+    level: beginner
+    description: >
+      Always use approved verbs from Get-Verb for function names (e.g., Get-,
+      Set-, New-, Remove-). This ensures consistency with the PowerShell ecosystem
+      and avoids warnings when importing modules. Use Verb-Noun naming convention.
+    tags: [powershell, naming, cmdlet]
+
+  - id: PS002
+    title: "Use CmdletBinding for advanced functions"
+    category: ps_cmdlet_design
+    level: beginner
+    description: >
+      Add [CmdletBinding()] to all functions to enable common parameters
+      (-Verbose, -Debug, -ErrorAction, etc.). This transforms simple functions
+      into advanced functions with full parameter binding support.
+    tags: [powershell, cmdlet, advanced]
+
+  - id: PS003
+    title: "Validate parameters with validation attributes"
+    category: ps_cmdlet_design
+    level: intermediate
+    description: >
+      Use [ValidateNotNullOrEmpty()], [ValidateSet()], [ValidateRange()],
+      [ValidatePattern()], [ValidateScript()] attributes on parameters. This
+      provides early validation before function body executes and generates
+      clear error messages.
+    tags: [powershell, validation, parameters]
+
+  - id: PS004
+    title: "Support ShouldProcess for destructive operations"
+    category: ps_cmdlet_design
+    level: intermediate
+    description: >
+      Add SupportsShouldProcess=$true to CmdletBinding and call
+      $PSCmdlet.ShouldProcess() before destructive operations. This enables
+      -WhatIf and -Confirm parameters automatically for safe scripting.
+    tags: [powershell, safety, cmdlet]
+
+  - id: PS005
+    title: "Define OutputType for return type documentation"
+    category: ps_cmdlet_design
+    level: intermediate
+    description: >
+      Use [OutputType([TypeName])] attribute on functions to document the
+      expected return type. This enables IntelliSense in editors and helps
+      pipeline consumers know what to expect.
+    tags: [powershell, documentation, cmdlet]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_PIPELINE (PS006-PS010)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS006
+    title: "Support pipeline input with ValueFromPipeline"
+    category: ps_pipeline
+    level: beginner
+    description: >
+      Mark parameters with [Parameter(ValueFromPipeline=$true)] or
+      [Parameter(ValueFromPipelineByPropertyName=$true)] to accept pipeline
+      input. Use begin/process/end blocks for proper pipeline processing.
+    tags: [powershell, pipeline, parameters]
+
+  - id: PS007
+    title: "Use begin/process/end blocks for pipeline functions"
+    category: ps_pipeline
+    level: intermediate
+    description: >
+      Structure pipeline functions with begin{} for initialization,
+      process{} for per-item processing (runs once per pipeline object),
+      and end{} for cleanup. This enables proper streaming behavior.
+    tags: [powershell, pipeline, functions]
+
+  - id: PS008
+    title: "Avoid unnecessary collection in pipelines"
+    category: ps_pipeline
+    level: intermediate
+    description: >
+      Avoid @() wrapping or assigning pipeline output to variables when
+      streaming is sufficient. Let PowerShell's pipeline handle one-at-a-time
+      processing for better memory efficiency with large datasets.
+    tags: [powershell, pipeline, performance]
+
+  - id: PS009
+    title: "Use ForEach-Object -Parallel for CPU-bound work (7.0+)"
+    category: ps_pipeline
+    level: advanced
+    description: >
+      In PowerShell 7.0+, use ForEach-Object -Parallel for CPU-intensive
+      operations. Set -ThrottleLimit appropriately. Note that $using: scope
+      is required for external variables and some types are not serializable.
+    tags: [powershell, pipeline, parallel, pwsh7]
+
+  - id: PS010
+    title: "Emit single objects, not collections"
+    category: ps_pipeline
+    level: intermediate
+    description: >
+      Functions should emit objects one at a time (Write-Output $item) rather
+      than collecting and returning arrays. This enables proper pipeline
+      streaming and reduces memory usage.
+    tags: [powershell, pipeline, output]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_DSC (PS011-PS015)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS011
+    title: "Use class-based DSC resources (PS 5.0+)"
+    category: ps_dsc
+    level: intermediate
+    description: >
+      Prefer class-based DSC resources with [DscResource()] attribute over
+      MOF-based resources. Class-based resources are easier to test, support
+      IntelliSense, and don't require MOF schema files.
+    tags: [powershell, dsc, configuration]
+    applicability:
+      frameworks: [dsc, powershell]
+
+  - id: PS012
+    title: "Implement Get, Set, and Test methods in DSC resources"
+    category: ps_dsc
+    level: intermediate
+    description: >
+      Every DSC resource must implement Get() returning the current state,
+      Test() returning [bool] for compliance check, and Set() to enforce
+      the desired state. Make Test() idempotent.
+    tags: [powershell, dsc, resource]
+    applicability:
+      frameworks: [dsc, powershell]
+
+  - id: PS013
+    title: "Use DependsOn for resource ordering"
+    category: ps_dsc
+    level: beginner
+    description: >
+      Explicitly declare resource dependencies with DependsOn to control
+      execution order. Use the format [ResourceType]ResourceName. Avoid
+      implicit ordering assumptions.
+    tags: [powershell, dsc, dependencies]
+    applicability:
+      frameworks: [dsc, powershell]
+
+  - id: PS014
+    title: "Test DSC configurations with Test-DscConfiguration"
+    category: ps_dsc
+    level: intermediate
+    description: >
+      Always run Test-DscConfiguration before Start-DscConfiguration to
+      verify compliance. Use -Detailed for granular resource-level status.
+      Integrate compliance checks into CI/CD pipelines.
+    tags: [powershell, dsc, testing]
+    applicability:
+      frameworks: [dsc, powershell]
+
+  - id: PS015
+    title: "Use configuration data for environment separation"
+    category: ps_dsc
+    level: advanced
+    description: >
+      Separate configuration logic from environment-specific data using
+      ConfigurationData hashtables with AllNodes and NonNodeData. Never
+      hardcode server names or credentials in Configuration blocks.
+    tags: [powershell, dsc, configuration]
+    applicability:
+      frameworks: [dsc, powershell]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_ERROR_HANDLING (PS016-PS020)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS016
+    title: "Use try/catch/finally for error handling"
+    category: ps_error_handling
+    level: beginner
+    description: >
+      Use try/catch/finally blocks for structured error handling. Catch
+      specific exception types before generic [System.Exception]. Set
+      $ErrorActionPreference = 'Stop' to convert non-terminating errors.
+    tags: [powershell, errors, exception]
+
+  - id: PS017
+    title: "Distinguish terminating from non-terminating errors"
+    category: ps_error_handling
+    level: intermediate
+    description: >
+      Use Write-Error for non-terminating errors (pipeline continues) and
+      throw or $PSCmdlet.ThrowTerminatingError() for terminating errors.
+      Use -ErrorAction Stop to escalate non-terminating errors in cmdlet calls.
+    tags: [powershell, errors, cmdlet]
+
+  - id: PS018
+    title: "Use $PSCmdlet.ThrowTerminatingError for typed errors"
+    category: ps_error_handling
+    level: advanced
+    description: >
+      In advanced functions, use $PSCmdlet.ThrowTerminatingError() with
+      ErrorRecord objects for rich error information including ErrorId,
+      ErrorCategory, and TargetObject. This enables better error filtering.
+    tags: [powershell, errors, advanced]
+
+  - id: PS019
+    title: "Set ErrorActionPreference appropriately"
+    category: ps_error_handling
+    level: beginner
+    description: >
+      Set $ErrorActionPreference = 'Stop' at the top of scripts for fail-fast
+      behavior. Use -ErrorAction parameter on individual cmdlets when different
+      behavior is needed. Never silently continue on errors in production code.
+    tags: [powershell, errors, preference]
+
+  - id: PS020
+    title: "Log errors with structured information"
+    category: ps_error_handling
+    level: intermediate
+    description: >
+      When catching errors, log $_.Exception.Message, $_.ScriptStackTrace,
+      and $_.InvocationInfo for debugging. Use Write-Warning for recoverable
+      issues and Write-Error for actionable failures.
+    tags: [powershell, errors, logging]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_MODULES (PS021-PS025)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS021
+    title: "Create proper module manifests (.psd1)"
+    category: ps_modules
+    level: beginner
+    description: >
+      Use New-ModuleManifest to create .psd1 files with version, author,
+      description, FunctionsToExport, and RequiredModules. Explicitly list
+      exported functions rather than using wildcard '*'.
+    tags: [powershell, modules, manifest]
+
+  - id: PS022
+    title: "Use explicit FunctionsToExport"
+    category: ps_modules
+    level: intermediate
+    description: >
+      List all exported functions explicitly in FunctionsToExport rather
+      than using '*'. This improves module auto-loading performance and
+      prevents accidental export of helper functions.
+    tags: [powershell, modules, export]
+
+  - id: PS023
+    title: "Use using module for module-scoped imports (PS 5.0+)"
+    category: ps_modules
+    level: intermediate
+    description: >
+      Use 'using module ModuleName' at the top of scripts instead of
+      Import-Module to access classes and enums defined in modules.
+      This enables compile-time type resolution for class-based code.
+    tags: [powershell, modules, using]
+
+  - id: PS024
+    title: "Organize modules with public/private function structure"
+    category: ps_modules
+    level: intermediate
+    description: >
+      Structure modules with Public/ and Private/ directories. Dot-source
+      public functions in the .psm1 and list them in FunctionsToExport.
+      Private functions are dot-sourced but not exported.
+    tags: [powershell, modules, structure]
+
+  - id: PS025
+    title: "Version modules using SemVer"
+    category: ps_modules
+    level: beginner
+    description: >
+      Follow Semantic Versioning for module versions in the manifest.
+      Update ModuleVersion on every release. Use RequiredModules with
+      ModuleVersion for dependency pinning.
+    tags: [powershell, modules, versioning]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_SECURITY (PS026-PS030)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS026
+    title: "Use SecretManagement for credentials"
+    category: ps_security
+    level: intermediate
+    description: >
+      Use Microsoft.PowerShell.SecretManagement and SecretStore modules
+      for credential storage. Never hardcode passwords or API keys in
+      scripts. Use Get-Secret and Set-Secret for secure access.
+    tags: [powershell, security, credentials]
+
+  - id: PS027
+    title: "Avoid Invoke-Expression and iex"
+    category: ps_security
+    level: beginner
+    description: >
+      Never use Invoke-Expression (iex) as it enables code injection.
+      Use the call operator (&) or direct cmdlet invocation instead.
+      If dynamic commands are needed, use parameter splatting.
+    tags: [powershell, security, injection]
+
+  - id: PS028
+    title: "Use PSCredential for authentication"
+    category: ps_security
+    level: beginner
+    description: >
+      Use [PSCredential] parameter type for credentials. Use
+      Get-Credential or ConvertTo-SecureString for secure string
+      handling. Never store passwords as plain strings.
+    tags: [powershell, security, authentication]
+
+  - id: PS029
+    title: "Set execution policy and sign scripts"
+    category: ps_security
+    level: intermediate
+    description: >
+      Use RemoteSigned or AllSigned execution policy in production.
+      Sign scripts with Set-AuthenticodeSignature using a code signing
+      certificate. Verify signatures with Get-AuthenticodeSignature.
+    tags: [powershell, security, signing]
+
+  - id: PS030
+    title: "Use constrained language mode for untrusted input"
+    category: ps_security
+    level: advanced
+    description: >
+      Enable ConstrainedLanguage mode for runspaces processing untrusted
+      input. This restricts .NET type access, COM objects, and allowed
+      cmdlets to prevent privilege escalation.
+    tags: [powershell, security, jea]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_REMOTING (PS031-PS033)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS031
+    title: "Use Invoke-Command for remote execution"
+    category: ps_remoting
+    level: beginner
+    description: >
+      Prefer Invoke-Command -ComputerName over Enter-PSSession for
+      scripted remote operations. Use -Session parameter with
+      New-PSSession for persistent connections in loops.
+    tags: [powershell, remoting, remote]
+
+  - id: PS032
+    title: "Use sessions for multi-command remoting"
+    category: ps_remoting
+    level: intermediate
+    description: >
+      Create persistent sessions with New-PSSession for repeated remote
+      calls. Reuse sessions to avoid authentication overhead. Always
+      Remove-PSSession in finally blocks.
+    tags: [powershell, remoting, session]
+
+  - id: PS033
+    title: "Handle serialization limits in remoting"
+    category: ps_remoting
+    level: advanced
+    description: >
+      Objects returned from remote sessions are deserialized with limited
+      methods. Use -ArgumentList to pass parameters and Select-Object
+      to shape output. Prefer strings and hashtables over complex objects.
+    tags: [powershell, remoting, serialization]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_CLASSES (PS034-PS037)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS034
+    title: "Use classes for structured data types (PS 5.0+)"
+    category: ps_classes
+    level: intermediate
+    description: >
+      Use PowerShell classes for custom types instead of PSCustomObject when
+      you need methods, constructors, or inheritance. Classes provide
+      compile-time type checking and IntelliSense support.
+    tags: [powershell, classes, types]
+
+  - id: PS035
+    title: "Implement IValidatableObject for complex validation"
+    category: ps_classes
+    level: advanced
+    description: >
+      Implement .NET interfaces in PowerShell classes for cross-language
+      compatibility. Use class methods for validation logic and property
+      attributes like [ValidateNotNullOrEmpty()] on class properties.
+    tags: [powershell, classes, validation]
+
+  - id: PS036
+    title: "Use enums for fixed value sets (PS 5.0+)"
+    category: ps_classes
+    level: beginner
+    description: >
+      Define enums for parameter values instead of ValidateSet strings.
+      Use [Flags()] attribute for combinable flags. Enums provide type
+      safety and tab completion.
+    tags: [powershell, classes, enums]
+
+  - id: PS037
+    title: "Use hidden keyword for internal members"
+    category: ps_classes
+    level: intermediate
+    description: >
+      Mark internal class members with the hidden keyword to prevent
+      them from appearing in tab completion and Get-Member output while
+      keeping them accessible. This is PowerShell's access control.
+    tags: [powershell, classes, encapsulation]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_PESTER (PS038-PS042)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS038
+    title: "Use Pester v5 syntax with Should -Be"
+    category: ps_pester
+    level: beginner
+    description: >
+      Use Pester v5 assertion syntax: Should -Be, Should -BeExactly,
+      Should -Throw, Should -HaveCount. Avoid deprecated v4 pipe syntax
+      (| Should Be). Use -Because for descriptive failure messages.
+    tags: [powershell, pester, testing]
+    applicability:
+      frameworks: [pester, powershell]
+
+  - id: PS039
+    title: "Use BeforeAll/BeforeEach for test setup"
+    category: ps_pester
+    level: beginner
+    description: >
+      Use BeforeAll{} for one-time setup and BeforeEach{} for per-test
+      setup in Pester v5. Use AfterAll/AfterEach for cleanup. Variables
+      defined in BeforeAll are available in all tests in the block.
+    tags: [powershell, pester, setup]
+    applicability:
+      frameworks: [pester, powershell]
+
+  - id: PS040
+    title: "Mock cmdlets for isolation"
+    category: ps_pester
+    level: intermediate
+    description: >
+      Use Mock CmdletName { return value } in Pester to isolate tests
+      from external dependencies. Use Should -Invoke to verify mock
+      calls. Use -ParameterFilter for conditional mocking.
+    tags: [powershell, pester, mocking]
+    applicability:
+      frameworks: [pester, powershell]
+
+  - id: PS041
+    title: "Use TestDrive and TestRegistry for temp data"
+    category: ps_pester
+    level: intermediate
+    description: >
+      Use Pester's TestDrive: for temporary file system operations and
+      TestRegistry: for temporary registry operations. These are
+      automatically cleaned up after tests.
+    tags: [powershell, pester, isolation]
+    applicability:
+      frameworks: [pester, powershell]
+
+  - id: PS042
+    title: "Tag tests for selective execution"
+    category: ps_pester
+    level: intermediate
+    description: >
+      Use -Tag parameter in Describe/Context/It blocks for test
+      categorization. Run subsets with Invoke-Pester -Tag 'Unit' or
+      exclude with -ExcludeTag 'Integration'. Organize by speed and scope.
+    tags: [powershell, pester, organization]
+    applicability:
+      frameworks: [pester, powershell]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_PERFORMANCE (PS043-PS045)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS043
+    title: "Use StringBuilder for string concatenation"
+    category: ps_performance
+    level: intermediate
+    description: >
+      Use [System.Text.StringBuilder] for building strings in loops.
+      String concatenation with += creates new string objects each time.
+      StringBuilder.Append() is O(1) amortized vs O(n) for += in loops.
+    tags: [powershell, performance, strings]
+
+  - id: PS044
+    title: "Use .NET methods for performance-critical code"
+    category: ps_performance
+    level: advanced
+    description: >
+      For performance-critical sections, use .NET methods directly
+      ([System.IO.File]::ReadAllLines(), [System.Linq.Enumerable]::Where()).
+      .NET calls avoid cmdlet overhead for hot paths.
+    tags: [powershell, performance, dotnet]
+
+  - id: PS045
+    title: "Avoid Where-Object in tight loops"
+    category: ps_performance
+    level: intermediate
+    description: >
+      For large collections, use the .Where() method (PS 4.0+) or
+      LINQ instead of Where-Object cmdlet. Method syntax avoids
+      pipeline overhead. Profile with Measure-Command.
+    tags: [powershell, performance, filtering]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_STYLE (PS046-PS048)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS046
+    title: "Use PascalCase for functions, camelCase for variables"
+    category: ps_style
+    level: beginner
+    description: >
+      Follow PowerShell naming conventions: PascalCase for functions,
+      cmdlets, and parameters; camelCase or PascalCase for local
+      variables. Use full cmdlet names in scripts, not aliases.
+    tags: [powershell, style, naming]
+
+  - id: PS047
+    title: "Use comment-based help for all exported functions"
+    category: ps_style
+    level: beginner
+    description: >
+      Add .SYNOPSIS, .DESCRIPTION, .PARAMETER, .EXAMPLE, and .OUTPUTS
+      sections in comment-based help blocks. This enables Get-Help for
+      your functions and improves discoverability.
+    tags: [powershell, style, documentation]
+
+  - id: PS048
+    title: "Use full cmdlet names in scripts, not aliases"
+    category: ps_style
+    level: beginner
+    description: >
+      Use full cmdlet names (Get-ChildItem, ForEach-Object, Where-Object)
+      instead of aliases (gci, %, ?) in scripts and modules. Aliases
+      may not exist on all systems and reduce readability.
+    tags: [powershell, style, readability]
+
+  # ════════════════════════════════════════════════════════════════
+  # PS_SCRIPTING (PS049) / PS_CLOUD (PS050)
+  # ════════════════════════════════════════════════════════════════
+  - id: PS049
+    title: "Use #Requires for prerequisite declaration"
+    category: ps_scripting
+    level: beginner
+    description: >
+      Use #Requires -Version, #Requires -Modules, #Requires -RunAsAdministrator
+      at the top of scripts to declare prerequisites. PowerShell will validate
+      requirements before execution and provide clear error messages.
+    tags: [powershell, scripting, prerequisites]
+
+  - id: PS050
+    title: "Use splatting for cmdlets with many parameters"
+    category: ps_cloud
+    level: intermediate
+    description: >
+      Use parameter splatting ($params = @{ Key = 'Value' }; Cmdlet @params)
+      for cmdlets with many parameters, especially Azure/AWS cmdlets.
+      This improves readability and enables dynamic parameter construction.
+    tags: [powershell, cloud, splatting]
+    applicability:
+      frameworks: [powershell]

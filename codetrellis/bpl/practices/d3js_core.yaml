@@ -1,0 +1,1299 @@
+# D3.js Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.72 - D3.js Framework Support
+# Practice IDs: D3JS001-D3JS050
+# Coverage: Selections, Data Joins, Scales, Axes, Shapes,
+#           Layouts, Interaction, Performance, Advanced, Geo
+# Versions: D3.js v3-v7+, d3-selection, d3-scale, d3-shape,
+#           d3-geo, d3-force, Observable, visx, react-d3
+
+practices:
+  # ============================================================================
+  # SELECTIONS (D3JS001-D3JS005)
+  # ============================================================================
+
+  - id: D3JS001
+    title: "Use d3.select() for single elements, d3.selectAll() for groups"
+    description: "d3.select() returns the first matching element; d3.selectAll() returns all matching elements. Use select for unique containers (e.g., '#chart'), selectAll for repeated elements (e.g., 'rect', 'circle'). Avoid selecting by tag when IDs or classes are more specific."
+    category: "d3js_selections"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "selection", "select", "selectAll", "DOM"]
+    example: |
+      // ✅ Targeted selections
+      const svg = d3.select('#chart')
+        .append('svg')
+        .attr('width', 800)
+        .attr('height', 400);
+
+      const bars = svg.selectAll('.bar')
+        .data(dataset);
+
+      // ❌ Overly broad selection
+      const svg = d3.select('svg');  // ambiguous if multiple SVGs exist
+      const rects = d3.selectAll('rect');  // catches rects in other charts
+
+  - id: D3JS002
+    title: "Chain selection methods fluently for readability"
+    description: "D3 selections are designed for method chaining. Chain .attr(), .style(), .text(), .on() calls fluently. Each method returns the selection, enabling a pipeline-style API. Break chains at logical boundaries."
+    category: "d3js_selections"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "chaining", "fluent", "attr", "style"]
+    example: |
+      // ✅ Fluent chaining
+      svg.selectAll('rect')
+        .data(data)
+        .join('rect')
+        .attr('x', (d, i) => i * barWidth)
+        .attr('y', d => yScale(d.value))
+        .attr('width', barWidth - 1)
+        .attr('height', d => height - yScale(d.value))
+        .attr('fill', d => colorScale(d.category));
+
+      // ❌ Breaking chain unnecessarily
+      const rects = svg.selectAll('rect').data(data).join('rect');
+      rects.attr('x', (d, i) => i * barWidth);
+      rects.attr('y', d => yScale(d.value));
+      rects.attr('width', barWidth - 1);
+
+  - id: D3JS003
+    title: "Scope selections to a container to avoid cross-chart interference"
+    description: "When multiple charts exist on a page, scope all selections to a container SVG or group element. Use selection.select() / selection.selectAll() from a parent rather than d3.selectAll() globally."
+    category: "d3js_selections"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "selection", "scope", "container", "multiple-charts"]
+    example: |
+      // ✅ Scoped to container
+      const chart = d3.select('#bar-chart');
+      const svg = chart.append('svg');
+      const bars = svg.selectAll('.bar').data(data);
+
+      // ❌ Global selection (dangerous with multiple charts)
+      const bars = d3.selectAll('.bar').data(data);
+
+  - id: D3JS004
+    title: "Use .datum() for binding a single data point to one element"
+    description: "Use .datum() when binding a single value to a single element (e.g., a path generator for a line chart). Use .data() for binding arrays to multiple elements. Mixing them up causes subtle bugs."
+    category: "d3js_selections"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "datum", "data", "binding", "single"]
+    example: |
+      // ✅ datum() for single element
+      svg.append('path')
+        .datum(lineData)
+        .attr('d', lineGenerator)
+        .attr('fill', 'none')
+        .attr('stroke', 'steelblue');
+
+      // ✅ data() for multiple elements
+      svg.selectAll('circle')
+        .data(points)
+        .join('circle')
+        .attr('cx', d => xScale(d.x))
+        .attr('cy', d => yScale(d.y));
+
+      // ❌ Using data() for a single path
+      svg.selectAll('path')
+        .data([lineData])  // unnecessary array wrapping
+        .join('path')
+        .attr('d', lineGenerator);
+
+  - id: D3JS005
+    title: "Use .call() to encapsulate reusable selection logic"
+    description: "selection.call(fn) invokes fn with the selection as argument, enabling reusable components. Axes, brushes, and zoom are designed to be used with .call(). Create custom .call()-compatible functions for reusable chart parts."
+    category: "d3js_selections"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "call", "reusable", "component", "pattern"]
+    example: |
+      // ✅ Using .call() for axes and custom components
+      const xAxis = d3.axisBottom(xScale).ticks(5);
+      svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(xAxis);
+
+      // ✅ Custom reusable component
+      function addGridLines(selection, scale, width) {
+        selection.call(
+          d3.axisLeft(scale).tickSize(-width).tickFormat('')
+        ).select('.domain').remove();
+      }
+      svg.append('g').call(addGridLines, yScale, width);
+
+  # ============================================================================
+  # DATA JOINS (D3JS006-D3JS010)
+  # ============================================================================
+
+  - id: D3JS006
+    title: "Use .join() instead of enter/update/exit pattern (v5+)"
+    description: "D3 v5+ introduced selection.join() which replaces the verbose enter/update/exit pattern. join() handles all three phases with a single call and is easier to read. Use the callback form for customizing enter/update/exit separately."
+    category: "d3js_data_joins"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "join", "enter", "update", "exit", "v5"]
+    example: |
+      // ✅ Modern .join() (D3 v5+)
+      svg.selectAll('rect')
+        .data(data, d => d.id)
+        .join('rect')
+        .attr('x', (d, i) => i * barWidth)
+        .attr('height', d => yScale(d.value));
+
+      // ✅ .join() with enter/update/exit callbacks
+      svg.selectAll('circle')
+        .data(data, d => d.id)
+        .join(
+          enter => enter.append('circle').attr('r', 0).call(enter =>
+            enter.transition().attr('r', 5)),
+          update => update.call(update =>
+            update.transition().attr('cx', d => xScale(d.x))),
+          exit => exit.call(exit =>
+            exit.transition().attr('r', 0).remove())
+        );
+
+      // ❌ Verbose enter/exit (pre-v5 pattern)
+      const sel = svg.selectAll('rect').data(data);
+      sel.enter().append('rect').merge(sel).attr('x', ...);
+      sel.exit().remove();
+
+  - id: D3JS007
+    title: "Provide a key function to .data() for object constancy"
+    description: "When binding data, pass a key function as the second argument to .data(). This ensures D3 matches existing DOM elements to the correct data points during updates, enabling smooth transitions and correct behavior when data is filtered or reordered."
+    category: "d3js_data_joins"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "data", "key", "constancy", "identity"]
+    example: |
+      // ✅ Key function for object constancy
+      svg.selectAll('rect')
+        .data(data, d => d.id)
+        .join('rect')
+        .transition()
+        .attr('x', (d, i) => xScale(d.name));
+
+      // ❌ No key function (index-based matching)
+      svg.selectAll('rect')
+        .data(data)  // elements matched by index, breaks on reorder
+        .join('rect');
+
+  - id: D3JS008
+    title: "Use .merge() for combined enter+update in pre-v5 code"
+    description: "In D3 v4 (pre-.join()), use .merge() to combine the enter selection with the update selection for shared attribute setting. This avoids code duplication between enter and update phases. Prefer .join() in v5+."
+    category: "d3js_data_joins"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "merge", "enter", "update", "v4"]
+    example: |
+      // ✅ D3 v4 merge pattern
+      const bars = svg.selectAll('rect').data(data, d => d.id);
+      bars.enter()
+        .append('rect')
+        .attr('fill', 'steelblue')
+        .merge(bars)  // enter + update
+        .attr('x', (d, i) => i * barWidth)
+        .attr('height', d => yScale(d.value));
+      bars.exit().remove();
+
+      // ✅ Preferred: D3 v5+ join
+      svg.selectAll('rect')
+        .data(data, d => d.id)
+        .join('rect')
+        .attr('fill', 'steelblue')
+        .attr('x', (d, i) => i * barWidth);
+
+  - id: D3JS009
+    title: "Handle exit selection to remove stale elements"
+    description: "When data shrinks, unmatched DOM elements remain as the exit selection. Always handle .exit().remove() (or use .join() which handles it automatically). Animate exits with transitions for smooth UX."
+    category: "d3js_data_joins"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "exit", "remove", "cleanup", "memory"]
+    example: |
+      // ✅ join() handles exit automatically
+      svg.selectAll('circle')
+        .data(newData, d => d.id)
+        .join('circle');
+
+      // ✅ Animated exit
+      svg.selectAll('circle')
+        .data(newData, d => d.id)
+        .join(
+          enter => enter.append('circle').attr('r', 0)
+            .transition().attr('r', 5),
+          update => update,
+          exit => exit.transition().attr('r', 0).remove()
+        );
+
+      // ❌ Forgetting exit (DOM leaks)
+      const sel = svg.selectAll('circle').data(newData);
+      sel.enter().append('circle');
+      // Missing: sel.exit().remove();
+
+  - id: D3JS010
+    title: "Avoid storing state on DOM — use data binding instead"
+    description: "D3's data binding attaches data directly to DOM elements. Access bound data via the accessor function (d => ...) rather than reading attributes back from the DOM. Store computed values in the data, not as DOM attributes."
+    category: "d3js_data_joins"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "data-binding", "state", "dom", "accessor"]
+    example: |
+      // ✅ Access data through accessor
+      bars.on('click', (event, d) => {
+        console.log('Clicked:', d.name, d.value);
+      });
+
+      // ❌ Reading state back from DOM
+      bars.on('click', function() {
+        const value = +d3.select(this).attr('data-value');
+        console.log('Clicked:', value);
+      });
+
+  # ============================================================================
+  # SCALES (D3JS011-D3JS015)
+  # ============================================================================
+
+  - id: D3JS011
+    title: "Choose the right scale type for your data"
+    description: "Use scaleLinear for continuous numeric data, scaleBand/scalePoint for categorical data, scaleTime for temporal data, scaleLog/scalePow for skewed distributions. Mismatched scales produce misleading charts."
+    category: "d3js_scales"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "scale", "linear", "band", "time", "ordinal"]
+    example: |
+      // ✅ Correct scale matching
+      const xScale = d3.scaleBand()
+        .domain(data.map(d => d.category))
+        .range([0, width])
+        .padding(0.1);
+
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.value)])
+        .range([height, 0]);
+
+      const timeScale = d3.scaleTime()
+        .domain(d3.extent(data, d => d.date))
+        .range([0, width]);
+
+      // ❌ Using scaleLinear for categories
+      const xScale = d3.scaleLinear()
+        .domain([0, data.length])  // wrong: treats categories as numbers
+
+  - id: D3JS012
+    title: "Use .nice() to round scale domains to clean values"
+    description: "scale.nice() extends the domain to nice round values (e.g., [0.23, 9.87] → [0, 10]). Apply .nice() after setting the domain for cleaner axis ticks. Works with scaleLinear, scaleTime, scalePow, scaleLog."
+    category: "d3js_scales"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "scale", "nice", "domain", "ticks"]
+    example: |
+      // ✅ Nice domain
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.value)])
+        .range([height, 0])
+        .nice();
+
+      // Result: domain might become [0, 100] instead of [0, 97.3]
+
+  - id: D3JS013
+    title: "Invert the y-axis range for SVG coordinate system"
+    description: "SVG y=0 is at the top, but charts typically have y=0 at the bottom. Set yScale.range([height, 0]) so larger data values map to smaller y coordinates (higher on screen). Forgetting this flips the chart."
+    category: "d3js_scales"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "scale", "range", "y-axis", "invert", "svg"]
+    example: |
+      // ✅ Correct y-axis (0 at bottom)
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.value)])
+        .range([height, 0]);  // height at bottom, 0 at top
+
+      // ❌ Inverted chart (0 at top)
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.value)])
+        .range([0, height]);  // bars grow downward
+
+  - id: D3JS014
+    title: "Use d3.extent() and d3.max() for dynamic domains"
+    description: "d3.extent(data, accessor) returns [min, max] for setting scale domains dynamically. d3.max() / d3.min() return individual extremes. Always derive domains from actual data rather than hardcoding values."
+    category: "d3js_scales"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "extent", "max", "min", "domain", "dynamic"]
+    example: |
+      // ✅ Dynamic domain from data
+      const xScale = d3.scaleTime()
+        .domain(d3.extent(data, d => d.date))
+        .range([0, width]);
+
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.value)])
+        .range([height, 0]);
+
+      // ❌ Hardcoded domain
+      const yScale = d3.scaleLinear()
+        .domain([0, 1000])  // breaks when data exceeds 1000
+        .range([height, 0]);
+
+  - id: D3JS015
+    title: "Use scaleOrdinal with d3.schemeCategory10 for categorical colors"
+    description: "d3.scaleOrdinal(d3.schemeCategory10) maps categorical values to a distinct 10-color palette. D3 provides many built-in color schemes: schemeTableau10, schemePaired, schemeSet3. Use sequential/diverging schemes for continuous data."
+    category: "d3js_scales"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "color", "ordinal", "scheme", "categorical", "palette"]
+    example: |
+      // ✅ Categorical color scale
+      const color = d3.scaleOrdinal()
+        .domain(data.map(d => d.category))
+        .range(d3.schemeTableau10);
+
+      // ✅ Sequential color scale for continuous data
+      const heatColor = d3.scaleSequential()
+        .domain(d3.extent(data, d => d.temp))
+        .interpolator(d3.interpolateYlOrRd);
+
+      // ❌ Manual color array for many categories
+      const color = d3.scaleOrdinal()
+        .range(['red', 'blue', 'green']);  // use built-in schemes
+
+  # ============================================================================
+  # AXES (D3JS016-D3JS020)
+  # ============================================================================
+
+  - id: D3JS016
+    title: "Use d3.axisBottom/axisLeft for standard chart axes"
+    description: "axisBottom for x-axis (ticks below), axisLeft for y-axis (ticks left). axisTop and axisRight exist for dual-axis charts. Always render axes in a <g> element translated to the correct position within the margin convention."
+    category: "d3js_axes"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "axis", "bottom", "left", "ticks"]
+    example: |
+      // ✅ Standard axes with margins
+      const xAxis = d3.axisBottom(xScale);
+      const yAxis = d3.axisLeft(yScale);
+
+      svg.append('g')
+        .attr('class', 'x-axis')
+        .attr('transform', `translate(0,${height})`)
+        .call(xAxis);
+
+      svg.append('g')
+        .attr('class', 'y-axis')
+        .call(yAxis);
+
+  - id: D3JS017
+    title: "Follow the margin convention for chart layout"
+    description: "Use the D3 margin convention: define margin = {top, right, bottom, left}, compute inner width/height, translate the chart group by margin.left and margin.top. This ensures axes and labels have room without clipping."
+    category: "d3js_axes"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "margin", "convention", "layout", "responsive"]
+    example: |
+      // ✅ Margin convention
+      const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+      const width = 800 - margin.left - margin.right;
+      const height = 400 - margin.top - margin.bottom;
+
+      const svg = d3.select('#chart')
+        .append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+      // ❌ No margins (axes clipped)
+      const svg = d3.select('#chart')
+        .append('svg')
+        .attr('width', 800)
+        .attr('height', 400);
+
+  - id: D3JS018
+    title: "Customize tick count and format for readability"
+    description: "Use .ticks(count) or .tickValues([...]) to control tick density. Use .tickFormat() with d3.format() or d3.timeFormat() for readable labels. Too many ticks cause overlap; too few lose precision."
+    category: "d3js_axes"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "axis", "ticks", "format", "label"]
+    example: |
+      // ✅ Controlled ticks with formatting
+      const yAxis = d3.axisLeft(yScale)
+        .ticks(5)
+        .tickFormat(d3.format('$,.0f'));
+
+      const xAxis = d3.axisBottom(timeScale)
+        .ticks(d3.timeMonth.every(3))
+        .tickFormat(d3.timeFormat('%b %Y'));
+
+      // ✅ Explicit tick values
+      const axis = d3.axisLeft(yScale)
+        .tickValues([0, 25, 50, 75, 100])
+        .tickFormat(d => d + '%');
+
+  - id: D3JS019
+    title: "Add grid lines using tick extensions"
+    description: "Create grid lines by extending axis ticks across the chart area using .tickSize(-width) or .tickSize(-height). Remove the axis domain line with .select('.domain').remove() for a cleaner look."
+    category: "d3js_axes"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "grid", "tickSize", "gridlines"]
+    example: |
+      // ✅ Horizontal grid lines
+      svg.append('g')
+        .attr('class', 'grid')
+        .call(
+          d3.axisLeft(yScale)
+            .ticks(5)
+            .tickSize(-width)
+            .tickFormat('')
+        )
+        .select('.domain').remove();
+
+      // Style with CSS
+      // .grid line { stroke: #e0e0e0; stroke-dasharray: 2,2; }
+
+  - id: D3JS020
+    title: "Rotate or stagger tick labels to prevent overlap"
+    description: "Long axis labels overlap on dense axes. Rotate x-axis labels with transform: rotate(-45) and adjust text-anchor. Alternatively use .tickFormat() to abbreviate, or use .ticks() to reduce density."
+    category: "d3js_axes"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "axis", "labels", "rotate", "overlap"]
+    example: |
+      // ✅ Rotated labels
+      svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(xScale))
+        .selectAll('text')
+        .attr('transform', 'rotate(-45)')
+        .style('text-anchor', 'end')
+        .attr('dx', '-0.8em')
+        .attr('dy', '0.15em');
+
+      // ✅ Alternative: abbreviate labels
+      const xAxis = d3.axisBottom(xScale)
+        .tickFormat(d => d.substring(0, 3));
+
+  # ============================================================================
+  # SHAPES & GENERATORS (D3JS021-D3JS025)
+  # ============================================================================
+
+  - id: D3JS021
+    title: "Use d3.line() and d3.area() generators for path data"
+    description: "d3.line() and d3.area() generate SVG path 'd' attribute strings from data arrays. Configure .x() and .y() accessors, and use .curve() for interpolation. Pass the generator directly to path.attr('d', generator)."
+    category: "d3js_shapes"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "line", "area", "path", "generator"]
+    example: |
+      // ✅ Line generator
+      const line = d3.line()
+        .x(d => xScale(d.date))
+        .y(d => yScale(d.value))
+        .curve(d3.curveMonotoneX);
+
+      svg.append('path')
+        .datum(data)
+        .attr('d', line)
+        .attr('fill', 'none')
+        .attr('stroke', 'steelblue')
+        .attr('stroke-width', 2);
+
+      // ✅ Area generator
+      const area = d3.area()
+        .x(d => xScale(d.date))
+        .y0(height)
+        .y1(d => yScale(d.value));
+
+      svg.append('path')
+        .datum(data)
+        .attr('d', area)
+        .attr('fill', 'steelblue')
+        .attr('opacity', 0.3);
+
+  - id: D3JS022
+    title: "Use d3.arc() for pie/donut chart segments"
+    description: "d3.arc() generates SVG arc paths from angle and radius data. Combine with d3.pie() which computes start/end angles from data values. Set innerRadius > 0 for donut charts."
+    category: "d3js_shapes"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "arc", "pie", "donut", "generator"]
+    example: |
+      // ✅ Pie/Donut chart
+      const pie = d3.pie()
+        .value(d => d.value)
+        .sort(null);
+
+      const arc = d3.arc()
+        .innerRadius(50)   // > 0 for donut
+        .outerRadius(150);
+
+      const arcs = svg.selectAll('.arc')
+        .data(pie(data))
+        .join('g')
+        .attr('class', 'arc')
+        .attr('transform', `translate(${width/2},${height/2})`);
+
+      arcs.append('path')
+        .attr('d', arc)
+        .attr('fill', (d, i) => color(i));
+
+  - id: D3JS023
+    title: "Choose appropriate curve interpolation for line charts"
+    description: "D3 provides many curve functions: curveLinear (default, angular), curveMonotoneX (smooth, preserves monotonicity), curveBasis (smooth B-spline), curveStep (step function). Choose based on data semantics — use monotone for time series, step for discrete changes."
+    category: "d3js_shapes"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "curve", "interpolation", "monotone", "step", "basis"]
+    example: |
+      // ✅ MonotoneX for time series (preserves trends)
+      const line = d3.line()
+        .x(d => xScale(d.date))
+        .y(d => yScale(d.value))
+        .curve(d3.curveMonotoneX);
+
+      // ✅ Step for discrete values (e.g., pricing tiers)
+      const stepLine = d3.line()
+        .x(d => xScale(d.date))
+        .y(d => yScale(d.price))
+        .curve(d3.curveStepAfter);
+
+      // ✅ Cardinal with tension
+      const smoothLine = d3.line()
+        .curve(d3.curveCardinal.tension(0.5));
+
+  - id: D3JS024
+    title: "Use d3.symbol() for scatter plot markers"
+    description: "d3.symbol() generates SVG symbol paths (circle, cross, diamond, square, star, triangle, wye). Use with d3.symbolType to encode a categorical variable as different marker shapes, improving accessibility beyond color alone."
+    category: "d3js_shapes"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "symbol", "scatter", "marker", "shape"]
+    example: |
+      // ✅ Symbols for scatter plot
+      const symbolGen = d3.symbol()
+        .type(d => d3.symbols[d.typeIndex])
+        .size(64);
+
+      svg.selectAll('.point')
+        .data(data)
+        .join('path')
+        .attr('class', 'point')
+        .attr('d', symbolGen)
+        .attr('transform', d => `translate(${xScale(d.x)},${yScale(d.y)})`)
+        .attr('fill', d => color(d.category));
+
+  - id: D3JS025
+    title: "Handle missing data with .defined() on line/area generators"
+    description: "Use generator.defined(d => d.value != null) to skip missing/null data points gracefully. Without .defined(), the line will connect through gaps or produce NaN, breaking the path."
+    category: "d3js_shapes"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "defined", "missing", "null", "gap"]
+    example: |
+      // ✅ Handle missing data
+      const line = d3.line()
+        .defined(d => d.value != null)
+        .x(d => xScale(d.date))
+        .y(d => yScale(d.value));
+
+      // The line will have gaps where data is null
+
+      // ❌ No .defined() check
+      const line = d3.line()
+        .x(d => xScale(d.date))
+        .y(d => yScale(d.value));  // NaN breaks the path
+
+  # ============================================================================
+  # LAYOUTS (D3JS026-D3JS030)
+  # ============================================================================
+
+  - id: D3JS026
+    title: "Use d3.forceSimulation() for network/graph visualizations"
+    description: "d3.forceSimulation configures a physics-based layout for nodes and links. Combine forces: forceLink for edges, forceManyBody for repulsion, forceCenter for centering, forceCollide for overlap prevention. Listen to 'tick' events to update positions."
+    category: "d3js_layouts"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "force", "simulation", "network", "graph"]
+    example: |
+      // ✅ Force-directed graph
+      const simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(20));
+
+      simulation.on('tick', () => {
+        linkElements
+          .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        nodeElements
+          .attr('cx', d => d.x).attr('cy', d => d.y);
+      });
+
+  - id: D3JS027
+    title: "Use d3.hierarchy() and d3.tree()/d3.treemap() for hierarchical data"
+    description: "d3.hierarchy() processes nested data into a tree structure with depth, height, and value. Feed it to d3.tree() for node-link trees, d3.treemap() for space-filling rectangles, d3.pack() for circle-packing, d3.partition() for sunburst/icicle."
+    category: "d3js_layouts"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "hierarchy", "tree", "treemap", "pack", "partition"]
+    example: |
+      // ✅ Treemap
+      const root = d3.hierarchy(data)
+        .sum(d => d.value)
+        .sort((a, b) => b.value - a.value);
+
+      d3.treemap()
+        .size([width, height])
+        .padding(2)(root);
+
+      svg.selectAll('rect')
+        .data(root.leaves())
+        .join('rect')
+        .attr('x', d => d.x0)
+        .attr('y', d => d.y0)
+        .attr('width', d => d.x1 - d.x0)
+        .attr('height', d => d.y1 - d.y0)
+        .attr('fill', d => color(d.parent.data.name));
+
+  - id: D3JS028
+    title: "Use d3.stack() for stacked bar/area charts"
+    description: "d3.stack() computes baseline and topline values for stacking multiple series. Configure .keys() for series names and .order()/.offset() for stacking strategy (e.g., stackOrderAscending, stackOffsetWiggle for streamgraphs)."
+    category: "d3js_layouts"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "stack", "stacked", "bar", "area", "streamgraph"]
+    example: |
+      // ✅ Stacked area chart
+      const stack = d3.stack()
+        .keys(['apples', 'bananas', 'cherries'])
+        .order(d3.stackOrderNone)
+        .offset(d3.stackOffsetNone);
+
+      const series = stack(data);
+
+      const area = d3.area()
+        .x(d => xScale(d.data.date))
+        .y0(d => yScale(d[0]))
+        .y1(d => yScale(d[1]));
+
+      svg.selectAll('.layer')
+        .data(series)
+        .join('path')
+        .attr('d', area)
+        .attr('fill', (d, i) => color(d.key));
+
+  - id: D3JS029
+    title: "Stop force simulation when layout stabilizes"
+    description: "Force simulations run continuously consuming CPU. Call simulation.stop() when the layout is stable, or set simulation.alphaDecay() to let it cool down naturally. For static layouts, run simulation.tick(300) synchronously without animation."
+    category: "d3js_layouts"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "force", "stop", "alpha", "performance"]
+    example: |
+      // ✅ Stop when cooled
+      simulation.on('end', () => {
+        console.log('Layout stabilized');
+      });
+
+      // ✅ Static layout (no animation)
+      const simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links))
+        .force('charge', d3.forceManyBody())
+        .stop();
+      simulation.tick(300);  // run synchronously
+      // Now use nodes' final x, y positions
+
+      // ❌ Simulation runs forever
+      d3.forceSimulation(nodes)
+        .force('charge', d3.forceManyBody());
+      // alphaDecay default is 0.0228, will eventually stop but slowly
+
+  - id: D3JS030
+    title: "Use d3.stratify() to convert tabular data to hierarchy"
+    description: "d3.stratify() converts flat tabular data (with id and parentId columns) into a d3.hierarchy(). Useful when data comes from databases or CSVs rather than nested JSON. Chain with treemap/tree/pack layouts."
+    category: "d3js_layouts"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "stratify", "hierarchy", "tabular", "flat"]
+    example: |
+      // ✅ Stratify flat data
+      const data = [
+        { id: 'root', parentId: null },
+        { id: 'A', parentId: 'root', value: 10 },
+        { id: 'B', parentId: 'root', value: 20 },
+        { id: 'A1', parentId: 'A', value: 5 },
+      ];
+
+      const root = d3.stratify()
+        .id(d => d.id)
+        .parentId(d => d.parentId)(data)
+        .sum(d => d.value);
+
+      d3.treemap().size([width, height])(root);
+
+  # ============================================================================
+  # INTERACTION (D3JS031-D3JS035)
+  # ============================================================================
+
+  - id: D3JS031
+    title: "Use selection.on() for event handling with D3 v6+ signature"
+    description: "In D3 v6+, event handlers receive (event, d) instead of (d, i, nodes). The event is a standard DOM event. Use d3.pointer(event) instead of d3.mouse(this). Always use the v6+ signature in modern code."
+    category: "d3js_interaction"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "event", "on", "v6", "pointer"]
+    example: |
+      // ✅ D3 v6+ event signature
+      bars.on('mouseover', (event, d) => {
+        d3.select(event.currentTarget).attr('fill', 'orange');
+        tooltip.text(d.value);
+      });
+
+      bars.on('click', (event, d) => {
+        const [x, y] = d3.pointer(event);
+        console.log('Clicked at', x, y, 'data:', d);
+      });
+
+      // ❌ D3 v5 and earlier signature (deprecated)
+      bars.on('mouseover', function(d, i) {
+        d3.select(this).attr('fill', 'orange');
+        const [x, y] = d3.mouse(this);
+      });
+
+  - id: D3JS032
+    title: "Add tooltips with div overlay, not SVG title"
+    description: "Use an absolutely positioned <div> for tooltips — they support rich HTML, wrap text, and render outside SVG clipping. Position using d3.pointer(event) or event.pageX/pageY. SVG <title> elements only show on hover delay and can't be styled."
+    category: "d3js_interaction"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "tooltip", "div", "mouseover", "interaction"]
+    example: |
+      // ✅ HTML div tooltip
+      const tooltip = d3.select('body').append('div')
+        .attr('class', 'tooltip')
+        .style('position', 'absolute')
+        .style('visibility', 'hidden')
+        .style('background', '#333')
+        .style('color', '#fff')
+        .style('padding', '8px')
+        .style('border-radius', '4px');
+
+      bars.on('mouseover', (event, d) => {
+        tooltip.style('visibility', 'visible')
+          .html(`<strong>${d.name}</strong><br/>Value: ${d.value}`);
+      })
+      .on('mousemove', (event) => {
+        tooltip.style('top', (event.pageY - 10) + 'px')
+          .style('left', (event.pageX + 10) + 'px');
+      })
+      .on('mouseout', () => {
+        tooltip.style('visibility', 'hidden');
+      });
+
+      // ❌ SVG title (limited, unstyled, delayed)
+      bars.append('title').text(d => d.value);
+
+  - id: D3JS033
+    title: "Use d3.brush() for range selection interactions"
+    description: "d3.brush() adds click-and-drag rectangle selection. d3.brushX() and d3.brushY() constrain to one axis. Listen to 'brush' and 'end' events to get the selected range. Use brush.extent() to constrain the brushable area."
+    category: "d3js_interaction"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "brush", "selection", "range", "filter"]
+    example: |
+      // ✅ Brush for filtering
+      const brush = d3.brushX()
+        .extent([[0, 0], [width, height]])
+        .on('end', (event) => {
+          if (!event.selection) return;
+          const [x0, x1] = event.selection.map(xScale.invert);
+          updateChart(data.filter(d => d.date >= x0 && d.date <= x1));
+        });
+
+      svg.append('g')
+        .attr('class', 'brush')
+        .call(brush);
+
+  - id: D3JS034
+    title: "Use d3.zoom() for pan and zoom interactions"
+    description: "d3.zoom() adds mouse wheel zoom and drag-to-pan behavior. Apply the transform in the 'zoom' event handler using event.transform. Use .scaleExtent() to limit zoom range and .translateExtent() to limit panning."
+    category: "d3js_interaction"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "zoom", "pan", "transform", "interactive"]
+    example: |
+      // ✅ Zoom with scale limits
+      const zoom = d3.zoom()
+        .scaleExtent([0.5, 10])
+        .on('zoom', (event) => {
+          chartGroup.attr('transform', event.transform);
+        });
+
+      svg.call(zoom);
+
+      // ✅ Zoom on axes (rescale)
+      const zoom = d3.zoom()
+        .scaleExtent([1, 20])
+        .on('zoom', (event) => {
+          const newXScale = event.transform.rescaleX(xScale);
+          xAxisGroup.call(d3.axisBottom(newXScale));
+          dots.attr('cx', d => newXScale(d.x));
+        });
+
+  - id: D3JS035
+    title: "Use d3.drag() for draggable elements"
+    description: "d3.drag() adds drag behavior to elements. Handle 'start', 'drag', and 'end' events. Commonly used with force layouts to allow users to reposition nodes. Use event.x / event.y for the drag position."
+    category: "d3js_interaction"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "drag", "draggable", "force", "interactive"]
+    example: |
+      // ✅ Drag for force layout nodes
+      const drag = d3.drag()
+        .on('start', (event, d) => {
+          if (!event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        })
+        .on('drag', (event, d) => {
+          d.fx = event.x;
+          d.fy = event.y;
+        })
+        .on('end', (event, d) => {
+          if (!event.active) simulation.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+        });
+
+      nodeElements.call(drag);
+
+  # ============================================================================
+  # PERFORMANCE (D3JS036-D3JS040)
+  # ============================================================================
+
+  - id: D3JS036
+    title: "Use Canvas rendering for large datasets (>5000 elements)"
+    description: "SVG creates a DOM node per element, which becomes slow above ~5000 elements. Use Canvas for scatter plots, heatmaps, or dense visualizations. D3 scales and generators work with Canvas context.binPath() or manual drawing."
+    category: "d3js_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "canvas", "performance", "large-data", "svg"]
+    example: |
+      // ✅ Canvas rendering for large scatter
+      const canvas = d3.select('#chart').append('canvas')
+        .attr('width', width).attr('height', height);
+      const ctx = canvas.node().getContext('2d');
+
+      data.forEach(d => {
+        ctx.beginPath();
+        ctx.arc(xScale(d.x), yScale(d.y), 3, 0, 2 * Math.PI);
+        ctx.fillStyle = color(d.category);
+        ctx.fill();
+      });
+
+      // ❌ SVG for 50,000 points (very slow)
+      svg.selectAll('circle')
+        .data(largeData)  // 50,000 items
+        .join('circle');  // creates 50,000 DOM nodes
+
+  - id: D3JS037
+    title: "Debounce window resize handlers for responsive charts"
+    description: "Redrawing on every resize event is expensive. Debounce the resize handler to only redraw after the user stops resizing. Use ResizeObserver for container-based responsiveness rather than window resize."
+    category: "d3js_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "resize", "debounce", "responsive", "performance"]
+    example: |
+      // ✅ Debounced resize
+      let resizeTimer;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          const newWidth = container.clientWidth;
+          updateChart(newWidth);
+        }, 250);
+      });
+
+      // ✅ ResizeObserver (preferred)
+      const ro = new ResizeObserver(entries => {
+        const { width, height } = entries[0].contentRect;
+        updateChart(width, height);
+      });
+      ro.observe(container);
+
+  - id: D3JS038
+    title: "Use viewBox for responsive SVG sizing"
+    description: "Set SVG viewBox instead of fixed width/height to make charts responsive. The SVG will scale to fit its container while maintaining aspect ratio. Combine with CSS width:100% on the SVG element."
+    category: "d3js_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "viewBox", "responsive", "svg", "resize"]
+    example: |
+      // ✅ Responsive with viewBox
+      const svg = d3.select('#chart')
+        .append('svg')
+        .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+        .attr('preserveAspectRatio', 'xMidYMid meet')
+        .style('width', '100%')
+        .style('height', 'auto');
+
+      // ❌ Fixed dimensions (not responsive)
+      const svg = d3.select('#chart')
+        .append('svg')
+        .attr('width', 800)
+        .attr('height', 400);
+
+  - id: D3JS039
+    title: "Minimize DOM manipulation in transitions and animations"
+    description: "Batch attribute changes in a single selection chain rather than updating attributes individually. Use transitions sparingly — each transition creates internal timers. For real-time data, requestAnimationFrame may be more efficient."
+    category: "d3js_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "transition", "batch", "animation", "requestAnimationFrame"]
+    example: |
+      // ✅ Batched attribute update
+      bars.transition()
+        .duration(750)
+        .attr('x', d => xScale(d.name))
+        .attr('width', xScale.bandwidth())
+        .attr('y', d => yScale(d.value))
+        .attr('height', d => height - yScale(d.value));
+
+      // ✅ requestAnimationFrame for real-time
+      function animate() {
+        updateData();
+        ctx.clearRect(0, 0, width, height);
+        drawChart(ctx, data);
+        requestAnimationFrame(animate);
+      }
+
+  - id: D3JS040
+    title: "Pre-compute data transformations outside the render loop"
+    description: "Compute aggregations, nesting, sorting, and derived values before bindings. Avoid recomputing in accessor functions (d => expensiveCalc(d)). D3's d3.group(), d3.rollup(), d3.bin() are efficient for data preprocessing."
+    category: "d3js_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "precompute", "group", "rollup", "bin", "performance"]
+    example: |
+      // ✅ Pre-compute outside render
+      const grouped = d3.group(data, d => d.category);
+      const binned = d3.bin().thresholds(20)(data.map(d => d.value));
+      const sorted = [...data].sort((a, b) => d3.descending(a.value, b.value));
+
+      // Then use pre-computed values in bindings
+      svg.selectAll('rect')
+        .data(sorted)
+        .join('rect')
+        .attr('height', d => yScale(d.value));
+
+      // ❌ Computing inside accessor
+      bars.attr('fill', d => {
+        const avg = d3.mean(allData, x => x.value);  // recalculated per element!
+        return d.value > avg ? 'green' : 'red';
+      });
+
+  # ============================================================================
+  # ADVANCED PATTERNS (D3JS041-D3JS045)
+  # ============================================================================
+
+  - id: D3JS041
+    title: "Use transitions for animated data updates"
+    description: "selection.transition() animates attribute changes smoothly. Set .duration() for timing, .delay() for staggering, .ease() for easing curves. Chain .transition() for sequenced animations. Always transition after .join() or .merge()."
+    category: "d3js_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "transition", "animation", "ease", "duration"]
+    example: |
+      // ✅ Animated update
+      svg.selectAll('rect')
+        .data(newData, d => d.id)
+        .join(
+          enter => enter.append('rect')
+            .attr('y', height)
+            .attr('height', 0)
+            .call(enter => enter.transition()
+              .duration(750)
+              .attr('y', d => yScale(d.value))
+              .attr('height', d => height - yScale(d.value))),
+          update => update.call(update => update.transition()
+            .duration(750)
+            .attr('y', d => yScale(d.value))
+            .attr('height', d => height - yScale(d.value))),
+          exit => exit.call(exit => exit.transition()
+            .duration(300)
+            .attr('height', 0)
+            .attr('y', height)
+            .remove())
+        );
+
+  - id: D3JS042
+    title: "Use D3 with React via useRef and useEffect"
+    description: "When integrating D3 with React, use useRef to get DOM references and useEffect for D3 rendering. Let D3 own the SVG internals (elements, bindings, transitions). React owns the component lifecycle. Avoid D3 and React fighting over the same DOM."
+    category: "d3js_advanced"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3", "react"]
+    tags: ["d3", "react", "useRef", "useEffect", "integration"]
+    example: |
+      // ✅ D3 + React with useRef
+      function BarChart({ data }) {
+        const svgRef = useRef();
+
+        useEffect(() => {
+          const svg = d3.select(svgRef.current);
+          svg.selectAll('rect')
+            .data(data, d => d.id)
+            .join('rect')
+            .transition()
+            .attr('x', (d, i) => i * 30)
+            .attr('height', d => yScale(d.value));
+        }, [data]);
+
+        return <svg ref={svgRef} width={600} height={400} />;
+      }
+
+      // ❌ D3 appending to document.body inside React
+      useEffect(() => {
+        d3.select('body').append('svg');  // conflicts with React DOM
+      }, []);
+
+  - id: D3JS043
+    title: "Use Observable's d3 patterns for exploratory analysis"
+    description: "Observable notebooks provide an ideal environment for D3 prototyping with reactive cells. Use Observable's cell() reactivity, viewof for interactive inputs, and FileAttachment for data loading. Export to standalone with Observable Framework."
+    category: "d3js_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["d3", "observable"]
+    tags: ["d3", "observable", "notebook", "prototype", "reactive"]
+    example: |
+      // ✅ Observable pattern
+      // Cell 1: Data
+      data = FileAttachment('data.csv').csv({ typed: true });
+
+      // Cell 2: Interactive input
+      viewof year = Scrubber(
+        d3.range(2000, 2024),
+        { autoplay: true, delay: 200 }
+      );
+
+      // Cell 3: Chart (auto-reruns when year changes)
+      Plot.plot({
+        marks: [
+          Plot.barY(data.filter(d => d.year === year),
+            { x: 'category', y: 'value', fill: 'category' })
+        ]
+      });
+
+  - id: D3JS044
+    title: "Use d3.format() and d3.timeFormat() for consistent formatting"
+    description: "D3's formatters handle number formatting (commas, decimals, SI prefixes, percentages) and date formatting. Use them consistently across axes, tooltips, and labels. d3.format('.2s') for SI notation, d3.format('$,.2f') for currency."
+    category: "d3js_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "format", "timeFormat", "number", "locale"]
+    example: |
+      // ✅ Number formatting
+      const fmt = d3.format('$,.0f');        // $1,234
+      const pct = d3.format('.1%');           // 12.3%
+      const si = d3.format('.2s');            // 1.2M
+      const decimal = d3.format('.2f');       // 1.23
+
+      // ✅ Date formatting
+      const dateFmt = d3.timeFormat('%b %d, %Y');  // Jan 15, 2024
+      const monthFmt = d3.timeFormat('%B');          // January
+
+      // ✅ Axis formatting
+      yAxis.tickFormat(d3.format('$,.0f'));
+      xAxis.tickFormat(d3.timeFormat('%b'));
+
+  - id: D3JS045
+    title: "Use d3.csv/json/tsv with row conversion for typed data"
+    description: "D3's data loading functions (d3.csv, d3.json, d3.tsv) return Promises. Pass a row conversion function to d3.csv to parse strings into numbers and dates at load time. Use d3.autoType for automatic type inference."
+    category: "d3js_advanced"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "csv", "json", "fetch", "autoType", "parsing"]
+    example: |
+      // ✅ Typed CSV loading
+      const data = await d3.csv('data.csv', d => ({
+        date: new Date(d.date),
+        value: +d.value,
+        name: d.name,
+      }));
+
+      // ✅ Auto-typing
+      const data = await d3.csv('data.csv', d3.autoType);
+
+      // ❌ No type conversion (all strings)
+      const data = await d3.csv('data.csv');
+      // data[0].value is "42" (string), not 42 (number)
+
+  # ============================================================================
+  # GEO (D3JS046-D3JS050)
+  # ============================================================================
+
+  - id: D3JS046
+    title: "Use d3.geoPath() with a projection for geographic maps"
+    description: "d3.geoPath() generates SVG path strings from GeoJSON. Set a projection (e.g., geoMercator, geoAlbersUsa, geoNaturalEarth1) to control the map projection. Use .fitSize() to auto-scale the projection to the SVG dimensions."
+    category: "d3js_geo"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "geo", "map", "projection", "geoPath", "geojson"]
+    example: |
+      // ✅ Map with projection
+      const projection = d3.geoNaturalEarth1()
+        .fitSize([width, height], geojson);
+
+      const path = d3.geoPath().projection(projection);
+
+      svg.selectAll('path')
+        .data(geojson.features)
+        .join('path')
+        .attr('d', path)
+        .attr('fill', d => colorScale(dataMap.get(d.properties.name)))
+        .attr('stroke', '#fff');
+
+  - id: D3JS047
+    title: "Use topojson for efficient geographic data"
+    description: "TopoJSON is 50-80% smaller than GeoJSON by encoding topology (shared boundaries). Use topojson.feature() to convert back to GeoJSON features for rendering. Use topojson.mesh() for drawing boundaries without duplicates."
+    category: "d3js_geo"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "topojson", "geojson", "topology", "mesh"]
+    example: |
+      // ✅ TopoJSON to GeoJSON
+      import * as topojson from 'topojson-client';
+
+      const us = await d3.json('us-10m.json');
+      const states = topojson.feature(us, us.objects.states);
+      const stateBorders = topojson.mesh(us, us.objects.states,
+        (a, b) => a !== b);  // only internal borders
+
+      svg.selectAll('path')
+        .data(states.features)
+        .join('path')
+        .attr('d', path);
+
+      svg.append('path')
+        .datum(stateBorders)
+        .attr('d', path)
+        .attr('fill', 'none')
+        .attr('stroke', '#999');
+
+  - id: D3JS048
+    title: "Choose appropriate projection for the geographic area"
+    description: "geoMercator for web maps (conformal), geoAlbersUsa for US maps (includes Alaska/Hawaii insets), geoNaturalEarth1 for world maps (balanced distortion), geoOrthographic for globe view. Wrong projection distorts areas and shapes."
+    category: "d3js_geo"
+    severity: "warning"
+    applicability:
+      frameworks: ["d3"]
+    tags:
+      ["d3", "projection", "mercator", "albers", "naturalEarth", "orthographic"]
+    example: |
+      // ✅ US map with Albers (includes AK/HI)
+      const projection = d3.geoAlbersUsa()
+        .fitSize([width, height], usGeoJSON);
+
+      // ✅ World map with Natural Earth
+      const projection = d3.geoNaturalEarth1()
+        .fitSize([width, height], worldGeoJSON);
+
+      // ✅ Globe view
+      const projection = d3.geoOrthographic()
+        .rotate([0, -30])
+        .fitSize([width, height], sphere);
+
+      // ❌ Mercator for world map (extreme polar distortion)
+      const projection = d3.geoMercator();
+
+  - id: D3JS049
+    title: "Add interactive zoom and pan to geographic maps"
+    description: "Combine d3.zoom() with projection updates for map zoom/pan. On zoom, update the projection's scale and translate, then redraw paths. Alternatively, apply zoom transform to a <g> containing all map elements."
+    category: "d3js_geo"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "geo", "zoom", "pan", "interactive", "map"]
+    example: |
+      // ✅ Zoom on map group
+      const g = svg.append('g');
+      g.selectAll('path')
+        .data(features)
+        .join('path')
+        .attr('d', path);
+
+      const zoom = d3.zoom()
+        .scaleExtent([1, 8])
+        .on('zoom', (event) => {
+          g.attr('transform', event.transform);
+        });
+
+      svg.call(zoom);
+
+  - id: D3JS050
+    title: "Use d3.geoPath().centroid() for placing labels on maps"
+    description: "path.centroid(feature) returns the [x, y] center of a geographic feature's projected area. Use it to position labels, symbols, or tooltips at the visual center of countries, states, or regions."
+    category: "d3js_geo"
+    severity: "info"
+    applicability:
+      frameworks: ["d3"]
+    tags: ["d3", "geo", "centroid", "label", "annotation"]
+    example: |
+      // ✅ Labels at centroids
+      svg.selectAll('.label')
+        .data(features)
+        .join('text')
+        .attr('class', 'label')
+        .attr('x', d => path.centroid(d)[0])
+        .attr('y', d => path.centroid(d)[1])
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '10px')
+        .text(d => d.properties.name);

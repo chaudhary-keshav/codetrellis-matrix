@@ -1,0 +1,588 @@
+# CSS Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.17 - CSS Language Support
+# Practice IDs: CSS001-CSS050
+# Coverage: Layout, Variables, Animations, Preprocessor, Architecture,
+#           Naming, Performance, Responsive Design
+# Versions: CSS2, CSS3, CSS4+, SCSS/Sass, Less, Stylus
+
+practices:
+  # ============================================================================
+  # CSS ARCHITECTURE (CSS001-CSS008)
+  # ============================================================================
+
+  - id: CSS001
+    title: "Use a consistent CSS architecture methodology"
+    description: "Adopt BEM, ITCSS, SMACSS, or similar methodology for naming and organizing CSS. Consistent architecture prevents specificity wars and improves maintainability."
+    category: "css_architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "architecture", "naming"]
+    example: |
+      /* BEM example */
+      .card {}
+      .card__header {}
+      .card__body {}
+      .card--featured {}
+
+  - id: CSS002
+    title: "Avoid deeply nested selectors (max 3 levels)"
+    description: "Keep selector nesting to a maximum of 3 levels deep. Deep nesting creates high specificity, makes overrides difficult, and tightly couples CSS to HTML structure."
+    category: "css_architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["css", "scss", "less", "stylus"]
+    tags: ["css", "specificity", "nesting"]
+
+  - id: CSS003
+    title: "Use cascade layers (@layer) for specificity management"
+    description: "Use CSS cascade layers to organize styles into explicit specificity groups. This prevents specificity conflicts between resets, base styles, components, and utilities."
+    category: "css_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "css4", "layers", "specificity"]
+    example: |
+      @layer reset, base, components, utilities;
+
+      @layer reset { /* lowest priority */ }
+      @layer components { /* higher priority */ }
+      @layer utilities { /* highest priority */ }
+
+  - id: CSS004
+    title: "Separate layout from component styling"
+    description: "Keep layout concerns (spacing, positioning, grid) separate from component visual styling (colors, fonts, borders). Use composition over inheritance."
+    category: "css_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "architecture", "separation"]
+
+  - id: CSS005
+    title: "Use :where() for zero-specificity base styles"
+    description: "Use :where() for base/reset styles that should be easily overridable. Unlike :is(), :where() has zero specificity contribution."
+    category: "css_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "css4", "specificity"]
+    example: |
+      :where(ul, ol) { list-style: none; }
+      :where(a) { color: inherit; text-decoration: none; }
+
+  - id: CSS006
+    title: "Use @scope for component-scoped styles"
+    description: "Use @scope to limit CSS scope to specific DOM subtrees without relying on class naming conventions. This is the native CSS scoping mechanism."
+    category: "css_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "css4", "scoping"]
+
+  - id: CSS007
+    title: "Avoid !important except in utility classes"
+    description: "Never use !important for regular component styles. Reserve it only for utility classes (e.g., .hidden) that must always win. Use specificity management instead."
+    category: "css_architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["css", "scss", "less"]
+    tags: ["css", "specificity", "anti-pattern"]
+
+  - id: CSS008
+    title: "Keep CSS files small and focused"
+    description: "Split CSS into small, focused files per component or feature. Each file should handle one concern. Use @import or @use to compose the final stylesheet."
+    category: "css_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css", "scss", "less"]
+    tags: ["css", "architecture", "organization"]
+
+  # ============================================================================
+  # CSS NAMING (CSS009-CSS014)
+  # ============================================================================
+
+  - id: CSS009
+    title: "Use meaningful, content-descriptive class names"
+    description: "Name classes based on purpose/content, not appearance. Use .error-message not .red-text. This survives design changes without refactoring HTML."
+    category: "css_naming"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "naming", "semantics"]
+
+  - id: CSS010
+    title: "Use lowercase-kebab-case for class names"
+    description: "Use lowercase with hyphens for CSS class names (.my-component). Avoid camelCase, PascalCase, or underscores (except in BEM's double underscore)."
+    category: "css_naming"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "naming", "convention"]
+
+  - id: CSS011
+    title: "Prefix utility classes consistently"
+    description: "Prefix utility/helper classes (u-, is-, has-) to distinguish them from component classes. This makes intent clear in HTML."
+    category: "css_naming"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "naming", "utilities"]
+
+  - id: CSS012
+    title: "Use consistent naming for CSS custom properties"
+    description: "Namespace custom properties by component or category (--color-primary, --spacing-lg, --card-border-radius). Use a design token naming convention."
+    category: "css_naming"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "variables", "naming"]
+    example: |
+      :root {
+        --color-primary: oklch(0.7 0.15 250);
+        --spacing-sm: 0.5rem;
+        --spacing-md: 1rem;
+        --font-size-body: 1rem;
+      }
+
+  - id: CSS013
+    title: "Avoid ID selectors for styling"
+    description: "Never use #id selectors for styling. IDs have extremely high specificity making overrides nearly impossible. Reserve IDs for JS hooks and fragment identifiers."
+    category: "css_naming"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "specificity", "anti-pattern"]
+
+  - id: CSS014
+    title: "Avoid type selectors in component styles"
+    description: "Avoid bare element selectors (div, p, a) in component CSS. They create implicit dependencies on HTML structure. Use class selectors instead."
+    category: "css_naming"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "specificity", "coupling"]
+
+  # ============================================================================
+  # CSS VARIABLES / CUSTOM PROPERTIES (CSS015-CSS020)
+  # ============================================================================
+
+  - id: CSS015
+    title: "Use CSS custom properties for design tokens"
+    description: "Define colors, spacing, fonts, and other design tokens as custom properties on :root. This enables theming, dark mode, and consistent design system implementation."
+    category: "css_variables"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "variables", "design-tokens"]
+
+  - id: CSS016
+    title: "Provide fallback values for custom properties"
+    description: "Always provide fallback values when using var(). This ensures graceful degradation if the property is undefined."
+    category: "css_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "variables", "fallback"]
+    example: |
+      color: var(--text-color, #333);
+      padding: var(--spacing-md, 1rem);
+
+  - id: CSS017
+    title: "Use component-scoped custom properties"
+    description: "Define component-level custom properties for configurable components. Override on instances rather than duplicating styles."
+    category: "css_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "variables", "components"]
+    example: |
+      .button {
+        --btn-bg: var(--color-primary);
+        --btn-color: white;
+        background: var(--btn-bg);
+        color: var(--btn-color);
+      }
+      .button--danger { --btn-bg: var(--color-danger); }
+
+  - id: CSS018
+    title: "Implement dark mode with custom properties"
+    description: "Use prefers-color-scheme media query to switch custom property values for dark mode. Avoid duplicating selectors for theme switching."
+    category: "css_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "variables", "dark-mode", "theming"]
+    example: |
+      :root {
+        --bg: white;
+        --text: #333;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1a1a1a;
+          --text: #eee;
+        }
+      }
+
+  - id: CSS019
+    title: "Use light-dark() for color scheme values"
+    description: "Use the CSS4 light-dark() function for dual-color-scheme values. This is cleaner than media queries for simple light/dark switches."
+    category: "css_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "css4", "color", "theming"]
+    example: |
+      :root { color-scheme: light dark; }
+      body { background: light-dark(white, #1a1a1a); }
+
+  - id: CSS020
+    title: "Use oklch() or oklab() for perceptually uniform colors"
+    description: "Prefer oklch() or oklab() color functions over hsl() or rgb(). They provide perceptually uniform color manipulation, better for design systems."
+    category: "css_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "css4", "color"]
+
+  # ============================================================================
+  # CSS LAYOUT (CSS021-CSS028)
+  # ============================================================================
+
+  - id: CSS021
+    title: "Use Flexbox for one-dimensional layouts"
+    description: "Use Flexbox for laying out items in a single row or column. Flexbox handles alignment, distribution, and ordering of flex items."
+    category: "css_layout"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "layout", "flexbox"]
+
+  - id: CSS022
+    title: "Use CSS Grid for two-dimensional layouts"
+    description: "Use CSS Grid for page layouts and complex two-dimensional arrangements. Grid handles both rows and columns simultaneously with explicit track definitions."
+    category: "css_layout"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "layout", "grid"]
+
+  - id: CSS023
+    title: "Use gap instead of margin for spacing"
+    description: "Use the gap property (grid-gap, row-gap, column-gap) instead of margin for spacing between grid/flex items. Gap doesn't add space at edges."
+    category: "css_layout"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "layout", "spacing"]
+
+  - id: CSS024
+    title: "Use logical properties for internationalization"
+    description: "Use logical properties (margin-inline, padding-block, inline-size) instead of physical properties (margin-left, padding-top, width) for RTL/LTR support."
+    category: "css_layout"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "layout", "i18n", "logical-properties"]
+    example: |
+      /* Good - works in both LTR and RTL */
+      .sidebar { margin-inline-start: 1rem; inline-size: 300px; }
+
+      /* Bad - only works in LTR */
+      .sidebar { margin-left: 1rem; width: 300px; }
+
+  - id: CSS025
+    title: "Use container queries for component-level responsiveness"
+    description: "Use @container queries instead of @media queries for component-level responsive design. Container queries respond to the parent container size, not the viewport."
+    category: "css_layout"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "css4", "container-queries", "responsive"]
+    example: |
+      .card-container { container-type: inline-size; }
+      @container (min-inline-size: 400px) {
+        .card { flex-direction: row; }
+      }
+
+  - id: CSS026
+    title: "Use subgrid for nested grid alignment"
+    description: "Use subgrid to align nested grid items with the parent grid's tracks. This ensures consistent alignment across different nesting levels."
+    category: "css_layout"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "css4", "grid", "subgrid"]
+
+  - id: CSS027
+    title: "Use minmax() and auto-fill/auto-fit for flexible grids"
+    description: "Use repeat(auto-fill, minmax(min, max)) or repeat(auto-fit, minmax(min, max)) for responsive grids that automatically adjust column count."
+    category: "css_layout"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "grid", "responsive"]
+    example: |
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+      }
+
+  - id: CSS028
+    title: "Use clamp() for fluid typography and spacing"
+    description: "Use clamp(min, preferred, max) for fluid, responsive values without media queries. Ideal for font sizes, spacing, and container widths."
+    category: "css_layout"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "responsive", "functions"]
+    example: |
+      h1 { font-size: clamp(1.5rem, 5vw, 3rem); }
+      .container { inline-size: clamp(320px, 90vw, 1200px); }
+
+  # ============================================================================
+  # CSS ANIMATIONS (CSS029-CSS034)
+  # ============================================================================
+
+  - id: CSS029
+    title: "Prefer CSS transitions over animations for simple state changes"
+    description: "Use transitions for hover, focus, active state changes. Use @keyframes animations for complex multi-step animations. Transitions are simpler and more performant."
+    category: "css_animations"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "animation", "performance"]
+
+  - id: CSS030
+    title: "Only animate transform and opacity for performance"
+    description: "Animate transform and opacity properties for GPU-composited animations. Avoid animating layout properties (width, height, margin, padding) which trigger reflows."
+    category: "css_animations"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "animation", "performance"]
+
+  - id: CSS031
+    title: "Use will-change sparingly and remove when done"
+    description: "Only use will-change on elements that will actually animate. Apply it just before animation starts and remove after. Overuse wastes GPU memory."
+    category: "css_animations"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "animation", "performance"]
+
+  - id: CSS032
+    title: "Respect prefers-reduced-motion"
+    description: "Use @media (prefers-reduced-motion: reduce) to disable or reduce animations for users who prefer reduced motion. This is an accessibility requirement."
+    category: "css_animations"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "animation", "accessibility"]
+    example: |
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+  - id: CSS033
+    title: "Use scroll-driven animations for scroll effects"
+    description: "Use CSS scroll-driven animations (animation-timeline, view-timeline) instead of JavaScript scroll handlers for scroll-based animations. Better performance and compositing."
+    category: "css_animations"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "css4", "animation", "scroll"]
+
+  - id: CSS034
+    title: "Name keyframes descriptively"
+    description: "Name @keyframes with descriptive names (slide-in-from-left, fade-out) not generic names (animation1, move). Names should describe the visual effect."
+    category: "css_animations"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "animation", "naming"]
+
+  # ============================================================================
+  # CSS PREPROCESSOR (CSS035-CSS040)
+  # ============================================================================
+
+  - id: CSS035
+    title: "Use SCSS @use/@forward instead of @import"
+    description: "Use the SCSS module system (@use/@forward) instead of @import. @import is deprecated and causes duplicate code, global namespace pollution."
+    category: "css_preprocessor"
+    severity: "critical"
+    applicability:
+      frameworks: ["scss"]
+    tags: ["scss", "modules", "imports"]
+    example: |
+      // Good
+      @use 'variables' as vars;
+      color: vars.$primary;
+
+      // Bad (deprecated)
+      @import 'variables';
+      color: $primary;
+
+  - id: CSS036
+    title: "Use mixins for reusable pattern groups"
+    description: "Create @mixin for groups of declarations that are reused with different values. Use parameters for configurable mixins."
+    category: "css_preprocessor"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scss", "less"]
+    tags: ["scss", "less", "mixins"]
+
+  - id: CSS037
+    title: "Use %placeholder selectors for @extend"
+    description: "When using @extend, extend %placeholder selectors not regular classes. Extending classes creates unexpected selector combinations in the output."
+    category: "css_preprocessor"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scss"]
+    tags: ["scss", "extend", "placeholder"]
+
+  - id: CSS038
+    title: "Limit preprocessor nesting to 3 levels"
+    description: "Even though preprocessors support deep nesting, limit to 3 levels maximum. Deep nesting in SCSS/Less produces high-specificity output CSS."
+    category: "css_preprocessor"
+    severity: "critical"
+    applicability:
+      frameworks: ["scss", "less", "stylus"]
+    tags: ["scss", "less", "nesting", "specificity"]
+
+  - id: CSS039
+    title: "Use preprocessor functions for calculations"
+    description: "Use SCSS @function for complex value calculations. Functions return values, unlike mixins which output declarations."
+    category: "css_preprocessor"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scss"]
+    tags: ["scss", "functions"]
+
+  - id: CSS040
+    title: "Organize SCSS partials with clear naming"
+    description: "Name SCSS partials with underscore prefix and descriptive names (_variables.scss, _mixins.scss, _buttons.scss). Organize into folders (base/, components/, layout/)."
+    category: "css_preprocessor"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scss"]
+    tags: ["scss", "organization", "naming"]
+
+  # ============================================================================
+  # CSS PERFORMANCE (CSS041-CSS045)
+  # ============================================================================
+
+  - id: CSS041
+    title: "Minimize selector complexity"
+    description: "Keep selectors short and flat. Avoid universal selectors (*), long descendant chains, and attribute selectors in performance-critical paths."
+    category: "css_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "performance", "selectors"]
+
+  - id: CSS042
+    title: "Use content-visibility for off-screen content"
+    description: "Apply content-visibility: auto to large sections of content that are initially off-screen. This skips rendering until the content is near the viewport."
+    category: "css_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "performance", "rendering"]
+
+  - id: CSS043
+    title: "Use @font-face with font-display: swap"
+    description: "Use font-display: swap or optional in @font-face to prevent FOIT (flash of invisible text). This ensures text is visible during font loading."
+    category: "css_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "performance", "fonts"]
+
+  - id: CSS044
+    title: "Use CSS containment for rendering optimization"
+    description: "Use contain: layout style paint for components that don't affect siblings. This tells the browser it can optimize rendering of these elements independently."
+    category: "css_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "performance", "containment"]
+
+  - id: CSS045
+    title: "Avoid @import in CSS (use <link> or bundler)"
+    description: "Avoid @import in plain CSS files as it creates sequential network requests. Use <link> tags or bundler imports instead for parallel loading."
+    category: "css_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "performance", "loading"]
+
+  # ============================================================================
+  # CSS RESPONSIVE DESIGN (CSS046-CSS050)
+  # ============================================================================
+
+  - id: CSS046
+    title: "Use mobile-first media queries"
+    description: "Write base styles for mobile, then add complexity with min-width media queries. This ensures mobile devices download minimal CSS."
+    category: "css_responsive"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "responsive", "mobile-first"]
+    example: |
+      /* Base (mobile) */
+      .grid { display: flex; flex-direction: column; }
+
+      /* Tablet and up */
+      @media (min-width: 768px) {
+        .grid { flex-direction: row; }
+      }
+
+  - id: CSS047
+    title: "Use relative units (rem, em, %) over pixels"
+    description: "Use rem for font sizes, em for component spacing, and % or vw/vh for layouts. This ensures proper scaling with user zoom and font size preferences."
+    category: "css_responsive"
+    severity: "critical"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "responsive", "units"]
+
+  - id: CSS048
+    title: "Use CSS media query range syntax"
+    description: "Use the modern range syntax (@media (width >= 768px)) instead of the classic syntax (@media (min-width: 768px)). It's more readable and supports range comparisons."
+    category: "css_responsive"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "css4", "media-queries"]
+    example: |
+      /* Modern range syntax */
+      @media (768px <= width <= 1024px) { ... }
+
+      /* Classic syntax */
+      @media (min-width: 768px) and (max-width: 1024px) { ... }
+
+  - id: CSS049
+    title: "Use aspect-ratio for responsive media"
+    description: "Use aspect-ratio property instead of padding-top hack for responsive embeds and images. The native property is clearer and more maintainable."
+    category: "css_responsive"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "responsive", "aspect-ratio"]
+    example: |
+      .video-container { aspect-ratio: 16 / 9; }
+      .avatar { aspect-ratio: 1; border-radius: 50%; }
+
+  - id: CSS050
+    title: "Test with prefers-color-scheme and prefers-contrast"
+    description: "Support prefers-color-scheme (dark/light), prefers-contrast (high/low), and prefers-reduced-transparency media features for user preference respect."
+    category: "css_responsive"
+    severity: "recommended"
+    applicability:
+      frameworks: ["css"]
+    tags: ["css", "responsive", "accessibility", "media-queries"]

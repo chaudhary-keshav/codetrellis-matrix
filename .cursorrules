@@ -1,0 +1,31 @@
+# Cursor Rules — codetrellis
+
+## Project Context
+
+**codetrellis** — Python Library
+- **Languages:** Python
+- **Frameworks:** None detected
+- **Domain:** Developer Tools
+- **Purpose:** A developer tools application for code analysis, project scanning, or build/development tooling. Provides utilities for development workflow automation and code intelligence.
+- **Scale:** 774 files, 1531 types, 33 sections in matrix
+
+## ⚠️ CRITICAL — Read the Matrix FIRST
+
+Before exploring files manually, **read the full project matrix**:
+
+```
+.codetrellis/cache/4.16.0/codetrellis/matrix.prompt
+```
+
+This file contains the ENTIRE project context compressed into ~15K tokens.
+Read it before running file searches. It has all types, APIs, routes, schemas,
+implementation logic, infrastructure, business domain, best practices, and TODOs.
+
+If MCP tools are available, use `search_matrix`, `get_section`, and `get_context_for_file`
+from the CodeTrellis MCP server (registered in `.vscode/mcp.json`).
+
+## Conventions
+
+- Follow existing patterns in the codebase.
+- Follow the project's established error handling patterns.
+- Write tests for new code.

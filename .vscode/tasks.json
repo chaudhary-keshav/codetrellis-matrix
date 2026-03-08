@@ -1,0 +1,71 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CodeTrellis: Watch Mode",
+      "type": "shell",
+      "command": "codetrellis watch /Users/keshavchaudhary/Documents/GitHub/codetrellis-reops/codetrellis",
+      "isBackground": true,
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    },
+    {
+      "label": "CodeTrellis: Scan (Optimal)",
+      "type": "shell",
+      "command": "codetrellis scan /Users/keshavchaudhary/Documents/GitHub/codetrellis-reops/codetrellis --optimal",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "CodeTrellis: Scan (Incremental)",
+      "type": "shell",
+      "command": "codetrellis scan /Users/keshavchaudhary/Documents/GitHub/codetrellis-reops/codetrellis --incremental",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "CodeTrellis: Verify Build",
+      "type": "shell",
+      "command": "codetrellis verify /Users/keshavchaudhary/Documents/GitHub/codetrellis-reops/codetrellis",
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "codetrellis: Run Tests",
+      "type": "shell",
+      "command": "pytest tests/ -x -q",
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}

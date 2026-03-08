@@ -1,0 +1,597 @@
+# ============================================================================
+# Python 3.11 Version-Specific Practices
+# ============================================================================
+# Practices for features introduced in Python 3.11 (Released: October 2022)
+# Key Features: Exception Groups, Task Groups, Better Tracebacks, Self Type
+# Performance: ~25% faster than 3.10
+# ============================================================================
+
+metadata:
+  id: 'python_3_11'
+  version: '1.0.0'
+  name: 'Python 3.11 Specific Practices'
+  description: 'Best practices for Python 3.11+ features'
+  python_version: '3.11+'
+  category: 'language_version'
+  tags: ['python', '3.11', 'exception-groups', 'task-groups', 'performance']
+  updated: '2025-01-20'
+
+practices:
+  # ==========================================================================
+  # Exception Groups (PEP 654)
+  # ==========================================================================
+  - id: 'PY311-001'
+    title: 'Use ExceptionGroup for multiple errors'
+    level: 'advanced'
+    category: 'error_handling'
+    tags: ['exceptions', 'exception-groups', 'error-handling']
+    applicability:
+      min_python: '3.11'
+      contexts: ['concurrent', 'batch-processing', 'validation']
+    content:
+      description: |
+        Use ExceptionGroup when multiple independent errors occur and you want
+        to report all of them rather than just the first. This is especially
+        useful for validation, concurrent operations, and batch processing.
+      good_examples:
+        - |
+          # Good: Collect validation errors
+          def validate_user(data: dict) -> None:
+              errors = []
+
+              if not data.get("email"):
+                  errors.append(ValueError("Email is required"))
+              elif "@" not in data["email"]:
+                  errors.append(ValueError("Invalid email format"))
+
+              if not data.get("age"):
+                  errors.append(ValueError("Age is required"))
+              elif data["age"] < 0:
+                  errors.append(ValueError("Age must be positive"))
+
+              if errors:
+                  raise ExceptionGroup("Validation failed", errors)
+
+          # Handle all errors at once
+          try:
+              validate_user({"email": "bad", "age": -1})
+          except ExceptionGroup as eg:
+              for error in eg.exceptions:
+                  print(f"Error: {error}")
+        - |
+          # Good: Concurrent task errors
+          import asyncio
+
+          async def fetch_all(urls: list[str]) -> list[bytes]:
+              async with asyncio.TaskGroup() as tg:
+                  tasks = [tg.create_task(fetch(url)) for url in urls]
+              # If any task fails, all errors collected in ExceptionGroup
+              return [t.result() for t in tasks]
+      bad_examples:
+        - |
+          # Bad: Only first error reported
+          def validate_user(data: dict) -> None:
+              if not data.get("email"):
+                  raise ValueError("Email required")  # Stops here
+              if not data.get("age"):
+                  raise ValueError("Age required")  # Never checked
+    references:
+      - 'https://peps.python.org/pep-0654/'
+
+  - id: 'PY311-002'
+    title: 'Use except* for selective group handling'
+    level: 'advanced'
+    category: 'error_handling'
+    tags: ['exceptions', 'except-star', 'exception-groups']
+    applicability:
+      min_python: '3.11'
+    content:
+      description: |
+        Use except* (except-star) to selectively handle exceptions from an
+        ExceptionGroup. This allows different handling for different error types
+        while letting unhandled types propagate.
+      good_examples:
+        - |
+          # Good: Handle different error types differently
+          try:
+              await process_batch(items)
+          except* ValueError as eg:
+              # Handle all ValueErrors
+              for e in eg.exceptions:
+                  log.warning(f"Validation error: {e}")
+          except* ConnectionError as eg:
+              # Handle all connection errors
+              for e in eg.exceptions:
+                  log.error(f"Connection failed: {e}")
+              await notify_ops_team()
+          except* TimeoutError as eg:
+              # Handle all timeouts
+              for e in eg.exceptions:
+                  await retry_queue.put(e.item)
+        - |
+          # Good: Partial handling with propagation
+          try:
+              results = await gather_with_exceptions(tasks)
+          except* Retryable as eg:
+              # Handle retryable errors
+              for e in eg.exceptions:
+                  await retry_later(e.task)
+          # Non-retryable errors propagate automatically
+
+  # ==========================================================================
+  # Task Groups (PEP 654)
+  # ==========================================================================
+  - id: 'PY311-003'
+    title: 'Use asyncio.TaskGroup for concurrent tasks'
+    level: 'intermediate'
+    category: 'concurrency'
+    tags: ['asyncio', 'task-group', 'concurrent', 'async']
+    applicability:
+      min_python: '3.11'
+      contexts: ['async', 'concurrent-io']
+    content:
+      description: |
+        Use asyncio.TaskGroup instead of asyncio.gather() for better error
+        handling and automatic cancellation. TaskGroup ensures all tasks
+        complete or fail together, and errors are collected into ExceptionGroup.
+      good_examples:
+        - |
+          # Good: TaskGroup with automatic cleanup
+          import asyncio
+
+          async def process_users(user_ids: list[int]) -> list[User]:
+              async with asyncio.TaskGroup() as tg:
+                  tasks = [
+                      tg.create_task(fetch_user(uid), name=f"user-{uid}")
+                      for uid in user_ids
+                  ]
+              return [t.result() for t in tasks]
+
+          # Benefits:
+          # - If any task fails, others are cancelled automatically
+          # - All exceptions collected in ExceptionGroup
+          # - No need for explicit cancellation handling
+        - |
+          # Good: Mixed concurrent operations
+          async def initialize_system():
+              async with asyncio.TaskGroup() as tg:
+                  tg.create_task(load_config())
+                  tg.create_task(connect_database())
+                  tg.create_task(start_cache())
+                  tg.create_task(init_metrics())
+              # All tasks completed successfully (or exception raised)
+              print("System initialized")
+      bad_examples:
+        - |
+          # Outdated: gather with error handling
+          async def process_users(user_ids: list[int]) -> list[User]:
+              tasks = [fetch_user(uid) for uid in user_ids]
+              results = await asyncio.gather(*tasks, return_exceptions=True)
+
+              errors = [r for r in results if isinstance(r, Exception)]
+              if errors:
+                  # Manual error handling required
+                  raise Exception(f"Failed: {errors}")
+              return results
+    references:
+      - 'https://docs.python.org/3.11/library/asyncio-task.html#task-groups'
+
+  - id: 'PY311-004'
+    title: 'Name tasks in TaskGroup for debugging'
+    level: 'intermediate'
+    category: 'debugging'
+    tags: ['asyncio', 'task-group', 'debugging', 'observability']
+    applicability:
+      min_python: '3.11'
+    content:
+      description: |
+        Always name tasks when using TaskGroup for easier debugging and
+        monitoring. Named tasks appear in tracebacks and monitoring tools.
+      good_examples:
+        - |
+          # Good: Named tasks for debugging
+          async def process_orders(orders: list[Order]) -> list[Receipt]:
+              async with asyncio.TaskGroup() as tg:
+                  tasks = [
+                      tg.create_task(
+                          process_order(order),
+                          name=f"order-{order.id}"
+                      )
+                      for order in orders
+                  ]
+              return [t.result() for t in tasks]
+
+          # In tracebacks:
+          # Task order-12345 raised ValueError("Invalid amount")
+        - |
+          # Good: Descriptive names for different task types
+          async def sync_all():
+              async with asyncio.TaskGroup() as tg:
+                  tg.create_task(sync_users(), name="sync-users")
+                  tg.create_task(sync_products(), name="sync-products")
+                  tg.create_task(sync_orders(), name="sync-orders")
+
+  # ==========================================================================
+  # Self Type (PEP 673)
+  # ==========================================================================
+  - id: 'PY311-005'
+    title: 'Use Self type for fluent interfaces'
+    level: 'intermediate'
+    category: 'type_safety'
+    tags: ['typing', 'self', 'fluent-api', 'builder']
+    applicability:
+      min_python: '3.11'
+      contexts: ['builder-pattern', 'fluent-api', 'chaining']
+    content:
+      description: |
+        Use the Self type to annotate methods that return self. This ensures
+        type checkers understand method chaining, especially in class hierarchies.
+      good_examples:
+        - |
+          # Good: Self type for fluent builder
+          from typing import Self
+
+          class QueryBuilder:
+              def __init__(self):
+                  self._table: str = ""
+                  self._conditions: list[str] = []
+
+              def from_table(self, table: str) -> Self:
+                  self._table = table
+                  return self
+
+              def where(self, condition: str) -> Self:
+                  self._conditions.append(condition)
+                  return self
+
+              def build(self) -> str:
+                  where = " AND ".join(self._conditions)
+                  return f"SELECT * FROM {self._table} WHERE {where}"
+
+          # Works correctly with subclasses
+          class ExtendedQueryBuilder(QueryBuilder):
+              def with_limit(self, n: int) -> Self:
+                  self._limit = n
+                  return self
+
+          # Type checker knows this returns ExtendedQueryBuilder
+          query = ExtendedQueryBuilder().from_table("users").with_limit(10)
+        - |
+          # Good: Self in __enter__ for context managers
+          from typing import Self
+
+          class Connection:
+              def __enter__(self) -> Self:
+                  self._connect()
+                  return self
+
+              def __exit__(self, *args) -> None:
+                  self._disconnect()
+      bad_examples:
+        - |
+          # Outdated: Manual TypeVar (pre-3.11)
+          from typing import TypeVar
+
+          T = TypeVar("T", bound="QueryBuilder")
+
+          class QueryBuilder:
+              def where(self: T, condition: str) -> T:
+                  self._conditions.append(condition)
+                  return self
+    references:
+      - 'https://peps.python.org/pep-0673/'
+
+  # ==========================================================================
+  # Improved Tracebacks
+  # ==========================================================================
+  - id: 'PY311-006'
+    title: 'Leverage fine-grained tracebacks'
+    level: 'beginner'
+    category: 'debugging'
+    tags: ['debugging', 'tracebacks', 'error-messages']
+    applicability:
+      min_python: '3.11'
+    content:
+      description: |
+        Python 3.11 provides much more precise error locations, showing
+        exactly which part of an expression caused the error. Use these
+        detailed tracebacks to debug complex expressions faster.
+      good_examples:
+        - |
+          # Python 3.11 shows exactly where in the expression
+          # the error occurred:
+          #
+          # Traceback (most recent call last):
+          #   File "example.py", line 5
+          #     result = data["user"]["profile"]["settings"]["theme"]
+          #              ~~~~~~~~~~~~^^^^^^^^^^^
+          # KeyError: 'profile'
+          #
+          # Also for arithmetic:
+          # Traceback (most recent call last):
+          #   File "example.py", line 3
+          #     x = (a + b) / (c - d) * e
+          #          ~~~~~^~~~~~~~~~~
+          # ZeroDivisionError: division by zero
+
+  # ==========================================================================
+  # Required and NotRequired in TypedDict
+  # ==========================================================================
+  - id: 'PY311-007'
+    title: 'Use Required/NotRequired in TypedDict'
+    level: 'intermediate'
+    category: 'type_safety'
+    tags: ['typing', 'typeddict', 'required', 'optional']
+    applicability:
+      min_python: '3.11'
+    content:
+      description: |
+        Use Required[] and NotRequired[] to explicitly mark field requirements
+        in TypedDict. This is clearer than using total=True/False.
+      good_examples:
+        - |
+          # Good: Explicit Required/NotRequired (3.11+)
+          from typing import TypedDict, Required, NotRequired
+
+          class UserProfile(TypedDict):
+              id: Required[int]           # Must be present
+              name: Required[str]         # Must be present
+              email: NotRequired[str]     # Optional
+              avatar: NotRequired[str]    # Optional
+              settings: NotRequired[dict] # Optional
+
+          # Clear which fields are required
+          def create_user(profile: UserProfile) -> User:
+              # profile["id"] guaranteed to exist
+              # profile.get("email") might be missing
+              ...
+        - |
+          # Good: Mixed with inheritance
+          class BaseConfig(TypedDict):
+              host: Required[str]
+              port: Required[int]
+
+          class ExtendedConfig(BaseConfig):
+              timeout: NotRequired[int]
+              retries: NotRequired[int]
+              ssl: NotRequired[bool]
+      bad_examples:
+        - |
+          # Confusing: total=False makes ALL fields optional
+          class UserProfile(TypedDict, total=False):
+              id: int    # Optional (but shouldn't be!)
+              name: str  # Optional (but shouldn't be!)
+              email: str # Optional (correct)
+    references:
+      - 'https://peps.python.org/pep-0655/'
+
+  # ==========================================================================
+  # LiteralString (PEP 675)
+  # ==========================================================================
+  - id: 'PY311-008'
+    title: 'Use LiteralString for SQL injection prevention'
+    level: 'advanced'
+    category: 'security'
+    tags: ['typing', 'security', 'sql-injection', 'literal']
+    applicability:
+      min_python: '3.11'
+      contexts: ['database', 'sql', 'security']
+    content:
+      description: |
+        Use LiteralString type to prevent SQL injection and similar attacks.
+        LiteralString only accepts string literals, not user input.
+      good_examples:
+        - |
+          # Good: LiteralString prevents injection
+          from typing import LiteralString
+
+          def execute_query(query: LiteralString, params: tuple) -> list:
+              """Execute a SQL query safely.
+
+              The query must be a string literal, preventing injection.
+              """
+              return db.execute(query, params)
+
+          # Safe: literal string
+          execute_query("SELECT * FROM users WHERE id = ?", (user_id,))
+
+          # Error: type checker rejects user input
+          user_input = input("Enter query: ")
+          execute_query(user_input, ())  # Type error!
+        - |
+          # Good: Safe shell command building
+          from typing import LiteralString
+
+          def run_command(cmd: LiteralString, *args: str) -> str:
+              """Run a shell command safely."""
+              import subprocess
+              return subprocess.check_output([cmd, *args]).decode()
+
+          # Safe
+          run_command("ls", "-la", directory)
+
+          # Type error - can't pass user input as command
+          run_command(user_input, "-la")
+    references:
+      - 'https://peps.python.org/pep-0675/'
+
+  # ==========================================================================
+  # Variadic Generics (PEP 646)
+  # ==========================================================================
+  - id: 'PY311-009'
+    title: 'Use TypeVarTuple for variadic generics'
+    level: 'expert'
+    category: 'type_safety'
+    tags: ['typing', 'generics', 'variadic', 'numpy']
+    applicability:
+      min_python: '3.11'
+      contexts: ['numpy', 'arrays', 'tensors']
+    content:
+      description: |
+        Use TypeVarTuple for type-safe variadic generics. This is essential
+        for typing array shapes, tensor operations, and similar use cases.
+      good_examples:
+        - |
+          # Good: Type-safe array shapes
+          from typing import TypeVarTuple, Generic
+
+          Ts = TypeVarTuple("Ts")
+
+          class Array(Generic[*Ts]):
+              def __init__(self, shape: tuple[*Ts]):
+                  self.shape = shape
+
+          # Type checker tracks shape
+          arr1: Array[int, int] = Array((3, 4))      # 3x4 matrix
+          arr2: Array[int, int, int] = Array((2, 3, 4))  # 3D tensor
+        - |
+          # Good: Shape-preserving operations
+          from typing import TypeVarTuple
+
+          Ts = TypeVarTuple("Ts")
+
+          def reshape(arr: Array[*Ts], new_shape: tuple[*Ts]) -> Array[*Ts]:
+              """Reshape while preserving total elements."""
+              ...
+
+          def transpose(arr: Array[int, int]) -> Array[int, int]:
+              """Transpose a 2D array."""
+              ...
+    references:
+      - 'https://peps.python.org/pep-0646/'
+
+  # ==========================================================================
+  # TOML Support
+  # ==========================================================================
+  - id: 'PY311-010'
+    title: 'Use built-in tomllib for TOML parsing'
+    level: 'beginner'
+    category: 'best_practices'
+    tags: ['toml', 'config', 'parsing', 'stdlib']
+    applicability:
+      min_python: '3.11'
+    content:
+      description: |
+        Use the built-in tomllib module for reading TOML files. No need for
+        third-party packages like toml or tomli for reading operations.
+      good_examples:
+        - |
+          # Good: Built-in TOML parsing (3.11+)
+          import tomllib
+
+          with open("pyproject.toml", "rb") as f:
+              config = tomllib.load(f)
+
+          # Or from string
+          data = tomllib.loads("""
+          [project]
+          name = "myapp"
+          version = "1.0.0"
+          """)
+
+          print(data["project"]["name"])  # "myapp"
+        - |
+          # Good: Loading config with fallbacks
+          import tomllib
+          from pathlib import Path
+
+          def load_config(path: Path) -> dict:
+              """Load TOML config with defaults."""
+              defaults = {"timeout": 30, "retries": 3}
+
+              if path.exists():
+                  with path.open("rb") as f:
+                      config = tomllib.load(f)
+                  return {**defaults, **config}
+              return defaults
+      bad_examples:
+        - |
+          # Unnecessary: Third-party package (pre-3.11)
+          import toml  # External dependency not needed in 3.11+
+
+          with open("config.toml") as f:
+              config = toml.load(f)
+    references:
+      - 'https://peps.python.org/pep-0680/'
+
+  # ==========================================================================
+  # Performance Improvements
+  # ==========================================================================
+  - id: 'PY311-011'
+    title: 'Leverage CPython 3.11 performance gains'
+    level: 'intermediate'
+    category: 'performance'
+    tags: ['performance', 'cpython', 'optimization']
+    applicability:
+      min_python: '3.11'
+    content:
+      description: |
+        Python 3.11 is 10-60% faster than 3.10 due to Faster CPython project.
+        Understand where gains are largest to prioritize upgrades.
+      good_examples:
+        - |
+          # Performance gains in 3.11:
+          #
+          # 1. Function calls: ~25% faster
+          #    - Optimized frame creation
+          #    - Adaptive specialization
+          #
+          # 2. Recursive functions: ~25% faster
+          #    - Reduced stack frame overhead
+          #
+          # 3. Object creation: ~20% faster
+          #    - Optimized __init__ and __new__
+          #
+          # 4. Exception handling: ~10% faster
+          #    - Zero-cost try/except when no exception
+          #
+          # Best practices:
+          # - Upgrade from 3.10 for free performance
+          # - No code changes needed
+          # - Most real-world apps see 10-25% improvement
+
+  # ==========================================================================
+  # add_note for Exceptions
+  # ==========================================================================
+  - id: 'PY311-012'
+    title: 'Use add_note() for exception context'
+    level: 'intermediate'
+    category: 'error_handling'
+    tags: ['exceptions', 'add-note', 'context', 'debugging']
+    applicability:
+      min_python: '3.11'
+    content:
+      description: |
+        Use exception.add_note() to add contextual information to exceptions
+        without changing the exception type or chaining. Notes appear in tracebacks.
+      good_examples:
+        - |
+          # Good: Add context to caught exceptions
+          def process_batch(items: list[dict]) -> list[Result]:
+              results = []
+              for i, item in enumerate(items):
+                  try:
+                      results.append(process_item(item))
+                  except Exception as e:
+                      e.add_note(f"Error processing item {i}: {item.get('id')}")
+                      raise
+              return results
+
+          # Traceback shows:
+          # ValueError: Invalid amount
+          # Error processing item 5: order-12345
+        - |
+          # Good: Multiple notes for debugging
+          async def fetch_with_retry(url: str) -> bytes:
+              last_error = None
+              for attempt in range(3):
+                  try:
+                      return await fetch(url)
+                  except Exception as e:
+                      e.add_note(f"Attempt {attempt + 1} failed at {datetime.now()}")
+                      last_error = e
+
+              last_error.add_note(f"All retries exhausted for URL: {url}")
+              raise last_error
+    references:
+      - 'https://peps.python.org/pep-0678/'

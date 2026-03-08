@@ -1,0 +1,2683 @@
+# Design Patterns Library
+# Version: 1.0.0
+# Total Patterns: 30
+# Coverage: GoF Creational, Structural, Behavioral + Enterprise Patterns
+
+version: '1.0.0'
+category: design_patterns
+description: 'Comprehensive design patterns library with modern implementations'
+
+practices:
+  # ============================================================================
+  # CREATIONAL PATTERNS (DP001-DP007)
+  # ============================================================================
+
+  - id: DP001
+    title: 'Singleton Pattern'
+    category: patterns
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Ensure a class has only one instance and provide a global point of access.
+        In modern frameworks, prefer dependency injection over global singletons.
+      rationale: |
+        Singletons control shared resources (DB connections, configurations).
+        However, they can make testing difficult and create hidden dependencies.
+      good_examples:
+        - |
+          # Python - Thread-safe Singleton with metaclass
+          import threading
+          from typing import ClassVar, Dict, Any
+
+          class SingletonMeta(type):
+              """Thread-safe singleton metaclass."""
+              _instances: ClassVar[Dict[type, Any]] = {}
+              _lock: ClassVar[threading.Lock] = threading.Lock()
+
+              def __call__(cls, *args, **kwargs):
+                  with cls._lock:
+                      if cls not in cls._instances:
+                          instance = super().__call__(*args, **kwargs)
+                          cls._instances[cls] = instance
+                  return cls._instances[cls]
+
+          class DatabaseConnection(metaclass=SingletonMeta):
+              def __init__(self):
+                  self.connection = self._create_connection()
+
+              def _create_connection(self):
+                  return "Connected"
+
+          # Usage
+          db1 = DatabaseConnection()
+          db2 = DatabaseConnection()
+          assert db1 is db2  # Same instance
+        - |
+          // TypeScript - Module-based singleton (preferred)
+          class Logger {
+            private static instance: Logger;
+            private logs: string[] = [];
+
+            private constructor() {} // Private constructor
+
+            static getInstance(): Logger {
+              if (!Logger.instance) {
+                Logger.instance = new Logger();
+              }
+              return Logger.instance;
+            }
+
+            log(message: string): void {
+              this.logs.push(`[${new Date().toISOString()}] ${message}`);
+            }
+          }
+
+          // Better: Use dependency injection
+          @Injectable({ providedIn: 'root' }) // Angular singleton
+          export class LoggerService {
+            private logs: string[] = [];
+
+            log(message: string): void {
+              this.logs.push(message);
+            }
+          }
+      anti_patterns:
+        - Overusing singletons for things that don't need global state
+        - Making testing difficult by not allowing injection
+        - Hidden dependencies through global access
+      tags:
+        - creational
+        - singleton
+        - gof
+
+  - id: DP002
+    title: 'Factory Method Pattern'
+    category: patterns
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Define an interface for creating an object, but let subclasses decide
+        which class to instantiate. Defer instantiation to subclasses.
+      rationale: |
+        Factory Method provides flexibility in object creation, enabling
+        code to work with different implementations without modification.
+      good_examples:
+        - |
+          # Python - Factory Method
+          from abc import ABC, abstractmethod
+          from typing import Protocol
+
+          class Document(Protocol):
+              def render(self) -> str: ...
+
+          class PDFDocument:
+              def render(self) -> str:
+                  return "Rendering PDF"
+
+          class HTMLDocument:
+              def render(self) -> str:
+                  return "Rendering HTML"
+
+          class DocumentCreator(ABC):
+              @abstractmethod
+              def create_document(self) -> Document:
+                  """Factory method - subclasses decide what to create."""
+                  pass
+
+              def process(self) -> str:
+                  doc = self.create_document()
+                  return doc.render()
+
+          class PDFCreator(DocumentCreator):
+              def create_document(self) -> Document:
+                  return PDFDocument()
+
+          class HTMLCreator(DocumentCreator):
+              def create_document(self) -> Document:
+                  return HTMLDocument()
+
+          # Usage
+          def process_document(creator: DocumentCreator) -> str:
+              return creator.process()
+        - |
+          // TypeScript - Factory Method with generics
+          interface Notification {
+            send(message: string): void;
+          }
+
+          class EmailNotification implements Notification {
+            constructor(private email: string) {}
+            send(message: string): void {
+              console.log(`Email to ${this.email}: ${message}`);
+            }
+          }
+
+          class SMSNotification implements Notification {
+            constructor(private phone: string) {}
+            send(message: string): void {
+              console.log(`SMS to ${this.phone}: ${message}`);
+            }
+          }
+
+          // Factory function (simpler approach)
+          function createNotification(type: 'email' | 'sms', recipient: string): Notification {
+            switch (type) {
+              case 'email': return new EmailNotification(recipient);
+              case 'sms': return new SMSNotification(recipient);
+            }
+          }
+      tags:
+        - creational
+        - factory
+        - gof
+
+  - id: DP003
+    title: 'Abstract Factory Pattern'
+    category: patterns
+    level: advanced
+    priority: medium
+    content:
+      description: |
+        Provide an interface for creating families of related objects without
+        specifying their concrete classes. Creates related object families.
+      rationale: |
+        Abstract Factory ensures products from a family are used together
+        and makes it easy to switch between product families.
+      good_examples:
+        - |
+          # Python - Abstract Factory for UI Components
+          from abc import ABC, abstractmethod
+          from dataclasses import dataclass
+
+          # Abstract products
+          class Button(ABC):
+              @abstractmethod
+              def render(self) -> str: ...
+
+          class Input(ABC):
+              @abstractmethod
+              def render(self) -> str: ...
+
+          # Concrete products - Light theme
+          class LightButton(Button):
+              def render(self) -> str:
+                  return "<button class='light'>Click</button>"
+
+          class LightInput(Input):
+              def render(self) -> str:
+                  return "<input class='light'/>"
+
+          # Concrete products - Dark theme
+          class DarkButton(Button):
+              def render(self) -> str:
+                  return "<button class='dark'>Click</button>"
+
+          class DarkInput(Input):
+              def render(self) -> str:
+                  return "<input class='dark'/>"
+
+          # Abstract factory
+          class UIFactory(ABC):
+              @abstractmethod
+              def create_button(self) -> Button: ...
+
+              @abstractmethod
+              def create_input(self) -> Input: ...
+
+          # Concrete factories
+          class LightThemeFactory(UIFactory):
+              def create_button(self) -> Button:
+                  return LightButton()
+
+              def create_input(self) -> Input:
+                  return LightInput()
+
+          class DarkThemeFactory(UIFactory):
+              def create_button(self) -> Button:
+                  return DarkButton()
+
+              def create_input(self) -> Input:
+                  return DarkInput()
+
+          # Client code works with any factory
+          def render_form(factory: UIFactory) -> str:
+              button = factory.create_button()
+              input_field = factory.create_input()
+              return f"{input_field.render()}{button.render()}"
+      tags:
+        - creational
+        - abstract-factory
+        - gof
+
+  - id: DP004
+    title: 'Builder Pattern'
+    category: patterns
+    level: intermediate
+    priority: critical
+    content:
+      description: |
+        Separate the construction of a complex object from its representation
+        so the same construction process can create different representations.
+      rationale: |
+        Builder handles complex object creation step by step, making code
+        more readable and allowing different configurations.
+      good_examples:
+        - |
+          # Python - Builder with dataclass
+          from dataclasses import dataclass, field
+          from typing import Optional, Self
+
+          @dataclass
+          class HttpRequest:
+              method: str
+              url: str
+              headers: dict[str, str] = field(default_factory=dict)
+              body: Optional[str] = None
+              timeout: int = 30
+              retries: int = 3
+
+          class HttpRequestBuilder:
+              def __init__(self, method: str, url: str):
+                  self._method = method
+                  self._url = url
+                  self._headers: dict[str, str] = {}
+                  self._body: Optional[str] = None
+                  self._timeout = 30
+                  self._retries = 3
+
+              def header(self, key: str, value: str) -> Self:
+                  self._headers[key] = value
+                  return self
+
+              def json_body(self, data: dict) -> Self:
+                  import json
+                  self._body = json.dumps(data)
+                  self._headers['Content-Type'] = 'application/json'
+                  return self
+
+              def timeout(self, seconds: int) -> Self:
+                  self._timeout = seconds
+                  return self
+
+              def retries(self, count: int) -> Self:
+                  self._retries = count
+                  return self
+
+              def build(self) -> HttpRequest:
+                  return HttpRequest(
+                      method=self._method,
+                      url=self._url,
+                      headers=self._headers,
+                      body=self._body,
+                      timeout=self._timeout,
+                      retries=self._retries
+                  )
+
+          # Fluent usage
+          request = (
+              HttpRequestBuilder('POST', '/api/users')
+              .header('Authorization', 'Bearer token')
+              .json_body({'name': 'John', 'email': 'john@example.com'})
+              .timeout(10)
+              .retries(5)
+              .build()
+          )
+        - |
+          // TypeScript - Builder with type safety
+          interface QueryConfig {
+            select: string[];
+            from: string;
+            where?: string;
+            orderBy?: { column: string; direction: 'ASC' | 'DESC' };
+            limit?: number;
+          }
+
+          class QueryBuilder {
+            private config: Partial<QueryConfig> = {};
+
+            select(...columns: string[]): this {
+              this.config.select = columns;
+              return this;
+            }
+
+            from(table: string): this {
+              this.config.from = table;
+              return this;
+            }
+
+            where(condition: string): this {
+              this.config.where = condition;
+              return this;
+            }
+
+            orderBy(column: string, direction: 'ASC' | 'DESC' = 'ASC'): this {
+              this.config.orderBy = { column, direction };
+              return this;
+            }
+
+            limit(count: number): this {
+              this.config.limit = count;
+              return this;
+            }
+
+            build(): string {
+              if (!this.config.select || !this.config.from) {
+                throw new Error('SELECT and FROM are required');
+              }
+
+              let sql = `SELECT ${this.config.select.join(', ')} FROM ${this.config.from}`;
+              if (this.config.where) sql += ` WHERE ${this.config.where}`;
+              if (this.config.orderBy) sql += ` ORDER BY ${this.config.orderBy.column} ${this.config.orderBy.direction}`;
+              if (this.config.limit) sql += ` LIMIT ${this.config.limit}`;
+
+              return sql;
+            }
+          }
+
+          const query = new QueryBuilder()
+            .select('id', 'name', 'email')
+            .from('users')
+            .where('active = true')
+            .orderBy('name', 'ASC')
+            .limit(10)
+            .build();
+      tags:
+        - creational
+        - builder
+        - fluent-api
+        - gof
+
+  - id: DP005
+    title: 'Prototype Pattern'
+    category: patterns
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Create new objects by cloning a prototypical instance rather than
+        through traditional construction. Useful for expensive object creation.
+      rationale: |
+        Prototype avoids the cost of creating objects from scratch when
+        similar objects already exist and can be cloned.
+      good_examples:
+        - |
+          # Python - Prototype with copy
+          from copy import deepcopy
+          from dataclasses import dataclass, field
+          from typing import Self
+
+          @dataclass
+          class DocumentTemplate:
+              title: str
+              styles: dict[str, str] = field(default_factory=dict)
+              sections: list[str] = field(default_factory=list)
+              metadata: dict = field(default_factory=dict)
+
+              def clone(self) -> Self:
+                  """Create a deep copy of this template."""
+                  return deepcopy(self)
+
+              def with_title(self, title: str) -> Self:
+                  """Clone and modify title."""
+                  cloned = self.clone()
+                  cloned.title = title
+                  return cloned
+
+          # Create prototype
+          report_template = DocumentTemplate(
+              title="Report Template",
+              styles={'font': 'Arial', 'size': '12pt'},
+              sections=['Header', 'Body', 'Footer'],
+              metadata={'version': '1.0'}
+          )
+
+          # Clone and customize
+          q1_report = report_template.with_title("Q1 Financial Report")
+          q2_report = report_template.with_title("Q2 Financial Report")
+        - |
+          // TypeScript - Prototype Registry
+          interface Prototype<T> {
+            clone(): T;
+          }
+
+          class Shape implements Prototype<Shape> {
+            constructor(
+              public x: number,
+              public y: number,
+              public color: string
+            ) {}
+
+            clone(): Shape {
+              return new Shape(this.x, this.y, this.color);
+            }
+          }
+
+          class Circle extends Shape {
+            constructor(x: number, y: number, color: string, public radius: number) {
+              super(x, y, color);
+            }
+
+            clone(): Circle {
+              return new Circle(this.x, this.y, this.color, this.radius);
+            }
+          }
+
+          // Prototype registry
+          class ShapeRegistry {
+            private prototypes = new Map<string, Shape>();
+
+            register(name: string, shape: Shape): void {
+              this.prototypes.set(name, shape);
+            }
+
+            create(name: string): Shape {
+              const prototype = this.prototypes.get(name);
+              if (!prototype) throw new Error(`Unknown shape: ${name}`);
+              return prototype.clone();
+            }
+          }
+      tags:
+        - creational
+        - prototype
+        - cloning
+        - gof
+
+  - id: DP006
+    title: 'Dependency Injection Pattern'
+    category: patterns
+    level: intermediate
+    priority: critical
+    content:
+      description: |
+        Supply dependencies to an object rather than having it create them.
+        Fundamental for testable, maintainable code.
+      rationale: |
+        DI enables loose coupling, easier testing with mocks, and flexible
+        configuration. Essential for modern application architecture.
+      good_examples:
+        - |
+          # Python - Constructor Injection
+          from typing import Protocol
+          from dataclasses import dataclass
+
+          class EmailSender(Protocol):
+              def send(self, to: str, subject: str, body: str) -> bool: ...
+
+          class UserRepository(Protocol):
+              def find_by_id(self, user_id: str) -> dict | None: ...
+
+          @dataclass
+          class NotificationService:
+              """Service with injected dependencies."""
+              email_sender: EmailSender
+              user_repo: UserRepository
+
+              def notify_user(self, user_id: str, message: str) -> bool:
+                  user = self.user_repo.find_by_id(user_id)
+                  if not user:
+                      return False
+                  return self.email_sender.send(
+                      to=user['email'],
+                      subject='Notification',
+                      body=message
+                  )
+
+          # Concrete implementations
+          class SMTPEmailSender:
+              def send(self, to: str, subject: str, body: str) -> bool:
+                  # Real email sending
+                  return True
+
+          class PostgresUserRepository:
+              def find_by_id(self, user_id: str) -> dict | None:
+                  # Real database query
+                  return {'email': 'user@example.com'}
+
+          # Composition root - wire dependencies
+          def create_notification_service() -> NotificationService:
+              return NotificationService(
+                  email_sender=SMTPEmailSender(),
+                  user_repo=PostgresUserRepository()
+              )
+
+          # Testing with mocks
+          def test_notify_user():
+              mock_sender = MockEmailSender()
+              mock_repo = MockUserRepository({'1': {'email': 'test@test.com'}})
+
+              service = NotificationService(mock_sender, mock_repo)
+              assert service.notify_user('1', 'Hello') is True
+        - |
+          // Angular - Dependency Injection
+          @Injectable()
+          export class NotificationService {
+            private emailSender = inject(EmailSender);
+            private userRepo = inject(UserRepository);
+
+            async notifyUser(userId: string, message: string): Promise<boolean> {
+              const user = await this.userRepo.findById(userId);
+              if (!user) return false;
+              return this.emailSender.send(user.email, 'Notification', message);
+            }
+          }
+
+          // Testing with injection
+          describe('NotificationService', () => {
+            it('should send notification', async () => {
+              await TestBed.configureTestingModule({
+                providers: [
+                  NotificationService,
+                  { provide: EmailSender, useClass: MockEmailSender },
+                  { provide: UserRepository, useClass: MockUserRepository }
+                ]
+              });
+
+              const service = TestBed.inject(NotificationService);
+              expect(await service.notifyUser('1', 'Hello')).toBe(true);
+            });
+          });
+      tags:
+        - creational
+        - dependency-injection
+        - testing
+        - enterprise
+
+  - id: DP007
+    title: 'Object Pool Pattern'
+    category: patterns
+    level: advanced
+    priority: medium
+    content:
+      description: |
+        Manage a pool of reusable objects to avoid expensive object creation
+        and destruction. Common for database connections, threads.
+      rationale: |
+        Object pools improve performance when object creation is expensive
+        and objects are used frequently but briefly.
+      good_examples:
+        - |
+          # Python - Generic Object Pool
+          from typing import TypeVar, Generic, Callable, Optional
+          from queue import Queue
+          from contextlib import contextmanager
+          import threading
+
+          T = TypeVar('T')
+
+          class ObjectPool(Generic[T]):
+              def __init__(
+                  self,
+                  factory: Callable[[], T],
+                  max_size: int = 10,
+                  reset_fn: Optional[Callable[[T], None]] = None
+              ):
+                  self._factory = factory
+                  self._reset_fn = reset_fn
+                  self._pool: Queue[T] = Queue(maxsize=max_size)
+                  self._lock = threading.Lock()
+                  self._created = 0
+                  self._max_size = max_size
+
+              def acquire(self) -> T:
+                  """Get an object from the pool or create a new one."""
+                  try:
+                      return self._pool.get_nowait()
+                  except:
+                      with self._lock:
+                          if self._created < self._max_size:
+                              self._created += 1
+                              return self._factory()
+                      # Block until one is available
+                      return self._pool.get()
+
+              def release(self, obj: T) -> None:
+                  """Return an object to the pool."""
+                  if self._reset_fn:
+                      self._reset_fn(obj)
+                  try:
+                      self._pool.put_nowait(obj)
+                  except:
+                      pass  # Pool is full, discard
+
+              @contextmanager
+              def connection(self):
+                  """Context manager for automatic release."""
+                  obj = self.acquire()
+                  try:
+                      yield obj
+                  finally:
+                      self.release(obj)
+
+          # Usage - Database connection pool
+          db_pool = ObjectPool(
+              factory=lambda: create_db_connection(),
+              max_size=20,
+              reset_fn=lambda conn: conn.rollback()
+          )
+
+          with db_pool.connection() as conn:
+              cursor = conn.cursor()
+              cursor.execute("SELECT * FROM users")
+      tags:
+        - creational
+        - pool
+        - performance
+        - enterprise
+
+  # ============================================================================
+  # STRUCTURAL PATTERNS (DP008-DP015)
+  # ============================================================================
+
+  - id: DP008
+    title: 'Adapter Pattern'
+    category: patterns
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Convert the interface of a class into another interface clients expect.
+        Allows incompatible interfaces to work together.
+      rationale: |
+        Adapters enable integration of third-party libraries or legacy code
+        without modifying their source code.
+      good_examples:
+        - |
+          # Python - Adapter for different payment providers
+          from typing import Protocol
+          from dataclasses import dataclass
+
+          # Target interface our app expects
+          class PaymentProcessor(Protocol):
+              def process_payment(self, amount: float, currency: str) -> dict: ...
+
+          # Adaptee 1 - Stripe (different interface)
+          class StripeAPI:
+              def create_charge(self, amount_cents: int, currency: str) -> dict:
+                  return {'id': 'ch_123', 'status': 'succeeded'}
+
+          # Adaptee 2 - PayPal (another interface)
+          class PayPalSDK:
+              def execute_payment(self, payment_data: dict) -> dict:
+                  return {'id': 'PAY-123', 'state': 'approved'}
+
+          # Adapter for Stripe
+          @dataclass
+          class StripeAdapter:
+              stripe: StripeAPI
+
+              def process_payment(self, amount: float, currency: str) -> dict:
+                  result = self.stripe.create_charge(
+                      amount_cents=int(amount * 100),
+                      currency=currency
+                  )
+                  return {
+                      'transaction_id': result['id'],
+                      'success': result['status'] == 'succeeded'
+                  }
+
+          # Adapter for PayPal
+          @dataclass
+          class PayPalAdapter:
+              paypal: PayPalSDK
+
+              def process_payment(self, amount: float, currency: str) -> dict:
+                  result = self.paypal.execute_payment({
+                      'amount': {'total': str(amount), 'currency': currency}
+                  })
+                  return {
+                      'transaction_id': result['id'],
+                      'success': result['state'] == 'approved'
+                  }
+
+          # Client code works with any adapter
+          def checkout(processor: PaymentProcessor, amount: float) -> bool:
+              result = processor.process_payment(amount, 'USD')
+              return result['success']
+      tags:
+        - structural
+        - adapter
+        - integration
+        - gof
+
+  - id: DP009
+    title: 'Decorator Pattern'
+    category: patterns
+    level: intermediate
+    priority: critical
+    content:
+      description: |
+        Attach additional responsibilities to an object dynamically.
+        Provides a flexible alternative to subclassing for extending functionality.
+      rationale: |
+        Decorators follow the Open/Closed principle - open for extension,
+        closed for modification. They enable feature composition.
+      good_examples:
+        - |
+          # Python - Decorator for HTTP client
+          from typing import Protocol
+          from dataclasses import dataclass
+          import time
+          import logging
+
+          class HttpClient(Protocol):
+              def request(self, method: str, url: str, **kwargs) -> dict: ...
+
+          class BasicHttpClient:
+              def request(self, method: str, url: str, **kwargs) -> dict:
+                  # Actual HTTP request
+                  return {'status': 200, 'data': 'response'}
+
+          # Logging decorator
+          @dataclass
+          class LoggingHttpClient:
+              wrapped: HttpClient
+              logger: logging.Logger
+
+              def request(self, method: str, url: str, **kwargs) -> dict:
+                  self.logger.info(f"Request: {method} {url}")
+                  result = self.wrapped.request(method, url, **kwargs)
+                  self.logger.info(f"Response: {result['status']}")
+                  return result
+
+          # Retry decorator
+          @dataclass
+          class RetryHttpClient:
+              wrapped: HttpClient
+              max_retries: int = 3
+
+              def request(self, method: str, url: str, **kwargs) -> dict:
+                  for attempt in range(self.max_retries):
+                      try:
+                          return self.wrapped.request(method, url, **kwargs)
+                      except Exception as e:
+                          if attempt == self.max_retries - 1:
+                              raise
+                          time.sleep(2 ** attempt)
+
+          # Caching decorator
+          @dataclass
+          class CachingHttpClient:
+              wrapped: HttpClient
+              cache: dict = None
+
+              def __post_init__(self):
+                  self.cache = self.cache or {}
+
+              def request(self, method: str, url: str, **kwargs) -> dict:
+                  if method == 'GET' and url in self.cache:
+                      return self.cache[url]
+                  result = self.wrapped.request(method, url, **kwargs)
+                  if method == 'GET':
+                      self.cache[url] = result
+                  return result
+
+          # Compose decorators
+          client = CachingHttpClient(
+              RetryHttpClient(
+                  LoggingHttpClient(
+                      BasicHttpClient(),
+                      logging.getLogger()
+                  )
+              )
+          )
+        - |
+          // TypeScript - Decorator pattern with composition
+          interface DataSource {
+            write(data: string): void;
+            read(): string;
+          }
+
+          class FileDataSource implements DataSource {
+            constructor(private filename: string) {}
+            write(data: string): void { /* write to file */ }
+            read(): string { return 'data'; }
+          }
+
+          // Base decorator
+          abstract class DataSourceDecorator implements DataSource {
+            constructor(protected wrapped: DataSource) {}
+            write(data: string): void { this.wrapped.write(data); }
+            read(): string { return this.wrapped.read(); }
+          }
+
+          // Encryption decorator
+          class EncryptedDataSource extends DataSourceDecorator {
+            write(data: string): void {
+              const encrypted = this.encrypt(data);
+              super.write(encrypted);
+            }
+            read(): string {
+              const data = super.read();
+              return this.decrypt(data);
+            }
+            private encrypt(data: string): string { return btoa(data); }
+            private decrypt(data: string): string { return atob(data); }
+          }
+
+          // Compression decorator
+          class CompressedDataSource extends DataSourceDecorator {
+            write(data: string): void {
+              super.write(this.compress(data));
+            }
+            read(): string {
+              return this.decompress(super.read());
+            }
+            private compress(data: string): string { /* compress */ return data; }
+            private decompress(data: string): string { /* decompress */ return data; }
+          }
+
+          // Usage - compose behaviors
+          const source = new CompressedDataSource(
+            new EncryptedDataSource(
+              new FileDataSource('data.txt')
+            )
+          );
+      tags:
+        - structural
+        - decorator
+        - composition
+        - gof
+
+  - id: DP010
+    title: 'Facade Pattern'
+    category: patterns
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Provide a unified interface to a set of interfaces in a subsystem.
+        Facade defines a higher-level interface that makes the subsystem easier to use.
+      rationale: |
+        Facades reduce complexity for clients by hiding intricate subsystem
+        interactions behind a simple interface.
+      good_examples:
+        - |
+          # Python - Facade for video conversion
+          from dataclasses import dataclass
+
+          # Complex subsystem classes
+          class VideoFile:
+              def __init__(self, filename: str):
+                  self.filename = filename
+                  self.codec = self._detect_codec()
+
+              def _detect_codec(self) -> str:
+                  return 'mp4'
+
+          class CodecFactory:
+              @staticmethod
+              def extract(file: VideoFile) -> 'Codec':
+                  return Codec(file.codec)
+
+          class Codec:
+              def __init__(self, type: str):
+                  self.type = type
+
+          class BitrateReader:
+              @staticmethod
+              def read(file: VideoFile) -> int:
+                  return 5000
+
+          class AudioMixer:
+              @staticmethod
+              def fix(video: bytes) -> bytes:
+                  return video
+
+          # Facade - simple interface
+          class VideoConverterFacade:
+              """
+              Simple interface for complex video conversion process.
+              Clients don't need to know about codecs, bitrates, audio mixing.
+              """
+
+              def convert(self, filename: str, format: str) -> bytes:
+                  """Convert video to specified format."""
+                  file = VideoFile(filename)
+                  codec = CodecFactory.extract(file)
+                  bitrate = BitrateReader.read(file)
+
+                  # Complex conversion logic hidden
+                  result = self._do_conversion(file, codec, bitrate, format)
+                  result = AudioMixer.fix(result)
+
+                  return result
+
+              def _do_conversion(self, file, codec, bitrate, format) -> bytes:
+                  # Actual conversion
+                  return b'converted'
+
+          # Client uses simple facade
+          converter = VideoConverterFacade()
+          mp4_video = converter.convert('video.avi', 'mp4')
+      tags:
+        - structural
+        - facade
+        - simplification
+        - gof
+
+  - id: DP011
+    title: 'Composite Pattern'
+    category: patterns
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Compose objects into tree structures to represent part-whole hierarchies.
+        Lets clients treat individual objects and compositions uniformly.
+      rationale: |
+        Composite enables recursive structures like file systems, UI components,
+        or organizational hierarchies with uniform treatment.
+      good_examples:
+        - |
+          # Python - File system composite
+          from abc import ABC, abstractmethod
+          from dataclasses import dataclass, field
+
+          class FileSystemComponent(ABC):
+              @abstractmethod
+              def get_size(self) -> int: ...
+
+              @abstractmethod
+              def display(self, indent: int = 0) -> str: ...
+
+          @dataclass
+          class File(FileSystemComponent):
+              name: str
+              size: int
+
+              def get_size(self) -> int:
+                  return self.size
+
+              def display(self, indent: int = 0) -> str:
+                  return f"{'  ' * indent}📄 {self.name} ({self.size}b)"
+
+          @dataclass
+          class Directory(FileSystemComponent):
+              name: str
+              children: list[FileSystemComponent] = field(default_factory=list)
+
+              def add(self, component: FileSystemComponent) -> None:
+                  self.children.append(component)
+
+              def remove(self, component: FileSystemComponent) -> None:
+                  self.children.remove(component)
+
+              def get_size(self) -> int:
+                  return sum(child.get_size() for child in self.children)
+
+              def display(self, indent: int = 0) -> str:
+                  lines = [f"{'  ' * indent}📁 {self.name}/"]
+                  for child in self.children:
+                      lines.append(child.display(indent + 1))
+                  return '\n'.join(lines)
+
+          # Build tree structure
+          root = Directory("project")
+          src = Directory("src")
+          src.add(File("main.py", 1500))
+          src.add(File("utils.py", 800))
+          root.add(src)
+          root.add(File("README.md", 200))
+
+          print(root.display())  # Treats files and directories uniformly
+          print(f"Total: {root.get_size()} bytes")
+      tags:
+        - structural
+        - composite
+        - tree
+        - gof
+
+  - id: DP012
+    title: 'Proxy Pattern'
+    category: patterns
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Provide a surrogate or placeholder for another object to control access.
+        Types include virtual, protection, and remote proxies.
+      rationale: |
+        Proxies add a layer of control for lazy loading, access control,
+        logging, caching, or remote object access.
+      good_examples:
+        - |
+          # Python - Multiple proxy types
+          from typing import Protocol
+          from dataclasses import dataclass
+          from functools import cached_property
+
+          class Image(Protocol):
+              def display(self) -> str: ...
+              def get_dimensions(self) -> tuple[int, int]: ...
+
+          class RealImage:
+              def __init__(self, filename: str):
+                  self.filename = filename
+                  self._load_from_disk()
+
+              def _load_from_disk(self):
+                  print(f"Loading {self.filename} from disk...")
+                  # Expensive operation
+
+              def display(self) -> str:
+                  return f"Displaying {self.filename}"
+
+              def get_dimensions(self) -> tuple[int, int]:
+                  return (1920, 1080)
+
+          # Virtual Proxy - lazy loading
+          @dataclass
+          class LazyImageProxy:
+              filename: str
+              _image: RealImage | None = None
+
+              @property
+              def image(self) -> RealImage:
+                  if self._image is None:
+                      self._image = RealImage(self.filename)
+                  return self._image
+
+              def display(self) -> str:
+                  return self.image.display()
+
+              def get_dimensions(self) -> tuple[int, int]:
+                  return self.image.get_dimensions()
+
+          # Protection Proxy - access control
+          @dataclass
+          class SecureImageProxy:
+              image: Image
+              current_user: str
+              allowed_users: set[str]
+
+              def display(self) -> str:
+                  if self.current_user not in self.allowed_users:
+                      raise PermissionError("Access denied")
+                  return self.image.display()
+
+              def get_dimensions(self) -> tuple[int, int]:
+                  return self.image.get_dimensions()
+
+          # Caching Proxy
+          @dataclass
+          class CachingImageProxy:
+              image: Image
+              _cache: dict = None
+
+              def __post_init__(self):
+                  self._cache = {}
+
+              def display(self) -> str:
+                  if 'display' not in self._cache:
+                      self._cache['display'] = self.image.display()
+                  return self._cache['display']
+      tags:
+        - structural
+        - proxy
+        - lazy-loading
+        - gof
+
+  - id: DP013
+    title: 'Bridge Pattern'
+    category: patterns
+    level: advanced
+    priority: medium
+    content:
+      description: |
+        Decouple an abstraction from its implementation so that the two can
+        vary independently. Prevents explosion of class combinations.
+      rationale: |
+        Bridge separates concerns when you have multiple dimensions of
+        variation (e.g., shapes × renderers, devices × remotes).
+      good_examples:
+        - |
+          # Python - Bridge for messaging
+          from abc import ABC, abstractmethod
+          from dataclasses import dataclass
+
+          # Implementation hierarchy
+          class MessageSender(ABC):
+              @abstractmethod
+              def send_message(self, message: str) -> bool: ...
+
+          class EmailSender(MessageSender):
+              def send_message(self, message: str) -> bool:
+                  print(f"Sending email: {message}")
+                  return True
+
+          class SMSSender(MessageSender):
+              def send_message(self, message: str) -> bool:
+                  print(f"Sending SMS: {message}")
+                  return True
+
+          class SlackSender(MessageSender):
+              def send_message(self, message: str) -> bool:
+                  print(f"Posting to Slack: {message}")
+                  return True
+
+          # Abstraction hierarchy
+          class Notification(ABC):
+              def __init__(self, sender: MessageSender):
+                  self.sender = sender
+
+              @abstractmethod
+              def notify(self, title: str, body: str) -> bool: ...
+
+          @dataclass
+          class AlertNotification(Notification):
+              sender: MessageSender
+
+              def notify(self, title: str, body: str) -> bool:
+                  message = f"🚨 ALERT: {title}\n{body}"
+                  return self.sender.send_message(message)
+
+          @dataclass
+          class ReminderNotification(Notification):
+              sender: MessageSender
+
+              def notify(self, title: str, body: str) -> bool:
+                  message = f"⏰ Reminder: {title}\n{body}"
+                  return self.sender.send_message(message)
+
+          # Can combine any abstraction with any implementation
+          email_alert = AlertNotification(EmailSender())
+          sms_reminder = ReminderNotification(SMSSender())
+          slack_alert = AlertNotification(SlackSender())
+      tags:
+        - structural
+        - bridge
+        - decoupling
+        - gof
+
+  - id: DP014
+    title: 'Flyweight Pattern'
+    category: patterns
+    level: advanced
+    priority: low
+    content:
+      description: |
+        Use sharing to support large numbers of fine-grained objects efficiently.
+        Separate intrinsic (shared) from extrinsic (unique) state.
+      rationale: |
+        Flyweight reduces memory usage when many similar objects exist,
+        like characters in a text editor or trees in a game.
+      good_examples:
+        - |
+          # Python - Flyweight for game particles
+          from dataclasses import dataclass
+          from typing import ClassVar
+
+          # Flyweight (intrinsic state - shared)
+          @dataclass(frozen=True)
+          class ParticleType:
+              sprite: str  # Large texture data
+              color: str
+
+              # Factory/cache for flyweights
+              _cache: ClassVar[dict[tuple, 'ParticleType']] = {}
+
+              @classmethod
+              def get(cls, sprite: str, color: str) -> 'ParticleType':
+                  key = (sprite, color)
+                  if key not in cls._cache:
+                      cls._cache[key] = cls(sprite, color)
+                  return cls._cache[key]
+
+          # Context (extrinsic state - unique per instance)
+          @dataclass
+          class Particle:
+              x: float
+              y: float
+              velocity_x: float
+              velocity_y: float
+              type: ParticleType  # Shared flyweight
+
+              def move(self, dt: float) -> None:
+                  self.x += self.velocity_x * dt
+                  self.y += self.velocity_y * dt
+
+              def render(self) -> None:
+                  # Uses shared sprite, unique position
+                  print(f"Draw {self.type.sprite} at ({self.x}, {self.y})")
+
+          # Usage - millions of particles share few types
+          fire_type = ParticleType.get("fire.png", "orange")
+          smoke_type = ParticleType.get("smoke.png", "gray")
+
+          particles = [
+              Particle(x=i*10, y=0, velocity_x=0, velocity_y=1, type=fire_type)
+              for i in range(10000)
+          ]  # 10000 particles share 1 ParticleType
+      tags:
+        - structural
+        - flyweight
+        - memory-optimization
+        - gof
+
+  - id: DP015
+    title: 'Module Pattern'
+    category: patterns
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Encapsulate related code into a single unit with public and private
+        members. Foundation of modular programming.
+      rationale: |
+        Module pattern provides encapsulation, namespace management, and
+        clear public APIs. Essential for maintainable code organization.
+      good_examples:
+        - |
+          # Python - Module pattern with __all__
+          # utils/string_utils.py
+
+          __all__ = ['capitalize_words', 'truncate']  # Public API
+
+          # Private helper
+          def _normalize_whitespace(text: str) -> str:
+              return ' '.join(text.split())
+
+          # Public functions
+          def capitalize_words(text: str) -> str:
+              """Capitalize each word in text."""
+              normalized = _normalize_whitespace(text)
+              return normalized.title()
+
+          def truncate(text: str, max_length: int, suffix: str = '...') -> str:
+              """Truncate text to max_length, adding suffix if truncated."""
+              if len(text) <= max_length:
+                  return text
+              return text[:max_length - len(suffix)] + suffix
+        - |
+          // TypeScript - Module with barrel export
+          // services/auth/index.ts (barrel)
+          export { AuthService } from './auth.service';
+          export type { AuthState, Credentials } from './auth.types';
+          // Internal implementation not exported
+
+          // services/auth/auth.service.ts
+          import type { AuthState, Credentials } from './auth.types';
+          import { validateCredentials } from './auth.validators'; // Internal
+
+          export class AuthService {
+            private state: AuthState = { user: null, isAuthenticated: false };
+
+            async login(credentials: Credentials): Promise<boolean> {
+              if (!validateCredentials(credentials)) {
+                return false;
+              }
+              // Login logic
+              return true;
+            }
+          }
+      tags:
+        - structural
+        - module
+        - encapsulation
+        - enterprise
+
+  # ============================================================================
+  # BEHAVIORAL PATTERNS (DP016-DP025)
+  # ============================================================================
+
+  - id: DP016
+    title: 'Strategy Pattern'
+    category: patterns
+    level: intermediate
+    priority: critical
+    content:
+      description: |
+        Define a family of algorithms, encapsulate each one, and make them
+        interchangeable. Strategy lets algorithms vary independently from clients.
+      rationale: |
+        Strategy eliminates conditional statements by encapsulating algorithms
+        as objects, enabling runtime algorithm selection.
+      good_examples:
+        - |
+          # Python - Strategy for pricing
+          from typing import Protocol
+          from dataclasses import dataclass
+          from decimal import Decimal
+
+          class PricingStrategy(Protocol):
+              def calculate_price(self, base_price: Decimal, quantity: int) -> Decimal: ...
+
+          class RegularPricing:
+              def calculate_price(self, base_price: Decimal, quantity: int) -> Decimal:
+                  return base_price * quantity
+
+          class BulkPricing:
+              def __init__(self, discount_threshold: int = 10, discount_rate: Decimal = Decimal('0.1')):
+                  self.threshold = discount_threshold
+                  self.rate = discount_rate
+
+              def calculate_price(self, base_price: Decimal, quantity: int) -> Decimal:
+                  total = base_price * quantity
+                  if quantity >= self.threshold:
+                      total *= (1 - self.rate)
+                  return total
+
+          class SubscriberPricing:
+              def __init__(self, discount_rate: Decimal = Decimal('0.2')):
+                  self.rate = discount_rate
+
+              def calculate_price(self, base_price: Decimal, quantity: int) -> Decimal:
+                  return base_price * quantity * (1 - self.rate)
+
+          @dataclass
+          class ShoppingCart:
+              items: list[tuple[str, Decimal, int]]
+              pricing_strategy: PricingStrategy
+
+              def set_pricing_strategy(self, strategy: PricingStrategy) -> None:
+                  self.pricing_strategy = strategy
+
+              def calculate_total(self) -> Decimal:
+                  return sum(
+                      self.pricing_strategy.calculate_price(price, qty)
+                      for _, price, qty in self.items
+                  )
+
+          # Usage - switch strategies at runtime
+          cart = ShoppingCart(
+              items=[('Widget', Decimal('10.00'), 5)],
+              pricing_strategy=RegularPricing()
+          )
+          print(cart.calculate_total())  # 50.00
+
+          cart.set_pricing_strategy(BulkPricing())
+          print(cart.calculate_total())  # Still 50.00 (below threshold)
+      tags:
+        - behavioral
+        - strategy
+        - algorithms
+        - gof
+
+  - id: DP017
+    title: 'Observer Pattern'
+    category: patterns
+    level: intermediate
+    priority: critical
+    content:
+      description: |
+        Define a one-to-many dependency between objects so that when one
+        object changes state, all its dependents are notified automatically.
+      rationale: |
+        Observer enables loose coupling between subjects and observers,
+        essential for event-driven architectures and reactive systems.
+      good_examples:
+        - |
+          # Python - Type-safe Observer
+          from typing import Protocol, TypeVar, Generic
+          from dataclasses import dataclass, field
+          from weakref import WeakSet
+
+          T = TypeVar('T')
+
+          class Observer(Protocol[T]):
+              def update(self, data: T) -> None: ...
+
+          @dataclass
+          class Subject(Generic[T]):
+              _observers: WeakSet[Observer[T]] = field(default_factory=WeakSet)
+
+              def subscribe(self, observer: Observer[T]) -> None:
+                  self._observers.add(observer)
+
+              def unsubscribe(self, observer: Observer[T]) -> None:
+                  self._observers.discard(observer)
+
+              def notify(self, data: T) -> None:
+                  for observer in self._observers:
+                      observer.update(data)
+
+          # Concrete implementation
+          @dataclass
+          class StockPrice:
+              symbol: str
+              price: float
+
+          class StockTicker(Subject[StockPrice]):
+              def update_price(self, symbol: str, price: float) -> None:
+                  self.notify(StockPrice(symbol, price))
+
+          class PriceDisplay:
+              def update(self, data: StockPrice) -> None:
+                  print(f"Display: {data.symbol} = ${data.price:.2f}")
+
+          class PriceAlert:
+              def __init__(self, threshold: float):
+                  self.threshold = threshold
+
+              def update(self, data: StockPrice) -> None:
+                  if data.price > self.threshold:
+                      print(f"ALERT: {data.symbol} exceeded ${self.threshold}!")
+
+          # Usage
+          ticker = StockTicker()
+          ticker.subscribe(PriceDisplay())
+          ticker.subscribe(PriceAlert(100.0))
+
+          ticker.update_price('AAPL', 150.0)  # Both observers notified
+        - |
+          // TypeScript - RxJS-style Observable
+          type Observer<T> = {
+            next: (value: T) => void;
+            error?: (error: Error) => void;
+            complete?: () => void;
+          };
+
+          class Observable<T> {
+            constructor(private producer: (observer: Observer<T>) => () => void) {}
+
+            subscribe(observer: Observer<T>): { unsubscribe: () => void } {
+              const teardown = this.producer(observer);
+              return { unsubscribe: teardown };
+            }
+
+            pipe<U>(...operators: Array<(obs: Observable<any>) => Observable<any>>): Observable<U> {
+              return operators.reduce((obs, op) => op(obs), this as Observable<any>);
+            }
+          }
+
+          // Factory functions
+          function fromEvent(target: EventTarget, event: string): Observable<Event> {
+            return new Observable(observer => {
+              const handler = (e: Event) => observer.next(e);
+              target.addEventListener(event, handler);
+              return () => target.removeEventListener(event, handler);
+            });
+          }
+      tags:
+        - behavioral
+        - observer
+        - events
+        - gof
+
+  - id: DP018
+    title: 'Command Pattern'
+    category: patterns
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Encapsulate a request as an object, allowing parameterization,
+        queuing, logging, and supporting undoable operations.
+      rationale: |
+        Command decouples the invoker from the receiver, enabling
+        undo/redo, transaction logging, and macro recording.
+      good_examples:
+        - |
+          # Python - Command with undo
+          from abc import ABC, abstractmethod
+          from dataclasses import dataclass, field
+          from typing import Protocol
+
+          class Command(ABC):
+              @abstractmethod
+              def execute(self) -> None: ...
+
+              @abstractmethod
+              def undo(self) -> None: ...
+
+          # Receiver
+          class TextDocument:
+              def __init__(self):
+                  self.content = ""
+
+              def insert(self, position: int, text: str) -> None:
+                  self.content = self.content[:position] + text + self.content[position:]
+
+              def delete(self, position: int, length: int) -> str:
+                  deleted = self.content[position:position + length]
+                  self.content = self.content[:position] + self.content[position + length:]
+                  return deleted
+
+          # Concrete commands
+          @dataclass
+          class InsertCommand(Command):
+              document: TextDocument
+              position: int
+              text: str
+
+              def execute(self) -> None:
+                  self.document.insert(self.position, self.text)
+
+              def undo(self) -> None:
+                  self.document.delete(self.position, len(self.text))
+
+          @dataclass
+          class DeleteCommand(Command):
+              document: TextDocument
+              position: int
+              length: int
+              _deleted_text: str = ""
+
+              def execute(self) -> None:
+                  self._deleted_text = self.document.delete(self.position, self.length)
+
+              def undo(self) -> None:
+                  self.document.insert(self.position, self._deleted_text)
+
+          # Invoker with history
+          @dataclass
+          class CommandManager:
+              history: list[Command] = field(default_factory=list)
+              redo_stack: list[Command] = field(default_factory=list)
+
+              def execute(self, command: Command) -> None:
+                  command.execute()
+                  self.history.append(command)
+                  self.redo_stack.clear()
+
+              def undo(self) -> None:
+                  if self.history:
+                      command = self.history.pop()
+                      command.undo()
+                      self.redo_stack.append(command)
+
+              def redo(self) -> None:
+                  if self.redo_stack:
+                      command = self.redo_stack.pop()
+                      command.execute()
+                      self.history.append(command)
+      tags:
+        - behavioral
+        - command
+        - undo-redo
+        - gof
+
+  - id: DP019
+    title: 'State Pattern'
+    category: patterns
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Allow an object to alter its behavior when its internal state changes.
+        The object will appear to change its class.
+      rationale: |
+        State pattern eliminates complex conditionals by encapsulating
+        state-specific behavior in separate state classes.
+      good_examples:
+        - |
+          # Python - Order state machine
+          from abc import ABC, abstractmethod
+          from dataclasses import dataclass
+          from typing import TYPE_CHECKING
+
+          if TYPE_CHECKING:
+              from order import Order
+
+          class OrderState(ABC):
+              @abstractmethod
+              def confirm(self, order: 'Order') -> None: ...
+
+              @abstractmethod
+              def ship(self, order: 'Order') -> None: ...
+
+              @abstractmethod
+              def deliver(self, order: 'Order') -> None: ...
+
+              @abstractmethod
+              def cancel(self, order: 'Order') -> None: ...
+
+          class PendingState(OrderState):
+              def confirm(self, order: 'Order') -> None:
+                  print("Order confirmed")
+                  order.state = ConfirmedState()
+
+              def ship(self, order: 'Order') -> None:
+                  raise ValueError("Cannot ship pending order")
+
+              def deliver(self, order: 'Order') -> None:
+                  raise ValueError("Cannot deliver pending order")
+
+              def cancel(self, order: 'Order') -> None:
+                  print("Order cancelled")
+                  order.state = CancelledState()
+
+          class ConfirmedState(OrderState):
+              def confirm(self, order: 'Order') -> None:
+                  raise ValueError("Order already confirmed")
+
+              def ship(self, order: 'Order') -> None:
+                  print("Order shipped")
+                  order.state = ShippedState()
+
+              def deliver(self, order: 'Order') -> None:
+                  raise ValueError("Cannot deliver unshipped order")
+
+              def cancel(self, order: 'Order') -> None:
+                  print("Order cancelled")
+                  order.state = CancelledState()
+
+          class ShippedState(OrderState):
+              def confirm(self, order: 'Order') -> None:
+                  raise ValueError("Order already confirmed")
+
+              def ship(self, order: 'Order') -> None:
+                  raise ValueError("Order already shipped")
+
+              def deliver(self, order: 'Order') -> None:
+                  print("Order delivered")
+                  order.state = DeliveredState()
+
+              def cancel(self, order: 'Order') -> None:
+                  raise ValueError("Cannot cancel shipped order")
+
+          @dataclass
+          class Order:
+              id: str
+              state: OrderState = None
+
+              def __post_init__(self):
+                  self.state = PendingState()
+
+              def confirm(self) -> None:
+                  self.state.confirm(self)
+
+              def ship(self) -> None:
+                  self.state.ship(self)
+      tags:
+        - behavioral
+        - state
+        - state-machine
+        - gof
+
+  - id: DP020
+    title: 'Template Method Pattern'
+    category: patterns
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Define the skeleton of an algorithm in a method, deferring some steps
+        to subclasses. Lets subclasses redefine steps without changing structure.
+      rationale: |
+        Template Method provides code reuse by defining invariant algorithm
+        structure while allowing customization of specific steps.
+      good_examples:
+        - |
+          # Python - Data processing template
+          from abc import ABC, abstractmethod
+          from dataclasses import dataclass
+          from typing import TypeVar, Generic
+
+          T = TypeVar('T')
+          R = TypeVar('R')
+
+          class DataProcessor(ABC, Generic[T, R]):
+              """Template for data processing pipeline."""
+
+              def process(self, source: str) -> R:
+                  """Template method - defines algorithm structure."""
+                  data = self.extract(source)
+                  validated = self.validate(data)
+                  transformed = self.transform(validated)
+                  result = self.load(transformed)
+                  self.notify(result)
+                  return result
+
+              @abstractmethod
+              def extract(self, source: str) -> T:
+                  """Extract data from source."""
+                  pass
+
+              def validate(self, data: T) -> T:
+                  """Optional validation hook - can be overridden."""
+                  return data
+
+              @abstractmethod
+              def transform(self, data: T) -> R:
+                  """Transform data to output format."""
+                  pass
+
+              @abstractmethod
+              def load(self, data: R) -> R:
+                  """Load data to destination."""
+                  pass
+
+              def notify(self, result: R) -> None:
+                  """Optional notification hook."""
+                  pass
+
+          # Concrete implementation
+          class CSVToJSONProcessor(DataProcessor[list[dict], str]):
+              def extract(self, source: str) -> list[dict]:
+                  # Read CSV file
+                  return [{'name': 'John', 'age': 30}]
+
+              def validate(self, data: list[dict]) -> list[dict]:
+                  return [row for row in data if 'name' in row]
+
+              def transform(self, data: list[dict]) -> str:
+                  import json
+                  return json.dumps(data)
+
+              def load(self, data: str) -> str:
+                  # Write to file
+                  return data
+
+              def notify(self, result: str) -> None:
+                  print(f"Processed {len(result)} characters")
+      tags:
+        - behavioral
+        - template-method
+        - inheritance
+        - gof
+
+  - id: DP021
+    title: 'Chain of Responsibility Pattern'
+    category: patterns
+    level: intermediate
+    priority: medium
+    content:
+      description: |
+        Avoid coupling the sender of a request to its receiver by giving
+        more than one object a chance to handle the request.
+      rationale: |
+        Chain of Responsibility enables flexible request processing with
+        dynamic chain configuration and single responsibility handlers.
+      good_examples:
+        - |
+          # Python - Request processing chain
+          from abc import ABC, abstractmethod
+          from dataclasses import dataclass
+          from typing import Optional
+
+          @dataclass
+          class Request:
+              path: str
+              method: str
+              headers: dict[str, str]
+              body: Optional[str] = None
+
+          @dataclass
+          class Response:
+              status: int
+              body: str
+
+          class Handler(ABC):
+              def __init__(self):
+                  self._next: Optional[Handler] = None
+
+              def set_next(self, handler: 'Handler') -> 'Handler':
+                  self._next = handler
+                  return handler
+
+              def handle(self, request: Request) -> Optional[Response]:
+                  result = self.process(request)
+                  if result is not None:
+                      return result
+                  if self._next:
+                      return self._next.handle(request)
+                  return None
+
+              @abstractmethod
+              def process(self, request: Request) -> Optional[Response]: ...
+
+          # Concrete handlers
+          class AuthHandler(Handler):
+              def process(self, request: Request) -> Optional[Response]:
+                  if 'Authorization' not in request.headers:
+                      return Response(401, 'Unauthorized')
+                  return None  # Pass to next
+
+          class RateLimitHandler(Handler):
+              def __init__(self, max_requests: int = 100):
+                  super().__init__()
+                  self.request_count = 0
+                  self.max_requests = max_requests
+
+              def process(self, request: Request) -> Optional[Response]:
+                  self.request_count += 1
+                  if self.request_count > self.max_requests:
+                      return Response(429, 'Too Many Requests')
+                  return None
+
+          class LoggingHandler(Handler):
+              def process(self, request: Request) -> Optional[Response]:
+                  print(f"{request.method} {request.path}")
+                  return None
+
+          # Build chain
+          auth = AuthHandler()
+          rate_limit = RateLimitHandler()
+          logging = LoggingHandler()
+
+          auth.set_next(rate_limit).set_next(logging)
+
+          # Process request through chain
+          response = auth.handle(Request('/api/users', 'GET', {}))
+      tags:
+        - behavioral
+        - chain-of-responsibility
+        - middleware
+        - gof
+
+  - id: DP022
+    title: 'Iterator Pattern'
+    category: patterns
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Provide a way to access elements of an aggregate object sequentially
+        without exposing its underlying representation.
+      rationale: |
+        Iterators provide uniform traversal interface for collections,
+        enabling polymorphic iteration over different data structures.
+      good_examples:
+        - |
+          # Python - Custom iterator with generator
+          from typing import Iterator, Generic, TypeVar
+          from dataclasses import dataclass
+
+          T = TypeVar('T')
+
+          @dataclass
+          class TreeNode(Generic[T]):
+              value: T
+              left: 'TreeNode[T] | None' = None
+              right: 'TreeNode[T] | None' = None
+
+          class BinaryTree(Generic[T]):
+              def __init__(self, root: TreeNode[T] | None = None):
+                  self.root = root
+
+              def inorder(self) -> Iterator[T]:
+                  """In-order traversal using generator."""
+                  def traverse(node: TreeNode[T] | None) -> Iterator[T]:
+                      if node:
+                          yield from traverse(node.left)
+                          yield node.value
+                          yield from traverse(node.right)
+                  yield from traverse(self.root)
+
+              def preorder(self) -> Iterator[T]:
+                  """Pre-order traversal."""
+                  def traverse(node: TreeNode[T] | None) -> Iterator[T]:
+                      if node:
+                          yield node.value
+                          yield from traverse(node.left)
+                          yield from traverse(node.right)
+                  yield from traverse(self.root)
+
+              def __iter__(self) -> Iterator[T]:
+                  """Default iteration is in-order."""
+                  return self.inorder()
+
+          # Usage
+          tree = BinaryTree(TreeNode(
+              value=5,
+              left=TreeNode(3, TreeNode(1), TreeNode(4)),
+              right=TreeNode(7, TreeNode(6), TreeNode(8))
+          ))
+
+          for value in tree:  # Uses __iter__ -> inorder
+              print(value)  # 1, 3, 4, 5, 6, 7, 8
+
+          for value in tree.preorder():
+              print(value)  # 5, 3, 1, 4, 7, 6, 8
+      tags:
+        - behavioral
+        - iterator
+        - traversal
+        - gof
+
+  - id: DP023
+    title: 'Mediator Pattern'
+    category: patterns
+    level: advanced
+    priority: medium
+    content:
+      description: |
+        Define an object that encapsulates how a set of objects interact.
+        Mediator promotes loose coupling by keeping objects from referring to each other.
+      rationale: |
+        Mediator centralizes complex communication logic, reducing dependencies
+        between components and simplifying maintenance.
+      good_examples:
+        - |
+          # Python - Chat room mediator
+          from abc import ABC, abstractmethod
+          from dataclasses import dataclass, field
+          from typing import Protocol
+
+          class ChatMediator(Protocol):
+              def send_message(self, message: str, sender: 'User') -> None: ...
+              def add_user(self, user: 'User') -> None: ...
+
+          @dataclass
+          class User:
+              name: str
+              mediator: ChatMediator | None = None
+
+              def send(self, message: str) -> None:
+                  if self.mediator:
+                      self.mediator.send_message(message, self)
+
+              def receive(self, message: str, sender: 'User') -> None:
+                  print(f"{self.name} received from {sender.name}: {message}")
+
+          @dataclass
+          class ChatRoom:
+              """Mediator that coordinates communication between users."""
+              users: list[User] = field(default_factory=list)
+
+              def add_user(self, user: User) -> None:
+                  user.mediator = self
+                  self.users.append(user)
+                  self._notify_all(f"{user.name} joined the chat", user)
+
+              def send_message(self, message: str, sender: User) -> None:
+                  for user in self.users:
+                      if user != sender:
+                          user.receive(message, sender)
+
+              def _notify_all(self, message: str, except_user: User) -> None:
+                  system = User("System")
+                  for user in self.users:
+                      if user != except_user:
+                          user.receive(message, system)
+
+          # Usage
+          room = ChatRoom()
+          alice = User("Alice")
+          bob = User("Bob")
+
+          room.add_user(alice)
+          room.add_user(bob)
+
+          alice.send("Hello everyone!")  # Bob receives
+          bob.send("Hi Alice!")  # Alice receives
+      tags:
+        - behavioral
+        - mediator
+        - decoupling
+        - gof
+
+  - id: DP024
+    title: 'Visitor Pattern'
+    category: patterns
+    level: advanced
+    priority: low
+    content:
+      description: |
+        Represent an operation to be performed on elements of an object structure.
+        Visitor lets you define new operations without changing the element classes.
+      rationale: |
+        Visitor separates algorithms from objects, enabling new operations
+        without modifying existing classes.
+      good_examples:
+        - |
+          # Python - Document visitor
+          from abc import ABC, abstractmethod
+          from dataclasses import dataclass
+          from typing import Protocol
+
+          class DocumentVisitor(Protocol):
+              def visit_paragraph(self, paragraph: 'Paragraph') -> str: ...
+              def visit_heading(self, heading: 'Heading') -> str: ...
+              def visit_list(self, list_elem: 'List') -> str: ...
+
+          class DocumentElement(ABC):
+              @abstractmethod
+              def accept(self, visitor: DocumentVisitor) -> str: ...
+
+          @dataclass
+          class Paragraph(DocumentElement):
+              text: str
+
+              def accept(self, visitor: DocumentVisitor) -> str:
+                  return visitor.visit_paragraph(self)
+
+          @dataclass
+          class Heading(DocumentElement):
+              text: str
+              level: int
+
+              def accept(self, visitor: DocumentVisitor) -> str:
+                  return visitor.visit_heading(self)
+
+          @dataclass
+          class List(DocumentElement):
+              items: list[str]
+
+              def accept(self, visitor: DocumentVisitor) -> str:
+                  return visitor.visit_list(self)
+
+          # Concrete visitors
+          class HTMLVisitor:
+              def visit_paragraph(self, p: Paragraph) -> str:
+                  return f"<p>{p.text}</p>"
+
+              def visit_heading(self, h: Heading) -> str:
+                  return f"<h{h.level}>{h.text}</h{h.level}>"
+
+              def visit_list(self, l: List) -> str:
+                  items = ''.join(f"<li>{item}</li>" for item in l.items)
+                  return f"<ul>{items}</ul>"
+
+          class MarkdownVisitor:
+              def visit_paragraph(self, p: Paragraph) -> str:
+                  return p.text
+
+              def visit_heading(self, h: Heading) -> str:
+                  return f"{'#' * h.level} {h.text}"
+
+              def visit_list(self, l: List) -> str:
+                  return '\n'.join(f"- {item}" for item in l.items)
+
+          # Usage
+          doc = [Heading("Title", 1), Paragraph("Content"), List(["Item 1", "Item 2"])]
+          html = HTMLVisitor()
+          md = MarkdownVisitor()
+
+          for elem in doc:
+              print(elem.accept(html))
+      tags:
+        - behavioral
+        - visitor
+        - double-dispatch
+        - gof
+
+  - id: DP025
+    title: 'Memento Pattern'
+    category: patterns
+    level: advanced
+    priority: low
+    content:
+      description: |
+        Capture and externalize an object's internal state without violating
+        encapsulation, so the object can be restored to this state later.
+      rationale: |
+        Memento enables undo/redo and state snapshots while keeping
+        the originator's implementation details private.
+      good_examples:
+        - |
+          # Python - Editor with undo
+          from dataclasses import dataclass
+          from typing import Any
+
+          @dataclass(frozen=True)
+          class EditorMemento:
+              """Immutable snapshot of editor state."""
+              content: str
+              cursor_position: int
+              selection: tuple[int, int] | None
+
+          class TextEditor:
+              def __init__(self):
+                  self._content = ""
+                  self._cursor = 0
+                  self._selection: tuple[int, int] | None = None
+
+              def type(self, text: str) -> None:
+                  self._content = (
+                      self._content[:self._cursor] +
+                      text +
+                      self._content[self._cursor:]
+                  )
+                  self._cursor += len(text)
+
+              def delete(self) -> None:
+                  if self._cursor > 0:
+                      self._content = (
+                          self._content[:self._cursor-1] +
+                          self._content[self._cursor:]
+                      )
+                      self._cursor -= 1
+
+              def save(self) -> EditorMemento:
+                  """Create memento of current state."""
+                  return EditorMemento(
+                      content=self._content,
+                      cursor_position=self._cursor,
+                      selection=self._selection
+                  )
+
+              def restore(self, memento: EditorMemento) -> None:
+                  """Restore state from memento."""
+                  self._content = memento.content
+                  self._cursor = memento.cursor_position
+                  self._selection = memento.selection
+
+          class EditorHistory:
+              def __init__(self, editor: TextEditor):
+                  self._editor = editor
+                  self._history: list[EditorMemento] = []
+                  self._current = -1
+
+              def save(self) -> None:
+                  # Remove any redo states
+                  self._history = self._history[:self._current + 1]
+                  self._history.append(self._editor.save())
+                  self._current = len(self._history) - 1
+
+              def undo(self) -> bool:
+                  if self._current > 0:
+                      self._current -= 1
+                      self._editor.restore(self._history[self._current])
+                      return True
+                  return False
+
+              def redo(self) -> bool:
+                  if self._current < len(self._history) - 1:
+                      self._current += 1
+                      self._editor.restore(self._history[self._current])
+                      return True
+                  return False
+      tags:
+        - behavioral
+        - memento
+        - undo
+        - gof
+
+  # ============================================================================
+  # ENTERPRISE PATTERNS (DP026-DP030)
+  # ============================================================================
+
+  - id: DP026
+    title: 'Repository Pattern'
+    category: patterns
+    level: intermediate
+    priority: critical
+    content:
+      description: |
+        Mediate between the domain and data mapping layers using a collection-like
+        interface for accessing domain objects.
+      rationale: |
+        Repository abstracts data access, enabling testability, swappable
+        storage implementations, and clean domain logic.
+      good_examples:
+        - |
+          # Python - Generic Repository
+          from abc import ABC, abstractmethod
+          from typing import TypeVar, Generic, Protocol
+          from dataclasses import dataclass
+
+          T = TypeVar('T')
+          ID = TypeVar('ID')
+
+          class Repository(Protocol[T, ID]):
+              def find_by_id(self, id: ID) -> T | None: ...
+              def find_all(self) -> list[T]: ...
+              def save(self, entity: T) -> T: ...
+              def delete(self, id: ID) -> bool: ...
+
+          @dataclass
+          class User:
+              id: str | None
+              name: str
+              email: str
+
+          class UserRepository(ABC):
+              @abstractmethod
+              def find_by_id(self, id: str) -> User | None: ...
+
+              @abstractmethod
+              def find_by_email(self, email: str) -> User | None: ...
+
+              @abstractmethod
+              def find_all(self) -> list[User]: ...
+
+              @abstractmethod
+              def save(self, user: User) -> User: ...
+
+              @abstractmethod
+              def delete(self, id: str) -> bool: ...
+
+          # In-memory implementation for testing
+          class InMemoryUserRepository(UserRepository):
+              def __init__(self):
+                  self._users: dict[str, User] = {}
+                  self._counter = 0
+
+              def find_by_id(self, id: str) -> User | None:
+                  return self._users.get(id)
+
+              def find_by_email(self, email: str) -> User | None:
+                  return next((u for u in self._users.values() if u.email == email), None)
+
+              def find_all(self) -> list[User]:
+                  return list(self._users.values())
+
+              def save(self, user: User) -> User:
+                  if user.id is None:
+                      self._counter += 1
+                      user.id = str(self._counter)
+                  self._users[user.id] = user
+                  return user
+
+              def delete(self, id: str) -> bool:
+                  return self._users.pop(id, None) is not None
+
+          # PostgreSQL implementation
+          class PostgresUserRepository(UserRepository):
+              def __init__(self, connection_pool):
+                  self._pool = connection_pool
+
+              def find_by_id(self, id: str) -> User | None:
+                  # Real database query
+                  pass
+      tags:
+        - enterprise
+        - repository
+        - data-access
+        - ddd
+
+  - id: DP027
+    title: 'Unit of Work Pattern'
+    category: patterns
+    level: advanced
+    priority: high
+    content:
+      description: |
+        Maintain a list of objects affected by a business transaction and
+        coordinate writing out changes and resolving concurrency problems.
+      rationale: |
+        Unit of Work batches database operations into a single transaction,
+        ensuring consistency and reducing database round trips.
+      good_examples:
+        - |
+          # Python - Unit of Work
+          from typing import Protocol, TypeVar, Generic
+          from dataclasses import dataclass, field
+          from contextlib import contextmanager
+          from enum import Enum, auto
+
+          T = TypeVar('T')
+
+          class EntityState(Enum):
+              NEW = auto()
+              DIRTY = auto()
+              REMOVED = auto()
+
+          @dataclass
+          class UnitOfWork:
+              _new: dict[type, list] = field(default_factory=dict)
+              _dirty: dict[type, list] = field(default_factory=dict)
+              _removed: dict[type, list] = field(default_factory=dict)
+              _committed: bool = False
+
+              def register_new(self, entity: T) -> None:
+                  entity_type = type(entity)
+                  if entity_type not in self._new:
+                      self._new[entity_type] = []
+                  self._new[entity_type].append(entity)
+
+              def register_dirty(self, entity: T) -> None:
+                  entity_type = type(entity)
+                  if entity_type not in self._dirty:
+                      self._dirty[entity_type] = []
+                  if entity not in self._dirty[entity_type]:
+                      self._dirty[entity_type].append(entity)
+
+              def register_removed(self, entity: T) -> None:
+                  entity_type = type(entity)
+                  if entity_type not in self._removed:
+                      self._removed[entity_type] = []
+                  self._removed[entity_type].append(entity)
+
+              def commit(self) -> None:
+                  """Persist all changes in a single transaction."""
+                  try:
+                      # Insert new entities
+                      for entities in self._new.values():
+                          for entity in entities:
+                              self._insert(entity)
+
+                      # Update dirty entities
+                      for entities in self._dirty.values():
+                          for entity in entities:
+                              self._update(entity)
+
+                      # Delete removed entities
+                      for entities in self._removed.values():
+                          for entity in entities:
+                              self._delete(entity)
+
+                      self._committed = True
+                  except Exception:
+                      self.rollback()
+                      raise
+
+              def rollback(self) -> None:
+                  self._new.clear()
+                  self._dirty.clear()
+                  self._removed.clear()
+
+          # Context manager usage
+          @contextmanager
+          def unit_of_work():
+              uow = UnitOfWork()
+              try:
+                  yield uow
+                  uow.commit()
+              except Exception:
+                  uow.rollback()
+                  raise
+      tags:
+        - enterprise
+        - unit-of-work
+        - transaction
+        - ddd
+
+  - id: DP028
+    title: 'CQRS Pattern'
+    category: patterns
+    level: advanced
+    priority: medium
+    content:
+      description: |
+        Command Query Responsibility Segregation - separate read and write
+        operations into different models for scalability and optimization.
+      rationale: |
+        CQRS allows independent scaling and optimization of reads vs writes,
+        enabling event sourcing and complex querying.
+      good_examples:
+        - |
+          # Python - CQRS with separate read/write models
+          from dataclasses import dataclass
+          from abc import ABC, abstractmethod
+          from typing import Protocol
+
+          # Commands (Write side)
+          @dataclass(frozen=True)
+          class CreateOrderCommand:
+              customer_id: str
+              items: list[dict]
+
+          @dataclass(frozen=True)
+          class CancelOrderCommand:
+              order_id: str
+              reason: str
+
+          class CommandHandler(Protocol):
+              def handle(self, command) -> None: ...
+
+          class CreateOrderHandler:
+              def __init__(self, order_repo, event_bus):
+                  self.order_repo = order_repo
+                  self.event_bus = event_bus
+
+              def handle(self, command: CreateOrderCommand) -> str:
+                  # Business logic and validation
+                  order = Order.create(
+                      customer_id=command.customer_id,
+                      items=command.items
+                  )
+                  self.order_repo.save(order)
+
+                  # Publish event for read model update
+                  self.event_bus.publish(OrderCreatedEvent(
+                      order_id=order.id,
+                      customer_id=order.customer_id,
+                      total=order.total
+                  ))
+                  return order.id
+
+          # Queries (Read side)
+          @dataclass(frozen=True)
+          class GetOrderQuery:
+              order_id: str
+
+          @dataclass(frozen=True)
+          class ListCustomerOrdersQuery:
+              customer_id: str
+              page: int = 1
+              limit: int = 10
+
+          # Read model - optimized for queries
+          @dataclass
+          class OrderReadModel:
+              id: str
+              customer_name: str
+              total: float
+              status: str
+              items_count: int
+
+          class OrderQueryHandler:
+              def __init__(self, read_db):
+                  self.read_db = read_db  # Optimized read database
+
+              def get_order(self, query: GetOrderQuery) -> OrderReadModel:
+                  return self.read_db.find_order(query.order_id)
+
+              def list_customer_orders(self, query: ListCustomerOrdersQuery) -> list[OrderReadModel]:
+                  return self.read_db.find_orders_by_customer(
+                      query.customer_id,
+                      query.page,
+                      query.limit
+                  )
+      tags:
+        - enterprise
+        - cqrs
+        - architecture
+        - ddd
+
+  - id: DP029
+    title: 'Event Sourcing Pattern'
+    category: patterns
+    level: expert
+    priority: medium
+    content:
+      description: |
+        Store the state of a business entity as a sequence of state-changing events.
+        Reconstruct state by replaying events.
+      rationale: |
+        Event Sourcing provides complete audit trail, temporal queries,
+        and the ability to rebuild state at any point in time.
+      good_examples:
+        - |
+          # Python - Event Sourcing
+          from dataclasses import dataclass, field
+          from datetime import datetime
+          from abc import ABC
+          from typing import TypeVar, Generic
+          import uuid
+
+          @dataclass(frozen=True)
+          class Event:
+              event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+              timestamp: datetime = field(default_factory=datetime.utcnow)
+
+          @dataclass(frozen=True)
+          class AccountCreated(Event):
+              account_id: str
+              owner_name: str
+
+          @dataclass(frozen=True)
+          class MoneyDeposited(Event):
+              account_id: str
+              amount: float
+
+          @dataclass(frozen=True)
+          class MoneyWithdrawn(Event):
+              account_id: str
+              amount: float
+
+          class BankAccount:
+              def __init__(self, account_id: str):
+                  self.id = account_id
+                  self.owner_name = ""
+                  self.balance = 0.0
+                  self._events: list[Event] = []
+
+              @classmethod
+              def from_events(cls, events: list[Event]) -> 'BankAccount':
+                  """Reconstruct account state from events."""
+                  if not events:
+                      raise ValueError("No events to replay")
+
+                  first_event = events[0]
+                  if not isinstance(first_event, AccountCreated):
+                      raise ValueError("First event must be AccountCreated")
+
+                  account = cls(first_event.account_id)
+                  for event in events:
+                      account._apply(event)
+                  return account
+
+              def _apply(self, event: Event) -> None:
+                  """Apply event to update state."""
+                  if isinstance(event, AccountCreated):
+                      self.owner_name = event.owner_name
+                  elif isinstance(event, MoneyDeposited):
+                      self.balance += event.amount
+                  elif isinstance(event, MoneyWithdrawn):
+                      self.balance -= event.amount
+
+              def deposit(self, amount: float) -> MoneyDeposited:
+                  if amount <= 0:
+                      raise ValueError("Amount must be positive")
+                  event = MoneyDeposited(account_id=self.id, amount=amount)
+                  self._apply(event)
+                  self._events.append(event)
+                  return event
+
+              def withdraw(self, amount: float) -> MoneyWithdrawn:
+                  if amount > self.balance:
+                      raise ValueError("Insufficient funds")
+                  event = MoneyWithdrawn(account_id=self.id, amount=amount)
+                  self._apply(event)
+                  self._events.append(event)
+                  return event
+
+              @property
+              def uncommitted_events(self) -> list[Event]:
+                  return self._events.copy()
+
+          # Event store
+          class EventStore:
+              def __init__(self):
+                  self._events: dict[str, list[Event]] = {}
+
+              def save(self, stream_id: str, events: list[Event]) -> None:
+                  if stream_id not in self._events:
+                      self._events[stream_id] = []
+                  self._events[stream_id].extend(events)
+
+              def load(self, stream_id: str) -> list[Event]:
+                  return self._events.get(stream_id, [])
+      tags:
+        - enterprise
+        - event-sourcing
+        - audit
+        - ddd
+
+  - id: DP030
+    title: 'Saga Pattern'
+    category: patterns
+    level: expert
+    priority: medium
+    content:
+      description: |
+        Manage distributed transactions across multiple services using a
+        sequence of local transactions with compensating transactions for rollback.
+      rationale: |
+        Sagas enable reliable distributed transactions without two-phase
+        commit, essential for microservices architectures.
+      good_examples:
+        - |
+          # Python - Saga Orchestrator
+          from dataclasses import dataclass, field
+          from abc import ABC, abstractmethod
+          from enum import Enum, auto
+          from typing import Callable, Any
+
+          class SagaState(Enum):
+              PENDING = auto()
+              RUNNING = auto()
+              COMPLETED = auto()
+              COMPENSATING = auto()
+              FAILED = auto()
+
+          @dataclass
+          class SagaStep:
+              name: str
+              execute: Callable[[], Any]
+              compensate: Callable[[], None]
+              result: Any = None
+              executed: bool = False
+
+          class SagaOrchestrator:
+              def __init__(self):
+                  self.steps: list[SagaStep] = []
+                  self.state = SagaState.PENDING
+                  self.executed_steps: list[SagaStep] = []
+
+              def add_step(
+                  self,
+                  name: str,
+                  execute: Callable[[], Any],
+                  compensate: Callable[[], None]
+              ) -> 'SagaOrchestrator':
+                  self.steps.append(SagaStep(name, execute, compensate))
+                  return self
+
+              def execute(self) -> bool:
+                  self.state = SagaState.RUNNING
+
+                  try:
+                      for step in self.steps:
+                          print(f"Executing: {step.name}")
+                          step.result = step.execute()
+                          step.executed = True
+                          self.executed_steps.append(step)
+
+                      self.state = SagaState.COMPLETED
+                      return True
+
+                  except Exception as e:
+                      print(f"Step failed: {e}")
+                      self._compensate()
+                      return False
+
+              def _compensate(self) -> None:
+                  self.state = SagaState.COMPENSATING
+
+                  # Compensate in reverse order
+                  for step in reversed(self.executed_steps):
+                      try:
+                          print(f"Compensating: {step.name}")
+                          step.compensate()
+                      except Exception as e:
+                          print(f"Compensation failed for {step.name}: {e}")
+                          # Log and continue compensating
+
+                  self.state = SagaState.FAILED
+
+          # Usage - Order saga
+          def create_order_saga(order_data: dict) -> SagaOrchestrator:
+              return (
+                  SagaOrchestrator()
+                  .add_step(
+                      "reserve_inventory",
+                      lambda: inventory_service.reserve(order_data['items']),
+                      lambda: inventory_service.release(order_data['items'])
+                  )
+                  .add_step(
+                      "charge_payment",
+                      lambda: payment_service.charge(order_data['payment']),
+                      lambda: payment_service.refund(order_data['payment'])
+                  )
+                  .add_step(
+                      "create_shipment",
+                      lambda: shipping_service.create(order_data),
+                      lambda: shipping_service.cancel(order_data['order_id'])
+                  )
+              )
+
+          # Execute saga
+          saga = create_order_saga(order_data)
+          success = saga.execute()
+      tags:
+        - enterprise
+        - saga
+        - distributed-transactions
+        - microservices

@@ -1,0 +1,1002 @@
+# Solid.js Framework Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.62 - Solid.js Framework Support
+# Practice IDs: SOLIDJS001-SOLIDJS050
+# Coverage: Signals, Stores, Components, Resources, Routing, Context,
+#           Lifecycle, Performance, TypeScript, SolidStart, Patterns
+# Versions: Solid.js v1.0-v2.0, SolidStart v0.x-v1.0+, @solidjs/router v0.8-v0.14+
+
+practices:
+  # ============================================================================
+  # SOLIDJS SIGNALS (SOLIDJS001-SOLIDJS010) - Reactive primitives best practices
+  # ============================================================================
+
+  - id: SOLIDJS001
+    title: "Always call signal getters as functions in JSX"
+    description: "Solid.js signals are getter functions. Always invoke them with () in JSX and computations. Unlike React state, signals must be called to subscribe — using the raw getter without () will not track reactivity."
+    category: "solidjs_signals"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "signal", "reactivity", "getter", "jsx"]
+    example: |
+      // ✅ Correct: call getter as function
+      const [count, setCount] = createSignal(0);
+      return <div>{count()}</div>;
+
+      // ❌ Wrong: passing getter reference (won't track)
+      return <div>{count}</div>;
+
+  - id: SOLIDJS002
+    title: "Use createMemo for derived computations"
+    description: "Wrap expensive derived computations in createMemo() to cache the result and avoid recomputation on every render. Memos only recompute when their tracked dependencies change."
+    category: "solidjs_signals"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "memo", "derived", "performance", "cache"]
+    example: |
+      // ✅ Memoized computation
+      const doubled = createMemo(() => count() * 2);
+      const filtered = createMemo(() => items().filter(i => i.active));
+
+      // ❌ Inline computation (recalculates every access)
+      const getDoubled = () => count() * 2;  // No caching
+
+  - id: SOLIDJS003
+    title: "Use on() for explicit dependency tracking in effects"
+    description: "Wrap createEffect callbacks with on() to explicitly declare dependencies. This prevents accidental dependency tracking and makes effect behavior predictable."
+    category: "solidjs_signals"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "effect", "on", "dependencies", "tracking"]
+    example: |
+      // ✅ Explicit dependencies
+      createEffect(on(count, (value, prev) => {
+        console.log('count changed from', prev, 'to', value);
+      }));
+
+      // ✅ Multiple dependencies
+      createEffect(on([a, b], ([a, b]) => {
+        console.log('a or b changed:', a, b);
+      }));
+
+      // ⚠️ Implicit tracking (all accessed signals are dependencies)
+      createEffect(() => {
+        console.log(count());  // implicitly tracks count
+      });
+
+  - id: SOLIDJS004
+    title: "Use batch() to group multiple signal updates"
+    description: "Wrap multiple signal updates in batch() to defer reactive updates until all changes are applied. This prevents intermediate renders and improves performance."
+    category: "solidjs_signals"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "batch", "performance", "updates", "signal"]
+    example: |
+      // ✅ Batched updates
+      batch(() => {
+        setCount(count() + 1);
+        setName('New Name');
+        setItems([...items(), newItem]);
+      });
+
+      // ❌ Unbatched (triggers 3 separate reactive updates)
+      setCount(count() + 1);
+      setName('New Name');
+      setItems([...items(), newItem]);
+
+  - id: SOLIDJS005
+    title: "Use untrack() to prevent unwanted dependency tracking"
+    description: "Use untrack() to read signal values without creating reactive dependencies. Useful when you need to read a signal value inside a computation without subscribing to changes."
+    category: "solidjs_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "untrack", "reactivity", "dependencies"]
+    example: |
+      // ✅ Read without tracking
+      createEffect(() => {
+        const tracked = count();
+        const untracked = untrack(() => name());
+        console.log(tracked, untracked);  // Only re-runs when count changes
+      });
+
+  - id: SOLIDJS006
+    title: "Use createDeferred for non-urgent computations"
+    description: "Use createDeferred() (v1.1+) for computations that can be deferred, like search suggestions or non-critical UI updates. Deferred signals use the browser's requestIdleCallback."
+    category: "solidjs_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "deferred", "performance", "transition"]
+    example: |
+      // ✅ Deferred expensive computation
+      const deferredQuery = createDeferred(query, { timeoutMs: 300 });
+      const results = createMemo(() => search(deferredQuery()));
+
+  - id: SOLIDJS007
+    title: "Prefer createEffect over createRenderEffect"
+    description: "Use createEffect for side effects. Reserve createRenderEffect only when you need synchronous execution during the render phase (e.g., integrating with third-party DOM libraries). createEffect runs after rendering and is safer."
+    category: "solidjs_signals"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "effect", "render-effect", "lifecycle"]
+    example: |
+      // ✅ Standard effect (runs after render)
+      createEffect(() => {
+        document.title = `Count: ${count()}`;
+      });
+
+      // ⚠️ Render effect (synchronous, use only when necessary)
+      createRenderEffect(() => {
+        // Direct DOM manipulation that must be synchronous
+        ref.style.transform = `translateX(${offset()}px)`;
+      });
+
+  - id: SOLIDJS008
+    title: "Use createReaction for fine-grained tracking"
+    description: "Use createReaction() when you need to separate the tracking phase from the side-effect phase. The tracking function runs first to gather dependencies, then the effect function runs only when those dependencies change."
+    category: "solidjs_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "reaction", "tracking", "fine-grained"]
+    example: |
+      // ✅ Separate tracking and effect
+      const track = createReaction(() => {
+        saveToLocalStorage(state());  // effect
+      });
+      track(() => state.count);  // tracking function
+
+  - id: SOLIDJS009
+    title: "Use from() for external reactive source integration"
+    description: "Use from() (v1.4+) to integrate external reactive sources (RxJS observables, EventEmitter, custom subscriptions) into Solid's reactive system."
+    category: "solidjs_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "from", "external", "rxjs", "observable"]
+    example: |
+      // ✅ RxJS observable integration
+      const value = from(observable$);
+
+      // ✅ Custom subscription
+      const value = from((set) => {
+        const unsub = source.subscribe(set);
+        return unsub;
+      });
+
+  - id: SOLIDJS010
+    title: "Use mapArray/indexArray for reactive list operations"
+    description: "Use mapArray() for keyed lists (items can move/reorder) and indexArray() for indexed lists (items at fixed positions). Both provide fine-grained reactivity for list rendering."
+    category: "solidjs_signals"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "mapArray", "indexArray", "list", "performance"]
+    example: |
+      // ✅ Keyed list (items have identity)
+      const mapped = mapArray(items, (item, index) => ({
+        ...item,
+        doubled: () => item.value * 2
+      }));
+
+      // ✅ Indexed list (fixed position)
+      const indexed = indexArray(items, (item, index) => ({
+        value: item(),
+        position: index
+      }));
+
+  # ============================================================================
+  # SOLIDJS STORES (SOLIDJS011-SOLIDJS016) - Store management best practices
+  # ============================================================================
+
+  - id: SOLIDJS011
+    title: "Use createStore for nested reactive state"
+    description: "Use createStore() for complex nested state objects. Unlike signals, stores provide deep reactivity — nested property access is automatically tracked. Use signals for simple primitive values."
+    category: "solidjs_stores"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "store", "nested", "deep-reactivity"]
+    example: |
+      // ✅ Store for nested state
+      const [state, setState] = createStore({
+        user: { name: 'Alice', settings: { theme: 'dark' } },
+        items: [{ id: 1, name: 'Item 1' }],
+      });
+      // Deep access is tracked
+      return <div>{state.user.settings.theme}</div>;
+
+      // ✅ Signal for simple values
+      const [count, setCount] = createSignal(0);
+
+  - id: SOLIDJS012
+    title: "Use path-based setters for store updates"
+    description: "Use path syntax in store setters for surgical updates to nested state. This is more efficient than recreating entire objects and preserves fine-grained reactivity."
+    category: "solidjs_stores"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "store", "path", "setter", "update"]
+    example: |
+      // ✅ Path-based update
+      setState('user', 'settings', 'theme', 'light');
+      setState('items', 0, 'name', 'Updated Item');
+      setState('items', item => item.id === 1, 'active', true);
+
+      // ❌ Replacing entire object (breaks fine-grained tracking)
+      setState({ ...state, user: { ...state.user, settings: { ...state.user.settings, theme: 'light' } } });
+
+  - id: SOLIDJS013
+    title: "Use produce() for complex store mutations"
+    description: "Use produce() from solid-js/store for complex mutations using a mutable draft (Immer-like pattern). Useful when path-based setters become unwieldy."
+    category: "solidjs_stores"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "store", "produce", "mutation", "immer"]
+    example: |
+      // ✅ produce for complex mutations
+      setState(produce((draft) => {
+        draft.items.push({ id: nextId(), name: 'New' });
+        draft.user.lastModified = Date.now();
+        draft.items = draft.items.filter(i => i.active);
+      }));
+
+  - id: SOLIDJS014
+    title: "Use reconcile() for replacing store state from server data"
+    description: "Use reconcile() when replacing store state with externally-sourced data (API responses). It efficiently diffs the new data against existing state, preserving fine-grained reactivity for unchanged portions."
+    category: "solidjs_stores"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "store", "reconcile", "diff", "api"]
+    example: |
+      // ✅ Reconcile server data
+      const data = await fetchTodos();
+      setState('todos', reconcile(data));
+
+      // ❌ Direct replacement (destroys reactive tracking)
+      setState('todos', data);
+
+  - id: SOLIDJS015
+    title: "Avoid createMutable unless integrating with mutable APIs"
+    description: "Prefer createStore over createMutable. createMutable uses Proxy-based mutation which can be harder to debug and reason about. Use createMutable only when integrating with libraries that expect mutable objects."
+    category: "solidjs_stores"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "store", "mutable", "proxy"]
+    example: |
+      // ✅ Preferred: createStore with explicit updates
+      const [state, setState] = createStore({ count: 0 });
+      setState('count', c => c + 1);
+
+      // ⚠️ createMutable (use only for mutable API integration)
+      const state = createMutable({ count: 0 });
+      state.count++;  // Direct mutation
+
+  - id: SOLIDJS016
+    title: "Use unwrap() to get raw store data"
+    description: "Use unwrap() to get the underlying raw JavaScript object from a store proxy. Useful when passing store data to external libraries or serializing to JSON."
+    category: "solidjs_stores"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "store", "unwrap", "serialize"]
+    example: |
+      // ✅ Unwrap for serialization
+      const raw = unwrap(state);
+      localStorage.setItem('state', JSON.stringify(raw));
+
+      // ✅ Pass to external library
+      thirdPartyLib.init(unwrap(state.config));
+
+  # ============================================================================
+  # SOLIDJS COMPONENTS (SOLIDJS017-SOLIDJS024) - Component patterns
+  # ============================================================================
+
+  - id: SOLIDJS017
+    title: "Use control flow components instead of ternary/&&"
+    description: "Use Solid's built-in control flow components (<Show>, <For>, <Switch>/<Match>) instead of JavaScript ternary operators or && short-circuit. Control flow components provide proper cleanup and memoization."
+    category: "solidjs_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "control-flow", "show", "for", "switch"]
+    example: |
+      // ✅ Control flow components
+      <Show when={loggedIn()} fallback={<Login />}>
+        <Dashboard />
+      </Show>
+
+      <For each={items()}>{(item) => <Item data={item} />}</For>
+
+      <Switch>
+        <Match when={status() === 'loading'}><Spinner /></Match>
+        <Match when={status() === 'error'}><Error /></Match>
+        <Match when={status() === 'ready'}><Content /></Match>
+      </Switch>
+
+      // ❌ Ternary (loses DOM references, no cleanup)
+      {loggedIn() ? <Dashboard /> : <Login />}
+
+  - id: SOLIDJS018
+    title: "Use splitProps to separate component-consumed and forwarded props"
+    description: "Use splitProps() to cleanly separate props your component uses from props to forward to child elements. Unlike destructuring, splitProps maintains reactivity."
+    category: "solidjs_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "props", "splitProps", "forwarding"]
+    example: |
+      // ✅ splitProps maintains reactivity
+      function Button(props) {
+        const [local, rest] = splitProps(props, ['onClick', 'variant']);
+        return <button class={local.variant} onClick={local.onClick} {...rest} />;
+      }
+
+      // ❌ Destructuring breaks reactivity
+      function Button({ onClick, variant, ...rest }) {
+        return <button class={variant} onClick={onClick} {...rest} />;
+      }
+
+  - id: SOLIDJS019
+    title: "Never destructure props in Solid.js components"
+    description: "Never destructure component props. Destructuring captures the value at render time and breaks reactive tracking. Access props via props.propName or use splitProps()/mergeProps()."
+    category: "solidjs_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "props", "destructuring", "reactivity"]
+    example: |
+      // ✅ Access props directly
+      function Greeting(props) {
+        return <h1>Hello, {props.name}!</h1>;
+      }
+
+      // ✅ Use mergeProps for defaults
+      function Greeting(props) {
+        const merged = mergeProps({ name: 'World' }, props);
+        return <h1>Hello, {merged.name}!</h1>;
+      }
+
+      // ❌ NEVER destructure
+      function Greeting({ name }) {
+        return <h1>Hello, {name}!</h1>;  // name is static, not reactive
+      }
+
+  - id: SOLIDJS020
+    title: "Use mergeProps for default prop values"
+    description: "Use mergeProps() to provide default values for component props. This maintains reactivity, unlike default parameter values or object spread."
+    category: "solidjs_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "props", "mergeProps", "defaults"]
+    example: |
+      // ✅ mergeProps for defaults
+      function Button(props) {
+        const merged = mergeProps({ variant: 'primary', size: 'md' }, props);
+        return <button class={`btn-${merged.variant} btn-${merged.size}`}>{merged.children}</button>;
+      }
+
+      // ❌ Default parameters (not reactive)
+      function Button({ variant = 'primary' }) { ... }
+
+  - id: SOLIDJS021
+    title: "Use children() helper for resolved children"
+    description: "Use the children() helper to resolve and memoize child elements when you need to manipulate or iterate over them. This handles both static and dynamic children correctly."
+    category: "solidjs_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "children", "helper", "resolved"]
+    example: |
+      // ✅ children() helper for manipulation
+      function List(props) {
+        const resolved = children(() => props.children);
+        createEffect(() => {
+          const els = resolved.toArray();
+          // Manipulate resolved children
+        });
+        return <ul>{resolved()}</ul>;
+      }
+
+  - id: SOLIDJS022
+    title: "Use lazy() for code splitting components"
+    description: "Use lazy() to dynamically import components for code splitting. Wrap lazy components with <Suspense> to show loading fallbacks."
+    category: "solidjs_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "lazy", "code-splitting", "suspense"]
+    example: |
+      // ✅ Lazy-loaded component
+      const Dashboard = lazy(() => import('./Dashboard'));
+
+      function App() {
+        return (
+          <Suspense fallback={<Spinner />}>
+            <Dashboard />
+          </Suspense>
+        );
+      }
+
+  - id: SOLIDJS023
+    title: "Use <ErrorBoundary> for graceful error handling"
+    description: "Wrap component subtrees with <ErrorBoundary> to catch and handle rendering errors gracefully. Provide a fallback UI and a reset mechanism."
+    category: "solidjs_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "error-boundary", "error-handling", "fallback"]
+    example: |
+      // ✅ ErrorBoundary with reset
+      <ErrorBoundary fallback={(err, reset) => (
+        <div>
+          <p>Error: {err.message}</p>
+          <button onClick={reset}>Retry</button>
+        </div>
+      )}>
+        <FeatureComponent />
+      </ErrorBoundary>
+
+  - id: SOLIDJS024
+    title: "Use <Dynamic> for conditional component rendering"
+    description: "Use the <Dynamic> component to render components dynamically based on runtime values. This is cleaner than switch statements for polymorphic rendering."
+    category: "solidjs_components"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "dynamic", "polymorphic", "component"]
+    example: |
+      // ✅ Dynamic component
+      const components = { text: TextInput, select: SelectInput, checkbox: CheckboxInput };
+      <Dynamic component={components[field.type]} {...field.props} />
+
+  # ============================================================================
+  # SOLIDJS RESOURCES (SOLIDJS025-SOLIDJS030) - Data fetching best practices
+  # ============================================================================
+
+  - id: SOLIDJS025
+    title: "Use createResource for async data fetching"
+    description: "Use createResource() for all async data fetching needs. It provides built-in loading/error states, Suspense integration, and automatic refetching when source signals change."
+    category: "solidjs_resources"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "resource", "async", "data-fetching"]
+    example: |
+      // ✅ Basic resource
+      const [user] = createResource(() => fetchUser(userId()));
+
+      // ✅ Resource with source signal
+      const [data] = createResource(userId, fetchUser);
+      // Automatically refetches when userId() changes
+
+      // Access states
+      <Show when={!data.loading} fallback={<Spinner />}>
+        <UserProfile user={data()} />
+      </Show>
+
+  - id: SOLIDJS026
+    title: "Provide initial values for resources to avoid undefined"
+    description: "Pass initialValue to createResource() when the component must render before data loads. This avoids handling undefined states throughout the component tree."
+    category: "solidjs_resources"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "resource", "initialValue", "ssr"]
+    example: |
+      // ✅ With initial value
+      const [items] = createResource(fetchItems, { initialValue: [] });
+      // items() is always an array, never undefined
+
+      // ✅ Type-safe initial value
+      const [user] = createResource<User>(fetchUser, {
+        initialValue: { name: '', email: '' }
+      });
+
+  - id: SOLIDJS027
+    title: "Use cache() and action() in SolidStart v1.0+"
+    description: "In SolidStart v1.0+, use cache() for data loading and action() for mutations. These replace server$() and createServerData$() from SolidStart v0.x, providing better caching and invalidation."
+    category: "solidjs_resources"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs", "solid-start"]
+    tags: ["solidjs", "solid-start", "cache", "action", "v1"]
+    example: |
+      // ✅ SolidStart v1.0+ data loading
+      const getUser = cache(async (id: string) => {
+        'use server';
+        return db.user.findUnique({ where: { id } });
+      }, 'user');
+
+      // ✅ SolidStart v1.0+ mutation
+      const updateUser = action(async (formData: FormData) => {
+        'use server';
+        await db.user.update({ ... });
+        throw redirect('/users');
+      });
+
+  - id: SOLIDJS028
+    title: "Handle resource error states explicitly"
+    description: "Always handle error states from createResource. Check resource.error before accessing the data value. Combine with <ErrorBoundary> for a robust error handling strategy."
+    category: "solidjs_resources"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "resource", "error", "handling"]
+    example: |
+      // ✅ Explicit error handling
+      const [data] = createResource(fetchData);
+
+      return (
+        <Switch>
+          <Match when={data.error}><ErrorMessage error={data.error} /></Match>
+          <Match when={data.loading}><Spinner /></Match>
+          <Match when={data()}>{(d) => <Content data={d()} />}</Match>
+        </Switch>
+      );
+
+  - id: SOLIDJS029
+    title: "Use Suspense boundaries around resource consumers"
+    description: "Wrap components that consume createResource data with <Suspense> boundaries. Resources integrate with Suspense automatically — the fallback shows while any nested resource is loading."
+    category: "solidjs_resources"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "suspense", "resource", "loading"]
+    example: |
+      // ✅ Suspense wrapping
+      function App() {
+        return (
+          <Suspense fallback={<PageSkeleton />}>
+            <UserDashboard />  {/* Contains createResource calls */}
+          </Suspense>
+        );
+      }
+
+  - id: SOLIDJS030
+    title: "Use routeData for route-level data loading"
+    description: "In SolidStart, use routeData/useRouteData (v0.x) or route preload functions (v1.0+) for route-level data fetching. This enables data loading to start before component rendering."
+    category: "solidjs_resources"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs", "solid-start"]
+    tags: ["solidjs", "solid-start", "routeData", "preload"]
+    example: |
+      // ✅ SolidStart v1.0+ route preload
+      export const route = {
+        preload({ params }) {
+          void getUser(params.id);
+        }
+      };
+
+      export default function UserPage() {
+        const params = useParams();
+        const user = createAsync(() => getUser(params.id));
+        return <Show when={user()}>{(u) => <Profile user={u()} />}</Show>;
+      }
+
+  # ============================================================================
+  # SOLIDJS ROUTING (SOLIDJS031-SOLIDJS034) - Routing best practices
+  # ============================================================================
+
+  - id: SOLIDJS031
+    title: "Use @solidjs/router for client-side routing"
+    description: "Use @solidjs/router (the official router) for client-side routing. Avoid the legacy solid-app-router package. Use declarative <Route> components or config-based useRoutes()."
+    category: "solidjs_routing"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "router", "routing", "navigation"]
+    example: |
+      // ✅ Declarative routes
+      import { Router, Route } from '@solidjs/router';
+
+      <Router>
+        <Route path="/" component={Home} />
+        <Route path="/users/:id" component={UserProfile} />
+        <Route path="*404" component={NotFound} />
+      </Router>
+
+  - id: SOLIDJS032
+    title: "Use useNavigate for programmatic navigation"
+    description: "Use the useNavigate() hook for programmatic navigation. Always call it inside components or reactive contexts. Pass state via the options parameter."
+    category: "solidjs_routing"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "router", "navigate", "programmatic"]
+    example: |
+      // ✅ Programmatic navigation
+      function LoginForm() {
+        const navigate = useNavigate();
+        const handleLogin = async () => {
+          await login();
+          navigate('/dashboard', { replace: true });
+        };
+        return <button onClick={handleLogin}>Login</button>;
+      }
+
+  - id: SOLIDJS033
+    title: "Use typed route params with useParams"
+    description: "Type useParams() return value for type safety. Combine with route path patterns to ensure dynamic segments are correctly typed."
+    category: "solidjs_routing"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "router", "params", "typescript"]
+    example: |
+      // ✅ Typed params
+      const params = useParams<{ id: string }>();
+      const [user] = createResource(() => params.id, fetchUser);
+
+  - id: SOLIDJS034
+    title: "Use useBeforeLeave for unsaved changes protection"
+    description: "Use useBeforeLeave() to prevent navigation when there are unsaved changes. This provides a better UX than the browser's native beforeunload event."
+    category: "solidjs_routing"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "router", "guard", "unsaved-changes"]
+    example: |
+      // ✅ Route guard
+      useBeforeLeave((e) => {
+        if (hasUnsavedChanges() && !e.defaultPrevented) {
+          e.preventDefault();
+          if (window.confirm('You have unsaved changes. Leave?')) {
+            e.retry(true);
+          }
+        }
+      });
+
+  # ============================================================================
+  # SOLIDJS CONTEXT (SOLIDJS035-SOLIDJS037) - Context patterns
+  # ============================================================================
+
+  - id: SOLIDJS035
+    title: "Use createContext with a default value"
+    description: "Always provide a meaningful default value to createContext(). This ensures components work correctly even outside a Provider and enables better TypeScript inference."
+    category: "solidjs_context"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "context", "default", "provider"]
+    example: |
+      // ✅ Context with default
+      const ThemeContext = createContext<ThemeContextType>({
+        theme: 'light',
+        toggle: () => {},
+      });
+
+      // ✅ Provider with reactive value
+      function ThemeProvider(props) {
+        const [theme, setTheme] = createSignal('light');
+        const value = { get theme() { return theme(); }, toggle: () => setTheme(t => t === 'light' ? 'dark' : 'light') };
+        return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
+      }
+
+  - id: SOLIDJS036
+    title: "Keep context values reactive"
+    description: "Ensure context values maintain reactivity by using signals, stores, or getter functions. Avoid passing static objects that won't update consumers when values change."
+    category: "solidjs_context"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "context", "reactive", "signal"]
+    example: |
+      // ✅ Reactive context value
+      function AuthProvider(props) {
+        const [user, setUser] = createSignal(null);
+        const auth = {
+          get user() { return user(); },
+          get isLoggedIn() { return user() !== null; },
+          login: (u) => setUser(u),
+          logout: () => setUser(null),
+        };
+        return <AuthContext.Provider value={auth}>{props.children}</AuthContext.Provider>;
+      }
+
+  - id: SOLIDJS037
+    title: "Create custom useContext hooks for type safety"
+    description: "Create a custom hook wrapper around useContext that throws if used outside a Provider. This provides better error messages and type safety."
+    category: "solidjs_context"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "context", "hook", "typescript"]
+    example: |
+      // ✅ Custom context hook
+      function useAuth() {
+        const ctx = useContext(AuthContext);
+        if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+        return ctx;
+      }
+
+  # ============================================================================
+  # SOLIDJS LIFECYCLE (SOLIDJS038-SOLIDJS040) - Lifecycle patterns
+  # ============================================================================
+
+  - id: SOLIDJS038
+    title: "Use onMount for one-time setup, onCleanup for teardown"
+    description: "Use onMount() for setup code that runs once after the component mounts (e.g., DOM measurements, event listeners). Use onCleanup() in the same scope to clean up resources."
+    category: "solidjs_lifecycle"
+    severity: "critical"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "onMount", "onCleanup", "lifecycle"]
+    example: |
+      // ✅ Paired setup/teardown
+      function Timer() {
+        const [count, setCount] = createSignal(0);
+
+        onMount(() => {
+          const id = setInterval(() => setCount(c => c + 1), 1000);
+          onCleanup(() => clearInterval(id));
+        });
+
+        return <span>{count()}</span>;
+      }
+
+  - id: SOLIDJS039
+    title: "Use onCleanup inside effects for subscription cleanup"
+    description: "Call onCleanup() inside createEffect to clean up previous effect runs. Each re-execution of the effect will first call the cleanup from the previous run."
+    category: "solidjs_lifecycle"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "onCleanup", "effect", "subscription"]
+    example: |
+      // ✅ Cleanup inside effect
+      createEffect(() => {
+        const ws = new WebSocket(`ws://api.example.com/room/${roomId()}`);
+        ws.onmessage = (e) => setMessages(m => [...m, JSON.parse(e.data)]);
+        onCleanup(() => ws.close());
+      });
+
+  - id: SOLIDJS040
+    title: "Use onError for component-level error handling"
+    description: "Use onError() to handle errors at the component level. It catches errors from child components and provides a reset function. Combine with <ErrorBoundary> for a complete error handling strategy."
+    category: "solidjs_lifecycle"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "onError", "error-handling"]
+    example: |
+      // ✅ Component-level error handling
+      function SafeWrapper(props) {
+        onError((err) => {
+          reportError(err);
+        });
+        return props.children;
+      }
+
+  # ============================================================================
+  # SOLIDJS PERFORMANCE (SOLIDJS041-SOLIDJS044) - Performance patterns
+  # ============================================================================
+
+  - id: SOLIDJS041
+    title: "Use <Index> for lists with fixed indices"
+    description: "Use <Index> instead of <For> when list items are fixed in position and only their content changes. <Index> is more efficient in this case because it reuses DOM nodes."
+    category: "solidjs_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "index", "list", "performance"]
+    example: |
+      // ✅ <Index> for fixed-position items
+      <Index each={cells()}>
+        {(cell, index) => <td>{cell()}</td>}
+      </Index>
+
+      // ✅ <For> for keyed items that can move
+      <For each={todos()}>
+        {(todo) => <TodoItem todo={todo} />}
+      </For>
+
+  - id: SOLIDJS042
+    title: "Avoid creating signals inside loops"
+    description: "Do not create signals inside loops or callbacks that run multiple times. Create them at the top level of components or extract the loop body into its own component."
+    category: "solidjs_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "signal", "loop", "anti-pattern"]
+    example: |
+      // ✅ Signal per component instance
+      function TodoItem(props) {
+        const [editing, setEditing] = createSignal(false);
+        return <li>{props.todo.text}</li>;
+      }
+      <For each={todos()}>{(todo) => <TodoItem todo={todo} />}</For>
+
+      // ❌ Signal inside loop
+      <For each={todos()}>{(todo) => {
+        const [editing, setEditing] = createSignal(false);  // Recreated!
+        return <li>{todo.text}</li>;
+      }}</For>
+
+  - id: SOLIDJS043
+    title: "Use <Portal> for modal and overlay rendering"
+    description: "Use <Portal> to render modals, tooltips, and overlays outside the component tree. This avoids z-index and overflow issues."
+    category: "solidjs_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "portal", "modal", "overlay"]
+    example: |
+      // ✅ Portal for modal
+      <Show when={showModal()}>
+        <Portal>
+          <div class="modal-overlay">
+            <div class="modal">{props.children}</div>
+          </div>
+        </Portal>
+      </Show>
+
+  - id: SOLIDJS044
+    title: "Use startTransition for non-urgent updates"
+    description: "Use startTransition() for updates that don't need immediate visual feedback. This keeps the UI responsive during expensive state updates."
+    category: "solidjs_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "transition", "concurrent", "performance"]
+    example: |
+      // ✅ Non-urgent update
+      import { startTransition } from 'solid-js';
+
+      const handleSearch = (query) => {
+        setSearchText(query);  // Urgent: update input
+        startTransition(() => {
+          setFilteredResults(search(query));  // Non-urgent: filter results
+        });
+      };
+
+  # ============================================================================
+  # SOLIDJS TYPESCRIPT (SOLIDJS045-SOLIDJS047) - TypeScript patterns
+  # ============================================================================
+
+  - id: SOLIDJS045
+    title: "Use Component type annotation for component functions"
+    description: "Annotate component functions with Component<Props>, ParentComponent<Props>, FlowComponent<Props>, or VoidComponent type for proper TypeScript inference of props, children, and return type."
+    category: "solidjs_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "typescript", "component", "types"]
+    example: |
+      // ✅ Typed components
+      import { Component, ParentComponent } from 'solid-js';
+
+      const Greeting: Component<{ name: string }> = (props) => {
+        return <h1>Hello, {props.name}!</h1>;
+      };
+
+      const Layout: ParentComponent<{ title: string }> = (props) => {
+        return <main><h1>{props.title}</h1>{props.children}</main>;
+      };
+
+  - id: SOLIDJS046
+    title: "Type signals and stores with generics"
+    description: "Use TypeScript generics with createSignal, createStore, and createResource for type-safe state management. This enables autocomplete and catches type errors at compile time."
+    category: "solidjs_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "typescript", "generics", "signal", "store"]
+    example: |
+      // ✅ Typed signal
+      const [user, setUser] = createSignal<User | null>(null);
+
+      // ✅ Typed store
+      const [state, setState] = createStore<AppState>({
+        users: [],
+        loading: false,
+      });
+
+      // ✅ Typed resource
+      const [data] = createResource<Product[]>(fetchProducts);
+
+  - id: SOLIDJS047
+    title: "Use Accessor and Setter types for signal parameters"
+    description: "When passing signals to functions or components, use Accessor<T> and Setter<T> types from solid-js. This makes the API clear about reactive vs. static values."
+    category: "solidjs_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "typescript", "accessor", "setter"]
+    example: |
+      // ✅ Accessor type for reactive props
+      import { Accessor, Setter } from 'solid-js';
+
+      function useDebounce<T>(value: Accessor<T>, delay: number): Accessor<T> {
+        const [debounced, setDebounced] = createSignal(value());
+        createEffect(on(value, (v) => {
+          const timer = setTimeout(() => setDebounced(() => v), delay);
+          onCleanup(() => clearTimeout(timer));
+        }));
+        return debounced;
+      }
+
+  # ============================================================================
+  # SOLIDJS PATTERNS (SOLIDJS048-SOLIDJS050) - Architecture patterns
+  # ============================================================================
+
+  - id: SOLIDJS048
+    title: "Prefer composition over inheritance for shared logic"
+    description: "Use custom hooks (createXxx functions), context, and composition to share logic between components. Solid.js has no class components, so inheritance patterns don't apply."
+    category: "solidjs_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "composition", "hooks", "patterns"]
+    example: |
+      // ✅ Custom hook for shared logic
+      function createCounter(initial = 0) {
+        const [count, setCount] = createSignal(initial);
+        const increment = () => setCount(c => c + 1);
+        const decrement = () => setCount(c => c - 1);
+        const reset = () => setCount(initial);
+        return { count, increment, decrement, reset };
+      }
+
+      // Used in multiple components
+      function CounterA() {
+        const counter = createCounter(10);
+        return <button onClick={counter.increment}>{counter.count()}</button>;
+      }
+
+  - id: SOLIDJS049
+    title: "Use server$ and 'use server' for server-only code"
+    description: "In SolidStart, use server$ (v0.x) or 'use server' directive (v1.0+) to mark functions that must only execute on the server. This enables secure database access and secret handling."
+    category: "solidjs_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["solidjs", "solid-start"]
+    tags: ["solidjs", "solid-start", "server", "ssr", "security"]
+    example: |
+      // ✅ SolidStart v1.0+ server function
+      async function getSecretData() {
+        'use server';
+        const apiKey = process.env.API_KEY;
+        return await fetch(`https://api.example.com/data?key=${apiKey}`);
+      }
+
+      // ✅ SolidStart v0.x server function
+      const getData = server$(async () => {
+        return await db.query('SELECT * FROM users');
+      });
+
+  - id: SOLIDJS050
+    title: "Structure Solid.js projects with feature-based organization"
+    description: "Organize Solid.js projects by feature rather than by type. Group related components, signals, stores, and routes together. This improves maintainability as the project grows."
+    category: "solidjs_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["solidjs"]
+    tags: ["solidjs", "architecture", "organization", "project-structure"]
+    example: |
+      // ✅ Feature-based structure
+      src/
+        features/
+          auth/
+            components/LoginForm.tsx
+            hooks/useAuth.ts
+            store/authStore.ts
+            routes/login.tsx
+          dashboard/
+            components/DashboardView.tsx
+            hooks/useDashboardData.ts
+            routes/dashboard.tsx
+        shared/
+          components/Button.tsx
+          contexts/ThemeContext.tsx
+          utils/api.ts

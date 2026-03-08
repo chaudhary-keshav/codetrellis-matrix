@@ -1,0 +1,2218 @@
+# TypeScript Best Practices Library
+# Version: 1.0.0
+# Total Practices: 45
+# Coverage: Type Safety, Patterns, Performance, Maintainability, Modern Features
+
+version: '1.0.0'
+language: typescript
+description: 'Comprehensive TypeScript best practices for enterprise development'
+
+practices:
+  # ============================================================================
+  # TYPE SAFETY & TYPE SYSTEM (TS001-TS012)
+  # ============================================================================
+
+  - id: TS001
+    title: 'Enable Strict Mode'
+    category: type_safety
+    level: beginner
+    priority: critical
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Always enable strict mode in tsconfig.json for maximum type safety.
+        This enables strictNullChecks, strictFunctionTypes, strictBindCallApply,
+        strictPropertyInitialization, noImplicitAny, and noImplicitThis.
+      rationale: |
+        Strict mode catches entire classes of bugs at compile time.
+        It enforces explicit handling of null/undefined and ensures
+        function signatures are properly typed.
+      good_examples:
+        - |
+          // tsconfig.json
+          {
+            "compilerOptions": {
+              "strict": true,
+              "noUncheckedIndexedAccess": true,
+              "exactOptionalPropertyTypes": true
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Loose configuration
+          {
+            "compilerOptions": {
+              "strict": false,
+              "noImplicitAny": false
+            }
+          }
+      references:
+        - 'https://www.typescriptlang.org/tsconfig#strict'
+      tags:
+        - configuration
+        - type-safety
+        - compiler
+
+  - id: TS002
+    title: 'Prefer Unknown Over Any'
+    category: type_safety
+    level: intermediate
+    priority: critical
+    typescript_version:
+      min_version: '3.0'
+    content:
+      description: |
+        Use `unknown` instead of `any` when the type is truly unknown.
+        Unlike `any`, `unknown` requires type narrowing before use.
+      rationale: |
+        `any` bypasses type checking entirely while `unknown` maintains
+        type safety by requiring explicit type guards.
+      good_examples:
+        - |
+          function processValue(value: unknown): string {
+            if (typeof value === 'string') {
+              return value.toUpperCase();
+            }
+            if (typeof value === 'number') {
+              return value.toString();
+            }
+            throw new Error('Unsupported type');
+          }
+
+          // Type predicate for complex types
+          function isUser(obj: unknown): obj is User {
+            return typeof obj === 'object' && obj !== null && 'id' in obj;
+          }
+      bad_examples:
+        - |
+          // ❌ any allows anything without checking
+          function processValue(value: any): string {
+            return value.toUpperCase(); // Runtime error if not string
+          }
+      references:
+        - 'https://www.typescriptlang.org/docs/handbook/2/narrowing.html'
+      tags:
+        - type-safety
+        - type-narrowing
+
+  - id: TS003
+    title: 'Use Branded Types for Domain IDs'
+    category: type_safety
+    level: advanced
+    priority: high
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Create branded types to prevent mixing different ID types at compile time.
+        This catches bugs where UserId is accidentally passed where OrderId is expected.
+      rationale: |
+        Without branding, all string IDs are interchangeable, leading to subtle
+        bugs. Branded types enforce semantic correctness at compile time.
+      good_examples:
+        - |
+          // Branded type pattern
+          type Brand<K, T> = K & { __brand: T };
+
+          type UserId = Brand<string, 'UserId'>;
+          type OrderId = Brand<string, 'OrderId'>;
+
+          function createUserId(id: string): UserId {
+            return id as UserId;
+          }
+
+          function getUser(id: UserId): User { /* ... */ }
+          function getOrder(id: OrderId): Order { /* ... */ }
+
+          const userId = createUserId('user-123');
+          const orderId = 'order-456' as OrderId;
+
+          getUser(userId); // ✅ Works
+          // getUser(orderId); // ❌ Compile error!
+      bad_examples:
+        - |
+          // ❌ Plain strings allow mixing IDs
+          function getUser(id: string): User { /* ... */ }
+          function getOrder(id: string): Order { /* ... */ }
+
+          const userId = 'user-123';
+          const orderId = 'order-456';
+          getUser(orderId); // No error, but wrong!
+      tags:
+        - type-safety
+        - domain-modeling
+        - patterns
+
+  - id: TS004
+    title: 'Discriminated Unions for State'
+    category: type_safety
+    level: intermediate
+    priority: critical
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Use discriminated unions with a literal type discriminant for type-safe
+        state management. TypeScript narrows the type based on the discriminant.
+      rationale: |
+        Discriminated unions ensure exhaustive handling of all cases and
+        provide type-safe access to state-specific properties.
+      good_examples:
+        - |
+          type RequestState<T> =
+            | { status: 'idle' }
+            | { status: 'loading' }
+            | { status: 'success'; data: T }
+            | { status: 'error'; error: Error };
+
+          function handleState<T>(state: RequestState<T>) {
+            switch (state.status) {
+              case 'idle':
+                return 'Not started';
+              case 'loading':
+                return 'Loading...';
+              case 'success':
+                return `Data: ${state.data}`; // TS knows data exists
+              case 'error':
+                return `Error: ${state.error.message}`; // TS knows error exists
+            }
+          }
+
+          // Exhaustiveness check
+          function assertNever(x: never): never {
+            throw new Error(`Unexpected case: ${x}`);
+          }
+      bad_examples:
+        - |
+          // ❌ Optional properties lead to runtime errors
+          interface RequestState<T> {
+            isLoading: boolean;
+            isError: boolean;
+            data?: T;
+            error?: Error;
+          }
+
+          // data might be undefined even when isLoading is false
+      tags:
+        - type-safety
+        - state-management
+        - patterns
+
+  - id: TS005
+    title: 'Const Assertions for Literal Types'
+    category: type_safety
+    level: intermediate
+    priority: high
+    typescript_version:
+      min_version: '3.4'
+    content:
+      description: |
+        Use `as const` assertions to infer literal types and readonly arrays/objects.
+        This enables better type inference and immutability.
+      rationale: |
+        Without const assertions, TypeScript widens literal types.
+        Const assertions preserve exact types for better type safety.
+      good_examples:
+        - |
+          // Literal type preservation
+          const config = {
+            endpoint: '/api/users',
+            method: 'GET',
+            headers: ['Content-Type', 'Authorization'],
+          } as const;
+
+          // config.method is 'GET', not string
+          // config.headers is readonly ['Content-Type', 'Authorization']
+
+          // Enum-like patterns
+          const HttpStatus = {
+            OK: 200,
+            CREATED: 201,
+            BAD_REQUEST: 400,
+            NOT_FOUND: 404,
+          } as const;
+
+          type HttpStatusCode = typeof HttpStatus[keyof typeof HttpStatus];
+          // Type is 200 | 201 | 400 | 404
+      bad_examples:
+        - |
+          // ❌ Type widening loses specificity
+          const config = {
+            method: 'GET', // type is string, not 'GET'
+          };
+      tags:
+        - type-safety
+        - literal-types
+        - immutability
+
+  - id: TS006
+    title: 'Template Literal Types'
+    category: type_safety
+    level: advanced
+    priority: medium
+    typescript_version:
+      min_version: '4.1'
+    content:
+      description: |
+        Use template literal types to create string literal unions from patterns.
+        This enables type-safe string manipulation at the type level.
+      rationale: |
+        Template literal types catch string format errors at compile time
+        and enable powerful pattern matching on string types.
+      good_examples:
+        - |
+          // Event naming pattern
+          type EventName<T extends string> = `on${Capitalize<T>}`;
+          type ClickHandler = EventName<'click'>; // 'onClick'
+
+          // API route patterns
+          type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+          type ApiRoute = `/api/${string}`;
+          type TypedRoute<M extends HttpMethod> = `${M} ${ApiRoute}`;
+
+          // CSS unit types
+          type CSSUnit = 'px' | 'em' | 'rem' | '%';
+          type CSSValue = `${number}${CSSUnit}`;
+
+          const spacing: CSSValue = '16px'; // ✅
+          // const invalid: CSSValue = '16'; // ❌ Error
+      tags:
+        - type-safety
+        - advanced-types
+        - patterns
+
+  - id: TS007
+    title: 'Conditional Types for Inference'
+    category: type_safety
+    level: expert
+    priority: medium
+    typescript_version:
+      min_version: '2.8'
+    content:
+      description: |
+        Use conditional types with `infer` keyword to extract and transform types.
+        This enables building powerful type utilities.
+      rationale: |
+        Conditional types enable building reusable type utilities that
+        adapt to input types, reducing duplication and improving maintainability.
+      good_examples:
+        - |
+          // Extract promise inner type
+          type Awaited<T> = T extends Promise<infer U> ? Awaited<U> : T;
+
+          // Extract function return type
+          type ReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
+
+          // Extract array element type
+          type ElementOf<T> = T extends (infer E)[] ? E : never;
+
+          // Props extraction from component
+          type PropsOf<C> = C extends React.ComponentType<infer P> ? P : never;
+
+          // Extract first parameter
+          type FirstParam<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;
+      tags:
+        - advanced-types
+        - type-inference
+        - utilities
+
+  - id: TS008
+    title: 'Mapped Types for Transformations'
+    category: type_safety
+    level: advanced
+    priority: high
+    typescript_version:
+      min_version: '2.1'
+    content:
+      description: |
+        Use mapped types to transform existing types into new ones systematically.
+        Combine with key remapping for powerful type transformations.
+      rationale: |
+        Mapped types reduce duplication by deriving types from existing ones,
+        ensuring consistency when the source type changes.
+      good_examples:
+        - |
+          // Make all properties optional and nullable
+          type Nullable<T> = {
+            [K in keyof T]: T[K] | null;
+          };
+
+          // Create form state from entity
+          type FormState<T> = {
+            [K in keyof T]: {
+              value: T[K];
+              error: string | null;
+              touched: boolean;
+            };
+          };
+
+          // Key remapping (TS 4.1+)
+          type Getters<T> = {
+            [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K];
+          };
+
+          interface User { name: string; age: number; }
+          type UserGetters = Getters<User>;
+          // { getName: () => string; getAge: () => number; }
+      tags:
+        - advanced-types
+        - mapped-types
+        - transformations
+
+  - id: TS009
+    title: 'Type Guards for Narrowing'
+    category: type_safety
+    level: intermediate
+    priority: critical
+    typescript_version:
+      min_version: '3.7'
+    content:
+      description: |
+        Implement custom type guards using type predicates (`is`) and assertion
+        functions (`asserts`) for runtime type checking with compile-time safety.
+      rationale: |
+        Type guards bridge runtime checks with compile-time type narrowing,
+        enabling type-safe handling of dynamic data.
+      good_examples:
+        - |
+          // Type predicate
+          function isString(value: unknown): value is string {
+            return typeof value === 'string';
+          }
+
+          // Complex type guard
+          interface ApiResponse<T> {
+            success: boolean;
+            data?: T;
+            error?: string;
+          }
+
+          function isSuccessResponse<T>(
+            response: ApiResponse<T>
+          ): response is ApiResponse<T> & { success: true; data: T } {
+            return response.success && response.data !== undefined;
+          }
+
+          // Assertion function (TS 3.7+)
+          function assertDefined<T>(
+            value: T | null | undefined,
+            message: string
+          ): asserts value is T {
+            if (value === null || value === undefined) {
+              throw new Error(message);
+            }
+          }
+
+          function process(value: string | null) {
+            assertDefined(value, 'Value required');
+            console.log(value.length); // TS knows value is string
+          }
+      tags:
+        - type-safety
+        - type-narrowing
+        - runtime-checks
+
+  - id: TS010
+    title: 'Readonly and Immutable Types'
+    category: type_safety
+    level: intermediate
+    priority: high
+    typescript_version:
+      min_version: '3.4'
+    content:
+      description: |
+        Use `Readonly<T>`, `ReadonlyArray<T>`, and `as const` to enforce immutability
+        at the type level. Prefer immutable data for predictable state management.
+      rationale: |
+        Immutable types prevent accidental mutations, making code more predictable
+        and easier to reason about, especially in concurrent contexts.
+      good_examples:
+        - |
+          // Deeply readonly type
+          type DeepReadonly<T> = {
+            readonly [K in keyof T]: T[K] extends object
+              ? DeepReadonly<T[K]>
+              : T[K];
+          };
+
+          // Readonly function parameters
+          function processUsers(users: readonly User[]): void {
+            // users.push(newUser); // ❌ Error
+            users.forEach(u => console.log(u.name)); // ✅ OK
+          }
+
+          // Immutable configuration
+          const config: Readonly<Config> = {
+            apiUrl: 'https://api.example.com',
+            timeout: 5000,
+          };
+
+          // Freeze at runtime too
+          const frozenConfig = Object.freeze(config) as DeepReadonly<Config>;
+      tags:
+        - immutability
+        - type-safety
+        - state-management
+
+  - id: TS011
+    title: 'Satisfies Operator for Validation'
+    category: type_safety
+    level: intermediate
+    priority: high
+    typescript_version:
+      min_version: '4.9'
+    content:
+      description: |
+        Use the `satisfies` operator to validate expressions match a type while
+        preserving the narrowest inferred type. Better than type annotations.
+      rationale: |
+        `satisfies` catches type errors while preserving literal types,
+        giving the best of both validation and inference.
+      good_examples:
+        - |
+          type Colors = Record<string, [number, number, number] | string>;
+
+          // With satisfies: validates AND preserves literals
+          const palette = {
+            red: [255, 0, 0],
+            green: '#00ff00',
+            blue: [0, 0, 255],
+          } satisfies Colors;
+
+          // palette.red is [number, number, number], not string | [...]
+          const redChannel = palette.red[0]; // ✅ Works
+
+          // Type annotation would lose specificity
+          const palette2: Colors = {
+            red: [255, 0, 0],
+          };
+          // palette2.red might be string, can't safely index
+      tags:
+        - type-safety
+        - type-inference
+        - modern-features
+
+  - id: TS012
+    title: 'Generic Constraints'
+    category: type_safety
+    level: intermediate
+    priority: high
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Use generic constraints (`extends`) to limit type parameters and
+        enable type-safe access to properties within generic functions.
+      rationale: |
+        Unconstrained generics can't access properties safely.
+        Constraints enable both flexibility and type-safe property access.
+      good_examples:
+        - |
+          // Constrained generic
+          function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+            return obj[key];
+          }
+
+          // Multiple constraints with intersection
+          interface Identifiable { id: string; }
+          interface Timestamped { createdAt: Date; updatedAt: Date; }
+
+          function updateEntity<T extends Identifiable & Timestamped>(
+            entity: T,
+            updates: Partial<Omit<T, 'id' | 'createdAt'>>
+          ): T {
+            return { ...entity, ...updates, updatedAt: new Date() };
+          }
+
+          // Constructor constraint
+          function createInstance<T>(
+            ctor: new (...args: any[]) => T,
+            ...args: any[]
+          ): T {
+            return new ctor(...args);
+          }
+      tags:
+        - generics
+        - type-safety
+        - constraints
+
+  # ============================================================================
+  # FUNCTIONS & ASYNC (TS013-TS020)
+  # ============================================================================
+
+  - id: TS013
+    title: 'Function Overloads for Clarity'
+    category: code_style
+    level: advanced
+    priority: medium
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Use function overloads when a function has distinctly different
+        parameter-return type relationships. Keeps implementation private.
+      rationale: |
+        Overloads provide clear documentation of supported call patterns
+        and enable precise return type inference based on arguments.
+      good_examples:
+        - |
+          // Overload signatures
+          function createElement(tag: 'a'): HTMLAnchorElement;
+          function createElement(tag: 'canvas'): HTMLCanvasElement;
+          function createElement(tag: 'input'): HTMLInputElement;
+          function createElement(tag: string): HTMLElement;
+
+          // Implementation (not visible to callers)
+          function createElement(tag: string): HTMLElement {
+            return document.createElement(tag);
+          }
+
+          const link = createElement('a'); // HTMLAnchorElement
+          const canvas = createElement('canvas'); // HTMLCanvasElement
+
+          // Array overload pattern
+          function toArray<T>(value: T): T[];
+          function toArray<T>(value: T[]): T[];
+          function toArray<T>(value: T | T[]): T[] {
+            return Array.isArray(value) ? value : [value];
+          }
+      tags:
+        - functions
+        - overloads
+        - api-design
+
+  - id: TS014
+    title: 'Async/Await Best Practices'
+    category: performance
+    level: intermediate
+    priority: critical
+    typescript_version:
+      min_version: '2.1'
+    content:
+      description: |
+        Use async/await for readable asynchronous code. Handle errors properly,
+        use Promise.all for concurrent operations, and avoid common pitfalls.
+      rationale: |
+        Proper async handling prevents unhandled rejections, race conditions,
+        and performance issues from sequential awaits.
+      good_examples:
+        - |
+          // Concurrent execution
+          async function fetchUserData(userId: string) {
+            const [profile, posts, settings] = await Promise.all([
+              fetchProfile(userId),
+              fetchPosts(userId),
+              fetchSettings(userId),
+            ]);
+            return { profile, posts, settings };
+          }
+
+          // Error handling with typed errors
+          async function safeFetch<T>(url: string): Promise<Result<T, Error>> {
+            try {
+              const response = await fetch(url);
+              if (!response.ok) {
+                return { success: false, error: new Error(`HTTP ${response.status}`) };
+              }
+              const data = await response.json() as T;
+              return { success: true, data };
+            } catch (error) {
+              return { success: false, error: error as Error };
+            }
+          }
+
+          // Avoid floating promises
+          async function init() {
+            await loadConfig(); // Always await or void
+            void logAnalytics(); // Explicitly ignore with void
+          }
+      bad_examples:
+        - |
+          // ❌ Sequential when parallel is possible
+          async function fetchUserData(userId: string) {
+            const profile = await fetchProfile(userId);
+            const posts = await fetchPosts(userId); // Waits for profile!
+            const settings = await fetchSettings(userId);
+            return { profile, posts, settings };
+          }
+      tags:
+        - async
+        - performance
+        - error-handling
+
+  - id: TS015
+    title: 'Typed Error Handling'
+    category: error_handling
+    level: intermediate
+    priority: critical
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Create custom error classes with proper typing. Use discriminated
+        unions for error types. Never throw non-Error objects.
+      rationale: |
+        Typed errors enable exhaustive error handling and provide
+        better debugging information with consistent error structure.
+      good_examples:
+        - |
+          // Custom error classes
+          class AppError extends Error {
+            constructor(
+              message: string,
+              public readonly code: string,
+              public readonly statusCode: number = 500,
+              public readonly isOperational: boolean = true
+            ) {
+              super(message);
+              this.name = 'AppError';
+              Error.captureStackTrace(this, this.constructor);
+            }
+          }
+
+          class ValidationError extends AppError {
+            constructor(
+              message: string,
+              public readonly field: string,
+              public readonly value: unknown
+            ) {
+              super(message, 'VALIDATION_ERROR', 400);
+              this.name = 'ValidationError';
+            }
+          }
+
+          // Result type pattern
+          type Result<T, E = Error> =
+            | { success: true; data: T }
+            | { success: false; error: E };
+
+          function divide(a: number, b: number): Result<number> {
+            if (b === 0) {
+              return { success: false, error: new Error('Division by zero') };
+            }
+            return { success: true, data: a / b };
+          }
+      tags:
+        - error-handling
+        - type-safety
+        - patterns
+
+  - id: TS016
+    title: 'Never Type for Exhaustiveness'
+    category: type_safety
+    level: intermediate
+    priority: high
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Use the `never` type to ensure exhaustive handling of discriminated unions.
+        This catches missing cases at compile time when new variants are added.
+      rationale: |
+        Without exhaustiveness checks, adding new union variants won't trigger
+        compiler errors, leading to runtime failures.
+      good_examples:
+        - |
+          type Action =
+            | { type: 'increment' }
+            | { type: 'decrement' }
+            | { type: 'reset'; value: number };
+
+          function assertNever(x: never): never {
+            throw new Error(`Unhandled case: ${JSON.stringify(x)}`);
+          }
+
+          function reducer(state: number, action: Action): number {
+            switch (action.type) {
+              case 'increment':
+                return state + 1;
+              case 'decrement':
+                return state - 1;
+              case 'reset':
+                return action.value;
+              default:
+                // If new action added, this becomes a compile error
+                return assertNever(action);
+            }
+          }
+      tags:
+        - type-safety
+        - exhaustiveness
+        - patterns
+
+  - id: TS017
+    title: 'Optional Chaining and Nullish Coalescing'
+    category: code_style
+    level: beginner
+    priority: critical
+    typescript_version:
+      min_version: '3.7'
+    content:
+      description: |
+        Use optional chaining (`?.`) for safe property access and nullish
+        coalescing (`??`) for default values. Prefer over `&&` chains.
+      rationale: |
+        These operators reduce boilerplate, improve readability, and handle
+        edge cases (like 0 or empty string) correctly.
+      good_examples:
+        - |
+          // Optional chaining
+          const city = user?.address?.city;
+          const firstItem = items?.[0];
+          const result = callback?.();
+
+          // Nullish coalescing (only null/undefined trigger default)
+          const count = data.count ?? 0; // Keeps 0 if count is 0
+          const name = user.name ?? 'Anonymous';
+
+          // Combined usage
+          const displayName = user?.profile?.displayName ?? user?.name ?? 'Guest';
+
+          // With optional chaining in assignments
+          interface Options {
+            timeout?: number;
+            retries?: number;
+          }
+          function configure(options?: Options) {
+            const timeout = options?.timeout ?? 5000;
+            const retries = options?.retries ?? 3;
+          }
+      bad_examples:
+        - |
+          // ❌ && doesn't handle falsy values correctly
+          const count = data.count || 0; // 0 becomes 0 (wrong if count is 0)
+
+          // ❌ Verbose null checks
+          const city = user && user.address && user.address.city;
+      tags:
+        - code-style
+        - null-safety
+        - modern-features
+
+  - id: TS018
+    title: 'Proper This Binding'
+    category: code_style
+    level: intermediate
+    priority: high
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Use arrow functions or explicit `this` parameter typing to ensure
+        correct `this` binding. Avoid common callback `this` issues.
+      rationale: |
+        JavaScript's `this` binding is a common source of bugs. TypeScript
+        can catch these issues when `this` is properly typed.
+      good_examples:
+        - |
+          class Button {
+            private count = 0;
+
+            // Arrow function preserves this
+            handleClick = () => {
+              this.count++;
+            };
+
+            // Explicit this parameter
+            handleClickExplicit(this: Button, event: Event): void {
+              this.count++;
+            }
+          }
+
+          // Function with this constraint
+          interface Clickable {
+            onClick(this: Clickable): void;
+          }
+
+          function bindHandler<T extends { handler: () => void }>(obj: T) {
+            return obj.handler.bind(obj);
+          }
+      bad_examples:
+        - |
+          class Button {
+            private count = 0;
+
+            // ❌ this will be wrong when passed as callback
+            handleClick() {
+              this.count++; // Error if called from event listener
+            }
+          }
+
+          button.addEventListener('click', btn.handleClick); // Wrong this!
+      tags:
+        - this-binding
+        - classes
+        - callbacks
+
+  - id: TS019
+    title: 'Generic Default Parameters'
+    category: code_style
+    level: advanced
+    priority: medium
+    typescript_version:
+      min_version: '2.3'
+    content:
+      description: |
+        Use default type parameters in generics to provide sensible defaults
+        while maintaining flexibility for callers who need specific types.
+      rationale: |
+        Default generics reduce boilerplate for common cases while
+        preserving full type customization when needed.
+      good_examples:
+        - |
+          // Default generic with constraint
+          interface Response<T = unknown, E = Error> {
+            data?: T;
+            error?: E;
+            status: number;
+          }
+
+          // Usage
+          const simple: Response = { status: 200 }; // T is unknown
+          const typed: Response<User> = { data: user, status: 200 };
+
+          // Factory with defaults
+          class Repository<T, ID = string> {
+            async findById(id: ID): Promise<T | null> { /* ... */ }
+          }
+
+          const userRepo = new Repository<User>(); // ID defaults to string
+          const orderRepo = new Repository<Order, number>(); // Custom ID type
+      tags:
+        - generics
+        - defaults
+        - api-design
+
+  - id: TS020
+    title: 'Variadic Tuple Types'
+    category: type_safety
+    level: expert
+    priority: low
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Use variadic tuple types for functions with variable arguments that
+        preserve type information for each position.
+      rationale: |
+        Variadic tuples enable type-safe composition and transformation of
+        functions with varying argument counts.
+      good_examples:
+        - |
+          // Spread in tuple types
+          type Concat<T extends unknown[], U extends unknown[]> = [...T, ...U];
+
+          type A = Concat<[1, 2], [3, 4]>; // [1, 2, 3, 4]
+
+          // Typed pipe function
+          function pipe<A, B>(ab: (a: A) => B): (a: A) => B;
+          function pipe<A, B, C>(ab: (a: A) => B, bc: (b: B) => C): (a: A) => C;
+          function pipe<A, B, C, D>(
+            ab: (a: A) => B,
+            bc: (b: B) => C,
+            cd: (c: C) => D
+          ): (a: A) => D;
+          function pipe(...fns: Function[]) {
+            return (x: unknown) => fns.reduce((v, f) => f(v), x);
+          }
+
+          // Prepend type to tuple
+          type Prepend<T, U extends unknown[]> = [T, ...U];
+          type Result = Prepend<string, [number, boolean]>; // [string, number, boolean]
+      tags:
+        - advanced-types
+        - tuples
+        - variadic
+
+  # ============================================================================
+  # CLASSES & OOP (TS021-TS027)
+  # ============================================================================
+
+  - id: TS021
+    title: 'Class Property Declaration'
+    category: code_style
+    level: beginner
+    priority: high
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Declare class properties explicitly with visibility modifiers.
+        Use parameter properties in constructors for concise initialization.
+      rationale: |
+        Explicit declarations improve readability and enable TypeScript
+        to enforce access control at compile time.
+      good_examples:
+        - |
+          class User {
+            // Explicit declarations
+            public readonly id: string;
+            private _email: string;
+            protected createdAt: Date;
+
+            // Parameter properties
+            constructor(
+              id: string,
+              private readonly name: string, // Creates private readonly property
+              public age: number // Creates public property
+            ) {
+              this.id = id;
+              this._email = '';
+              this.createdAt = new Date();
+            }
+
+            // Accessor with different visibility
+            get email(): string {
+              return this._email;
+            }
+
+            private set email(value: string) {
+              this._email = value.toLowerCase();
+            }
+          }
+      tags:
+        - classes
+        - visibility
+        - properties
+
+  - id: TS022
+    title: 'Abstract Classes vs Interfaces'
+    category: architecture
+    level: intermediate
+    priority: medium
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Use interfaces for pure contracts and abstract classes when you need
+        shared implementation. Prefer composition over inheritance.
+      rationale: |
+        Interfaces are erased at runtime and allow multiple implementation.
+        Abstract classes provide shared code but create coupling.
+      good_examples:
+        - |
+          // Interface for contract
+          interface Repository<T> {
+            findById(id: string): Promise<T | null>;
+            save(entity: T): Promise<T>;
+            delete(id: string): Promise<boolean>;
+          }
+
+          // Abstract class for shared implementation
+          abstract class BaseRepository<T extends { id: string }> implements Repository<T> {
+            protected abstract collection: string;
+
+            async findById(id: string): Promise<T | null> {
+              return this.db.collection(this.collection).findOne({ id });
+            }
+
+            // Abstract method - must be implemented
+            abstract validate(entity: T): boolean;
+
+            async save(entity: T): Promise<T> {
+              if (!this.validate(entity)) {
+                throw new Error('Validation failed');
+              }
+              // Shared save logic
+            }
+          }
+
+          // Concrete implementation
+          class UserRepository extends BaseRepository<User> {
+            protected collection = 'users';
+
+            validate(user: User): boolean {
+              return !!user.email && !!user.name;
+            }
+          }
+      tags:
+        - architecture
+        - interfaces
+        - abstract-classes
+
+  - id: TS023
+    title: 'Decorators Best Practices'
+    category: code_style
+    level: advanced
+    priority: medium
+    typescript_version:
+      min_version: '5.0'
+    content:
+      description: |
+        Use Stage 3 decorators (TypeScript 5.0+) for metadata and cross-cutting
+        concerns. Understand the difference between legacy and modern decorators.
+      rationale: |
+        Modern decorators are standardized and will work without
+        experimentalDecorators flag. They're more predictable.
+      good_examples:
+        - |
+          // Method decorator
+          function logged<T extends (...args: any[]) => any>(
+            target: T,
+            context: ClassMethodDecoratorContext
+          ): T {
+            return function (this: any, ...args: Parameters<T>) {
+              console.log(`Calling ${String(context.name)}`);
+              const result = target.apply(this, args);
+              console.log(`Result: ${result}`);
+              return result;
+            } as T;
+          }
+
+          // Class decorator
+          function singleton<T extends new (...args: any[]) => any>(
+            target: T,
+            context: ClassDecoratorContext
+          ): T {
+            let instance: InstanceType<T>;
+            return class extends target {
+              constructor(...args: any[]) {
+                if (instance) return instance;
+                super(...args);
+                instance = this;
+              }
+            } as T;
+          }
+
+          class Service {
+            @logged
+            process(data: string): string {
+              return data.toUpperCase();
+            }
+          }
+      tags:
+        - decorators
+        - metadata
+        - modern-features
+
+  - id: TS024
+    title: 'Static Initialization Blocks'
+    category: code_style
+    level: intermediate
+    priority: low
+    typescript_version:
+      min_version: '4.6'
+    content:
+      description: |
+        Use static initialization blocks for complex static property setup
+        that requires multiple statements or try/catch handling.
+      rationale: |
+        Static blocks enable complex initialization logic while keeping
+        it encapsulated within the class definition.
+      good_examples:
+        - |
+          class Config {
+            static readonly settings: Map<string, string>;
+            static readonly version: string;
+
+            // Static initialization block
+            static {
+              this.settings = new Map();
+
+              try {
+                const env = process.env.NODE_ENV ?? 'development';
+                this.settings.set('env', env);
+                this.settings.set('debug', env === 'development' ? 'true' : 'false');
+                this.version = require('./package.json').version;
+              } catch {
+                this.settings.set('env', 'unknown');
+                this.version = '0.0.0';
+              }
+            }
+          }
+      tags:
+        - classes
+        - static
+        - initialization
+
+  - id: TS025
+    title: 'Private Class Fields'
+    category: code_style
+    level: intermediate
+    priority: medium
+    typescript_version:
+      min_version: '3.8'
+    content:
+      description: |
+        Use ECMAScript private fields (#field) for true runtime privacy.
+        Use TypeScript's private modifier for compile-time only checks.
+      rationale: |
+        Private fields (#) are truly private at runtime and can't be accessed
+        even through reflection, unlike TypeScript's private keyword.
+      good_examples:
+        - |
+          class BankAccount {
+            // True private field (runtime enforced)
+            #balance: number;
+
+            // TypeScript private (compile-time only)
+            private accountNumber: string;
+
+            constructor(initial: number, accountNumber: string) {
+              this.#balance = initial;
+              this.accountNumber = accountNumber;
+            }
+
+            get balance(): number {
+              return this.#balance;
+            }
+
+            deposit(amount: number): void {
+              if (amount > 0) {
+                this.#balance += amount;
+              }
+            }
+
+            // Private method
+            #validateTransaction(amount: number): boolean {
+              return amount > 0 && amount <= this.#balance;
+            }
+          }
+
+          const account = new BankAccount(100, '12345');
+          // account.#balance; // ❌ Syntax error
+          // account['#balance']; // ❌ undefined (truly private)
+      tags:
+        - classes
+        - privacy
+        - encapsulation
+
+  - id: TS026
+    title: 'Mixin Pattern'
+    category: patterns
+    level: expert
+    priority: low
+    typescript_version:
+      min_version: '2.2'
+    content:
+      description: |
+        Use mixins for reusable behavior composition without deep inheritance.
+        TypeScript supports typed mixins with proper type inference.
+      rationale: |
+        Mixins enable code reuse across unrelated class hierarchies,
+        avoiding the fragile base class problem.
+      good_examples:
+        - |
+          // Mixin type helper
+          type Constructor<T = {}> = new (...args: any[]) => T;
+
+          // Timestamped mixin
+          function Timestamped<TBase extends Constructor>(Base: TBase) {
+            return class extends Base {
+              createdAt = new Date();
+              updatedAt = new Date();
+
+              touch() {
+                this.updatedAt = new Date();
+              }
+            };
+          }
+
+          // Identifiable mixin
+          function Identifiable<TBase extends Constructor>(Base: TBase) {
+            return class extends Base {
+              id = crypto.randomUUID();
+            };
+          }
+
+          // Compose mixins
+          class BaseEntity {}
+          class Entity extends Timestamped(Identifiable(BaseEntity)) {}
+
+          const entity = new Entity();
+          console.log(entity.id); // ✅ string
+          console.log(entity.createdAt); // ✅ Date
+          entity.touch(); // ✅ Updates updatedAt
+      tags:
+        - patterns
+        - mixins
+        - composition
+
+  - id: TS027
+    title: 'Builder Pattern with Fluent API'
+    category: patterns
+    level: advanced
+    priority: medium
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Implement the builder pattern with proper typing for fluent APIs.
+        Use this instead of required and this type for chaining.
+      rationale: |
+        Builders simplify construction of complex objects while maintaining
+        type safety and enabling IDE autocompletion for chains.
+      good_examples:
+        - |
+          class RequestBuilder {
+            private config: Partial<RequestConfig> = {};
+
+            url(url: string): this {
+              this.config.url = url;
+              return this;
+            }
+
+            method(method: HttpMethod): this {
+              this.config.method = method;
+              return this;
+            }
+
+            headers(headers: Record<string, string>): this {
+              this.config.headers = { ...this.config.headers, ...headers };
+              return this;
+            }
+
+            timeout(ms: number): this {
+              this.config.timeout = ms;
+              return this;
+            }
+
+            build(): RequestConfig {
+              if (!this.config.url) {
+                throw new Error('URL is required');
+              }
+              return {
+                url: this.config.url,
+                method: this.config.method ?? 'GET',
+                headers: this.config.headers ?? {},
+                timeout: this.config.timeout ?? 30000,
+              };
+            }
+          }
+
+          const request = new RequestBuilder()
+            .url('/api/users')
+            .method('POST')
+            .headers({ 'Content-Type': 'application/json' })
+            .timeout(5000)
+            .build();
+      tags:
+        - patterns
+        - builder
+        - fluent-api
+
+  # ============================================================================
+  # MODULES & ORGANIZATION (TS028-TS033)
+  # ============================================================================
+
+  - id: TS028
+    title: 'Module Organization'
+    category: architecture
+    level: intermediate
+    priority: high
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Organize modules by feature/domain, not by type. Use barrel exports
+        (index.ts) to control public API. Avoid circular dependencies.
+      rationale: |
+        Feature-based organization improves maintainability and makes it
+        easier to understand and modify related code.
+      good_examples:
+        - |
+          // Feature-based structure
+          // src/
+          //   users/
+          //     index.ts (barrel export)
+          //     user.model.ts
+          //     user.service.ts
+          //     user.repository.ts
+          //     user.controller.ts
+          //     __tests__/
+          //   orders/
+          //     index.ts
+          //     ...
+
+          // src/users/index.ts (barrel export)
+          export { User, CreateUserDto, UpdateUserDto } from './user.model';
+          export { UserService } from './user.service';
+          export type { UserRepository } from './user.repository';
+          // Don't export internal implementation details
+
+          // Consumer imports from barrel
+          import { User, UserService } from '@/users';
+      bad_examples:
+        - |
+          // ❌ Type-based organization
+          // src/
+          //   models/
+          //     user.model.ts
+          //     order.model.ts
+          //   services/
+          //     user.service.ts
+          //     order.service.ts
+          //   repositories/
+          //     ...
+      tags:
+        - architecture
+        - modules
+        - organization
+
+  - id: TS029
+    title: 'Type-Only Imports'
+    category: code_style
+    level: intermediate
+    priority: high
+    typescript_version:
+      min_version: '3.8'
+    content:
+      description: |
+        Use `import type` for imports that are only used for type checking.
+        This ensures they're erased during compilation, reducing bundle size.
+      rationale: |
+        Type-only imports make the intent clear and prevent accidental
+        runtime dependencies on type-only modules.
+      good_examples:
+        - |
+          // Type-only import (erased at runtime)
+          import type { User, CreateUserDto } from './user.model';
+          import type { Repository } from './repository.interface';
+
+          // Mixed import (TS 4.5+)
+          import { UserService, type UserConfig } from './user.service';
+
+          // Re-export types
+          export type { User, CreateUserDto };
+          export { UserService };
+
+          // Inline type imports
+          function process(user: import('./user.model').User): void {
+            // ...
+          }
+      bad_examples:
+        - |
+          // ❌ Regular import for type-only usage
+          import { User } from './user.model'; // Might include in bundle
+
+          // Only used in type positions
+          function getUser(id: string): User { /* ... */ }
+      tags:
+        - imports
+        - type-only
+        - optimization
+
+  - id: TS030
+    title: 'Path Aliases Configuration'
+    category: configuration
+    level: beginner
+    priority: high
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Configure path aliases in tsconfig.json for cleaner imports.
+        Avoid deep relative paths like ../../../../.
+      rationale: |
+        Path aliases improve readability, make refactoring easier, and
+        prevent import path fragility when moving files.
+      good_examples:
+        - |
+          // tsconfig.json
+          {
+            "compilerOptions": {
+              "baseUrl": ".",
+              "paths": {
+                "@/*": ["src/*"],
+                "@/components/*": ["src/components/*"],
+                "@/services/*": ["src/services/*"],
+                "@/utils/*": ["src/utils/*"],
+                "@/types": ["src/types/index.ts"]
+              }
+            }
+          }
+
+          // Usage
+          import { Button } from '@/components/Button';
+          import { UserService } from '@/services/user.service';
+          import { formatDate } from '@/utils/date';
+          import type { AppConfig } from '@/types';
+      bad_examples:
+        - |
+          // ❌ Deep relative imports
+          import { Button } from '../../../../components/Button';
+          import { UserService } from '../../../services/user.service';
+      tags:
+        - configuration
+        - imports
+        - paths
+
+  - id: TS031
+    title: 'Namespace vs Module'
+    category: architecture
+    level: intermediate
+    priority: medium
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Prefer ES modules over namespaces for code organization.
+        Namespaces are only needed for global script declarations.
+      rationale: |
+        ES modules are the standard, tree-shakeable, and work well with
+        bundlers. Namespaces are legacy TypeScript-specific constructs.
+      good_examples:
+        - |
+          // ✅ ES Module (preferred)
+          // utils/validation.ts
+          export function isEmail(value: string): boolean { /* ... */ }
+          export function isPhone(value: string): boolean { /* ... */ }
+
+          // utils/index.ts
+          export * as validation from './validation';
+          export * as formatting from './formatting';
+
+          // Usage
+          import { validation } from '@/utils';
+          validation.isEmail('test@example.com');
+
+          // Namespace only for ambient declarations
+          declare namespace NodeJS {
+            interface ProcessEnv {
+              NODE_ENV: 'development' | 'production' | 'test';
+              API_URL: string;
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Don't use namespaces for regular code
+          namespace Validation {
+            export function isEmail(value: string): boolean { /* ... */ }
+          }
+      tags:
+        - architecture
+        - modules
+        - namespaces
+
+  - id: TS032
+    title: 'Declaration Files'
+    category: configuration
+    level: advanced
+    priority: medium
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Create .d.ts declaration files for untyped libraries or global
+        augmentation. Use proper module augmentation syntax.
+      rationale: |
+        Declaration files enable TypeScript to understand external code
+        and allow extending built-in types safely.
+      good_examples:
+        - |
+          // types/global.d.ts
+          declare global {
+            interface Window {
+              analytics: AnalyticsAPI;
+            }
+
+            // Extend existing module
+            namespace Express {
+              interface Request {
+                user?: User;
+                requestId: string;
+              }
+            }
+          }
+
+          // Declare untyped module
+          declare module 'untyped-lib' {
+            export function process(data: unknown): unknown;
+            export const VERSION: string;
+          }
+
+          // Declare module with wildcard
+          declare module '*.svg' {
+            const content: string;
+            export default content;
+          }
+
+          export {}; // Make this a module
+      tags:
+        - declaration-files
+        - typing
+        - augmentation
+
+  - id: TS033
+    title: 'Ambient Declarations'
+    category: configuration
+    level: advanced
+    priority: medium
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Use `declare` for ambient declarations of global variables or external
+        code that exists at runtime but isn't in TypeScript.
+      rationale: |
+        Ambient declarations let TypeScript know about runtime globals
+        like environment variables, CDN libraries, or browser APIs.
+      good_examples:
+        - |
+          // Environment variables
+          declare const __DEV__: boolean;
+          declare const __VERSION__: string;
+
+          // Global library from CDN
+          declare const gtag: (
+            command: 'event' | 'config' | 'set',
+            action: string,
+            params?: Record<string, unknown>
+          ) => void;
+
+          // Web Worker globals
+          declare function postMessage(message: unknown): void;
+          declare const self: DedicatedWorkerGlobalScope;
+
+          // Import meta (Vite)
+          interface ImportMetaEnv {
+            readonly VITE_API_URL: string;
+            readonly VITE_DEBUG: string;
+          }
+
+          interface ImportMeta {
+            readonly env: ImportMetaEnv;
+          }
+      tags:
+        - ambient
+        - declarations
+        - globals
+
+  # ============================================================================
+  # UTILITY TYPES & ADVANCED PATTERNS (TS034-TS040)
+  # ============================================================================
+
+  - id: TS034
+    title: 'Built-in Utility Types'
+    category: type_safety
+    level: intermediate
+    priority: critical
+    typescript_version:
+      min_version: '2.1'
+    content:
+      description: |
+        Master TypeScript's built-in utility types: Partial, Required, Readonly,
+        Pick, Omit, Record, ReturnType, Parameters, and more.
+      rationale: |
+        Utility types reduce boilerplate and enable type transformations
+        that keep derived types in sync with source types.
+      good_examples:
+        - |
+          interface User {
+            id: string;
+            name: string;
+            email: string;
+            role: 'admin' | 'user';
+            createdAt: Date;
+          }
+
+          // Partial - all properties optional
+          type UpdateUserDto = Partial<Omit<User, 'id' | 'createdAt'>>;
+
+          // Pick - select properties
+          type UserCredentials = Pick<User, 'email' | 'id'>;
+
+          // Required - all properties required
+          type CompleteUser = Required<User>;
+
+          // Record - object type with specific keys
+          type UserRoles = Record<User['role'], string[]>;
+
+          // Extract/Exclude for union types
+          type AdminRole = Extract<User['role'], 'admin'>; // 'admin'
+          type NonAdminRole = Exclude<User['role'], 'admin'>; // 'user'
+
+          // NonNullable
+          type MaybeString = string | null | undefined;
+          type DefiniteString = NonNullable<MaybeString>; // string
+
+          // ReturnType and Parameters
+          type FetchReturn = ReturnType<typeof fetch>; // Promise<Response>
+          type FetchParams = Parameters<typeof fetch>; // [input, init?]
+      tags:
+        - utility-types
+        - type-transformations
+        - built-in
+
+  - id: TS035
+    title: 'Custom Utility Types'
+    category: type_safety
+    level: advanced
+    priority: high
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Build custom utility types for domain-specific type transformations.
+        Combine conditional types, mapped types, and inference.
+      rationale: |
+        Custom utilities encapsulate complex type logic, making it
+        reusable and keeping consuming code clean.
+      good_examples:
+        - |
+          // Deep partial
+          type DeepPartial<T> = {
+            [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+          };
+
+          // Make specific keys optional
+          type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+          // Make specific keys required
+          type RequiredBy<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>;
+
+          // Mutable (remove readonly)
+          type Mutable<T> = {
+            -readonly [K in keyof T]: T[K];
+          };
+
+          // Get optional keys
+          type OptionalKeys<T> = {
+            [K in keyof T]-?: {} extends Pick<T, K> ? K : never;
+          }[keyof T];
+
+          // Function with typed this
+          type MethodThis<T, M extends keyof T> =
+            T[M] extends (this: infer This, ...args: any[]) => any ? This : never;
+
+          // Promisify return type
+          type Promisify<T extends (...args: any[]) => any> =
+            (...args: Parameters<T>) => Promise<ReturnType<T>>;
+      tags:
+        - utility-types
+        - custom
+        - advanced-types
+
+  - id: TS036
+    title: 'Type Inference Patterns'
+    category: type_safety
+    level: expert
+    priority: medium
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Leverage TypeScript's type inference capabilities. Design APIs that
+        maximize inference rather than requiring explicit type annotations.
+      rationale: |
+        Good inference reduces boilerplate while maintaining type safety.
+        APIs should guide users toward correct usage through types.
+      good_examples:
+        - |
+          // Infer from factory function
+          function createStore<S>(initialState: S) {
+            let state = initialState;
+            return {
+              getState: () => state,
+              setState: (newState: Partial<S>) => {
+                state = { ...state, ...newState };
+              },
+            };
+          }
+
+          // Type is inferred from usage
+          const store = createStore({ count: 0, name: '' });
+          store.setState({ count: 1 }); // ✅ Partial<{count: number, name: string}>
+
+          // Infer array element type
+          function first<T>(arr: readonly T[]): T | undefined {
+            return arr[0];
+          }
+
+          const numbers = [1, 2, 3] as const;
+          const n = first(numbers); // Type: 1 | 2 | 3
+
+          // Infer object shape from builder
+          const config = createConfig()
+            .set('port', 3000)
+            .set('host', 'localhost')
+            .build();
+          // Type: { port: number; host: string }
+      tags:
+        - type-inference
+        - api-design
+        - patterns
+
+  - id: TS037
+    title: 'Type Narrowing Techniques'
+    category: type_safety
+    level: intermediate
+    priority: critical
+    typescript_version:
+      min_version: '4.4'
+    content:
+      description: |
+        Use various type narrowing techniques: typeof, instanceof, in operator,
+        truthiness, equality, and control flow analysis.
+      rationale: |
+        Type narrowing is essential for working with union types safely.
+        Understanding all narrowing techniques enables more precise types.
+      good_examples:
+        - |
+          type NetworkState =
+            | { status: 'loading' }
+            | { status: 'success'; data: string }
+            | { status: 'error'; error: Error };
+
+          function handle(state: NetworkState) {
+            // Discriminant narrowing
+            if (state.status === 'success') {
+              console.log(state.data); // TS knows data exists
+            }
+
+            // 'in' operator narrowing
+            if ('error' in state) {
+              console.log(state.error.message);
+            }
+          }
+
+          // typeof narrowing
+          function process(value: string | number | string[]) {
+            if (typeof value === 'string') {
+              return value.toUpperCase();
+            }
+            if (Array.isArray(value)) {
+              return value.join(', ');
+            }
+            return value.toFixed(2);
+          }
+
+          // instanceof narrowing
+          function formatError(error: unknown): string {
+            if (error instanceof Error) {
+              return error.message;
+            }
+            if (typeof error === 'string') {
+              return error;
+            }
+            return 'Unknown error';
+          }
+
+          // Control flow analysis (TS 4.4+)
+          function example(x: string | number | null) {
+            if (x !== null && typeof x !== 'number') {
+              x.toUpperCase(); // x is string
+            }
+          }
+      tags:
+        - type-narrowing
+        - control-flow
+        - type-safety
+
+  - id: TS038
+    title: 'Recursive Types'
+    category: type_safety
+    level: expert
+    priority: low
+    typescript_version:
+      min_version: '3.7'
+    content:
+      description: |
+        Use recursive type definitions for tree structures, nested data,
+        and self-referential types. Be aware of depth limits.
+      rationale: |
+        Recursive types enable modeling of inherently recursive data
+        structures like trees, linked lists, and nested configurations.
+      good_examples:
+        - |
+          // JSON type
+          type JSONValue =
+            | string
+            | number
+            | boolean
+            | null
+            | JSONValue[]
+            | { [key: string]: JSONValue };
+
+          // Tree structure
+          interface TreeNode<T> {
+            value: T;
+            children: TreeNode<T>[];
+          }
+
+          // Recursive path type
+          type Path<T, K extends keyof T = keyof T> = K extends string
+            ? T[K] extends Record<string, unknown>
+              ? K | `${K}.${Path<T[K]>}`
+              : K
+            : never;
+
+          interface Config {
+            server: {
+              port: number;
+              host: string;
+            };
+            database: {
+              url: string;
+            };
+          }
+
+          type ConfigPath = Path<Config>;
+          // 'server' | 'database' | 'server.port' | 'server.host' | 'database.url'
+
+          // Linked list
+          type LinkedList<T> = {
+            value: T;
+            next: LinkedList<T> | null;
+          };
+      tags:
+        - recursive-types
+        - data-structures
+        - advanced-types
+
+  - id: TS039
+    title: 'Zod Schema Validation'
+    category: type_safety
+    level: intermediate
+    priority: high
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Use Zod or similar libraries for runtime validation with automatic
+        TypeScript type inference. Validate at boundaries.
+      rationale: |
+        TypeScript types are erased at runtime. Zod provides runtime
+        validation while generating matching TypeScript types.
+      good_examples:
+        - |
+          import { z } from 'zod';
+
+          // Define schema with validation
+          const UserSchema = z.object({
+            id: z.string().uuid(),
+            name: z.string().min(1).max(100),
+            email: z.string().email(),
+            age: z.number().int().positive().optional(),
+            role: z.enum(['admin', 'user']).default('user'),
+            metadata: z.record(z.string()).optional(),
+          });
+
+          // Infer TypeScript type from schema
+          type User = z.infer<typeof UserSchema>;
+
+          // Validate at API boundary
+          function createUser(input: unknown): User {
+            return UserSchema.parse(input); // Throws on invalid
+          }
+
+          // Safe parse with result type
+          function safeCreateUser(input: unknown) {
+            const result = UserSchema.safeParse(input);
+            if (!result.success) {
+              return { error: result.error.format() };
+            }
+            return { data: result.data };
+          }
+
+          // Composable schemas
+          const CreateUserDto = UserSchema.omit({ id: true });
+          const UpdateUserDto = UserSchema.partial().omit({ id: true });
+      tags:
+        - validation
+        - zod
+        - runtime-safety
+
+  - id: TS040
+    title: 'Opaque Types'
+    category: type_safety
+    level: expert
+    priority: medium
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Use opaque types to hide internal representation while exposing
+        only controlled operations. Prevents internal structure leakage.
+      rationale: |
+        Opaque types enforce encapsulation at the type level, preventing
+        consumers from depending on implementation details.
+      good_examples:
+        - |
+          // Opaque type pattern using symbols
+          declare const __brand: unique symbol;
+          type Opaque<T, K> = T & { readonly [__brand]: K };
+
+          // Define opaque type
+          type Email = Opaque<string, 'Email'>;
+          type UserId = Opaque<string, 'UserId'>;
+
+          // Factory functions are the only way to create values
+          function createEmail(input: string): Email {
+            if (!input.includes('@')) {
+              throw new Error('Invalid email');
+            }
+            return input as Email;
+          }
+
+          // Internal structure hidden
+          function sendEmail(to: Email, subject: string): void {
+            // Can't pass raw string - must use createEmail
+          }
+
+          // Alternative: Module pattern for true opacity
+          // email.ts
+          export interface Email {
+            readonly _tag: 'Email';
+          }
+
+          export function create(value: string): Email {
+            // Validation...
+            return { _tag: 'Email', value } as unknown as Email;
+          }
+
+          export function getValue(email: Email): string {
+            return (email as unknown as { value: string }).value;
+          }
+      tags:
+        - opaque-types
+        - encapsulation
+        - type-safety
+
+  # ============================================================================
+  # PERFORMANCE & OPTIMIZATION (TS041-TS045)
+  # ============================================================================
+
+  - id: TS041
+    title: 'Type-Only Exports for Smaller Bundles'
+    category: performance
+    level: intermediate
+    priority: high
+    typescript_version:
+      min_version: '3.8'
+    content:
+      description: |
+        Separate type exports from value exports. This enables better tree
+        shaking and smaller bundles when only types are needed.
+      rationale: |
+        Bundlers can eliminate type-only imports entirely, reducing
+        bundle size when a module is imported only for types.
+      good_examples:
+        - |
+          // types.ts - Types only (no runtime code)
+          export interface User {
+            id: string;
+            name: string;
+          }
+
+          export type CreateUserDto = Omit<User, 'id'>;
+
+          // user.service.ts - Runtime code
+          import type { User, CreateUserDto } from './types';
+
+          export class UserService {
+            create(dto: CreateUserDto): User {
+              return { ...dto, id: generateId() };
+            }
+          }
+
+          // Consumer that only needs types
+          import type { User } from './types'; // Zero runtime cost
+
+          function displayUser(user: User): string {
+            return user.name;
+          }
+      tags:
+        - performance
+        - tree-shaking
+        - exports
+
+  - id: TS042
+    title: 'Const Enums for Inlining'
+    category: performance
+    level: intermediate
+    priority: medium
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Use const enums when enum values should be inlined at compile time.
+        Be aware of cross-module limitations with isolatedModules.
+      rationale: |
+        Const enums are replaced with literal values at compile time,
+        eliminating runtime overhead. Regular enums create objects.
+      good_examples:
+        - |
+          // Const enum - values inlined
+          const enum HttpStatus {
+            OK = 200,
+            Created = 201,
+            BadRequest = 400,
+            NotFound = 404,
+          }
+
+          // Compiles to: const status = 200;
+          const status = HttpStatus.OK;
+
+          // Alternative: as const object (works with isolatedModules)
+          const HttpStatusAlt = {
+            OK: 200,
+            Created: 201,
+            BadRequest: 400,
+            NotFound: 404,
+          } as const;
+
+          type HttpStatusCode = typeof HttpStatusAlt[keyof typeof HttpStatusAlt];
+      bad_examples:
+        - |
+          // Regular enum creates runtime object
+          enum HttpStatus {
+            OK = 200,
+            Created = 201,
+          }
+
+          // Compiles to:
+          // var HttpStatus;
+          // (function (HttpStatus) {
+          //   HttpStatus[HttpStatus["OK"] = 200] = "OK";
+          //   ...
+          // })(HttpStatus || (HttpStatus = {}));
+      tags:
+        - performance
+        - enums
+        - inlining
+
+  - id: TS043
+    title: 'Lazy Type Evaluation'
+    category: performance
+    level: expert
+    priority: low
+    typescript_version:
+      min_version: '4.0'
+    content:
+      description: |
+        Structure complex types for lazy evaluation to improve IDE performance.
+        Avoid deeply nested conditional types that must be eagerly evaluated.
+      rationale: |
+        Complex type computations slow down IDE responsiveness.
+        Lazy patterns defer computation until needed.
+      good_examples:
+        - |
+          // Use interfaces for recursive types (lazy)
+          interface LazyTree<T> {
+            value: T;
+            children: LazyTree<T>[];
+          }
+
+          // Split complex types into smaller pieces
+          type Step1<T> = T extends object ? keyof T : never;
+          type Step2<T> = { [K in Step1<T>]: T[K] };
+
+          // Use type aliases as checkpoints
+          type IntermediateResult<T> = T extends Promise<infer U> ? U : T;
+          type FinalResult<T> = IntermediateResult<T> extends Array<infer E>
+            ? E
+            : IntermediateResult<T>;
+
+          // Avoid
+          // type DeepComplex<T> = T extends object
+          //   ? { [K in keyof T]: DeepComplex<T[K]> extends object
+          //       ? DeepComplex<T[K]> extends Array<infer E>
+          //         ? ...
+          //       : ...
+          //     : ... }
+          //   : T;
+      tags:
+        - performance
+        - type-complexity
+        - ide-performance
+
+  - id: TS044
+    title: 'Project References for Large Codebases'
+    category: configuration
+    level: advanced
+    priority: medium
+    typescript_version:
+      min_version: '3.0'
+    content:
+      description: |
+        Use project references to split large codebases into smaller,
+        independently compiled projects. Enables incremental builds.
+      rationale: |
+        Project references dramatically speed up builds for monorepos
+        by only recompiling changed projects and their dependents.
+      good_examples:
+        - |
+          // Root tsconfig.json
+          {
+            "files": [],
+            "references": [
+              { "path": "./packages/core" },
+              { "path": "./packages/api" },
+              { "path": "./packages/web" }
+            ]
+          }
+
+          // packages/core/tsconfig.json
+          {
+            "compilerOptions": {
+              "composite": true,
+              "declaration": true,
+              "declarationMap": true,
+              "outDir": "./dist"
+            },
+            "include": ["src/**/*"]
+          }
+
+          // packages/api/tsconfig.json
+          {
+            "compilerOptions": {
+              "composite": true
+            },
+            "references": [
+              { "path": "../core" }
+            ]
+          }
+
+          // Build with: tsc --build (or tsc -b)
+      tags:
+        - configuration
+        - project-references
+        - monorepo
+
+  - id: TS045
+    title: 'Skip Lib Check for Faster Builds'
+    category: configuration
+    level: intermediate
+    priority: medium
+    typescript_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Enable skipLibCheck to skip type checking of declaration files (.d.ts).
+        This speeds up compilation significantly.
+      rationale: |
+        Library types are pre-validated. Checking them again wastes time
+        and can cause issues with conflicting library versions.
+      good_examples:
+        - |
+          // tsconfig.json
+          {
+            "compilerOptions": {
+              "skipLibCheck": true,
+
+              // Other performance options
+              "incremental": true,
+              "tsBuildInfoFile": "./.tsbuildinfo",
+
+              // In monorepos
+              "composite": true,
+              "declarationMap": true
+            }
+          }
+
+          // For even faster dev builds
+          // tsconfig.dev.json
+          {
+            "extends": "./tsconfig.json",
+            "compilerOptions": {
+              "skipLibCheck": true,
+              "incremental": true,
+              "noEmit": true  // Just type checking
+            }
+          }
+      tags:
+        - configuration
+        - performance
+        - compilation

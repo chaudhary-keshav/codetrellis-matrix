@@ -1,0 +1,3067 @@
+# NestJS Best Practices Library
+# Version: 1.0.0
+# NestJS Version: 10+ (with latest features)
+# Total Practices: 30
+# Coverage: Modules, Services, Controllers, Guards, Pipes, Interceptors, Testing
+
+version: '1.0.0'
+framework: nestjs
+framework_version:
+  min_version: '10.0'
+description: 'Comprehensive NestJS best practices for enterprise backend development'
+
+practices:
+  # ============================================================================
+  # MODULE ARCHITECTURE (NEST001-NEST006)
+  # ============================================================================
+
+  - id: NEST001
+    title: 'Feature Module Organization'
+    category: architecture
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Organize your application into feature modules. Each feature module
+        should encapsulate related controllers, services, and entities.
+      rationale: |
+        Feature modules improve code organization, enable lazy loading,
+        and make the codebase more maintainable and testable.
+      good_examples:
+        - |
+          // ✅ Feature module with clear boundaries
+          // users/users.module.ts
+          import { Module } from '@nestjs/common';
+          import { TypeOrmModule } from '@nestjs/typeorm';
+          import { UsersController } from './users.controller';
+          import { UsersService } from './users.service';
+          import { User } from './entities/user.entity';
+          import { UsersRepository } from './users.repository';
+
+          @Module({
+            imports: [TypeOrmModule.forFeature([User])],
+            controllers: [UsersController],
+            providers: [UsersService, UsersRepository],
+            exports: [UsersService], // Export what other modules need
+          })
+          export class UsersModule {}
+
+          // ✅ Feature module directory structure
+          // src/
+          // ├── users/
+          // │   ├── dto/
+          // │   │   ├── create-user.dto.ts
+          // │   │   └── update-user.dto.ts
+          // │   ├── entities/
+          // │   │   └── user.entity.ts
+          // │   ├── users.controller.ts
+          // │   ├── users.service.ts
+          // │   ├── users.repository.ts
+          // │   └── users.module.ts
+          // ├── orders/
+          // │   └── ...
+          // └── app.module.ts
+      bad_examples:
+        - |
+          // ❌ Monolithic module with everything
+          @Module({
+            imports: [TypeOrmModule.forFeature([User, Order, Product, Review])],
+            controllers: [
+              UsersController,
+              OrdersController,
+              ProductsController,
+              ReviewsController,
+            ],
+            providers: [
+              UsersService,
+              OrdersService,
+              ProductsService,
+              ReviewsService,
+            ],
+          })
+          export class AppModule {}
+      references:
+        - 'https://docs.nestjs.com/modules'
+      tags:
+        - modules
+        - architecture
+        - organization
+
+  - id: NEST002
+    title: 'Use forRoot and forRootAsync for Configuration'
+    category: configuration
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use forRoot() for static configuration and forRootAsync() when
+        configuration depends on other providers or environment variables.
+      rationale: |
+        forRootAsync enables dependency injection for configuration,
+        allowing you to use ConfigService and other providers.
+      good_examples:
+        - |
+          // ✅ forRootAsync with ConfigService
+          // app.module.ts
+          import { Module } from '@nestjs/common';
+          import { ConfigModule, ConfigService } from '@nestjs/config';
+          import { TypeOrmModule } from '@nestjs/typeorm';
+
+          @Module({
+            imports: [
+              ConfigModule.forRoot({
+                isGlobal: true,
+                envFilePath: ['.env.local', '.env'],
+                validationSchema: Joi.object({
+                  DATABASE_HOST: Joi.string().required(),
+                  DATABASE_PORT: Joi.number().default(5432),
+                }),
+              }),
+              TypeOrmModule.forRootAsync({
+                inject: [ConfigService],
+                useFactory: (config: ConfigService) => ({
+                  type: 'postgres',
+                  host: config.get('DATABASE_HOST'),
+                  port: config.get('DATABASE_PORT'),
+                  username: config.get('DATABASE_USER'),
+                  password: config.get('DATABASE_PASSWORD'),
+                  database: config.get('DATABASE_NAME'),
+                  autoLoadEntities: true,
+                  synchronize: config.get('NODE_ENV') === 'development',
+                }),
+              }),
+            ],
+          })
+          export class AppModule {}
+
+          // ✅ Custom dynamic module pattern
+          @Module({})
+          export class CacheModule {
+            static forRootAsync(options: CacheModuleAsyncOptions): DynamicModule {
+              return {
+                module: CacheModule,
+                imports: options.imports || [],
+                providers: [
+                  {
+                    provide: CACHE_OPTIONS,
+                    useFactory: options.useFactory,
+                    inject: options.inject || [],
+                  },
+                  CacheService,
+                ],
+                exports: [CacheService],
+              };
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Hardcoded configuration
+          @Module({
+            imports: [
+              TypeOrmModule.forRoot({
+                type: 'postgres',
+                host: 'localhost', // Hardcoded!
+                port: 5432,
+                username: 'admin',
+                password: 'secret123', // Secret in code!
+              }),
+            ],
+          })
+          export class AppModule {}
+      references:
+        - 'https://docs.nestjs.com/fundamentals/dynamic-modules'
+      tags:
+        - configuration
+        - dynamic-modules
+        - best-practices
+
+  - id: NEST003
+    title: 'Global vs Feature-Scoped Modules'
+    category: architecture
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Mark truly global modules (Config, Logger, Auth) as @Global().
+        Keep most modules feature-scoped with explicit imports.
+      rationale: |
+        Global modules reduce import boilerplate for widely-used services,
+        but overuse makes dependencies implicit and harder to trace.
+      good_examples:
+        - |
+          // ✅ Global module for cross-cutting concerns
+          @Global()
+          @Module({
+            providers: [
+              {
+                provide: Logger,
+                useFactory: () => new Logger('App'),
+              },
+              ConfigService,
+            ],
+            exports: [Logger, ConfigService],
+          })
+          export class CoreModule {}
+
+          // ✅ Feature module with explicit dependencies
+          @Module({
+            imports: [
+              UsersModule, // Explicit import - easy to trace
+              TypeOrmModule.forFeature([Order]),
+            ],
+            controllers: [OrdersController],
+            providers: [OrdersService],
+          })
+          export class OrdersModule {}
+
+          // Usage - ConfigService available without import (global)
+          // UsersService requires explicit import
+          @Injectable()
+          export class OrdersService {
+            constructor(
+              private config: ConfigService, // From global CoreModule
+              private users: UsersService,   // Must import UsersModule
+            ) {}
+          }
+      bad_examples:
+        - |
+          // ❌ Making everything global
+          @Global()
+          @Module({
+            providers: [UsersService, OrdersService, ProductsService],
+            exports: [UsersService, OrdersService, ProductsService],
+          })
+          export class EverythingModule {} // Can't trace dependencies!
+
+          // ❌ Not making shared utilities global
+          @Module({
+            providers: [LoggerService],
+            exports: [LoggerService],
+          })
+          export class LoggerModule {} // Must import everywhere!
+      tags:
+        - modules
+        - global
+        - architecture
+
+  - id: NEST004
+    title: 'Proper Provider Scopes'
+    category: architecture
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Understand and use provider scopes appropriately: DEFAULT (singleton),
+        REQUEST (per request), and TRANSIENT (new instance per injection).
+      rationale: |
+        Wrong scopes cause bugs: singletons sharing state between requests,
+        or unnecessary instance creation impacting performance.
+      good_examples:
+        - |
+          import { Injectable, Scope, Inject } from '@nestjs/common';
+          import { REQUEST } from '@nestjs/core';
+          import { Request } from 'express';
+
+          // ✅ Singleton (default) - stateless services
+          @Injectable()
+          export class UsersService {
+            constructor(private repository: UsersRepository) {}
+
+            async findAll(): Promise<User[]> {
+              return this.repository.find();
+            }
+          }
+
+          // ✅ Request-scoped - needs request context
+          @Injectable({ scope: Scope.REQUEST })
+          export class AuditService {
+            constructor(@Inject(REQUEST) private request: Request) {}
+
+            log(action: string): void {
+              console.log({
+                action,
+                userId: this.request.user?.id,
+                ip: this.request.ip,
+                timestamp: new Date(),
+              });
+            }
+          }
+
+          // ✅ Transient - fresh instance each injection
+          @Injectable({ scope: Scope.TRANSIENT })
+          export class OperationTracker {
+            private startTime = Date.now();
+
+            elapsed(): number {
+              return Date.now() - this.startTime;
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Singleton with request-specific state
+          @Injectable() // Default singleton!
+          export class CartService {
+            private items: CartItem[] = []; // Shared between ALL users!
+
+            addItem(item: CartItem) {
+              this.items.push(item); // BUG: Everyone shares this cart
+            }
+          }
+
+          // ❌ Request-scoped for stateless service
+          @Injectable({ scope: Scope.REQUEST })
+          export class MathService {
+            add(a: number, b: number): number {
+              return a + b; // No request state needed - wasted performance
+            }
+          }
+      references:
+        - 'https://docs.nestjs.com/fundamentals/injection-scopes'
+      tags:
+        - providers
+        - scopes
+        - architecture
+
+  - id: NEST005
+    title: 'Custom Providers and Tokens'
+    category: patterns
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use custom providers with injection tokens for interfaces,
+        factory patterns, and configuration-based dependencies.
+      rationale: |
+        Custom providers enable loose coupling, easier testing, and
+        runtime configuration of implementations.
+      good_examples:
+        - |
+          // ✅ Injection token for interface
+          // payment.interface.ts
+          export const PAYMENT_SERVICE = Symbol('PAYMENT_SERVICE');
+
+          export interface IPaymentService {
+            charge(amount: number, currency: string): Promise<PaymentResult>;
+            refund(transactionId: string): Promise<RefundResult>;
+          }
+
+          // ✅ Provider with factory
+          // payments.module.ts
+          @Module({
+            providers: [
+              {
+                provide: PAYMENT_SERVICE,
+                useFactory: (config: ConfigService) => {
+                  const provider = config.get('PAYMENT_PROVIDER');
+
+                  switch (provider) {
+                    case 'stripe':
+                      return new StripePaymentService(config.get('STRIPE_KEY'));
+                    case 'paypal':
+                      return new PayPalPaymentService(config.get('PAYPAL_ID'));
+                    default:
+                      return new MockPaymentService();
+                  }
+                },
+                inject: [ConfigService],
+              },
+            ],
+            exports: [PAYMENT_SERVICE],
+          })
+          export class PaymentsModule {}
+
+          // ✅ Usage with injection token
+          @Injectable()
+          export class OrdersService {
+            constructor(
+              @Inject(PAYMENT_SERVICE)
+              private paymentService: IPaymentService,
+            ) {}
+
+            async processOrder(order: Order): Promise<void> {
+              await this.paymentService.charge(order.total, order.currency);
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Direct class dependency - hard to swap implementations
+          @Injectable()
+          export class OrdersService {
+            constructor(private stripe: StripePaymentService) {}
+            // Can't easily switch to PayPal or mock in tests
+          }
+
+          // ❌ Using class name as token for interface
+          @Module({
+            providers: [
+              { provide: 'PaymentService', useClass: StripePaymentService },
+            ],
+          })
+          export class PaymentsModule {} // String tokens are error-prone
+      references:
+        - 'https://docs.nestjs.com/fundamentals/custom-providers'
+      tags:
+        - providers
+        - dependency-injection
+        - patterns
+
+  - id: NEST006
+    title: 'Circular Dependency Resolution'
+    category: architecture
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Avoid circular dependencies. When unavoidable, use forwardRef()
+        or restructure with events or a shared module.
+      rationale: |
+        Circular dependencies cause runtime errors and indicate
+        architectural issues that should be refactored.
+      good_examples:
+        - |
+          // ✅ Restructure with events to break cycle
+          // users.service.ts
+          @Injectable()
+          export class UsersService {
+            constructor(private eventEmitter: EventEmitter2) {}
+
+            async deleteUser(id: string): Promise<void> {
+              await this.repository.delete(id);
+              this.eventEmitter.emit('user.deleted', { userId: id });
+            }
+          }
+
+          // orders.service.ts
+          @Injectable()
+          export class OrdersService {
+            @OnEvent('user.deleted')
+            async handleUserDeleted(payload: { userId: string }): Promise<void> {
+              await this.cancelUserOrders(payload.userId);
+            }
+          }
+
+          // ✅ When circular is truly needed, use forwardRef
+          // users.service.ts
+          @Injectable()
+          export class UsersService {
+            constructor(
+              @Inject(forwardRef(() => OrdersService))
+              private ordersService: OrdersService,
+            ) {}
+          }
+
+          // orders.service.ts
+          @Injectable()
+          export class OrdersService {
+            constructor(
+              @Inject(forwardRef(() => UsersService))
+              private usersService: UsersService,
+            ) {}
+          }
+
+          // ✅ Extract shared logic to break cycle
+          @Injectable()
+          export class UserOrdersService {
+            // Shared operations that both services need
+          }
+      bad_examples:
+        - |
+          // ❌ Direct circular without forwardRef - runtime error!
+          @Injectable()
+          export class UsersService {
+            constructor(private ordersService: OrdersService) {}
+          }
+
+          @Injectable()
+          export class OrdersService {
+            constructor(private usersService: UsersService) {}
+          }
+          // Error: Nest can't resolve dependencies of OrdersService
+      references:
+        - 'https://docs.nestjs.com/fundamentals/circular-dependency'
+      tags:
+        - circular-dependencies
+        - architecture
+        - anti-patterns
+
+  # ============================================================================
+  # CONTROLLERS & ROUTING (NEST007-NEST012)
+  # ============================================================================
+
+  - id: NEST007
+    title: 'Thin Controllers, Fat Services'
+    category: architecture
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Controllers should only handle HTTP concerns (request/response).
+        Business logic belongs in services.
+      rationale: |
+        Thin controllers are easier to test, enable logic reuse across
+        different transports (HTTP, WebSocket, gRPC), and separate concerns.
+      good_examples:
+        - |
+          // ✅ Thin controller - delegates to service
+          @Controller('orders')
+          @UseGuards(JwtAuthGuard)
+          export class OrdersController {
+            constructor(private ordersService: OrdersService) {}
+
+            @Post()
+            @HttpCode(HttpStatus.CREATED)
+            async createOrder(
+              @Body() dto: CreateOrderDto,
+              @CurrentUser() user: User,
+            ): Promise<OrderResponseDto> {
+              const order = await this.ordersService.create(dto, user.id);
+              return OrderResponseDto.fromEntity(order);
+            }
+
+            @Get(':id')
+            async getOrder(@Param('id', ParseUUIDPipe) id: string): Promise<OrderResponseDto> {
+              const order = await this.ordersService.findById(id);
+              return OrderResponseDto.fromEntity(order);
+            }
+          }
+
+          // ✅ Service contains business logic
+          @Injectable()
+          export class OrdersService {
+            constructor(
+              private repository: OrdersRepository,
+              private paymentsService: PaymentsService,
+              private inventoryService: InventoryService,
+            ) {}
+
+            async create(dto: CreateOrderDto, userId: string): Promise<Order> {
+              // Business logic: validate inventory, calculate totals, etc.
+              await this.inventoryService.reserve(dto.items);
+
+              const order = Order.create({
+                userId,
+                items: dto.items,
+                total: this.calculateTotal(dto.items),
+              });
+
+              return this.repository.save(order);
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Fat controller with business logic
+          @Controller('orders')
+          export class OrdersController {
+            @Post()
+            async createOrder(@Body() dto: CreateOrderDto): Promise<Order> {
+              // Business logic in controller!
+              const items = await this.itemsRepo.findByIds(dto.itemIds);
+
+              for (const item of items) {
+                if (item.stock < dto.quantities[item.id]) {
+                  throw new BadRequestException('Insufficient stock');
+                }
+                item.stock -= dto.quantities[item.id];
+                await this.itemsRepo.save(item);
+              }
+
+              const total = items.reduce((sum, item) =>
+                sum + item.price * dto.quantities[item.id], 0
+              );
+
+              // 50+ more lines of business logic...
+            }
+          }
+      tags:
+        - controllers
+        - services
+        - separation-of-concerns
+
+  - id: NEST008
+    title: 'Use DTOs with Validation'
+    category: validation
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use Data Transfer Objects (DTOs) with class-validator decorators
+        for request validation. Enable global ValidationPipe.
+      rationale: |
+        DTOs ensure type safety, automatic validation, and clear API contracts.
+        They prevent invalid data from reaching business logic.
+      good_examples:
+        - |
+          // ✅ DTO with validation decorators
+          import {
+            IsEmail, IsString, MinLength, IsOptional,
+            IsInt, Min, Max, ValidateNested, Type
+          } from 'class-validator';
+          import { Transform } from 'class-transformer';
+
+          export class CreateUserDto {
+            @IsEmail()
+            @Transform(({ value }) => value.toLowerCase().trim())
+            email: string;
+
+            @IsString()
+            @MinLength(8)
+            password: string;
+
+            @IsString()
+            @MinLength(2)
+            @Transform(({ value }) => value.trim())
+            name: string;
+
+            @IsOptional()
+            @IsInt()
+            @Min(13)
+            @Max(120)
+            age?: number;
+
+            @IsOptional()
+            @ValidateNested()
+            @Type(() => AddressDto)
+            address?: AddressDto;
+          }
+
+          // ✅ Enable global validation pipe
+          // main.ts
+          async function bootstrap() {
+            const app = await NestFactory.create(AppModule);
+
+            app.useGlobalPipes(new ValidationPipe({
+              whitelist: true,          // Strip unknown properties
+              forbidNonWhitelisted: true, // Throw on unknown properties
+              transform: true,          // Auto-transform types
+              transformOptions: {
+                enableImplicitConversion: true,
+              },
+            }));
+
+            await app.listen(3000);
+          }
+
+          // ✅ Response DTO for consistent output
+          export class UserResponseDto {
+            id: string;
+            email: string;
+            name: string;
+            createdAt: Date;
+
+            static fromEntity(user: User): UserResponseDto {
+              const dto = new UserResponseDto();
+              dto.id = user.id;
+              dto.email = user.email;
+              dto.name = user.name;
+              dto.createdAt = user.createdAt;
+              // Note: password is NOT included
+              return dto;
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ No validation - any input accepted
+          @Post()
+          async createUser(@Body() body: any): Promise<User> {
+            return this.usersService.create(body); // Could crash!
+          }
+
+          // ❌ Manual validation in controller
+          @Post()
+          async createUser(@Body() body: CreateUserDto): Promise<User> {
+            if (!body.email) throw new BadRequestException('Email required');
+            if (!body.email.includes('@')) throw new BadRequestException('Invalid email');
+            if (!body.password || body.password.length < 8) {
+              throw new BadRequestException('Password too short');
+            }
+            // Tedious and error-prone!
+          }
+      references:
+        - 'https://docs.nestjs.com/techniques/validation'
+      tags:
+        - validation
+        - dto
+        - class-validator
+
+  - id: NEST009
+    title: 'API Versioning'
+    category: api_design
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Implement API versioning from the start using NestJS built-in
+        versioning (URI, Header, or Media Type).
+      rationale: |
+        Versioning allows evolving your API without breaking existing clients.
+        Adding it later is much harder than starting with it.
+      good_examples:
+        - |
+          // ✅ Enable versioning in main.ts
+          async function bootstrap() {
+            const app = await NestFactory.create(AppModule);
+
+            app.enableVersioning({
+              type: VersioningType.URI,
+              defaultVersion: '1',
+              prefix: 'api/v',
+            });
+
+            await app.listen(3000);
+          }
+
+          // ✅ Controller with version
+          @Controller('users')
+          @ApiTags('users')
+          export class UsersV1Controller {
+            @Version('1')
+            @Get()
+            findAll(): Promise<UserV1Response[]> {
+              return this.usersService.findAllV1();
+            }
+          }
+
+          // ✅ New version with breaking changes
+          @Controller('users')
+          @ApiTags('users')
+          export class UsersV2Controller {
+            @Version('2')
+            @Get()
+            findAll(): Promise<UserV2Response[]> {
+              // Different response structure
+              return this.usersService.findAllV2();
+            }
+          }
+
+          // ✅ Method-level versioning
+          @Controller('products')
+          export class ProductsController {
+            @Version('1')
+            @Get()
+            findAllV1() { /* ... */ }
+
+            @Version(['2', '3']) // Multiple versions
+            @Get()
+            findAllV2() { /* ... */ }
+
+            @Version(VERSION_NEUTRAL) // Works for all versions
+            @Get('health')
+            healthCheck() { /* ... */ }
+          }
+      bad_examples:
+        - |
+          // ❌ No versioning - breaking changes break all clients
+          @Controller('users')
+          export class UsersController {
+            @Get()
+            findAll() { /* ... */ }
+          }
+
+          // ❌ Manual version in path - messy
+          @Controller('v1/users')
+          export class UsersV1Controller {}
+
+          @Controller('v2/users')
+          export class UsersV2Controller {}
+      references:
+        - 'https://docs.nestjs.com/techniques/versioning'
+      tags:
+        - api-versioning
+        - rest
+        - best-practices
+
+  - id: NEST010
+    title: 'Proper HTTP Status Codes'
+    category: api_design
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use appropriate HTTP status codes for different responses.
+        Use NestJS decorators and exceptions for consistent status handling.
+      rationale: |
+        Correct status codes help clients handle responses properly and
+        make APIs more predictable and RESTful.
+      good_examples:
+        - |
+          @Controller('orders')
+          export class OrdersController {
+            // ✅ 201 Created for resource creation
+            @Post()
+            @HttpCode(HttpStatus.CREATED)
+            async create(@Body() dto: CreateOrderDto): Promise<Order> {
+              return this.ordersService.create(dto);
+            }
+
+            // ✅ 200 OK for successful retrieval
+            @Get(':id')
+            async findOne(@Param('id') id: string): Promise<Order> {
+              const order = await this.ordersService.findById(id);
+              if (!order) {
+                throw new NotFoundException(`Order ${id} not found`);
+              }
+              return order;
+            }
+
+            // ✅ 204 No Content for successful deletion
+            @Delete(':id')
+            @HttpCode(HttpStatus.NO_CONTENT)
+            async remove(@Param('id') id: string): Promise<void> {
+              await this.ordersService.remove(id);
+            }
+
+            // ✅ 202 Accepted for async operations
+            @Post(':id/process')
+            @HttpCode(HttpStatus.ACCEPTED)
+            async processOrder(@Param('id') id: string): Promise<{ jobId: string }> {
+              const jobId = await this.ordersService.queueProcessing(id);
+              return { jobId };
+            }
+          }
+
+          // ✅ Custom exception with status code
+          @Injectable()
+          export class OrdersService {
+            async create(dto: CreateOrderDto): Promise<Order> {
+              if (await this.isDuplicate(dto)) {
+                throw new ConflictException('Order already exists'); // 409
+              }
+
+              if (!await this.hasInventory(dto.items)) {
+                throw new BadRequestException('Insufficient inventory'); // 400
+              }
+
+              return this.repository.save(dto);
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Always returning 200
+          @Post()
+          async create(@Body() dto: CreateOrderDto): Promise<Order> {
+            return this.ordersService.create(dto);
+            // Returns 200 instead of 201 for creation
+          }
+
+          // ❌ Using wrong status codes
+          @Get(':id')
+          async findOne(@Param('id') id: string): Promise<Order | null> {
+            return this.ordersService.findById(id);
+            // Returns 200 with null instead of 404
+          }
+      tags:
+        - http
+        - status-codes
+        - rest
+
+  - id: NEST011
+    title: 'File Upload Handling'
+    category: api_design
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use NestJS file interceptors with proper validation for file uploads.
+        Validate file type, size, and handle errors gracefully.
+      rationale: |
+        Proper file validation prevents security issues and ensures
+        server resources aren't exhausted by large files.
+      good_examples:
+        - |
+          import {
+            FileInterceptor, FilesInterceptor,
+            FileFieldsInterceptor
+          } from '@nestjs/platform-express';
+          import { diskStorage } from 'multer';
+          import { extname } from 'path';
+
+          // ✅ File upload with validation
+          @Controller('files')
+          export class FilesController {
+            @Post('avatar')
+            @UseInterceptors(FileInterceptor('file', {
+              storage: diskStorage({
+                destination: './uploads/avatars',
+                filename: (req, file, cb) => {
+                  const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+                  cb(null, `avatar-${uniqueSuffix}${extname(file.originalname)}`);
+                },
+              }),
+              limits: {
+                fileSize: 5 * 1024 * 1024, // 5MB
+              },
+              fileFilter: (req, file, cb) => {
+                if (!file.mimetype.match(/^image\/(jpeg|png|gif)$/)) {
+                  cb(new BadRequestException('Only image files are allowed'), false);
+                } else {
+                  cb(null, true);
+                }
+              },
+            }))
+            uploadAvatar(
+              @UploadedFile(
+                new ParseFilePipe({
+                  validators: [
+                    new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+                    new FileTypeValidator({ fileType: /^image\/(jpeg|png|gif)$/ }),
+                  ],
+                }),
+              ) file: Express.Multer.File,
+            ): { url: string } {
+              return { url: `/uploads/avatars/${file.filename}` };
+            }
+
+            // ✅ Multiple files with field names
+            @Post('documents')
+            @UseInterceptors(FileFieldsInterceptor([
+              { name: 'contract', maxCount: 1 },
+              { name: 'attachments', maxCount: 5 },
+            ]))
+            uploadDocuments(
+              @UploadedFiles() files: {
+                contract?: Express.Multer.File[];
+                attachments?: Express.Multer.File[];
+              },
+            ) {
+              return {
+                contract: files.contract?.[0]?.filename,
+                attachments: files.attachments?.map(f => f.filename),
+              };
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ No file validation
+          @Post('upload')
+          @UseInterceptors(FileInterceptor('file'))
+          upload(@UploadedFile() file: Express.Multer.File) {
+            // No size limit - server can run out of memory
+            // No type check - malicious files accepted
+            return { filename: file.filename };
+          }
+      references:
+        - 'https://docs.nestjs.com/techniques/file-upload'
+      tags:
+        - file-upload
+        - validation
+        - security
+
+  - id: NEST012
+    title: 'Swagger/OpenAPI Documentation'
+    category: documentation
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use @nestjs/swagger decorators to generate API documentation.
+        Document all endpoints, DTOs, and response types.
+      rationale: |
+        API documentation helps frontend developers, third-party integrators,
+        and serves as a contract for your API.
+      good_examples:
+        - |
+          // ✅ Setup Swagger in main.ts
+          async function bootstrap() {
+            const app = await NestFactory.create(AppModule);
+
+            const config = new DocumentBuilder()
+              .setTitle('Orders API')
+              .setDescription('E-commerce orders management')
+              .setVersion('1.0')
+              .addBearerAuth()
+              .addTag('orders', 'Order management endpoints')
+              .build();
+
+            const document = SwaggerModule.createDocument(app, config);
+            SwaggerModule.setup('api-docs', app, document);
+
+            await app.listen(3000);
+          }
+
+          // ✅ Documented DTO
+          export class CreateOrderDto {
+            @ApiProperty({
+              description: 'Customer email address',
+              example: 'customer@example.com'
+            })
+            @IsEmail()
+            customerEmail: string;
+
+            @ApiProperty({
+              type: [OrderItemDto],
+              description: 'Items in the order'
+            })
+            @ValidateNested({ each: true })
+            @Type(() => OrderItemDto)
+            items: OrderItemDto[];
+          }
+
+          // ✅ Documented controller
+          @ApiTags('orders')
+          @ApiBearerAuth()
+          @Controller('orders')
+          export class OrdersController {
+            @Post()
+            @ApiOperation({ summary: 'Create a new order' })
+            @ApiResponse({
+              status: 201,
+              description: 'Order created successfully',
+              type: OrderResponseDto
+            })
+            @ApiResponse({ status: 400, description: 'Invalid input' })
+            @ApiResponse({ status: 401, description: 'Unauthorized' })
+            async create(@Body() dto: CreateOrderDto): Promise<OrderResponseDto> {
+              return this.ordersService.create(dto);
+            }
+
+            @Get()
+            @ApiOperation({ summary: 'List orders with pagination' })
+            @ApiQuery({ name: 'page', required: false, type: Number })
+            @ApiQuery({ name: 'limit', required: false, type: Number })
+            async findAll(
+              @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+              @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+            ): Promise<PaginatedOrdersDto> {
+              return this.ordersService.findAll({ page, limit });
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ No documentation
+          @Controller('orders')
+          export class OrdersController {
+            @Post()
+            create(@Body() dto: any) { /* ... */ }
+
+            @Get()
+            findAll() { /* ... */ }
+          }
+          // Consumers have to guess the API contract
+      references:
+        - 'https://docs.nestjs.com/openapi/introduction'
+      tags:
+        - swagger
+        - documentation
+        - api
+
+  # ============================================================================
+  # GUARDS, PIPES & INTERCEPTORS (NEST013-NEST018)
+  # ============================================================================
+
+  - id: NEST013
+    title: 'Authentication Guards'
+    category: security
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use Guards for authentication and authorization logic.
+        Implement JWT validation and role-based access control.
+      rationale: |
+        Guards run before route handlers, ensuring only authenticated
+        and authorized requests reach your business logic.
+      good_examples:
+        - |
+          import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+          import { Reflector } from '@nestjs/core';
+          import { JwtService } from '@nestjs/jwt';
+
+          // ✅ JWT Authentication Guard
+          @Injectable()
+          export class JwtAuthGuard implements CanActivate {
+            constructor(
+              private jwtService: JwtService,
+              private reflector: Reflector,
+            ) {}
+
+            async canActivate(context: ExecutionContext): Promise<boolean> {
+              // Check if route is public
+              const isPublic = this.reflector.getAllAndOverride<boolean>(
+                IS_PUBLIC_KEY,
+                [context.getHandler(), context.getClass()],
+              );
+              if (isPublic) return true;
+
+              const request = context.switchToHttp().getRequest();
+              const token = this.extractToken(request);
+
+              if (!token) {
+                throw new UnauthorizedException('No token provided');
+              }
+
+              try {
+                const payload = await this.jwtService.verifyAsync(token);
+                request.user = payload;
+              } catch {
+                throw new UnauthorizedException('Invalid token');
+              }
+
+              return true;
+            }
+
+            private extractToken(request: Request): string | undefined {
+              const [type, token] = request.headers.authorization?.split(' ') ?? [];
+              return type === 'Bearer' ? token : undefined;
+            }
+          }
+
+          // ✅ Role-based authorization guard
+          @Injectable()
+          export class RolesGuard implements CanActivate {
+            constructor(private reflector: Reflector) {}
+
+            canActivate(context: ExecutionContext): boolean {
+              const requiredRoles = this.reflector.getAllAndOverride<Role[]>(
+                ROLES_KEY,
+                [context.getHandler(), context.getClass()],
+              );
+
+              if (!requiredRoles) return true;
+
+              const { user } = context.switchToHttp().getRequest();
+              return requiredRoles.some(role => user.roles?.includes(role));
+            }
+          }
+
+          // ✅ Usage with decorators
+          @Controller('admin')
+          @UseGuards(JwtAuthGuard, RolesGuard)
+          @Roles(Role.ADMIN)
+          export class AdminController {
+            @Get('dashboard')
+            getDashboard() { /* ... */ }
+
+            @Public() // Override auth for this route
+            @Get('health')
+            healthCheck() { return 'ok'; }
+          }
+      bad_examples:
+        - |
+          // ❌ Auth check in every controller method
+          @Controller('users')
+          export class UsersController {
+            @Get()
+            async findAll(@Headers('authorization') auth: string) {
+              const user = await this.validateToken(auth); // Repeated everywhere!
+              if (!user) throw new UnauthorizedException();
+              // ...
+            }
+          }
+      references:
+        - 'https://docs.nestjs.com/guards'
+      tags:
+        - guards
+        - authentication
+        - security
+
+  - id: NEST014
+    title: 'Custom Validation Pipes'
+    category: validation
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Create custom pipes for complex validation and transformation
+        beyond what class-validator provides.
+      rationale: |
+        Custom pipes encapsulate complex validation logic, making it
+        reusable and testable.
+      good_examples:
+        - |
+          import {
+            PipeTransform, Injectable, ArgumentMetadata,
+            BadRequestException
+          } from '@nestjs/common';
+
+          // ✅ Custom parsing pipe with validation
+          @Injectable()
+          export class ParseDateRangePipe implements PipeTransform {
+            transform(value: any, metadata: ArgumentMetadata) {
+              if (!value) return undefined;
+
+              const { startDate, endDate } = value;
+
+              const start = new Date(startDate);
+              const end = new Date(endDate);
+
+              if (isNaN(start.getTime())) {
+                throw new BadRequestException('Invalid start date');
+              }
+              if (isNaN(end.getTime())) {
+                throw new BadRequestException('Invalid end date');
+              }
+              if (start > end) {
+                throw new BadRequestException('Start date must be before end date');
+              }
+
+              return { startDate: start, endDate: end };
+            }
+          }
+
+          // ✅ Entity existence validation pipe
+          @Injectable()
+          export class EntityExistsPipe implements PipeTransform {
+            constructor(
+              private entityClass: Type,
+              @InjectRepository(entityClass)
+              private repository: Repository<typeof entityClass>,
+            ) {}
+
+            async transform(value: string, metadata: ArgumentMetadata) {
+              const entity = await this.repository.findOne({
+                where: { id: value }
+              });
+
+              if (!entity) {
+                throw new NotFoundException(
+                  `${this.entityClass.name} with id ${value} not found`,
+                );
+              }
+
+              return entity;
+            }
+          }
+
+          // ✅ Usage
+          @Controller('reports')
+          export class ReportsController {
+            @Get()
+            async getReport(
+              @Query(ParseDateRangePipe) dateRange: DateRange,
+            ) {
+              return this.reportsService.generate(dateRange);
+            }
+
+            @Get('order/:id')
+            async getOrderReport(
+              @Param('id', new EntityExistsPipe(Order)) order: Order,
+            ) {
+              return this.reportsService.forOrder(order);
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Validation logic in controller
+          @Get()
+          async getReport(@Query() query: any) {
+            const start = new Date(query.startDate);
+            const end = new Date(query.endDate);
+
+            if (isNaN(start.getTime())) {
+              throw new BadRequestException('Invalid start date');
+            }
+            // Repeated validation in every method...
+          }
+      references:
+        - 'https://docs.nestjs.com/pipes'
+      tags:
+        - pipes
+        - validation
+        - transformation
+
+  - id: NEST015
+    title: 'Response Transformation with Interceptors'
+    category: patterns
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use interceptors to transform responses consistently,
+        add metadata, and handle cross-cutting concerns.
+      rationale: |
+        Interceptors keep response transformation logic in one place,
+        ensuring consistent API responses.
+      good_examples:
+        - |
+          import {
+            Injectable, NestInterceptor, ExecutionContext,
+            CallHandler
+          } from '@nestjs/common';
+          import { Observable } from 'rxjs';
+          import { map } from 'rxjs/operators';
+
+          // ✅ Standard response wrapper
+          export interface ApiResponse<T> {
+            success: boolean;
+            data: T;
+            timestamp: string;
+            path: string;
+          }
+
+          @Injectable()
+          export class TransformInterceptor<T>
+            implements NestInterceptor<T, ApiResponse<T>> {
+            intercept(
+              context: ExecutionContext,
+              next: CallHandler,
+            ): Observable<ApiResponse<T>> {
+              const request = context.switchToHttp().getRequest();
+
+              return next.handle().pipe(
+                map(data => ({
+                  success: true,
+                  data,
+                  timestamp: new Date().toISOString(),
+                  path: request.url,
+                })),
+              );
+            }
+          }
+
+          // ✅ Logging interceptor
+          @Injectable()
+          export class LoggingInterceptor implements NestInterceptor {
+            private readonly logger = new Logger(LoggingInterceptor.name);
+
+            intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+              const request = context.switchToHttp().getRequest();
+              const { method, url, body } = request;
+              const startTime = Date.now();
+
+              return next.handle().pipe(
+                tap({
+                  next: () => {
+                    const duration = Date.now() - startTime;
+                    this.logger.log(`${method} ${url} - ${duration}ms`);
+                  },
+                  error: (error) => {
+                    const duration = Date.now() - startTime;
+                    this.logger.error(`${method} ${url} - ${duration}ms - ${error.message}`);
+                  },
+                }),
+              );
+            }
+          }
+
+          // ✅ Cache interceptor
+          @Injectable()
+          export class HttpCacheInterceptor implements NestInterceptor {
+            constructor(private cacheManager: Cache) {}
+
+            async intercept(
+              context: ExecutionContext,
+              next: CallHandler,
+            ): Promise<Observable<any>> {
+              const request = context.switchToHttp().getRequest();
+
+              if (request.method !== 'GET') {
+                return next.handle();
+              }
+
+              const cacheKey = request.url;
+              const cached = await this.cacheManager.get(cacheKey);
+
+              if (cached) {
+                return of(cached);
+              }
+
+              return next.handle().pipe(
+                tap(response => this.cacheManager.set(cacheKey, response, 60000)),
+              );
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Manual response wrapping in every method
+          @Get()
+          async findAll(): Promise<ApiResponse<User[]>> {
+            const users = await this.usersService.findAll();
+            return {
+              success: true,
+              data: users,
+              timestamp: new Date().toISOString(),
+            }; // Repeated in every endpoint!
+          }
+      references:
+        - 'https://docs.nestjs.com/interceptors'
+      tags:
+        - interceptors
+        - response
+        - patterns
+
+  - id: NEST016
+    title: 'Exception Filters for Error Handling'
+    category: error_handling
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use exception filters to handle errors consistently and return
+        appropriate error responses.
+      rationale: |
+        Centralized error handling ensures consistent error format,
+        proper logging, and prevents sensitive information leakage.
+      good_examples:
+        - |
+          import {
+            ExceptionFilter, Catch, ArgumentsHost, HttpException,
+            HttpStatus, Logger
+          } from '@nestjs/common';
+          import { Request, Response } from 'express';
+
+          // ✅ Global exception filter
+          @Catch()
+          export class AllExceptionsFilter implements ExceptionFilter {
+            private readonly logger = new Logger(AllExceptionsFilter.name);
+
+            catch(exception: unknown, host: ArgumentsHost): void {
+              const ctx = host.switchToHttp();
+              const response = ctx.getResponse<Response>();
+              const request = ctx.getRequest<Request>();
+
+              const status = exception instanceof HttpException
+                ? exception.getStatus()
+                : HttpStatus.INTERNAL_SERVER_ERROR;
+
+              const message = exception instanceof HttpException
+                ? exception.getResponse()
+                : 'Internal server error';
+
+              // Log error details
+              this.logger.error({
+                path: request.url,
+                method: request.method,
+                status,
+                message: exception instanceof Error ? exception.message : message,
+                stack: exception instanceof Error ? exception.stack : undefined,
+              });
+
+              // Send sanitized response
+              response.status(status).json({
+                success: false,
+                statusCode: status,
+                timestamp: new Date().toISOString(),
+                path: request.url,
+                message: this.sanitizeMessage(message, status),
+              });
+            }
+
+            private sanitizeMessage(message: any, status: number): string | object {
+              // Don't expose internal errors to clients
+              if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+                return 'An unexpected error occurred';
+              }
+              return typeof message === 'object' ? message.message || message : message;
+            }
+          }
+
+          // ✅ Domain-specific exception filter
+          @Catch(BusinessException)
+          export class BusinessExceptionFilter implements ExceptionFilter {
+            catch(exception: BusinessException, host: ArgumentsHost): void {
+              const ctx = host.switchToHttp();
+              const response = ctx.getResponse<Response>();
+
+              response.status(HttpStatus.UNPROCESSABLE_ENTITY).json({
+                success: false,
+                error: {
+                  code: exception.code,
+                  message: exception.message,
+                  details: exception.details,
+                },
+              });
+            }
+          }
+
+          // ✅ Register globally
+          // main.ts
+          app.useGlobalFilters(
+            new AllExceptionsFilter(),
+            new BusinessExceptionFilter(),
+          );
+      bad_examples:
+        - |
+          // ❌ Unhandled exceptions crash the server
+          @Get(':id')
+          async findOne(@Param('id') id: string) {
+            const user = await this.repository.findOne(id);
+            return user.name; // Crashes if user is null!
+          }
+
+          // ❌ Exposing internal errors
+          @Get()
+          async findAll() {
+            try {
+              return await this.repository.find();
+            } catch (e) {
+              throw new InternalServerErrorException(e.message);
+              // Exposes DB error message to client!
+            }
+          }
+      references:
+        - 'https://docs.nestjs.com/exception-filters'
+      tags:
+        - exception-filters
+        - error-handling
+        - security
+
+  - id: NEST017
+    title: 'Custom Decorators'
+    category: patterns
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Create custom decorators to extract request data, combine
+        existing decorators, and reduce boilerplate.
+      rationale: |
+        Custom decorators make code more declarative, reduce repetition,
+        and encapsulate common patterns.
+      good_examples:
+        - |
+          import { createParamDecorator, ExecutionContext, SetMetadata } from '@nestjs/common';
+
+          // ✅ Extract current user from request
+          export const CurrentUser = createParamDecorator(
+            (data: keyof User | undefined, ctx: ExecutionContext) => {
+              const request = ctx.switchToHttp().getRequest();
+              const user = request.user;
+
+              return data ? user?.[data] : user;
+            },
+          );
+
+          // Usage:
+          // @CurrentUser() user: User
+          // @CurrentUser('id') userId: string
+
+          // ✅ Roles decorator with metadata
+          export const ROLES_KEY = 'roles';
+          export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
+
+          // Usage: @Roles(Role.ADMIN, Role.MANAGER)
+
+          // ✅ Combine multiple decorators
+          export function Auth(...roles: Role[]) {
+            return applyDecorators(
+              UseGuards(JwtAuthGuard, RolesGuard),
+              Roles(...roles),
+              ApiBearerAuth(),
+              ApiUnauthorizedResponse({ description: 'Unauthorized' }),
+            );
+          }
+
+          // Usage: @Auth(Role.ADMIN)
+
+          // ✅ Public route decorator
+          export const IS_PUBLIC_KEY = 'isPublic';
+          export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
+
+          // ✅ Controller with custom decorators
+          @Controller('users')
+          export class UsersController {
+            @Get('me')
+            @Auth() // Combines all auth decorators
+            getProfile(@CurrentUser() user: User) {
+              return user;
+            }
+
+            @Get('health')
+            @Public() // Skip auth
+            healthCheck() {
+              return 'ok';
+            }
+
+            @Post(':id/promote')
+            @Auth(Role.ADMIN)
+            promoteUser(
+              @Param('id') id: string,
+              @CurrentUser('id') adminId: string,
+            ) {
+              return this.usersService.promote(id, adminId);
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Repeated decorator stacks
+          @Get('endpoint1')
+          @UseGuards(JwtAuthGuard, RolesGuard)
+          @Roles(Role.ADMIN)
+          @ApiBearerAuth()
+          @ApiUnauthorizedResponse()
+          endpoint1() {}
+
+          @Get('endpoint2')
+          @UseGuards(JwtAuthGuard, RolesGuard) // Repeated!
+          @Roles(Role.ADMIN)
+          @ApiBearerAuth()
+          @ApiUnauthorizedResponse()
+          endpoint2() {}
+
+          // ❌ Manual user extraction
+          @Get('me')
+          getProfile(@Request() req) {
+            return req.user; // Less type-safe, more verbose
+          }
+      references:
+        - 'https://docs.nestjs.com/custom-decorators'
+      tags:
+        - decorators
+        - patterns
+        - code-reuse
+
+  - id: NEST018
+    title: 'Rate Limiting and Throttling'
+    category: security
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Implement rate limiting to protect against abuse and DDoS attacks.
+        Use @nestjs/throttler for built-in support.
+      rationale: |
+        Rate limiting prevents resource exhaustion, protects against brute
+        force attacks, and ensures fair usage.
+      good_examples:
+        - |
+          // ✅ Global throttler configuration
+          // app.module.ts
+          import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+
+          @Module({
+            imports: [
+              ThrottlerModule.forRootAsync({
+                inject: [ConfigService],
+                useFactory: (config: ConfigService) => ({
+                  ttl: config.get('THROTTLE_TTL', 60000),     // 1 minute
+                  limit: config.get('THROTTLE_LIMIT', 100),   // 100 requests
+                }),
+              }),
+            ],
+            providers: [
+              {
+                provide: APP_GUARD,
+                useClass: ThrottlerGuard,
+              },
+            ],
+          })
+          export class AppModule {}
+
+          // ✅ Custom limits per route
+          @Controller('auth')
+          export class AuthController {
+            @Post('login')
+            @Throttle({ default: { ttl: 60000, limit: 5 } }) // Strict for login
+            login(@Body() dto: LoginDto) {
+              return this.authService.login(dto);
+            }
+
+            @Post('register')
+            @Throttle({ default: { ttl: 3600000, limit: 3 } }) // 3 per hour
+            register(@Body() dto: RegisterDto) {
+              return this.authService.register(dto);
+            }
+
+            @Get('me')
+            @SkipThrottle() // No limit for this endpoint
+            getProfile(@CurrentUser() user: User) {
+              return user;
+            }
+          }
+
+          // ✅ Custom throttler with user context
+          @Injectable()
+          export class UserThrottlerGuard extends ThrottlerGuard {
+            protected async getTracker(req: Request): Promise<string> {
+              // Throttle by user ID if authenticated, else by IP
+              return req.user?.id || req.ip;
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ No rate limiting - vulnerable to abuse
+          @Controller('auth')
+          export class AuthController {
+            @Post('login')
+            login(@Body() dto: LoginDto) {
+              return this.authService.login(dto);
+              // Attacker can try unlimited passwords!
+            }
+          }
+      references:
+        - 'https://docs.nestjs.com/security/rate-limiting'
+      tags:
+        - rate-limiting
+        - security
+        - throttling
+
+  # ============================================================================
+  # DATA & DATABASE (NEST019-NEST024)
+  # ============================================================================
+
+  - id: NEST019
+    title: 'Repository Pattern for Data Access'
+    category: architecture
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use the repository pattern to abstract data access logic.
+        Keep services focused on business logic, not database queries.
+      rationale: |
+        Repositories enable easier testing, database switching,
+        and separation of business and data access concerns.
+      good_examples:
+        - |
+          // ✅ Custom repository with domain methods
+          // users.repository.ts
+          import { Injectable } from '@nestjs/common';
+          import { DataSource, Repository } from 'typeorm';
+          import { User } from './entities/user.entity';
+
+          @Injectable()
+          export class UsersRepository extends Repository<User> {
+            constructor(private dataSource: DataSource) {
+              super(User, dataSource.createEntityManager());
+            }
+
+            async findByEmail(email: string): Promise<User | null> {
+              return this.findOne({
+                where: { email },
+                relations: ['profile', 'roles'],
+              });
+            }
+
+            async findActiveUsers(options: {
+              page: number;
+              limit: number;
+            }): Promise<[User[], number]> {
+              return this.findAndCount({
+                where: { isActive: true },
+                skip: (options.page - 1) * options.limit,
+                take: options.limit,
+                order: { createdAt: 'DESC' },
+              });
+            }
+
+            async deactivateUser(id: string): Promise<void> {
+              await this.update(id, {
+                isActive: false,
+                deactivatedAt: new Date()
+              });
+            }
+          }
+
+          // ✅ Service uses repository
+          @Injectable()
+          export class UsersService {
+            constructor(private usersRepository: UsersRepository) {}
+
+            async findByEmail(email: string): Promise<User> {
+              const user = await this.usersRepository.findByEmail(email);
+              if (!user) {
+                throw new NotFoundException('User not found');
+              }
+              return user;
+            }
+
+            async deactivate(id: string, reason: string): Promise<void> {
+              // Business logic
+              await this.sendDeactivationEmail(id);
+              await this.cancelSubscriptions(id);
+              await this.usersRepository.deactivateUser(id);
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Query builder in service
+          @Injectable()
+          export class UsersService {
+            constructor(
+              @InjectRepository(User)
+              private repository: Repository<User>,
+            ) {}
+
+            async findActiveUsers() {
+              // Complex queries mixed with business logic
+              return this.repository
+                .createQueryBuilder('user')
+                .leftJoinAndSelect('user.profile', 'profile')
+                .where('user.isActive = :active', { active: true })
+                .andWhere('user.deletedAt IS NULL')
+                .orderBy('user.createdAt', 'DESC')
+                .getMany();
+            }
+          }
+      references:
+        - 'https://docs.nestjs.com/techniques/database#custom-repository'
+      tags:
+        - repository
+        - data-access
+        - architecture
+
+  - id: NEST020
+    title: 'Database Transactions'
+    category: database
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use transactions for operations that must succeed or fail together.
+        Ensure proper rollback on errors.
+      rationale: |
+        Transactions maintain data integrity by ensuring atomic operations.
+        Without them, partial failures leave data in inconsistent states.
+      good_examples:
+        - |
+          import { DataSource, QueryRunner } from 'typeorm';
+
+          @Injectable()
+          export class OrdersService {
+            constructor(private dataSource: DataSource) {}
+
+            async createOrder(dto: CreateOrderDto): Promise<Order> {
+              const queryRunner = this.dataSource.createQueryRunner();
+              await queryRunner.connect();
+              await queryRunner.startTransaction();
+
+              try {
+                // 1. Create order
+                const order = await queryRunner.manager.save(Order, {
+                  customerId: dto.customerId,
+                  status: OrderStatus.PENDING,
+                });
+
+                // 2. Create order items and update inventory
+                for (const item of dto.items) {
+                  await queryRunner.manager.save(OrderItem, {
+                    orderId: order.id,
+                    productId: item.productId,
+                    quantity: item.quantity,
+                  });
+
+                  await queryRunner.manager.decrement(
+                    Product,
+                    { id: item.productId },
+                    'stock',
+                    item.quantity,
+                  );
+                }
+
+                // 3. Process payment
+                await this.paymentsService.charge(order.total, queryRunner);
+
+                await queryRunner.commitTransaction();
+                return order;
+
+              } catch (error) {
+                await queryRunner.rollbackTransaction();
+                throw error;
+
+              } finally {
+                await queryRunner.release();
+              }
+            }
+          }
+
+          // ✅ Using @Transaction decorator (TypeORM)
+          @Injectable()
+          export class TransferService {
+            @Transaction()
+            async transfer(
+              @TransactionManager() manager: EntityManager,
+              from: string,
+              to: string,
+              amount: number,
+            ): Promise<void> {
+              await manager.decrement(Account, { id: from }, 'balance', amount);
+              await manager.increment(Account, { id: to }, 'balance', amount);
+              await manager.save(Transfer, { from, to, amount });
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ No transaction - partial failures corrupt data
+          async createOrder(dto: CreateOrderDto): Promise<Order> {
+            const order = await this.ordersRepository.save({...});
+
+            for (const item of dto.items) {
+              await this.orderItemsRepository.save({...});
+              await this.productsRepository.decrement(/* ... */);
+              // If payment fails, inventory is already decremented!
+            }
+
+            await this.paymentsService.charge(order.total);
+            // If this fails, order exists but not paid
+          }
+      references:
+        - 'https://typeorm.io/transactions'
+      tags:
+        - transactions
+        - database
+        - data-integrity
+
+  - id: NEST021
+    title: 'Pagination Best Practices'
+    category: api_design
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Implement consistent pagination across all list endpoints.
+        Return metadata including total count, page info, and navigation.
+      rationale: |
+        Proper pagination improves performance, provides better UX,
+        and prevents loading excessive data.
+      good_examples:
+        - |
+          // ✅ Pagination DTO
+          export class PaginationDto {
+            @IsOptional()
+            @Type(() => Number)
+            @IsInt()
+            @Min(1)
+            page: number = 1;
+
+            @IsOptional()
+            @Type(() => Number)
+            @IsInt()
+            @Min(1)
+            @Max(100)
+            limit: number = 20;
+          }
+
+          // ✅ Paginated response interface
+          export interface PaginatedResponse<T> {
+            data: T[];
+            meta: {
+              total: number;
+              page: number;
+              limit: number;
+              totalPages: number;
+              hasNextPage: boolean;
+              hasPrevPage: boolean;
+            };
+          }
+
+          // ✅ Pagination helper
+          export function paginate<T>(
+            data: T[],
+            total: number,
+            page: number,
+            limit: number,
+          ): PaginatedResponse<T> {
+            const totalPages = Math.ceil(total / limit);
+
+            return {
+              data,
+              meta: {
+                total,
+                page,
+                limit,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+              },
+            };
+          }
+
+          // ✅ Usage in service
+          @Injectable()
+          export class ProductsService {
+            async findAll(pagination: PaginationDto): Promise<PaginatedResponse<Product>> {
+              const [products, total] = await this.repository.findAndCount({
+                skip: (pagination.page - 1) * pagination.limit,
+                take: pagination.limit,
+                order: { createdAt: 'DESC' },
+              });
+
+              return paginate(products, total, pagination.page, pagination.limit);
+            }
+          }
+
+          // ✅ Controller with cursor pagination for large datasets
+          @Get('feed')
+          async getFeed(
+            @Query('cursor') cursor?: string,
+            @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+          ) {
+            return this.postsService.getFeed({ cursor, limit });
+          }
+      bad_examples:
+        - |
+          // ❌ No pagination - returns everything
+          @Get()
+          async findAll(): Promise<Product[]> {
+            return this.productsRepository.find();
+            // Returns 1M+ products!
+          }
+
+          // ❌ Inconsistent pagination response
+          @Get()
+          async findAll(@Query() query: any): Promise<any> {
+            const products = await this.repository.find({
+              skip: query.offset,
+              take: query.size,
+            });
+            return { items: products }; // No meta info!
+          }
+      tags:
+        - pagination
+        - api-design
+        - performance
+
+  - id: NEST022
+    title: 'Soft Deletes for Data Retention'
+    category: database
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use soft deletes for important data that may need recovery.
+        Filter soft-deleted records in queries by default.
+      rationale: |
+        Soft deletes allow data recovery, maintain referential integrity,
+        and support audit requirements.
+      good_examples:
+        - |
+          // ✅ Entity with soft delete
+          @Entity()
+          export class User {
+            @PrimaryGeneratedColumn('uuid')
+            id: string;
+
+            @Column()
+            email: string;
+
+            @DeleteDateColumn()
+            deletedAt: Date | null;
+
+            @Column({ default: false })
+            isDeleted: boolean;
+          }
+
+          // ✅ Repository with soft delete support
+          @Injectable()
+          export class UsersRepository extends Repository<User> {
+            // Normal queries exclude soft-deleted by default
+            async findActive(): Promise<User[]> {
+              return this.find({
+                where: { deletedAt: IsNull() }
+              });
+            }
+
+            // Include soft-deleted for admin views
+            async findAllIncludingDeleted(): Promise<User[]> {
+              return this.find({ withDeleted: true });
+            }
+
+            // Soft delete
+            async softRemove(id: string): Promise<void> {
+              await this.softDelete(id);
+            }
+
+            // Restore soft-deleted record
+            async restore(id: string): Promise<void> {
+              await this.restore(id);
+            }
+
+            // Hard delete (permanent)
+            async hardDelete(id: string): Promise<void> {
+              await this.delete(id);
+            }
+          }
+
+          // ✅ Service with delete options
+          @Injectable()
+          export class UsersService {
+            async deleteUser(id: string, permanent = false): Promise<void> {
+              if (permanent) {
+                // Only admins can permanently delete
+                await this.repository.hardDelete(id);
+              } else {
+                await this.repository.softRemove(id);
+              }
+            }
+
+            async restoreUser(id: string): Promise<User> {
+              await this.repository.restore(id);
+              return this.repository.findOne({
+                where: { id },
+                withDeleted: true
+              });
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Hard delete - data is gone forever
+          async deleteUser(id: string): Promise<void> {
+            await this.repository.delete(id);
+            // Can't recover! Breaks foreign key references!
+          }
+
+          // ❌ Manual soft delete without proper filtering
+          async deleteUser(id: string): Promise<void> {
+            await this.repository.update(id, { deleted: true });
+          }
+
+          async findAll(): Promise<User[]> {
+            return this.repository.find();
+            // Returns deleted users too!
+          }
+      references:
+        - 'https://typeorm.io/delete-query-builder#soft-delete'
+      tags:
+        - soft-delete
+        - database
+        - data-retention
+
+  - id: NEST023
+    title: 'Database Query Optimization'
+    category: performance
+    level: advanced
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Optimize database queries with proper indexing, selective loading,
+        and avoiding N+1 problems.
+      rationale: |
+        Unoptimized queries cause performance degradation, especially
+        as data grows. N+1 queries are a common and costly mistake.
+      good_examples:
+        - |
+          // ✅ Select only needed columns
+          async findUsersForList(): Promise<UserListItem[]> {
+            return this.repository
+              .createQueryBuilder('user')
+              .select(['user.id', 'user.name', 'user.email'])
+              .where('user.isActive = :active', { active: true })
+              .getMany();
+          }
+
+          // ✅ Eager load relations to avoid N+1
+          async findOrdersWithItems(userId: string): Promise<Order[]> {
+            return this.repository.find({
+              where: { userId },
+              relations: ['items', 'items.product'], // Load in single query
+            });
+          }
+
+          // ✅ Use QueryBuilder for complex joins
+          async findOrderStats(userId: string): Promise<OrderStats> {
+            return this.repository
+              .createQueryBuilder('order')
+              .select('COUNT(*)', 'totalOrders')
+              .addSelect('SUM(order.total)', 'totalSpent')
+              .addSelect('AVG(order.total)', 'averageOrderValue')
+              .where('order.userId = :userId', { userId })
+              .andWhere('order.status = :status', { status: 'completed' })
+              .getRawOne();
+          }
+
+          // ✅ Batch operations instead of loops
+          async updateManyStatuses(ids: string[], status: string): Promise<void> {
+            await this.repository
+              .createQueryBuilder()
+              .update(Order)
+              .set({ status })
+              .whereInIds(ids)
+              .execute();
+          }
+
+          // ✅ Index for common queries (in entity)
+          @Entity()
+          @Index(['email'], { unique: true })
+          @Index(['status', 'createdAt'])
+          @Index(['userId', 'status'])
+          export class Order {
+            // ...
+          }
+      bad_examples:
+        - |
+          // ❌ N+1 queries - 1 query per order
+          async getOrdersWithProducts(userId: string) {
+            const orders = await this.ordersRepository.find({ userId });
+
+            for (const order of orders) {
+              // N additional queries!
+              order.items = await this.itemsRepository.find({ orderId: order.id });
+              for (const item of order.items) {
+                // N*M more queries!
+                item.product = await this.productsRepository.findOne(item.productId);
+              }
+            }
+            return orders;
+          }
+
+          // ❌ Select * when only id/name needed
+          async getUserNames(): Promise<string[]> {
+            const users = await this.repository.find(); // Loads ALL columns
+            return users.map(u => u.name);
+          }
+      tags:
+        - performance
+        - database
+        - optimization
+
+  - id: NEST024
+    title: 'Database Migrations'
+    category: database
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use database migrations for schema changes. Never use synchronize
+        in production. Keep migrations reversible.
+      rationale: |
+        Migrations provide version-controlled, reproducible schema changes.
+        Synchronize can cause data loss in production.
+      good_examples:
+        - |
+          // ✅ TypeORM configuration
+          // typeorm.config.ts
+          export const typeOrmConfig: TypeOrmModuleOptions = {
+            type: 'postgres',
+            host: process.env.DB_HOST,
+            // ...
+            synchronize: false, // ALWAYS false in production!
+            migrations: ['dist/migrations/*.js'],
+            migrationsRun: true, // Auto-run pending migrations
+          };
+
+          // ✅ Migration with up and down
+          // migrations/1707234567890-AddUserProfile.ts
+          export class AddUserProfile1707234567890 implements MigrationInterface {
+            public async up(queryRunner: QueryRunner): Promise<void> {
+              await queryRunner.createTable(new Table({
+                name: 'user_profile',
+                columns: [
+                  {
+                    name: 'id',
+                    type: 'uuid',
+                    isPrimary: true,
+                    generationStrategy: 'uuid',
+                    default: 'uuid_generate_v4()',
+                  },
+                  {
+                    name: 'user_id',
+                    type: 'uuid',
+                  },
+                  {
+                    name: 'bio',
+                    type: 'text',
+                    isNullable: true,
+                  },
+                  {
+                    name: 'avatar_url',
+                    type: 'varchar',
+                    isNullable: true,
+                  },
+                ],
+              }));
+
+              await queryRunner.createForeignKey('user_profile', new ForeignKey({
+                columnNames: ['user_id'],
+                referencedTableName: 'users',
+                referencedColumnNames: ['id'],
+                onDelete: 'CASCADE',
+              }));
+            }
+
+            public async down(queryRunner: QueryRunner): Promise<void> {
+              await queryRunner.dropTable('user_profile');
+            }
+          }
+
+          // ✅ Data migration (careful with large datasets)
+          export class MigrateUserRoles1707234567891 implements MigrationInterface {
+            public async up(queryRunner: QueryRunner): Promise<void> {
+              // Batch update to avoid locking
+              await queryRunner.query(`
+                UPDATE users
+                SET role = 'user'
+                WHERE role IS NULL
+              `);
+            }
+
+            public async down(queryRunner: QueryRunner): Promise<void> {
+              // Reversible
+              await queryRunner.query(`
+                UPDATE users
+                SET role = NULL
+                WHERE role = 'user'
+              `);
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Synchronize in production
+          TypeOrmModule.forRoot({
+            synchronize: true, // DANGEROUS in production!
+            // Can drop columns/tables with data!
+          });
+
+          // ❌ Non-reversible migration
+          export class BadMigration implements MigrationInterface {
+            public async up(queryRunner: QueryRunner): Promise<void> {
+              await queryRunner.query(`DROP TABLE old_users`);
+              // Data is gone forever!
+            }
+
+            public async down(queryRunner: QueryRunner): Promise<void> {
+              // Can't recover dropped table!
+            }
+          }
+      references:
+        - 'https://typeorm.io/migrations'
+      tags:
+        - migrations
+        - database
+        - schema
+
+  # ============================================================================
+  # TESTING & QUALITY (NEST025-NEST030)
+  # ============================================================================
+
+  - id: NEST025
+    title: 'Unit Testing Services'
+    category: testing
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Unit test services by mocking dependencies. Use NestJS testing
+        utilities for proper DI setup.
+      rationale: |
+        Unit tests verify business logic in isolation, run fast,
+        and catch regressions early.
+      good_examples:
+        - |
+          // ✅ Service unit test with mocks
+          import { Test, TestingModule } from '@nestjs/testing';
+          import { UsersService } from './users.service';
+          import { UsersRepository } from './users.repository';
+          import { NotFoundException } from '@nestjs/common';
+
+          describe('UsersService', () => {
+            let service: UsersService;
+            let repository: jest.Mocked<UsersRepository>;
+
+            beforeEach(async () => {
+              const module: TestingModule = await Test.createTestingModule({
+                providers: [
+                  UsersService,
+                  {
+                    provide: UsersRepository,
+                    useValue: {
+                      findOne: jest.fn(),
+                      findByEmail: jest.fn(),
+                      save: jest.fn(),
+                      update: jest.fn(),
+                    },
+                  },
+                ],
+              }).compile();
+
+              service = module.get<UsersService>(UsersService);
+              repository = module.get(UsersRepository);
+            });
+
+            describe('findById', () => {
+              it('should return user when found', async () => {
+                const user = { id: '1', email: 'test@example.com' };
+                repository.findOne.mockResolvedValue(user);
+
+                const result = await service.findById('1');
+
+                expect(result).toEqual(user);
+                expect(repository.findOne).toHaveBeenCalledWith({
+                  where: { id: '1' },
+                });
+              });
+
+              it('should throw NotFoundException when user not found', async () => {
+                repository.findOne.mockResolvedValue(null);
+
+                await expect(service.findById('1')).rejects.toThrow(
+                  NotFoundException,
+                );
+              });
+            });
+
+            describe('create', () => {
+              it('should create user with hashed password', async () => {
+                const dto = { email: 'test@example.com', password: 'secret' };
+                const savedUser = { id: '1', ...dto, password: 'hashed' };
+
+                repository.findByEmail.mockResolvedValue(null);
+                repository.save.mockResolvedValue(savedUser);
+
+                const result = await service.create(dto);
+
+                expect(result.password).not.toBe('secret');
+                expect(repository.save).toHaveBeenCalled();
+              });
+
+              it('should throw ConflictException if email exists', async () => {
+                repository.findByEmail.mockResolvedValue({ id: '1' });
+
+                await expect(
+                  service.create({ email: 'test@example.com', password: 'secret' }),
+                ).rejects.toThrow(ConflictException);
+              });
+            });
+          });
+      bad_examples:
+        - |
+          // ❌ Testing with real database
+          describe('UsersService', () => {
+            it('should find user', async () => {
+              // Uses real DB - slow, flaky, requires setup
+              const service = new UsersService(realRepository);
+              const user = await service.findById('1');
+            });
+          });
+
+          // ❌ Not testing edge cases
+          describe('UsersService', () => {
+            it('should work', async () => {
+              const result = await service.findAll();
+              expect(result).toBeDefined(); // Useless assertion
+            });
+          });
+      references:
+        - 'https://docs.nestjs.com/fundamentals/testing'
+      tags:
+        - testing
+        - unit-tests
+        - mocking
+
+  - id: NEST026
+    title: 'Integration Testing with Database'
+    category: testing
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Write integration tests that verify components work together.
+        Use test database and clean up between tests.
+      rationale: |
+        Integration tests catch issues that unit tests miss, like
+        incorrect queries, transaction problems, and ORM mappings.
+      good_examples:
+        - |
+          // ✅ Integration test setup
+          import { Test, TestingModule } from '@nestjs/testing';
+          import { INestApplication } from '@nestjs/common';
+          import { TypeOrmModule } from '@nestjs/typeorm';
+          import * as request from 'supertest';
+
+          describe('UsersController (e2e)', () => {
+            let app: INestApplication;
+            let repository: Repository<User>;
+
+            beforeAll(async () => {
+              const module: TestingModule = await Test.createTestingModule({
+                imports: [
+                  TypeOrmModule.forRoot({
+                    type: 'postgres',
+                    host: 'localhost',
+                    database: 'test_db',
+                    synchronize: true, // OK for test DB
+                    dropSchema: true,  // Clean slate each run
+                    entities: [User],
+                  }),
+                  UsersModule,
+                ],
+              }).compile();
+
+              app = module.createNestApplication();
+              app.useGlobalPipes(new ValidationPipe());
+              await app.init();
+
+              repository = module.get(getRepositoryToken(User));
+            });
+
+            afterAll(async () => {
+              await app.close();
+            });
+
+            beforeEach(async () => {
+              await repository.clear(); // Clean between tests
+            });
+
+            describe('POST /users', () => {
+              it('should create user', async () => {
+                const response = await request(app.getHttpServer())
+                  .post('/users')
+                  .send({
+                    email: 'test@example.com',
+                    password: 'Password123!',
+                    name: 'Test User',
+                  })
+                  .expect(201);
+
+                expect(response.body.email).toBe('test@example.com');
+                expect(response.body.password).toBeUndefined(); // Not exposed
+
+                // Verify in database
+                const user = await repository.findOne({
+                  where: { email: 'test@example.com' },
+                });
+                expect(user).toBeDefined();
+              });
+
+              it('should validate email format', async () => {
+                await request(app.getHttpServer())
+                  .post('/users')
+                  .send({ email: 'invalid', password: 'Password123!' })
+                  .expect(400);
+              });
+
+              it('should reject duplicate email', async () => {
+                await repository.save({
+                  email: 'test@example.com',
+                  password: 'hashed'
+                });
+
+                await request(app.getHttpServer())
+                  .post('/users')
+                  .send({ email: 'test@example.com', password: 'Password123!' })
+                  .expect(409);
+              });
+            });
+          });
+      bad_examples:
+        - |
+          // ❌ Tests affect each other
+          describe('Users', () => {
+            it('creates user', async () => {
+              await request(app.getHttpServer())
+                .post('/users')
+                .send({ email: 'test@example.com' });
+            });
+
+            it('lists users', async () => {
+              const response = await request(app.getHttpServer())
+                .get('/users');
+              // Fails if run alone, passes if previous test ran!
+            });
+          });
+      tags:
+        - testing
+        - integration-tests
+        - e2e
+
+  - id: NEST027
+    title: 'Configuration Validation'
+    category: configuration
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Validate configuration at startup using class-validator or Joi.
+        Fail fast if required configuration is missing.
+      rationale: |
+        Startup validation catches configuration errors immediately,
+        not at runtime when the config is first used.
+      good_examples:
+        - |
+          // ✅ Configuration validation with Joi
+          import * as Joi from 'joi';
+
+          @Module({
+            imports: [
+              ConfigModule.forRoot({
+                validationSchema: Joi.object({
+                  NODE_ENV: Joi.string()
+                    .valid('development', 'production', 'test')
+                    .default('development'),
+                  PORT: Joi.number().default(3000),
+                  DATABASE_URL: Joi.string().required(),
+                  JWT_SECRET: Joi.string().min(32).required(),
+                  JWT_EXPIRATION: Joi.string().default('1d'),
+                  REDIS_URL: Joi.string().when('NODE_ENV', {
+                    is: 'production',
+                    then: Joi.required(),
+                    otherwise: Joi.optional(),
+                  }),
+                }),
+                validationOptions: {
+                  abortEarly: true, // Fail on first error
+                },
+              }),
+            ],
+          })
+          export class AppModule {}
+
+          // ✅ Type-safe configuration class
+          import { IsString, IsNumber, IsOptional, Min, validateSync } from 'class-validator';
+          import { plainToInstance } from 'class-transformer';
+
+          export class EnvironmentVariables {
+            @IsString()
+            NODE_ENV: string;
+
+            @IsNumber()
+            @Min(1)
+            PORT: number;
+
+            @IsString()
+            DATABASE_URL: string;
+
+            @IsString()
+            JWT_SECRET: string;
+
+            @IsOptional()
+            @IsString()
+            REDIS_URL?: string;
+          }
+
+          export function validate(config: Record<string, unknown>) {
+            const validatedConfig = plainToInstance(EnvironmentVariables, config, {
+              enableImplicitConversion: true,
+            });
+
+            const errors = validateSync(validatedConfig, {
+              skipMissingProperties: false,
+            });
+
+            if (errors.length > 0) {
+              throw new Error(errors.toString());
+            }
+
+            return validatedConfig;
+          }
+
+          // Usage
+          ConfigModule.forRoot({ validate });
+      bad_examples:
+        - |
+          // ❌ No validation - crashes at runtime
+          @Injectable()
+          export class DatabaseService {
+            constructor(private config: ConfigService) {
+              // Crashes here if DATABASE_URL not set
+              const url = this.config.get<string>('DATABASE_URL');
+              this.connect(url);
+            }
+          }
+
+          // ❌ Unsafe type casting
+          const port = process.env.PORT as unknown as number;
+          // Actually a string! Math operations will fail
+      references:
+        - 'https://docs.nestjs.com/techniques/configuration#schema-validation'
+      tags:
+        - configuration
+        - validation
+        - fail-fast
+
+  - id: NEST028
+    title: 'Health Checks'
+    category: monitoring
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Implement health check endpoints for monitoring service health.
+        Check database, cache, and external service connections.
+      rationale: |
+        Health checks enable load balancers and orchestrators to detect
+        unhealthy instances and route traffic appropriately.
+      good_examples:
+        - |
+          // ✅ Health check module
+          import {
+            HealthCheckService, HttpHealthIndicator,
+            TypeOrmHealthIndicator, MemoryHealthIndicator
+          } from '@nestjs/terminus';
+
+          @Controller('health')
+          export class HealthController {
+            constructor(
+              private health: HealthCheckService,
+              private http: HttpHealthIndicator,
+              private db: TypeOrmHealthIndicator,
+              private memory: MemoryHealthIndicator,
+            ) {}
+
+            @Get()
+            @HealthCheck()
+            check() {
+              return this.health.check([
+                // Database connection
+                () => this.db.pingCheck('database'),
+
+                // Memory usage
+                () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024),
+                () => this.memory.checkRSS('memory_rss', 500 * 1024 * 1024),
+
+                // External service
+                () => this.http.pingCheck('api', 'https://api.example.com/health'),
+              ]);
+            }
+
+            // Kubernetes liveness probe
+            @Get('live')
+            @HealthCheck()
+            live() {
+              return this.health.check([]);
+            }
+
+            // Kubernetes readiness probe
+            @Get('ready')
+            @HealthCheck()
+            ready() {
+              return this.health.check([
+                () => this.db.pingCheck('database'),
+              ]);
+            }
+          }
+
+          // ✅ Custom health indicator
+          @Injectable()
+          export class RedisHealthIndicator extends HealthIndicator {
+            constructor(private redis: Redis) {
+              super();
+            }
+
+            async isHealthy(key: string): Promise<HealthIndicatorResult> {
+              try {
+                await this.redis.ping();
+                return this.getStatus(key, true);
+              } catch (e) {
+                return this.getStatus(key, false, { message: e.message });
+              }
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ No health checks - can't monitor service
+          // Load balancer keeps sending traffic to dead instance
+
+          // ❌ Health check that always passes
+          @Get('health')
+          health() {
+            return { status: 'ok' }; // Doesn't check actual health!
+          }
+      references:
+        - 'https://docs.nestjs.com/recipes/terminus'
+      tags:
+        - health-checks
+        - monitoring
+        - kubernetes
+
+  - id: NEST029
+    title: 'Structured Logging'
+    category: monitoring
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Use structured logging with correlation IDs for request tracing.
+        Log in JSON format for easy parsing by log aggregators.
+      rationale: |
+        Structured logs enable efficient searching, filtering, and
+        alerting. Correlation IDs help trace requests across services.
+      good_examples:
+        - |
+          // ✅ Custom logger with correlation ID
+          import { Injectable, LoggerService, Scope, Inject } from '@nestjs/common';
+          import { REQUEST } from '@nestjs/core';
+          import { Request } from 'express';
+          import * as winston from 'winston';
+
+          @Injectable({ scope: Scope.REQUEST })
+          export class AppLogger implements LoggerService {
+            private logger: winston.Logger;
+            private correlationId: string;
+
+            constructor(@Inject(REQUEST) private request: Request) {
+              this.correlationId = request.headers['x-correlation-id'] as string
+                || crypto.randomUUID();
+
+              this.logger = winston.createLogger({
+                format: winston.format.combine(
+                  winston.format.timestamp(),
+                  winston.format.json(),
+                ),
+                defaultMeta: {
+                  correlationId: this.correlationId,
+                  service: 'orders-api',
+                },
+                transports: [
+                  new winston.transports.Console(),
+                ],
+              });
+            }
+
+            log(message: string, context?: Record<string, any>) {
+              this.logger.info(message, context);
+            }
+
+            error(message: string, trace?: string, context?: Record<string, any>) {
+              this.logger.error(message, { trace, ...context });
+            }
+
+            warn(message: string, context?: Record<string, any>) {
+              this.logger.warn(message, context);
+            }
+          }
+
+          // ✅ Usage in service
+          @Injectable()
+          export class OrdersService {
+            constructor(private logger: AppLogger) {}
+
+            async createOrder(dto: CreateOrderDto): Promise<Order> {
+              this.logger.log('Creating order', {
+                customerId: dto.customerId,
+                itemCount: dto.items.length,
+              });
+
+              try {
+                const order = await this.process(dto);
+                this.logger.log('Order created', { orderId: order.id });
+                return order;
+              } catch (error) {
+                this.logger.error('Order creation failed', error.stack, {
+                  customerId: dto.customerId,
+                  error: error.message,
+                });
+                throw error;
+              }
+            }
+          }
+
+          // Output example:
+          // {
+          //   "timestamp": "2024-01-15T10:30:00.000Z",
+          //   "level": "info",
+          //   "message": "Order created",
+          //   "correlationId": "abc-123",
+          //   "service": "orders-api",
+          //   "orderId": "order-456"
+          // }
+      bad_examples:
+        - |
+          // ❌ Unstructured console.log
+          console.log('Creating order for customer ' + customerId);
+          // Can't search, filter, or parse
+
+          // ❌ Logging sensitive data
+          this.logger.log('User login', { email, password }); // NEVER!
+      tags:
+        - logging
+        - monitoring
+        - observability
+
+  - id: NEST030
+    title: 'Graceful Shutdown'
+    category: reliability
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nestjs
+    content:
+      description: |
+        Implement graceful shutdown to complete in-flight requests and
+        close connections properly before terminating.
+      rationale: |
+        Graceful shutdown prevents data corruption, ensures transactions
+        complete, and provides better user experience during deployments.
+      good_examples:
+        - |
+          // ✅ Enable shutdown hooks in main.ts
+          async function bootstrap() {
+            const app = await NestFactory.create(AppModule);
+
+            // Enable graceful shutdown
+            app.enableShutdownHooks();
+
+            await app.listen(3000);
+          }
+
+          // ✅ Service with cleanup on shutdown
+          import { Injectable, OnModuleDestroy, OnApplicationShutdown } from '@nestjs/common';
+
+          @Injectable()
+          export class DatabaseService implements OnModuleDestroy, OnApplicationShutdown {
+            private connections: Connection[] = [];
+
+            async onModuleDestroy() {
+              // Called when module is being destroyed
+              console.log('DatabaseService: Module destroying');
+            }
+
+            async onApplicationShutdown(signal?: string) {
+              // Called when app receives termination signal
+              console.log(`Application shutting down: ${signal}`);
+
+              // Close all database connections
+              await Promise.all(
+                this.connections.map(conn => conn.close())
+              );
+
+              console.log('All connections closed');
+            }
+          }
+
+          // ✅ Queue processor with graceful shutdown
+          @Injectable()
+          export class QueueProcessor implements OnApplicationShutdown {
+            private isShuttingDown = false;
+
+            async onApplicationShutdown(signal?: string) {
+              this.isShuttingDown = true;
+
+              // Wait for current jobs to complete (max 30s)
+              const timeout = setTimeout(() => {
+                console.error('Shutdown timeout, forcing exit');
+                process.exit(1);
+              }, 30000);
+
+              await this.waitForJobsToComplete();
+              clearTimeout(timeout);
+            }
+
+            private async waitForJobsToComplete(): Promise<void> {
+              while (this.activeJobs > 0) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+            }
+
+            async processJob(job: Job) {
+              if (this.isShuttingDown) {
+                // Reject new jobs during shutdown
+                throw new Error('Service is shutting down');
+              }
+
+              this.activeJobs++;
+              try {
+                await this.doWork(job);
+              } finally {
+                this.activeJobs--;
+              }
+            }
+          }
+
+          // ✅ Health check returns unhealthy during shutdown
+          @Injectable()
+          export class ShutdownAwareHealthIndicator extends HealthIndicator
+            implements OnApplicationShutdown {
+            private isShuttingDown = false;
+
+            onApplicationShutdown() {
+              this.isShuttingDown = true;
+            }
+
+            async isHealthy(key: string): Promise<HealthIndicatorResult> {
+              if (this.isShuttingDown) {
+                throw new HealthCheckError('Shutting down', {});
+              }
+              return this.getStatus(key, true);
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ No shutdown handling - connections leak
+          @Injectable()
+          export class DatabaseService {
+            private connection: Connection;
+
+            async connect() {
+              this.connection = await createConnection();
+            }
+            // Connection never closed on shutdown!
+          }
+
+          // ❌ Abrupt process exit
+          process.on('SIGTERM', () => {
+            process.exit(0); // Kills in-flight requests!
+          });
+      references:
+        - 'https://docs.nestjs.com/fundamentals/lifecycle-events'
+      tags:
+        - shutdown
+        - reliability
+        - deployment

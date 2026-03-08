@@ -1,0 +1,1049 @@
+# Remix / React Router v7 Framework Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.61 - Remix Framework Support
+# Practice IDs: REMIX001-REMIX050
+# Coverage: Routes, Loaders, Actions, Forms, Meta, Error Handling,
+#           Sessions, Performance, TypeScript, Patterns
+# Versions: Remix v1.x, Remix v2.x, React Router v7 (framework mode)
+# Library: https://remix.run / https://reactrouter.com
+
+practices:
+  # ============================================================================
+  # REMIX ROUTES (REMIX001-REMIX005) - Routing best practices
+  # ============================================================================
+
+  - id: REMIX001
+    title: "Use file-based routing with flat route convention"
+    description: "Organize routes using Remix v2 flat route convention where dots (.) represent nested layouts and filenames map to URL segments. Use _index for index routes and $ prefix for dynamic params."
+    category: "remix_routes"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "routing", "file-based", "flat-routes"]
+    example: |
+      // app/routes/_index.tsx        → /
+      // app/routes/about.tsx          → /about
+      // app/routes/blog._index.tsx    → /blog
+      // app/routes/blog.$slug.tsx     → /blog/:slug
+      // app/routes/blog_.tags.tsx     → /blog/tags (escapes blog layout)
+      // app/routes/_auth.login.tsx    → /login (pathless layout group)
+
+  - id: REMIX002
+    title: "Use layout routes with Outlet for shared UI"
+    description: "Create layout routes to share UI (navigation, sidebars) across child routes. Export a default component with <Outlet /> where child content renders. Use pathless layouts (_prefix) for grouping without URL segments."
+    category: "remix_routes"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "layout", "outlet", "nested-routing"]
+    example: |
+      // app/routes/_dashboard.tsx (pathless layout)
+      import { Outlet } from '@remix-run/react';
+      export default function DashboardLayout() {
+        return (
+          <div className="flex">
+            <Sidebar />
+            <main><Outlet /></main>
+          </div>
+        );
+      }
+
+  - id: REMIX003
+    title: "Define routes explicitly with routes.ts in React Router v7"
+    description: "In React Router v7, use app/routes.ts to define routes programmatically. Use route(), index(), layout(), and prefix() helpers for explicit control over route hierarchy."
+    category: "remix_routes"
+    severity: "important"
+    applicability:
+      frameworks: ["remix", "react-router"]
+    tags: ["remix", "react-router-v7", "routes.ts", "config-routing"]
+    example: |
+      // app/routes.ts
+      import { type RouteConfig, route, index, layout, prefix } from '@react-router/dev/routes';
+      export default [
+        index('routes/home.tsx'),
+        layout('routes/auth-layout.tsx', [
+          route('login', 'routes/login.tsx'),
+          route('register', 'routes/register.tsx'),
+        ]),
+        ...prefix('dashboard', [
+          index('routes/dashboard/index.tsx'),
+          route('settings', 'routes/dashboard/settings.tsx'),
+        ]),
+      ] satisfies RouteConfig;
+
+  - id: REMIX004
+    title: "Use dynamic segments and splat routes for parameterized URLs"
+    description: "Use :param for dynamic segments and * for splat/catch-all routes. Access params via loader/action args or useParams(). Use optional params with :param? in React Router v7."
+    category: "remix_routes"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "dynamic-routes", "params", "splat"]
+    example: |
+      // app/routes/users.$userId.tsx (Remix v2)
+      // or route('users/:userId', 'routes/users.tsx') in RR7
+      import type { Route } from './+types/users.$userId';
+      export async function loader({ params }: Route.LoaderArgs) {
+        const user = await db.user.findUnique({ where: { id: params.userId } });
+        if (!user) throw new Response('Not Found', { status: 404 });
+        return { user };
+      }
+
+  - id: REMIX005
+    title: "Use resource routes for non-UI endpoints"
+    description: "Create resource routes (loader/action without default export) for APIs, webhooks, file downloads, or other non-HTML responses. These routes only run server-side code."
+    category: "remix_routes"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "resource-route", "api", "non-ui"]
+    example: |
+      // app/routes/api.healthcheck.ts (no default export = resource route)
+      import type { LoaderFunctionArgs } from '@remix-run/node';
+      export async function loader({ request }: LoaderFunctionArgs) {
+        const host = request.headers.get('X-Forwarded-Host') ?? request.headers.get('host');
+        const url = new URL('/', `http://${host}`);
+        return new Response('OK');
+      }
+
+  # ============================================================================
+  # REMIX LOADERS (REMIX006-REMIX015) - Data loading best practices
+  # ============================================================================
+
+  - id: REMIX006
+    title: "Export typed loader functions for server-side data fetching"
+    description: "Use the loader export to fetch data on the server. Always type loader args and return data using json() or direct Response. Use useLoaderData() in the component with proper typing."
+    category: "remix_loaders"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "loader", "data-fetching", "server-side"]
+    example: |
+      import type { LoaderFunctionArgs } from '@remix-run/node';
+      import { json } from '@remix-run/node';
+      import { useLoaderData } from '@remix-run/react';
+
+      export async function loader({ request, params }: LoaderFunctionArgs) {
+        const user = await getUser(params.userId);
+        if (!user) throw new Response('Not Found', { status: 404 });
+        return json({ user });
+      }
+
+      export default function UserProfile() {
+        const { user } = useLoaderData<typeof loader>();
+        return <h1>{user.name}</h1>;
+      }
+
+  - id: REMIX007
+    title: "Use defer() with Await and Suspense for streaming data"
+    description: "Use defer() to stream non-critical data, wrapping promises in <Await> with <Suspense> fallback. This improves TTFB by sending the shell immediately while streaming deferred data."
+    category: "remix_loaders"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "defer", "streaming", "suspense", "performance"]
+    example: |
+      import { defer } from '@remix-run/node';
+      import { Await, useLoaderData } from '@remix-run/react';
+      import { Suspense } from 'react';
+
+      export async function loader({ params }: LoaderFunctionArgs) {
+        const criticalData = await getUser(params.id);
+        const deferredData = getRecommendations(params.id); // no await!
+        return defer({ user: criticalData, recommendations: deferredData });
+      }
+
+      export default function Page() {
+        const { user, recommendations } = useLoaderData<typeof loader>();
+        return (
+          <>
+            <h1>{user.name}</h1>
+            <Suspense fallback={<Skeleton />}>
+              <Await resolve={recommendations}>
+                {(recs) => <RecommendationList items={recs} />}
+              </Await>
+            </Suspense>
+          </>
+        );
+      }
+
+  - id: REMIX008
+    title: "Use clientLoader for client-side caching and optimistic data"
+    description: "Export clientLoader to run data fetching in the browser. Call serverLoader() to get server data and cache it locally. Set clientLoader.hydrate = true for SPA-like navigation."
+    category: "remix_loaders"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "clientLoader", "caching", "client-side"]
+    example: |
+      import type { Route } from './+types/product';
+
+      export async function loader({ params }: Route.LoaderArgs) {
+        return { product: await db.product.findUnique({ where: { id: params.id } }) };
+      }
+
+      const cache = new Map();
+      export async function clientLoader({ params, serverLoader }: Route.ClientLoaderArgs) {
+        const cached = cache.get(params.id);
+        if (cached) return cached;
+        const data = await serverLoader();
+        cache.set(params.id, data);
+        return data;
+      }
+      clientLoader.hydrate = true;
+
+  - id: REMIX009
+    title: "Set Cache-Control headers on loader responses"
+    description: "Export a headers function or set Cache-Control directly on json() responses for proper HTTP caching. Use stale-while-revalidate for dynamic content and long max-age for static data."
+    category: "remix_loaders"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "caching", "headers", "performance"]
+    example: |
+      export async function loader({ request }: LoaderFunctionArgs) {
+        const data = await getProducts();
+        return json(data, {
+          headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=300' },
+        });
+      }
+
+      export function headers({ loaderHeaders }: HeadersArgs) {
+        return { 'Cache-Control': loaderHeaders.get('Cache-Control') ?? '' };
+      }
+
+  - id: REMIX010
+    title: "Throw Response objects for expected errors in loaders"
+    description: "Throw Response objects (not Error) for expected error conditions like 404 or 403. These are caught by the nearest ErrorBoundary and rendered with the proper status code."
+    category: "remix_loaders"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "error-handling", "loader", "response"]
+    example: |
+      export async function loader({ params }: LoaderFunctionArgs) {
+        const post = await getPost(params.slug);
+        if (!post) {
+          throw new Response('Not Found', { status: 404 });
+        }
+        const user = await requireUser(request);
+        if (!user.canView(post)) {
+          throw new Response('Forbidden', { status: 403 });
+        }
+        return json({ post });
+      }
+
+  - id: REMIX011
+    title: "Use useFetcher for non-navigation data loading"
+    description: "Use useFetcher() for loading data without navigation (inline forms, search suggestions, polling). It provides .load(), .submit(), .state, and .data without changing the URL."
+    category: "remix_loaders"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "fetcher", "non-navigation", "data-loading"]
+    example: |
+      function SearchCombobox() {
+        const fetcher = useFetcher<typeof searchLoader>();
+        return (
+          <fetcher.Form action="/api/search" method="get">
+            <input
+              name="q"
+              onChange={(e) => fetcher.submit(e.currentTarget.form)}
+            />
+            {fetcher.data?.results.map((r) => <div key={r.id}>{r.name}</div>)}
+          </fetcher.Form>
+        );
+      }
+
+  - id: REMIX012
+    title: "Use Route.LoaderArgs types in React Router v7"
+    description: "In React Router v7, use generated Route types from ./+types/ for fully typed loader/action args and component props. This provides end-to-end type safety."
+    category: "remix_loaders"
+    severity: "important"
+    applicability:
+      frameworks: ["remix", "react-router"]
+    tags: ["remix", "react-router-v7", "typegen", "typescript"]
+    example: |
+      import type { Route } from './+types/product.$id';
+
+      export async function loader({ params }: Route.LoaderArgs) {
+        const product = await getProduct(params.id); // params.id is typed!
+        return { product };
+      }
+
+      export default function Product({ loaderData }: Route.ComponentProps) {
+        return <h1>{loaderData.product.name}</h1>; // fully typed!
+      }
+
+  - id: REMIX013
+    title: "Access parent loader data with useRouteLoaderData or useMatches"
+    description: "Use useRouteLoaderData(routeId) or useMatches() to access data from parent routes. This avoids refetching data that a parent loader already loaded."
+    category: "remix_loaders"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "parent-data", "useMatches", "nested-routing"]
+    example: |
+      // In child route, access root loader data:
+      import { useRouteLoaderData } from '@remix-run/react';
+      function UserBadge() {
+        const rootData = useRouteLoaderData<typeof rootLoader>('root');
+        return rootData?.user ? <span>{rootData.user.name}</span> : null;
+      }
+
+  - id: REMIX014
+    title: "Use shouldRevalidate to optimize data reloading"
+    description: "Export shouldRevalidate to control when a route's loader refetches after navigation or action. Return false to skip unnecessary revalidation and improve performance."
+    category: "remix_loaders"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "revalidation", "performance", "optimization"]
+    example: |
+      export function shouldRevalidate({
+        currentUrl, nextUrl, formAction, defaultShouldRevalidate,
+      }: ShouldRevalidateFunctionArgs) {
+        // Don't revalidate sidebar when only search params change
+        if (currentUrl.pathname === nextUrl.pathname) return false;
+        return defaultShouldRevalidate;
+      }
+
+  - id: REMIX015
+    title: "Use redirect() for post-action navigation"
+    description: "Return redirect() from actions and loaders to navigate the user. Always redirect after successful form submissions to prevent duplicate submissions on refresh."
+    category: "remix_loaders"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "redirect", "post-redirect-get", "navigation"]
+    example: |
+      import { redirect } from '@remix-run/node';
+      export async function action({ request }: ActionFunctionArgs) {
+        const form = await request.formData();
+        const post = await createPost(Object.fromEntries(form));
+        return redirect(`/posts/${post.slug}`);
+      }
+
+  # ============================================================================
+  # REMIX ACTIONS (REMIX016-REMIX020) - Mutation and form handling
+  # ============================================================================
+
+  - id: REMIX016
+    title: "Use action exports for server-side form handling"
+    description: "Export an action function to handle form submissions on the server. Parse form data with request.formData(), validate input, perform mutations, and return json() or redirect()."
+    category: "remix_actions"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "action", "form-handling", "mutations"]
+    example: |
+      export async function action({ request }: ActionFunctionArgs) {
+        const formData = await request.formData();
+        const title = formData.get('title');
+        const body = formData.get('body');
+
+        const errors = {};
+        if (!title) errors.title = 'Title is required';
+        if (!body) errors.body = 'Body is required';
+        if (Object.keys(errors).length) return json({ errors }, { status: 400 });
+
+        const post = await createPost({ title, body });
+        return redirect(`/posts/${post.slug}`);
+      }
+
+  - id: REMIX017
+    title: "Use the intent pattern for multi-action forms"
+    description: "Use a hidden input or button name/value to distinguish between different actions in a single route. Check formData.get('intent') or the button name in the action."
+    category: "remix_actions"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "intent-pattern", "multi-action", "forms"]
+    example: |
+      // Component
+      <Form method="post">
+        <input type="hidden" name="postId" value={post.id} />
+        <button name="intent" value="publish">Publish</button>
+        <button name="intent" value="delete">Delete</button>
+      </Form>
+
+      // Action
+      export async function action({ request }: ActionFunctionArgs) {
+        const form = await request.formData();
+        const intent = form.get('intent');
+        switch (intent) {
+          case 'publish': return publishPost(form.get('postId'));
+          case 'delete': return deletePost(form.get('postId'));
+          default: throw new Response('Invalid intent', { status: 400 });
+        }
+      }
+
+  - id: REMIX018
+    title: "Validate form data with Zod or Conform"
+    description: "Use a validation library like Zod, Yup, or Conform for robust server-side and client-side form validation. Return structured error objects that match form field names."
+    category: "remix_actions"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "validation", "zod", "conform", "forms"]
+    example: |
+      import { z } from 'zod';
+      const schema = z.object({
+        email: z.string().email('Invalid email'),
+        password: z.string().min(8, 'Min 8 characters'),
+      });
+
+      export async function action({ request }: ActionFunctionArgs) {
+        const formData = await request.formData();
+        const result = schema.safeParse(Object.fromEntries(formData));
+        if (!result.success) {
+          return json({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+        }
+        await createUser(result.data);
+        return redirect('/dashboard');
+      }
+
+  - id: REMIX019
+    title: "Use clientAction for optimistic UI updates"
+    description: "Export clientAction alongside action for optimistic updates. Update the UI immediately in clientAction, then call serverAction() to persist. Revert on error."
+    category: "remix_actions"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "clientAction", "optimistic-ui", "ux"]
+    example: |
+      export async function clientAction({ request, serverAction }: Route.ClientActionArgs) {
+        const formData = await request.formData();
+        // Optimistic update
+        updateLocalCache(formData);
+        try {
+          const result = await serverAction();
+          return result;
+        } catch (error) {
+          // Revert optimistic update
+          revertLocalCache();
+          throw error;
+        }
+      }
+
+  - id: REMIX020
+    title: "Use useNavigation for pending UI during form submissions"
+    description: "Use useNavigation() to detect pending form submissions and show loading states. Check navigation.state ('idle' | 'submitting' | 'loading') and navigation.formData for optimistic UI."
+    category: "remix_actions"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "useNavigation", "pending-ui", "loading"]
+    example: |
+      import { useNavigation } from '@remix-run/react';
+      function SubmitButton() {
+        const navigation = useNavigation();
+        const isSubmitting = navigation.state === 'submitting';
+        return (
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Saving...' : 'Save'}
+          </button>
+        );
+      }
+
+  # ============================================================================
+  # REMIX FORMS (REMIX021-REMIX025) - Form component patterns
+  # ============================================================================
+
+  - id: REMIX021
+    title: "Use Remix <Form> instead of HTML <form> for progressive enhancement"
+    description: "Remix <Form> provides client-side navigation on submission while falling back to standard form behavior without JavaScript. Always prefer <Form> over <form> for mutations."
+    category: "remix_forms"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "Form", "progressive-enhancement", "mutations"]
+    example: |
+      import { Form } from '@remix-run/react';
+      function NewPost() {
+        return (
+          <Form method="post" action="/posts">
+            <input name="title" required />
+            <textarea name="body" required />
+            <button type="submit">Create Post</button>
+          </Form>
+        );
+      }
+
+  - id: REMIX022
+    title: "Use fetcher.Form for inline mutations without navigation"
+    description: "Use useFetcher() with <fetcher.Form> for mutations that should not trigger navigation (like/unlike, delete inline, toggle). Access fetcher.state and fetcher.data for local state."
+    category: "remix_forms"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "fetcher", "inline-mutation", "no-navigation"]
+    example: |
+      function LikeButton({ postId }: { postId: string }) {
+        const fetcher = useFetcher();
+        const isLiking = fetcher.state !== 'idle';
+        return (
+          <fetcher.Form method="post" action="/api/like">
+            <input type="hidden" name="postId" value={postId} />
+            <button disabled={isLiking}>
+              {isLiking ? '...' : '❤️'}
+            </button>
+          </fetcher.Form>
+        );
+      }
+
+  - id: REMIX023
+    title: "Use useActionData for displaying server-side validation errors"
+    description: "Access action return data with useActionData() to display validation errors inline with form fields. Pair with json({ errors }) returns from the action."
+    category: "remix_forms"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "useActionData", "validation-errors", "forms"]
+    example: |
+      export default function NewUser() {
+        const actionData = useActionData<typeof action>();
+        return (
+          <Form method="post">
+            <div>
+              <input name="email" />
+              {actionData?.errors?.email && (
+                <span className="error">{actionData.errors.email}</span>
+              )}
+            </div>
+            <button type="submit">Sign Up</button>
+          </Form>
+        );
+      }
+
+  - id: REMIX024
+    title: "Use encType='multipart/form-data' for file uploads"
+    description: "Set encType on <Form> for file uploads. Use unstable_parseMultipartFormData() or unstable_createFileUploadHandler() for server-side file handling."
+    category: "remix_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "file-upload", "multipart", "forms"]
+    example: |
+      <Form method="post" encType="multipart/form-data">
+        <input type="file" name="avatar" accept="image/*" />
+        <button type="submit">Upload</button>
+      </Form>
+
+  - id: REMIX025
+    title: "Use useSubmit for programmatic form submission"
+    description: "Use useSubmit() to submit forms programmatically (auto-save, debounced search, keyboard shortcuts). Pass form data or a FormData object."
+    category: "remix_forms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "useSubmit", "programmatic", "forms"]
+    example: |
+      import { useSubmit } from '@remix-run/react';
+      function SearchInput() {
+        const submit = useSubmit();
+        return (
+          <Form onChange={(e) => submit(e.currentTarget, { replace: true })}>
+            <input type="search" name="q" />
+          </Form>
+        );
+      }
+
+  # ============================================================================
+  # REMIX META (REMIX026-REMIX030) - Meta, links, headers
+  # ============================================================================
+
+  - id: REMIX026
+    title: "Export meta function for route-level SEO metadata"
+    description: "Use the meta export to set title, description, and Open Graph tags per route. In v2, return an array of meta descriptor objects. Use loader data for dynamic meta."
+    category: "remix_meta"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "meta", "seo", "open-graph"]
+    example: |
+      import type { MetaFunction } from '@remix-run/node';
+      export const meta: MetaFunction<typeof loader> = ({ data }) => {
+        return [
+          { title: data?.post?.title ?? 'Blog' },
+          { name: 'description', content: data?.post?.excerpt },
+          { property: 'og:title', content: data?.post?.title },
+          { property: 'og:image', content: data?.post?.image },
+        ];
+      };
+
+  - id: REMIX027
+    title: "Export links function for route-level stylesheets and preloads"
+    description: "Use the links export to add stylesheets, font preloads, and other link tags per route. Remix automatically manages these based on which routes are active."
+    category: "remix_meta"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "links", "stylesheets", "preload"]
+    example: |
+      import type { LinksFunction } from '@remix-run/node';
+      import styles from './dashboard.css?url';
+      export const links: LinksFunction = () => [
+        { rel: 'stylesheet', href: styles },
+        { rel: 'preload', href: '/fonts/inter.woff2', as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' },
+      ];
+
+  - id: REMIX028
+    title: "Use handle export for route-level breadcrumbs and metadata"
+    description: "Export a handle object to expose custom data to useMatches(). Commonly used for breadcrumbs, scroll behavior, or route-level settings accessible from any component."
+    category: "remix_meta"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "handle", "breadcrumbs", "useMatches"]
+    example: |
+      export const handle = {
+        breadcrumb: (match) => <Link to={match.pathname}>Dashboard</Link>,
+        scrollBehavior: 'smooth',
+      };
+
+      // In root or layout:
+      function Breadcrumbs() {
+        const matches = useMatches();
+        return (
+          <nav>
+            {matches.filter(m => m.handle?.breadcrumb).map((m, i) => (
+              <span key={i}>{m.handle.breadcrumb(m)}</span>
+            ))}
+          </nav>
+        );
+      }
+
+  - id: REMIX029
+    title: "Merge parent and child meta with matches parameter"
+    description: "In Remix v2 meta, child routes replace parent meta by default. Use the matches parameter to merge parent meta when needed. Filter out parent title before adding child title."
+    category: "remix_meta"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "meta-merging", "parent-meta", "seo"]
+    example: |
+      export const meta: MetaFunction<typeof loader> = ({ data, matches }) => {
+        const parentMeta = matches.flatMap((m) => m.meta ?? []);
+        // Remove parent title, keep everything else
+        const filtered = parentMeta.filter((m) => !('title' in m));
+        return [
+          ...filtered,
+          { title: `${data.post.title} | My Blog` },
+          { name: 'description', content: data.post.excerpt },
+        ];
+      };
+
+  - id: REMIX030
+    title: "Export headers function for HTTP response headers"
+    description: "Use the headers export to control HTTP headers for a route. Access parent and loader headers to merge Cache-Control, Content-Security-Policy, and other headers."
+    category: "remix_meta"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "headers", "caching", "http"]
+    example: |
+      import type { HeadersFunction } from '@remix-run/node';
+      export const headers: HeadersFunction = ({ loaderHeaders, parentHeaders }) => ({
+        'Cache-Control': loaderHeaders.get('Cache-Control') ?? 'public, max-age=300',
+        'X-Frame-Options': 'DENY',
+      });
+
+  # ============================================================================
+  # REMIX ERROR HANDLING (REMIX031-REMIX035)
+  # ============================================================================
+
+  - id: REMIX031
+    title: "Export ErrorBoundary for route-level error handling"
+    description: "Export an ErrorBoundary component in each route to catch and display errors. Use useRouteError() and isRouteErrorResponse() to differentiate between thrown Responses and unexpected errors."
+    category: "remix_error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "ErrorBoundary", "error-handling", "ux"]
+    example: |
+      import { useRouteError, isRouteErrorResponse } from '@remix-run/react';
+      export function ErrorBoundary() {
+        const error = useRouteError();
+        if (isRouteErrorResponse(error)) {
+          return (
+            <div>
+              <h1>{error.status} {error.statusText}</h1>
+              <p>{error.data}</p>
+            </div>
+          );
+        }
+        return (
+          <div>
+            <h1>Unexpected Error</h1>
+            <p>{error instanceof Error ? error.message : 'Unknown error'}</p>
+          </div>
+        );
+      }
+
+  - id: REMIX032
+    title: "Add ErrorBoundary to root route for global error catching"
+    description: "Always export an ErrorBoundary from root.tsx to catch any unhandled errors. This is your last line of defense and should render a minimal but functional error page."
+    category: "remix_error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "root-error", "global-error", "resilience"]
+    example: |
+      // app/root.tsx
+      export function ErrorBoundary() {
+        const error = useRouteError();
+        return (
+          <html>
+            <head><title>Error</title></head>
+            <body>
+              <h1>Something went wrong</h1>
+              {isRouteErrorResponse(error) ? (
+                <p>{error.status}: {error.data}</p>
+              ) : (
+                <p>An unexpected error occurred. Please try again.</p>
+              )}
+            </body>
+          </html>
+        );
+      }
+
+  - id: REMIX033
+    title: "Use HydrateFallback for client-only routes"
+    description: "Export HydrateFallback to show a loading state while clientLoader.hydrate runs. This prevents layout shift when client loaders need to fetch data before first render."
+    category: "remix_error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "HydrateFallback", "loading", "client-loader"]
+    example: |
+      export function HydrateFallback() {
+        return <div className="skeleton"><LoadingSkeleton /></div>;
+      }
+
+  - id: REMIX034
+    title: "Throw 4xx Responses for expected user errors"
+    description: "Throw Response objects with appropriate HTTP status codes (400, 401, 403, 404) for expected error conditions. Use json() for error bodies. Never expose stack traces to users."
+    category: "remix_error_handling"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "http-errors", "status-codes", "security"]
+    example: |
+      export async function loader({ request }: LoaderFunctionArgs) {
+        const user = await getUser(request);
+        if (!user) throw new Response('Unauthorized', { status: 401 });
+        if (!user.isAdmin) throw json({ message: 'Forbidden' }, { status: 403 });
+        return json({ data: await getAdminData() });
+      }
+
+  - id: REMIX035
+    title: "Log unexpected errors server-side with structured logging"
+    description: "Configure entry.server.tsx to log unexpected errors with request context. Use handleError export for centralized server error logging with services like Sentry."
+    category: "remix_error_handling"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "logging", "monitoring", "entry-server"]
+    example: |
+      // entry.server.tsx
+      export function handleError(error: unknown, { request }: LoaderFunctionArgs) {
+        if (!request.signal.aborted) {
+          console.error(`[${request.method}] ${request.url}`, error);
+          Sentry.captureException(error, { extra: { url: request.url } });
+        }
+      }
+
+  # ============================================================================
+  # REMIX SESSION (REMIX036-REMIX040)
+  # ============================================================================
+
+  - id: REMIX036
+    title: "Use createCookieSessionStorage for session management"
+    description: "Use Remix session utilities for authentication. createCookieSessionStorage is most common. Set secure cookie options (httpOnly, secure, sameSite, maxAge)."
+    category: "remix_session"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "session", "authentication", "cookies"]
+    example: |
+      import { createCookieSessionStorage } from '@remix-run/node';
+      const { getSession, commitSession, destroySession } = createCookieSessionStorage({
+        cookie: {
+          name: '__session',
+          httpOnly: true,
+          maxAge: 60 * 60 * 24 * 7,
+          path: '/',
+          sameSite: 'lax',
+          secrets: [process.env.SESSION_SECRET!],
+          secure: process.env.NODE_ENV === 'production',
+        },
+      });
+      export { getSession, commitSession, destroySession };
+
+  - id: REMIX037
+    title: "Create a requireUser utility for protected routes"
+    description: "Create a shared utility that throws a redirect to login if the user is not authenticated. Use in loader/action functions to protect routes consistently."
+    category: "remix_session"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "auth", "protected-routes", "requireUser"]
+    example: |
+      export async function requireUser(request: Request) {
+        const session = await getSession(request.headers.get('Cookie'));
+        const userId = session.get('userId');
+        if (!userId) throw redirect('/login');
+        const user = await db.user.findUnique({ where: { id: userId } });
+        if (!user) throw redirect('/login');
+        return user;
+      }
+
+      // In loader:
+      export async function loader({ request }: LoaderFunctionArgs) {
+        const user = await requireUser(request);
+        return json({ user });
+      }
+
+  - id: REMIX038
+    title: "Use CSRF protection for forms"
+    description: "Implement CSRF tokens for form submissions. Use the remix-utils csrf library or a custom implementation with session-stored tokens. Validate tokens in actions."
+    category: "remix_session"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "csrf", "security", "forms"]
+    example: |
+      // Using remix-utils CSRF
+      import { CSRFProvider, AuthenticityTokenInput } from 'remix-utils/csrf/react';
+      // Root loader provides token, forms include <AuthenticityTokenInput />
+      // Actions validate with csrf.validate(formData, headers)
+
+  - id: REMIX039
+    title: "Use cookie creation utilities for flash messages"
+    description: "Use session flash data for one-time messages (success, error). Set flash in action, read and commit in loader to show toast notifications after redirects."
+    category: "remix_session"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "flash-messages", "toast", "session"]
+    example: |
+      // In action:
+      const session = await getSession(request.headers.get('Cookie'));
+      session.flash('toast', { type: 'success', message: 'Post created!' });
+      return redirect('/posts', { headers: { 'Set-Cookie': await commitSession(session) } });
+
+      // In loader:
+      const session = await getSession(request.headers.get('Cookie'));
+      const toast = session.get('toast');
+      return json({ toast }, { headers: { 'Set-Cookie': await commitSession(session) } });
+
+  - id: REMIX040
+    title: "Use middleware for cross-cutting concerns in React Router v7"
+    description: "In React Router v7, use the middleware export for authentication, logging, and other cross-cutting concerns. Middleware runs before loaders and actions."
+    category: "remix_session"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix", "react-router"]
+    tags: ["remix", "react-router-v7", "middleware", "auth"]
+    example: |
+      // app/middleware/auth.ts
+      import type { Route } from '../+types/root';
+      export const middleware: Route.Middleware[] = [
+        async ({ request, context }, next) => {
+          const session = await getSession(request.headers.get('Cookie'));
+          context.user = session.get('user');
+          return next();
+        },
+      ];
+
+  # ============================================================================
+  # REMIX PERFORMANCE (REMIX041-REMIX045)
+  # ============================================================================
+
+  - id: REMIX041
+    title: "Use Link prefetch for faster navigation"
+    description: "Use <Link prefetch='intent'> (or 'render'/'viewport') to prefetch route data and assets. 'intent' prefetches on hover/focus, 'render' on mount."
+    category: "remix_performance"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "prefetch", "performance", "navigation"]
+    example: |
+      import { Link } from '@remix-run/react';
+      <nav>
+        <Link to="/dashboard" prefetch="intent">Dashboard</Link>
+        <Link to="/settings" prefetch="render">Settings</Link>
+      </nav>
+
+  - id: REMIX042
+    title: "Minimize loader data to only what the UI needs"
+    description: "Only return data the component actually renders. Avoid returning entire database records. Select specific fields to reduce payload size and improve transfer times."
+    category: "remix_performance"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "loader", "data-minimization", "performance"]
+    example: |
+      // ❌ Bad: returning entire user object
+      return json({ user: await db.user.findUnique({ where: { id: userId } }) });
+
+      // ✅ Good: select only needed fields
+      return json({
+        user: await db.user.findUnique({
+          where: { id: userId },
+          select: { id: true, name: true, avatar: true },
+        }),
+      });
+
+  - id: REMIX043
+    title: "Use stale-while-revalidate caching pattern"
+    description: "Combine server-side caching with client-side shouldRevalidate for optimal performance. Return stale data immediately while revalidating in the background."
+    category: "remix_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "caching", "stale-while-revalidate", "performance"]
+    example: |
+      export async function loader({ request }: LoaderFunctionArgs) {
+        const products = await getProducts();
+        return json(products, {
+          headers: {
+            'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+            'Vary': 'Cookie',
+          },
+        });
+      }
+
+  - id: REMIX044
+    title: "Use lazy route loading for code splitting"
+    description: "Remix automatically code-splits by route. Keep route modules focused on their specific concerns. Use dynamic imports for heavy dependencies within route components."
+    category: "remix_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "code-splitting", "lazy-loading", "bundle-size"]
+    example: |
+      // Heavy editor component loaded only when needed
+      import { lazy, Suspense } from 'react';
+      const MarkdownEditor = lazy(() => import('~/components/markdown-editor'));
+
+      export default function EditPost() {
+        return (
+          <Suspense fallback={<textarea />}>
+            <MarkdownEditor />
+          </Suspense>
+        );
+      }
+
+  - id: REMIX045
+    title: "Configure the right adapter for your deployment target"
+    description: "Use the correct Remix adapter for your deployment platform. Adapters optimize the request handler for the target environment (Node, Cloudflare Workers, Vercel Edge, etc.)."
+    category: "remix_performance"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "adapter", "deployment", "platform"]
+    example: |
+      // vite.config.ts - Vercel deployment
+      import { vitePlugin as remix } from '@remix-run/dev';
+      import { vercelPreset } from '@vercel/remix/vite';
+      export default defineConfig({
+        plugins: [remix({ presets: [vercelPreset()] })],
+      });
+
+  # ============================================================================
+  # REMIX TYPESCRIPT & PATTERNS (REMIX046-REMIX050)
+  # ============================================================================
+
+  - id: REMIX046
+    title: "Use strict TypeScript types for loader and action args"
+    description: "Always type loader and action function arguments. Use LoaderFunctionArgs/ActionFunctionArgs from @remix-run/node or Route types in React Router v7."
+    category: "remix_typescript"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "typescript", "type-safety", "loader-types"]
+    example: |
+      import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/node';
+      // Or in React Router v7:
+      import type { Route } from './+types/my-route';
+      export async function loader({ request, params, context }: Route.LoaderArgs) { ... }
+
+  - id: REMIX047
+    title: "Use environment variables safely with process.env"
+    description: "Access environment variables only in server code (loaders, actions, entry.server). Never expose secrets to client bundles. Use a shared env.server.ts module for validation."
+    category: "remix_patterns"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "env-vars", "security", "server-only"]
+    example: |
+      // app/env.server.ts
+      import { z } from 'zod';
+      const envSchema = z.object({
+        DATABASE_URL: z.string().url(),
+        SESSION_SECRET: z.string().min(32),
+        STRIPE_SECRET_KEY: z.string().startsWith('sk_'),
+      });
+      export const env = envSchema.parse(process.env);
+
+  - id: REMIX048
+    title: "Organize utility modules in app/utils or app/lib"
+    description: "Keep shared utilities, database clients, session helpers, and validation schemas in app/utils/ or app/lib/. Use .server.ts suffix for server-only modules."
+    category: "remix_patterns"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "project-structure", "organization", "conventions"]
+    example: |
+      # Recommended structure:
+      # app/
+      #   routes/           - Route modules
+      #   components/        - Shared React components
+      #   utils/
+      #     db.server.ts     - Database client (server-only)
+      #     session.server.ts - Session management (server-only)
+      #     env.server.ts    - Environment validation (server-only)
+      #     validation.ts    - Shared Zod schemas
+      #   styles/            - CSS files
+
+  - id: REMIX049
+    title: "Use .server.ts suffix for server-only modules"
+    description: "Suffix files with .server.ts to ensure they are never bundled into client code. Remix enforces this boundary, preventing accidental secret leakage."
+    category: "remix_patterns"
+    severity: "critical"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "server-only", "security", "bundling"]
+    example: |
+      // app/utils/db.server.ts - ONLY available in loaders/actions
+      import { PrismaClient } from '@prisma/client';
+      export const db = new PrismaClient();
+
+      // app/utils/auth.server.ts
+      import { createCookieSessionStorage } from '@remix-run/node';
+      export const { getSession, commitSession } = createCookieSessionStorage({ ... });
+
+  - id: REMIX050
+    title: "Test loaders and actions with createRemixStub or integration tests"
+    description: "Use createRemixStub for unit testing routes with loaders/actions. Use Playwright or Cypress for end-to-end testing of full page interactions and form submissions."
+    category: "remix_patterns"
+    severity: "important"
+    applicability:
+      frameworks: ["remix"]
+    tags: ["remix", "testing", "createRemixStub", "e2e"]
+    example: |
+      import { createRemixStub } from '@remix-run/testing';
+      import { render, screen } from '@testing-library/react';
+
+      test('renders user profile', async () => {
+        const RemixStub = createRemixStub([
+          {
+            path: '/user/:id',
+            Component: UserProfile,
+            loader: () => ({ user: { name: 'Alice' } }),
+          },
+        ]);
+        render(<RemixStub initialEntries={['/user/1']} />);
+        expect(await screen.findByText('Alice')).toBeInTheDocument();
+      });

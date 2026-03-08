@@ -1,0 +1,2982 @@
+# Angular Best Practices Library
+# Version: 1.0.0
+# Angular Version: 17+ (with Signals support)
+# Total Practices: 45
+# Coverage: Components, Signals, Services, Performance, Testing, Architecture
+
+version: '1.0.0'
+framework: angular
+framework_version:
+  min_version: '17.0'
+description: 'Comprehensive Angular 17+ best practices with modern Signals and standalone components'
+
+practices:
+  # ============================================================================
+  # COMPONENTS & TEMPLATES (NG001-NG010)
+  # ============================================================================
+
+  - id: NG001
+    title: 'Standalone Components by Default'
+    category: architecture
+    level: beginner
+    priority: critical
+    angular_version:
+      min_version: '17.0'
+    content:
+      description: |
+        Use standalone components by default instead of NgModules.
+        Standalone components are simpler, tree-shakeable, and the future of Angular.
+      rationale: |
+        Standalone components reduce boilerplate, improve tree-shaking,
+        and simplify the mental model. NgModules are now optional.
+      good_examples:
+        - |
+          import { Component } from '@angular/core';
+          import { CommonModule } from '@angular/common';
+          import { RouterLink } from '@angular/router';
+          import { ButtonComponent } from './button.component';
+
+          @Component({
+            selector: 'app-user-list',
+            standalone: true,
+            imports: [CommonModule, RouterLink, ButtonComponent],
+            template: `
+              <h1>Users</h1>
+              @for (user of users(); track user.id) {
+                <div class="user-card">
+                  <span>{{ user.name }}</span>
+                  <a [routerLink]="['/users', user.id]">View</a>
+                </div>
+              } @empty {
+                <p>No users found</p>
+              }
+            `
+          })
+          export class UserListComponent {
+            users = signal<User[]>([]);
+          }
+      bad_examples:
+        - |
+          // ❌ Don't use NgModule for new components
+          @NgModule({
+            declarations: [UserListComponent],
+            imports: [CommonModule, RouterModule],
+            exports: [UserListComponent]
+          })
+          export class UserModule {}
+      references:
+        - 'https://angular.dev/guide/components/standalone'
+      tags:
+        - standalone
+        - components
+        - modern-angular
+
+  - id: NG002
+    title: 'New Control Flow Syntax'
+    category: code_style
+    level: beginner
+    priority: critical
+    angular_version:
+      min_version: '17.0'
+    content:
+      description: |
+        Use the new built-in control flow syntax (@if, @for, @switch) instead
+        of structural directives (*ngIf, *ngFor, *ngSwitch).
+      rationale: |
+        New control flow is faster (up to 90% faster for @for with track),
+        easier to read, and eliminates the need for CommonModule imports.
+      good_examples:
+        - |
+          @Component({
+            template: `
+              <!-- Conditional rendering -->
+              @if (isLoading()) {
+                <app-spinner />
+              } @else if (error()) {
+                <app-error [message]="error()!" />
+              } @else {
+                <div class="content">
+                  {{ data()?.title }}
+                </div>
+              }
+
+              <!-- Loop with track (required) -->
+              @for (item of items(); track item.id) {
+                <app-item [data]="item" />
+              } @empty {
+                <p>No items available</p>
+              }
+
+              <!-- Switch -->
+              @switch (status()) {
+                @case ('pending') {
+                  <app-pending-badge />
+                }
+                @case ('approved') {
+                  <app-approved-badge />
+                }
+                @default {
+                  <app-unknown-badge />
+                }
+              }
+            `
+          })
+      bad_examples:
+        - |
+          <!-- ❌ Old structural directives -->
+          <div *ngIf="isLoading; else content">
+            <app-spinner></app-spinner>
+          </div>
+          <ng-template #content>
+            <div *ngFor="let item of items; trackBy: trackById">
+              {{ item.name }}
+            </div>
+          </ng-template>
+      tags:
+        - control-flow
+        - templates
+        - performance
+
+  - id: NG003
+    title: 'Deferrable Views for Lazy Loading'
+    category: performance
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '17.0'
+    content:
+      description: |
+        Use @defer blocks for lazy loading component dependencies.
+        Supports triggers like viewport, interaction, idle, timer, and custom.
+      rationale: |
+        @defer dramatically improves initial bundle size and load time
+        by loading heavy components only when needed.
+      good_examples:
+        - |
+          @Component({
+            template: `
+              <!-- Lazy load when visible in viewport -->
+              @defer (on viewport) {
+                <app-heavy-chart [data]="chartData()" />
+              } @placeholder {
+                <div class="chart-skeleton">Loading chart...</div>
+              } @loading (minimum 500ms) {
+                <app-spinner />
+              } @error {
+                <app-error message="Failed to load chart" />
+              }
+
+              <!-- Lazy load on interaction -->
+              @defer (on interaction) {
+                <app-comment-editor />
+              } @placeholder {
+                <button>Click to add comment</button>
+              }
+
+              <!-- Prefetch for better UX -->
+              @defer (on viewport; prefetch on idle) {
+                <app-recommendations />
+              }
+
+              <!-- Condition-based deferral -->
+              @defer (when showAdvanced()) {
+                <app-advanced-settings />
+              }
+            `
+          })
+      tags:
+        - defer
+        - lazy-loading
+        - performance
+
+  - id: NG004
+    title: 'OnPush Change Detection'
+    category: performance
+    level: intermediate
+    priority: critical
+    angular_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Use OnPush change detection strategy for all components.
+        Combine with immutable data patterns and signals for best performance.
+      rationale: |
+        OnPush prevents unnecessary change detection cycles by only checking
+        when inputs change by reference or events occur within the component.
+      good_examples:
+        - |
+          import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+
+          @Component({
+            selector: 'app-user-card',
+            standalone: true,
+            changeDetection: ChangeDetectionStrategy.OnPush,
+            template: `
+              <div class="card">
+                <h3>{{ user().name }}</h3>
+                <p>{{ user().email }}</p>
+                <button (click)="onEdit()">Edit</button>
+              </div>
+            `
+          })
+          export class UserCardComponent {
+            // Signal inputs work perfectly with OnPush
+            user = input.required<User>();
+
+            // Output signal
+            edit = output<User>();
+
+            onEdit(): void {
+              this.edit.emit(this.user());
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Default change detection checks all bindings every cycle
+          @Component({
+            selector: 'app-user-card',
+            // changeDetection defaults to Default
+          })
+          export class UserCardComponent {
+            @Input() user!: User;
+          }
+      tags:
+        - change-detection
+        - onpush
+        - performance
+
+  - id: NG005
+    title: 'Signal Inputs and Outputs'
+    category: code_style
+    level: intermediate
+    priority: critical
+    angular_version:
+      min_version: '17.1'
+    content:
+      description: |
+        Use signal-based inputs with input() and output() functions instead of
+        @Input() and @Output() decorators for better type safety and reactivity.
+      rationale: |
+        Signal inputs are reactive by default, have better type inference,
+        support required inputs, and integrate seamlessly with other signals.
+      good_examples:
+        - |
+          import { Component, input, output, computed } from '@angular/core';
+
+          @Component({
+            selector: 'app-counter',
+            standalone: true,
+            changeDetection: ChangeDetectionStrategy.OnPush,
+            template: `
+              <div>
+                <span>Count: {{ count() }}</span>
+                <span>Double: {{ double() }}</span>
+                <button (click)="increment.emit()">+</button>
+              </div>
+            `
+          })
+          export class CounterComponent {
+            // Required input with type inference
+            count = input.required<number>();
+
+            // Optional input with default
+            step = input<number>(1);
+
+            // Input with transform
+            disabled = input(false, {
+              transform: (value: boolean | string) =>
+                typeof value === 'string' ? value !== 'false' : value
+            });
+
+            // Input with alias
+            label = input('Counter', { alias: 'counterLabel' });
+
+            // Computed from input
+            double = computed(() => this.count() * 2);
+
+            // Output event
+            increment = output<void>();
+
+            // Output with value
+            countChange = output<number>();
+          }
+      bad_examples:
+        - |
+          // ❌ Decorator-based inputs
+          @Component({...})
+          export class CounterComponent {
+            @Input() count!: number;  // Not reactive, requires ! assertion
+            @Output() countChange = new EventEmitter<number>();
+          }
+      tags:
+        - signals
+        - inputs
+        - outputs
+
+  - id: NG006
+    title: 'Model Inputs for Two-Way Binding'
+    category: code_style
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '17.2'
+    content:
+      description: |
+        Use model() for two-way binding scenarios. It creates a writable signal
+        that automatically emits changes, replacing the [(ngModel)] pattern.
+      rationale: |
+        Model inputs simplify two-way binding with type safety and integrate
+        with Angular's signal system for reactive updates.
+      good_examples:
+        - |
+          import { Component, model, computed } from '@angular/core';
+
+          @Component({
+            selector: 'app-toggle',
+            standalone: true,
+            template: `
+              <button
+                [class.active]="checked()"
+                (click)="toggle()">
+                {{ checked() ? 'ON' : 'OFF' }}
+              </button>
+            `
+          })
+          export class ToggleComponent {
+            // Two-way bindable with [(checked)]
+            checked = model(false);
+
+            // Or required
+            // checked = model.required<boolean>();
+
+            toggle(): void {
+              this.checked.update(v => !v);
+            }
+          }
+
+          // Parent usage
+          @Component({
+            template: `
+              <app-toggle [(checked)]="isEnabled" />
+              <p>Enabled: {{ isEnabled() }}</p>
+            `
+          })
+          export class ParentComponent {
+            isEnabled = signal(false);
+          }
+      tags:
+        - model
+        - two-way-binding
+        - signals
+
+  - id: NG007
+    title: 'View Queries with Signals'
+    category: code_style
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '17.2'
+    content:
+      description: |
+        Use signal-based view queries: viewChild(), viewChildren(),
+        contentChild(), contentChildren() instead of decorators.
+      rationale: |
+        Signal queries are reactive, have better null handling, and integrate
+        with computed() and effect() for automatic updates.
+      good_examples:
+        - |
+          import {
+            Component, viewChild, viewChildren,
+            contentChild, contentChildren, afterNextRender
+          } from '@angular/core';
+
+          @Component({
+            selector: 'app-tabs',
+            standalone: true,
+            template: `
+              <div class="tabs">
+                <ng-content select="app-tab" />
+              </div>
+              <div #content class="content">
+                @if (activeTab(); as tab) {
+                  {{ tab.content }}
+                }
+              </div>
+            `
+          })
+          export class TabsComponent {
+            // Query single element
+            contentDiv = viewChild<ElementRef>('content');
+
+            // Required query (throws if not found)
+            requiredContent = viewChild.required<ElementRef>('content');
+
+            // Query component
+            activeTab = contentChild(TabComponent);
+
+            // Query multiple
+            tabs = contentChildren(TabComponent);
+
+            // Computed from queries
+            tabCount = computed(() => this.tabs().length);
+
+            constructor() {
+              // React to query changes
+              effect(() => {
+                console.log('Active tab:', this.activeTab()?.label());
+              });
+
+              // DOM manipulation after render
+              afterNextRender(() => {
+                const el = this.contentDiv()?.nativeElement;
+                if (el) el.focus();
+              });
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Decorator-based queries
+          @Component({...})
+          export class TabsComponent {
+            @ViewChild('content') contentDiv?: ElementRef;
+            @ContentChildren(TabComponent) tabs!: QueryList<TabComponent>;
+          }
+      tags:
+        - view-queries
+        - signals
+        - content-projection
+
+  - id: NG008
+    title: 'Self-Closing Tags'
+    category: code_style
+    level: beginner
+    priority: medium
+    angular_version:
+      min_version: '15.1'
+    content:
+      description: |
+        Use self-closing tags for components without content projection.
+        This reduces template verbosity and improves readability.
+      rationale: |
+        Self-closing tags are cleaner and signal that the component
+        doesn't expect any projected content.
+      good_examples:
+        - |
+          @Component({
+            template: `
+              <!-- Self-closing for empty components -->
+              <app-spinner />
+              <app-icon name="user" />
+              <app-button label="Submit" (click)="onSubmit()" />
+
+              <!-- Regular tags when projecting content -->
+              <app-card>
+                <h2>Title</h2>
+                <p>Content here</p>
+              </app-card>
+
+              <!-- Self-closing with inputs -->
+              <app-user-avatar
+                [user]="currentUser()"
+                [size]="'large'"
+              />
+            `
+          })
+      bad_examples:
+        - |
+          <!-- ❌ Verbose empty tags -->
+          <app-spinner></app-spinner>
+          <app-icon name="user"></app-icon>
+      tags:
+        - templates
+        - code-style
+        - readability
+
+  - id: NG009
+    title: 'Component Communication Patterns'
+    category: architecture
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '17.0'
+    content:
+      description: |
+        Choose the right communication pattern: inputs/outputs for parent-child,
+        services with signals for siblings, and injection for deep hierarchies.
+      rationale: |
+        Proper communication patterns prevent tight coupling and make
+        components reusable and testable.
+      good_examples:
+        - |
+          // Parent-child: Use inputs/outputs
+          @Component({
+            template: `
+              <app-child
+                [data]="parentData()"
+                (update)="handleUpdate($event)"
+              />
+            `
+          })
+          export class ParentComponent {
+            parentData = signal({ value: 1 });
+            handleUpdate(newData: Data): void {
+              this.parentData.set(newData);
+            }
+          }
+
+          // Sibling communication: Shared signal service
+          @Injectable({ providedIn: 'root' })
+          export class SharedStateService {
+            private readonly _counter = signal(0);
+            readonly counter = this._counter.asReadonly();
+
+            increment(): void {
+              this._counter.update(c => c + 1);
+            }
+          }
+
+          // Deep hierarchy: Injection token
+          const THEME = new InjectionToken<Signal<Theme>>('theme');
+
+          @Component({
+            providers: [{ provide: THEME, useValue: signal<Theme>('light') }]
+          })
+          export class AppComponent {}
+
+          @Component({...})
+          export class DeepChildComponent {
+            theme = inject(THEME);
+          }
+      tags:
+        - communication
+        - patterns
+        - architecture
+
+  - id: NG010
+    title: 'Host Element Binding'
+    category: code_style
+    level: intermediate
+    priority: medium
+    angular_version:
+      min_version: '14.0'
+    content:
+      description: |
+        Use host metadata in @Component decorator for host bindings
+        instead of @HostBinding and @HostListener decorators.
+      rationale: |
+        Host metadata centralizes host bindings, making them easier to
+        read and maintain. Works well with signals.
+      good_examples:
+        - |
+          @Component({
+            selector: 'app-button',
+            standalone: true,
+            host: {
+              // Static attributes
+              'role': 'button',
+
+              // Dynamic class binding
+              '[class.primary]': 'variant() === "primary"',
+              '[class.disabled]': 'disabled()',
+
+              // Style binding
+              '[style.--button-color]': 'color()',
+
+              // Attribute binding
+              '[attr.aria-disabled]': 'disabled()',
+              '[attr.tabindex]': 'disabled() ? -1 : 0',
+
+              // Event listeners
+              '(click)': 'handleClick($event)',
+              '(keydown.enter)': 'handleClick($event)',
+              '(keydown.space)': 'handleClick($event)',
+            },
+            template: `<ng-content />`
+          })
+          export class ButtonComponent {
+            variant = input<'primary' | 'secondary'>('primary');
+            disabled = input(false);
+            color = input('blue');
+
+            clicked = output<MouseEvent | KeyboardEvent>();
+
+            handleClick(event: MouseEvent | KeyboardEvent): void {
+              if (!this.disabled()) {
+                this.clicked.emit(event);
+              }
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Decorator-based host bindings (scattered)
+          @Component({...})
+          export class ButtonComponent {
+            @HostBinding('class.primary') get isPrimary() { return this.variant === 'primary'; }
+            @HostListener('click', ['$event']) onClick(e: Event) {}
+          }
+      tags:
+        - host-bindings
+        - components
+        - events
+
+  # ============================================================================
+  # SIGNALS & REACTIVE STATE (NG011-NG018)
+  # ============================================================================
+
+  - id: NG011
+    title: 'Signal Fundamentals'
+    category: state_management
+    level: intermediate
+    priority: critical
+    angular_version:
+      min_version: '16.0'
+    content:
+      description: |
+        Use signals for reactive state management. Understand signal(), computed(),
+        and effect() as the core primitives for Angular's reactive system.
+      rationale: |
+        Signals are Angular's future for reactivity, offering fine-grained
+        updates, automatic dependency tracking, and better performance.
+      good_examples:
+        - |
+          import { signal, computed, effect } from '@angular/core';
+
+          @Component({...})
+          export class CartComponent {
+            // Writable signals for state
+            private readonly items = signal<CartItem[]>([]);
+            private readonly discount = signal(0);
+
+            // Public read-only exposure
+            readonly cartItems = this.items.asReadonly();
+
+            // Computed values (auto-track dependencies)
+            readonly subtotal = computed(() =>
+              this.items().reduce((sum, item) => sum + item.price * item.quantity, 0)
+            );
+
+            readonly total = computed(() =>
+              this.subtotal() * (1 - this.discount() / 100)
+            );
+
+            readonly itemCount = computed(() =>
+              this.items().reduce((sum, item) => sum + item.quantity, 0)
+            );
+
+            // Methods to update state (immutable updates)
+            addItem(item: CartItem): void {
+              this.items.update(items => [...items, item]);
+            }
+
+            removeItem(id: string): void {
+              this.items.update(items => items.filter(i => i.id !== id));
+            }
+
+            updateQuantity(id: string, quantity: number): void {
+              this.items.update(items =>
+                items.map(item =>
+                  item.id === id ? { ...item, quantity } : item
+                )
+              );
+            }
+
+            applyDiscount(percent: number): void {
+              this.discount.set(percent);
+            }
+          }
+      tags:
+        - signals
+        - state-management
+        - reactivity
+
+  - id: NG012
+    title: 'Effect Best Practices'
+    category: state_management
+    level: advanced
+    priority: high
+    angular_version:
+      min_version: '16.0'
+    content:
+      description: |
+        Use effect() for side effects that react to signal changes. Avoid
+        writing to signals inside effects. Use untracked() when needed.
+      rationale: |
+        Effects bridge reactive and imperative code. Proper usage prevents
+        infinite loops and maintains predictable reactivity.
+      good_examples:
+        - |
+          import { effect, untracked, signal, DestroyRef, inject } from '@angular/core';
+
+          @Component({...})
+          export class SearchComponent {
+            query = signal('');
+            results = signal<SearchResult[]>([]);
+
+            private searchService = inject(SearchService);
+            private destroyRef = inject(DestroyRef);
+
+            constructor() {
+              // Effect for side effects (API calls, logging)
+              effect((onCleanup) => {
+                const query = this.query();
+                if (query.length < 3) return;
+
+                // Debounce with abort controller
+                const controller = new AbortController();
+
+                // Use untracked to read without creating dependency
+                console.log('Searching from:', untracked(() => this.results().length), 'results');
+
+                this.searchService
+                  .search(query, controller.signal)
+                  .then(results => {
+                    // Writing to signals in async callbacks is OK
+                    this.results.set(results);
+                  });
+
+                // Cleanup function for effect
+                onCleanup(() => controller.abort());
+              });
+
+              // Effect with manual cleanup registration
+              const logEffect = effect(() => {
+                console.log('Query changed:', this.query());
+              });
+
+              // Register cleanup
+              this.destroyRef.onDestroy(() => logEffect.destroy());
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Don't write to signals inside effect (causes re-run)
+          effect(() => {
+            const query = this.query();
+            this.results.set([]); // Triggers infinite loop!
+          });
+
+          // ❌ Don't use effect for derived state (use computed)
+          effect(() => {
+            this.total.set(this.items().reduce((s, i) => s + i.price, 0));
+          });
+      tags:
+        - effects
+        - signals
+        - side-effects
+
+  - id: NG013
+    title: 'Signal-Based Services'
+    category: architecture
+    level: intermediate
+    priority: critical
+    angular_version:
+      min_version: '16.0'
+    content:
+      description: |
+        Build services with signal-based state for shared reactive state.
+        Expose read-only signals and methods for state changes.
+      rationale: |
+        Signal services provide predictable state management without
+        external libraries, with automatic UI updates across components.
+      good_examples:
+        - |
+          @Injectable({ providedIn: 'root' })
+          export class AuthService {
+            // Private writable signals
+            private readonly _user = signal<User | null>(null);
+            private readonly _isLoading = signal(false);
+            private readonly _error = signal<string | null>(null);
+
+            // Public read-only signals
+            readonly user = this._user.asReadonly();
+            readonly isLoading = this._isLoading.asReadonly();
+            readonly error = this._error.asReadonly();
+
+            // Computed derived state
+            readonly isAuthenticated = computed(() => this._user() !== null);
+            readonly userRole = computed(() => this._user()?.role ?? 'guest');
+
+            // Inject dependencies
+            private http = inject(HttpClient);
+
+            async login(credentials: Credentials): Promise<void> {
+              this._isLoading.set(true);
+              this._error.set(null);
+
+              try {
+                const user = await firstValueFrom(
+                  this.http.post<User>('/api/auth/login', credentials)
+                );
+                this._user.set(user);
+              } catch (err) {
+                this._error.set('Login failed');
+                throw err;
+              } finally {
+                this._isLoading.set(false);
+              }
+            }
+
+            logout(): void {
+              this._user.set(null);
+            }
+          }
+      tags:
+        - services
+        - signals
+        - state-management
+
+  - id: NG014
+    title: 'toSignal and toObservable'
+    category: state_management
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '16.0'
+    content:
+      description: |
+        Use toSignal() to convert Observables to signals and toObservable()
+        for the reverse. Essential for integrating with RxJS-based services.
+      rationale: |
+        These bridge functions enable gradual migration from RxJS to signals
+        and integration with existing Observable-based code.
+      good_examples:
+        - |
+          import { toSignal, toObservable } from '@angular/core/rxjs-interop';
+          import { inject } from '@angular/core';
+          import { ActivatedRoute } from '@angular/router';
+          import { switchMap, debounceTime } from 'rxjs';
+
+          @Component({...})
+          export class UserDetailComponent {
+            private route = inject(ActivatedRoute);
+            private userService = inject(UserService);
+
+            // Convert route params to signal
+            private userId = toSignal(
+              this.route.paramMap.pipe(
+                map(params => params.get('id')!)
+              ),
+              { initialValue: '' }
+            );
+
+            // Computed that depends on route param
+            user = toSignal(
+              toObservable(computed(() => this.userId())).pipe(
+                switchMap(id => this.userService.getUser(id))
+              )
+            );
+
+            // For async data without initial value
+            users = toSignal(this.userService.getUsers());
+            // Type: Signal<User[] | undefined>
+
+            // With requireSync for hot observables
+            currentTime = toSignal(interval(1000), { requireSync: true });
+
+            // Search with debounce using RxJS operators
+            searchQuery = signal('');
+
+            searchResults = toSignal(
+              toObservable(this.searchQuery).pipe(
+                debounceTime(300),
+                filter(q => q.length >= 3),
+                switchMap(q => this.searchService.search(q))
+              ),
+              { initialValue: [] }
+            );
+          }
+      tags:
+        - signals
+        - rxjs
+        - interop
+
+  - id: NG015
+    title: 'LinkedSignal for Derived Writable State'
+    category: state_management
+    level: advanced
+    priority: medium
+    angular_version:
+      min_version: '19.0'
+    content:
+      description: |
+        Use linkedSignal() for writable state that depends on other signals
+        but can be locally overridden. Useful for forms and local state.
+      rationale: |
+        linkedSignal fills the gap between computed (read-only) and signal
+        (independent), enabling derived-but-editable state patterns.
+      good_examples:
+        - |
+          import { signal, linkedSignal } from '@angular/core';
+
+          @Component({...})
+          export class ProductEditorComponent {
+            // Source data
+            product = input.required<Product>();
+
+            // Editable local copy that resets when product changes
+            editedName = linkedSignal(() => this.product().name);
+            editedPrice = linkedSignal(() => this.product().price);
+
+            // With computation
+            editedSlug = linkedSignal({
+              source: this.editedName,
+              computation: (name) => name.toLowerCase().replace(/\s+/g, '-')
+            });
+
+            // Check if modified
+            isModified = computed(() =>
+              this.editedName() !== this.product().name ||
+              this.editedPrice() !== this.product().price
+            );
+
+            // Reset to original
+            reset(): void {
+              this.editedName.set(this.product().name);
+              this.editedPrice.set(this.product().price);
+            }
+
+            // Local edits
+            updateName(name: string): void {
+              this.editedName.set(name);
+            }
+          }
+      tags:
+        - linked-signal
+        - signals
+        - forms
+
+  - id: NG016
+    title: 'Resource API for Async Data'
+    category: state_management
+    level: advanced
+    priority: high
+    angular_version:
+      min_version: '19.0'
+    content:
+      description: |
+        Use resource() for declarative async data fetching with automatic
+        loading states, error handling, and dependency tracking.
+      rationale: |
+        resource() simplifies async patterns, reducing boilerplate for
+        loading/error states and automatic refetching on dependency changes.
+      good_examples:
+        - |
+          import { resource, signal } from '@angular/core';
+
+          @Component({
+            template: `
+              @if (userResource.isLoading()) {
+                <app-spinner />
+              }
+              @if (userResource.error()) {
+                <app-error [message]="userResource.error()!.message" />
+              }
+              @if (userResource.value(); as user) {
+                <app-user-profile [user]="user" />
+              }
+              <button (click)="userResource.reload()">Refresh</button>
+            `
+          })
+          export class UserComponent {
+            userId = input.required<string>();
+
+            // Async resource with dependency tracking
+            userResource = resource({
+              request: () => ({ id: this.userId() }),
+              loader: async ({ request, abortSignal }) => {
+                const response = await fetch(
+                  `/api/users/${request.id}`,
+                  { signal: abortSignal }
+                );
+                if (!response.ok) throw new Error('Failed to load user');
+                return response.json() as Promise<User>;
+              }
+            });
+
+            // Shorthand with fetch
+            postsResource = resource({
+              request: () => this.userId(),
+              loader: ({ request }) =>
+                fetch(`/api/users/${request}/posts`).then(r => r.json())
+            });
+          }
+      tags:
+        - resource
+        - async
+        - signals
+
+  - id: NG017
+    title: 'RxJS Resource for Observable Sources'
+    category: state_management
+    level: advanced
+    priority: medium
+    angular_version:
+      min_version: '19.0'
+    content:
+      description: |
+        Use rxResource() for async data that comes from Observable sources
+        like HttpClient, combining resource() benefits with RxJS.
+      rationale: |
+        rxResource bridges HttpClient and other Observable APIs with the
+        resource pattern, providing consistent async state handling.
+      good_examples:
+        - |
+          import { rxResource } from '@angular/core/rxjs-interop';
+
+          @Component({...})
+          export class ProductListComponent {
+            private http = inject(HttpClient);
+
+            category = input<string>();
+            sortBy = signal<'name' | 'price'>('name');
+
+            // RxJS resource with HttpClient
+            productsResource = rxResource({
+              request: () => ({
+                category: this.category(),
+                sort: this.sortBy()
+              }),
+              loader: ({ request }) =>
+                this.http.get<Product[]>('/api/products', {
+                  params: {
+                    category: request.category ?? '',
+                    sort: request.sort
+                  }
+                })
+            });
+
+            // Access in template
+            // productsResource.value() - the data
+            // productsResource.isLoading() - loading state
+            // productsResource.error() - error if any
+            // productsResource.status() - 'idle' | 'loading' | 'resolved' | 'error'
+          }
+      tags:
+        - rxresource
+        - rxjs
+        - httpclient
+
+  - id: NG018
+    title: 'Signal Store Pattern'
+    category: state_management
+    level: advanced
+    priority: high
+    angular_version:
+      min_version: '17.0'
+    content:
+      description: |
+        Implement a structured store pattern using signals for complex state.
+        Consider NgRx SignalStore for larger applications.
+      rationale: |
+        Structured stores provide predictable state management, easier
+        debugging, and clear separation of concerns for complex apps.
+      good_examples:
+        - |
+          // Simple signal store pattern
+          interface TodoState {
+            items: Todo[];
+            filter: 'all' | 'active' | 'completed';
+            isLoading: boolean;
+          }
+
+          @Injectable({ providedIn: 'root' })
+          export class TodoStore {
+            // State as signal
+            private state = signal<TodoState>({
+              items: [],
+              filter: 'all',
+              isLoading: false
+            });
+
+            // Selectors as computed
+            readonly items = computed(() => this.state().items);
+            readonly filter = computed(() => this.state().filter);
+            readonly isLoading = computed(() => this.state().isLoading);
+
+            readonly filteredItems = computed(() => {
+              const { items, filter } = this.state();
+              switch (filter) {
+                case 'active': return items.filter(t => !t.completed);
+                case 'completed': return items.filter(t => t.completed);
+                default: return items;
+              }
+            });
+
+            readonly stats = computed(() => ({
+              total: this.items().length,
+              active: this.items().filter(t => !t.completed).length,
+              completed: this.items().filter(t => t.completed).length
+            }));
+
+            // Actions
+            addTodo(text: string): void {
+              this.state.update(s => ({
+                ...s,
+                items: [...s.items, { id: crypto.randomUUID(), text, completed: false }]
+              }));
+            }
+
+            toggleTodo(id: string): void {
+              this.state.update(s => ({
+                ...s,
+                items: s.items.map(t =>
+                  t.id === id ? { ...t, completed: !t.completed } : t
+                )
+              }));
+            }
+
+            setFilter(filter: TodoState['filter']): void {
+              this.state.update(s => ({ ...s, filter }));
+            }
+          }
+      tags:
+        - store
+        - state-management
+        - patterns
+
+  # ============================================================================
+  # SERVICES & DEPENDENCY INJECTION (NG019-NG024)
+  # ============================================================================
+
+  - id: NG019
+    title: 'Inject Function Over Constructor'
+    category: code_style
+    level: beginner
+    priority: critical
+    angular_version:
+      min_version: '14.0'
+    content:
+      description: |
+        Use the inject() function instead of constructor injection for cleaner
+        code and better compatibility with functional patterns.
+      rationale: |
+        inject() reduces boilerplate, enables injection in non-constructor
+        contexts, and works better with inheritance.
+      good_examples:
+        - |
+          import { inject, Component } from '@angular/core';
+
+          @Component({...})
+          export class UserComponent {
+            // Inject services directly
+            private userService = inject(UserService);
+            private router = inject(Router);
+            private route = inject(ActivatedRoute);
+
+            // Inject with options
+            private logger = inject(LoggerService, { optional: true });
+
+            // Inject tokens
+            private config = inject(APP_CONFIG);
+            private document = inject(DOCUMENT);
+
+            // Use immediately
+            userId = toSignal(
+              this.route.paramMap.pipe(map(p => p.get('id')!))
+            );
+          }
+
+          // Works in functions too (injection context)
+          function createLogger(): Logger {
+            const config = inject(APP_CONFIG);
+            return new Logger(config.logLevel);
+          }
+      bad_examples:
+        - |
+          // ❌ Verbose constructor injection
+          @Component({...})
+          export class UserComponent {
+            constructor(
+              private userService: UserService,
+              private router: Router,
+              private route: ActivatedRoute,
+              @Optional() private logger: LoggerService,
+              @Inject(APP_CONFIG) private config: AppConfig
+            ) {}
+          }
+      tags:
+        - dependency-injection
+        - inject
+        - code-style
+
+  - id: NG020
+    title: 'Functional Injection Tokens'
+    category: architecture
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '14.0'
+    content:
+      description: |
+        Use InjectionToken with factory functions for configurable dependencies.
+        Prefer tokens over abstract classes for loose coupling.
+      rationale: |
+        Injection tokens with factories enable tree-shakeable, configurable
+        dependencies without requiring abstract base classes.
+      good_examples:
+        - |
+          import { InjectionToken, inject } from '@angular/core';
+
+          // Token with factory (tree-shakeable)
+          export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL', {
+            providedIn: 'root',
+            factory: () => inject(ENVIRONMENT).apiUrl
+          });
+
+          // Token with interface
+          export interface StorageService {
+            get(key: string): string | null;
+            set(key: string, value: string): void;
+            remove(key: string): void;
+          }
+
+          export const STORAGE = new InjectionToken<StorageService>('Storage', {
+            providedIn: 'root',
+            factory: () => ({
+              get: (key) => localStorage.getItem(key),
+              set: (key, value) => localStorage.setItem(key, value),
+              remove: (key) => localStorage.removeItem(key)
+            })
+          });
+
+          // Usage
+          @Injectable({ providedIn: 'root' })
+          export class AuthService {
+            private storage = inject(STORAGE);
+            private apiUrl = inject(API_BASE_URL);
+
+            getToken(): string | null {
+              return this.storage.get('auth_token');
+            }
+          }
+      tags:
+        - injection-tokens
+        - dependency-injection
+        - configuration
+
+  - id: NG021
+    title: 'Environment Injection'
+    category: configuration
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '15.1'
+    content:
+      description: |
+        Inject environment configuration using tokens instead of direct imports.
+        This enables testing and runtime configuration.
+      rationale: |
+        Injected configuration is mockable in tests and can be changed
+        at runtime, unlike static environment file imports.
+      good_examples:
+        - |
+          // environment.token.ts
+          export interface Environment {
+            production: boolean;
+            apiUrl: string;
+            features: {
+              darkMode: boolean;
+              analytics: boolean;
+            };
+          }
+
+          export const ENVIRONMENT = new InjectionToken<Environment>('Environment');
+
+          // app.config.ts
+          export const appConfig: ApplicationConfig = {
+            providers: [
+              { provide: ENVIRONMENT, useValue: environment }
+            ]
+          };
+
+          // Usage in service
+          @Injectable({ providedIn: 'root' })
+          export class ApiService {
+            private env = inject(ENVIRONMENT);
+            private http = inject(HttpClient);
+
+            private baseUrl = computed(() => this.env.apiUrl);
+
+            get<T>(endpoint: string): Observable<T> {
+              return this.http.get<T>(`${this.env.apiUrl}${endpoint}`);
+            }
+          }
+
+          // Easy to test
+          TestBed.configureTestingModule({
+            providers: [
+              { provide: ENVIRONMENT, useValue: { apiUrl: 'http://test' } }
+            ]
+          });
+      tags:
+        - environment
+        - configuration
+        - testing
+
+  - id: NG022
+    title: 'DestroyRef for Cleanup'
+    category: lifecycle
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '16.0'
+    content:
+      description: |
+        Use DestroyRef and takeUntilDestroyed() for automatic cleanup of
+        subscriptions and resources. Prefer over manual ngOnDestroy.
+      rationale: |
+        DestroyRef simplifies cleanup, reduces boilerplate, and works
+        consistently in components, directives, and services.
+      good_examples:
+        - |
+          import { DestroyRef, inject } from '@angular/core';
+          import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+          @Component({...})
+          export class DataComponent {
+            private destroyRef = inject(DestroyRef);
+            private dataService = inject(DataService);
+
+            constructor() {
+              // Auto-cleanup Observable subscription
+              this.dataService.data$
+                .pipe(takeUntilDestroyed())
+                .subscribe(data => this.handleData(data));
+
+              // Manual cleanup registration
+              const intervalId = setInterval(() => this.poll(), 5000);
+              this.destroyRef.onDestroy(() => clearInterval(intervalId));
+
+              // Multiple cleanup callbacks
+              const ws = new WebSocket('ws://example.com');
+              this.destroyRef.onDestroy(() => ws.close());
+            }
+          }
+
+          // In services (scoped to component)
+          @Injectable()
+          export class ComponentScopedService {
+            private destroyRef = inject(DestroyRef);
+
+            constructor() {
+              // Will cleanup when providing component destroys
+              this.destroyRef.onDestroy(() => this.cleanup());
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Manual cleanup with ngOnDestroy
+          @Component({...})
+          export class DataComponent implements OnDestroy {
+            private subscription?: Subscription;
+
+            ngOnInit() {
+              this.subscription = this.data$.subscribe();
+            }
+
+            ngOnDestroy() {
+              this.subscription?.unsubscribe();
+            }
+          }
+      tags:
+        - cleanup
+        - destroyref
+        - lifecycle
+
+  - id: NG023
+    title: 'HTTP Interceptors with Functional API'
+    category: networking
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '15.0'
+    content:
+      description: |
+        Use functional HTTP interceptors instead of class-based ones.
+        Chain interceptors using withInterceptors() in provideHttpClient().
+      rationale: |
+        Functional interceptors are simpler, more composable, and
+        tree-shakeable. They work better with standalone applications.
+      good_examples:
+        - |
+          import { HttpInterceptorFn, HttpHandlerFn, HttpRequest } from '@angular/common/http';
+
+          // Auth interceptor
+          export const authInterceptor: HttpInterceptorFn = (req, next) => {
+            const authService = inject(AuthService);
+            const token = authService.token();
+
+            if (token) {
+              req = req.clone({
+                setHeaders: { Authorization: `Bearer ${token}` }
+              });
+            }
+
+            return next(req);
+          };
+
+          // Logging interceptor
+          export const loggingInterceptor: HttpInterceptorFn = (req, next) => {
+            const started = Date.now();
+
+            return next(req).pipe(
+              tap({
+                next: (event) => {
+                  if (event.type === HttpEventType.Response) {
+                    console.log(`${req.method} ${req.url} - ${Date.now() - started}ms`);
+                  }
+                },
+                error: (error) => {
+                  console.error(`${req.method} ${req.url} failed:`, error);
+                }
+              })
+            );
+          };
+
+          // Error handling interceptor
+          export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+            return next(req).pipe(
+              catchError((error: HttpErrorResponse) => {
+                const notification = inject(NotificationService);
+                notification.showError(error.message);
+                return throwError(() => error);
+              })
+            );
+          };
+
+          // Register in app config
+          export const appConfig: ApplicationConfig = {
+            providers: [
+              provideHttpClient(
+                withInterceptors([authInterceptor, loggingInterceptor, errorInterceptor])
+              )
+            ]
+          };
+      tags:
+        - http
+        - interceptors
+        - networking
+
+  - id: NG024
+    title: 'Hierarchical Injectors'
+    category: architecture
+    level: advanced
+    priority: medium
+    angular_version:
+      min_version: '2.0'
+    content:
+      description: |
+        Understand Angular's hierarchical injector system. Use component-level
+        providers for scoped instances and root for singletons.
+      rationale: |
+        Proper injector hierarchy enables component-scoped services,
+        lazy-loaded module isolation, and efficient memory management.
+      good_examples:
+        - |
+          // Root singleton (shared across app)
+          @Injectable({ providedIn: 'root' })
+          export class AuthService {
+            // Single instance for entire app
+          }
+
+          // Component-scoped service
+          @Injectable()
+          export class FormService {
+            // New instance per component that provides it
+          }
+
+          @Component({
+            providers: [FormService] // New instance for this component tree
+          })
+          export class UserFormComponent {
+            form = inject(FormService);
+          }
+
+          // Environment injector for dynamic components
+          @Component({...})
+          export class DynamicHostComponent {
+            private envInjector = inject(EnvironmentInjector);
+            private vcr = inject(ViewContainerRef);
+
+            loadComponent(component: Type<unknown>): void {
+              this.vcr.createComponent(component, {
+                environmentInjector: this.envInjector
+              });
+            }
+          }
+
+          // Route-scoped provider
+          export const routes: Routes = [{
+            path: 'admin',
+            providers: [AdminService], // Scoped to admin routes
+            children: [...]
+          }];
+      tags:
+        - dependency-injection
+        - providers
+        - architecture
+
+  # ============================================================================
+  # ROUTING & NAVIGATION (NG025-NG030)
+  # ============================================================================
+
+  - id: NG025
+    title: 'Functional Route Guards'
+    category: routing
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '15.0'
+    content:
+      description: |
+        Use functional guards instead of class-based guards. They're simpler,
+        more composable, and work better with inject().
+      rationale: |
+        Functional guards reduce boilerplate and align with Angular's
+        shift toward functional patterns.
+      good_examples:
+        - |
+          import { CanActivateFn, CanMatchFn, Router } from '@angular/router';
+
+          // Auth guard
+          export const authGuard: CanActivateFn = (route, state) => {
+            const auth = inject(AuthService);
+            const router = inject(Router);
+
+            if (auth.isAuthenticated()) {
+              return true;
+            }
+
+            return router.createUrlTree(['/login'], {
+              queryParams: { returnUrl: state.url }
+            });
+          };
+
+          // Role guard with parameter
+          export function roleGuard(allowedRoles: string[]): CanActivateFn {
+            return () => {
+              const auth = inject(AuthService);
+              return allowedRoles.includes(auth.userRole());
+            };
+          }
+
+          // Can match for lazy routes
+          export const featureGuard: CanMatchFn = (route, segments) => {
+            const features = inject(FeatureService);
+            return features.isEnabled(route.data?.['feature'] ?? '');
+          };
+
+          // Usage in routes
+          export const routes: Routes = [
+            {
+              path: 'dashboard',
+              canActivate: [authGuard],
+              component: DashboardComponent
+            },
+            {
+              path: 'admin',
+              canActivate: [authGuard, roleGuard(['admin'])],
+              loadComponent: () => import('./admin.component')
+            },
+            {
+              path: 'beta',
+              canMatch: [featureGuard],
+              data: { feature: 'beta-feature' },
+              loadComponent: () => import('./beta.component')
+            }
+          ];
+      tags:
+        - routing
+        - guards
+        - functional
+
+  - id: NG026
+    title: 'Route Resolvers with Signals'
+    category: routing
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '16.0'
+    content:
+      description: |
+        Use functional resolvers that return Observables or Promises.
+        Integrate with signals using input() or toSignal() in components.
+      rationale: |
+        Functional resolvers are simpler and integrate well with the
+        new withComponentInputBinding() router feature.
+      good_examples:
+        - |
+          import { ResolveFn } from '@angular/router';
+
+          // Functional resolver
+          export const userResolver: ResolveFn<User> = (route) => {
+            const userService = inject(UserService);
+            const userId = route.paramMap.get('id')!;
+            return userService.getUser(userId);
+          };
+
+          // Routes
+          export const routes: Routes = [{
+            path: 'users/:id',
+            component: UserDetailComponent,
+            resolve: { user: userResolver }
+          }];
+
+          // app.config.ts - Enable input binding
+          export const appConfig: ApplicationConfig = {
+            providers: [
+              provideRouter(
+                routes,
+                withComponentInputBinding() // Binds resolved data to inputs
+              )
+            ]
+          };
+
+          // Component receives resolved data as input
+          @Component({...})
+          export class UserDetailComponent {
+            // Automatically bound from resolver
+            user = input.required<User>();
+
+            // Also works with route params
+            id = input<string>(); // From :id param
+
+            // Query params too
+            tab = input<string>(); // From ?tab=...
+          }
+      tags:
+        - routing
+        - resolvers
+        - signals
+
+  - id: NG027
+    title: 'Lazy Loading Routes'
+    category: performance
+    level: intermediate
+    priority: critical
+    angular_version:
+      min_version: '17.0'
+    content:
+      description: |
+        Lazy load routes using dynamic imports for standalone components.
+        Use loadComponent for single components, loadChildren for route groups.
+      rationale: |
+        Lazy loading reduces initial bundle size significantly by loading
+        code only when needed.
+      good_examples:
+        - |
+          export const routes: Routes = [
+            // Eager loaded (in main bundle)
+            { path: '', component: HomeComponent },
+
+            // Lazy load single component
+            {
+              path: 'about',
+              loadComponent: () => import('./about/about.component')
+                .then(m => m.AboutComponent)
+            },
+
+            // Lazy load with default export
+            {
+              path: 'contact',
+              loadComponent: () => import('./contact/contact.component')
+            },
+
+            // Lazy load route group
+            {
+              path: 'admin',
+              loadChildren: () => import('./admin/admin.routes')
+                .then(m => m.ADMIN_ROUTES),
+              canMatch: [adminGuard]
+            },
+
+            // Preload specific routes
+            {
+              path: 'products',
+              loadComponent: () => import('./products/products.component'),
+              data: { preload: true }
+            }
+          ];
+
+          // Custom preloading strategy
+          export const appConfig: ApplicationConfig = {
+            providers: [
+              provideRouter(
+                routes,
+                withPreloading(PreloadAllModules) // or custom strategy
+              )
+            ]
+          };
+      tags:
+        - lazy-loading
+        - routing
+        - performance
+
+  - id: NG028
+    title: 'Router State with Signals'
+    category: routing
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '16.0'
+    content:
+      description: |
+        Access router state reactively using toSignal() with ActivatedRoute
+        observables. Avoid subscribing in components.
+      rationale: |
+        Signal-based router state integrates with Angular's reactive system
+        and updates automatically in templates.
+      good_examples:
+        - |
+          @Component({...})
+          export class ProductComponent {
+            private route = inject(ActivatedRoute);
+            private router = inject(Router);
+
+            // Route params as signal
+            productId = toSignal(
+              this.route.paramMap.pipe(
+                map(params => params.get('id')!)
+              ),
+              { initialValue: '' }
+            );
+
+            // Query params as signal
+            sortBy = toSignal(
+              this.route.queryParamMap.pipe(
+                map(params => params.get('sort') ?? 'name')
+              ),
+              { initialValue: 'name' }
+            );
+
+            // Route data as signal
+            pageTitle = toSignal(
+              this.route.data.pipe(map(d => d['title'] as string)),
+              { initialValue: '' }
+            );
+
+            // Navigation with signals
+            navigateToProduct(id: string): void {
+              this.router.navigate(['/products', id], {
+                queryParams: { sort: this.sortBy() }
+              });
+            }
+
+            updateSort(sort: string): void {
+              this.router.navigate([], {
+                relativeTo: this.route,
+                queryParams: { sort },
+                queryParamsHandling: 'merge'
+              });
+            }
+          }
+      tags:
+        - routing
+        - signals
+        - state
+
+  - id: NG029
+    title: 'Title and Meta Strategy'
+    category: routing
+    level: intermediate
+    priority: medium
+    angular_version:
+      min_version: '14.0'
+    content:
+      description: |
+        Use TitleStrategy for dynamic page titles and route data for meta tags.
+        Essential for SEO and accessibility.
+      rationale: |
+        Proper titles and meta tags improve SEO, accessibility,
+        and user experience when switching between routes.
+      good_examples:
+        - |
+          // Custom title strategy
+          @Injectable({ providedIn: 'root' })
+          export class AppTitleStrategy extends TitleStrategy {
+            private title = inject(Title);
+
+            override updateTitle(snapshot: RouterStateSnapshot): void {
+              const title = this.buildTitle(snapshot);
+              this.title.setTitle(title ? `${title} | MyApp` : 'MyApp');
+            }
+          }
+
+          // Route configuration
+          export const routes: Routes = [
+            {
+              path: 'products',
+              title: 'Products',
+              component: ProductsComponent
+            },
+            {
+              path: 'products/:id',
+              title: productTitleResolver, // Dynamic title
+              component: ProductDetailComponent
+            }
+          ];
+
+          // Resolver for dynamic titles
+          export const productTitleResolver: ResolveFn<string> = (route) => {
+            const productService = inject(ProductService);
+            return productService.getProduct(route.paramMap.get('id')!)
+              .pipe(map(p => p.name));
+          };
+
+          // Register strategy
+          export const appConfig: ApplicationConfig = {
+            providers: [
+              provideRouter(routes),
+              { provide: TitleStrategy, useClass: AppTitleStrategy }
+            ]
+          };
+      tags:
+        - routing
+        - seo
+        - title
+
+  - id: NG030
+    title: 'Router Events Handling'
+    category: routing
+    level: advanced
+    priority: medium
+    angular_version:
+      min_version: '14.0'
+    content:
+      description: |
+        Handle router events for loading indicators, analytics, scroll restoration,
+        and navigation tracking using reactive patterns.
+      rationale: |
+        Router events enable cross-cutting navigation concerns like
+        progress indicators and analytics tracking.
+      good_examples:
+        - |
+          @Component({...})
+          export class AppComponent {
+            private router = inject(Router);
+
+            // Loading state from router events
+            isNavigating = toSignal(
+              this.router.events.pipe(
+                filter(e =>
+                  e instanceof NavigationStart ||
+                  e instanceof NavigationEnd ||
+                  e instanceof NavigationCancel ||
+                  e instanceof NavigationError
+                ),
+                map(e => e instanceof NavigationStart)
+              ),
+              { initialValue: false }
+            );
+
+            constructor() {
+              // Analytics tracking
+              this.router.events
+                .pipe(
+                  filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+                  takeUntilDestroyed()
+                )
+                .subscribe(event => {
+                  this.analytics.trackPageView(event.urlAfterRedirects);
+                });
+            }
+          }
+
+          // Scroll restoration configuration
+          export const appConfig: ApplicationConfig = {
+            providers: [
+              provideRouter(
+                routes,
+                withInMemoryScrolling({
+                  scrollPositionRestoration: 'enabled',
+                  anchorScrolling: 'enabled'
+                }),
+                withRouterConfig({
+                  onSameUrlNavigation: 'reload'
+                })
+              )
+            ]
+          };
+      tags:
+        - routing
+        - events
+        - navigation
+
+  # ============================================================================
+  # FORMS (NG031-NG035)
+  # ============================================================================
+
+  - id: NG031
+    title: 'Typed Reactive Forms'
+    category: forms
+    level: intermediate
+    priority: critical
+    angular_version:
+      min_version: '14.0'
+    content:
+      description: |
+        Use strictly typed reactive forms with FormGroup, FormControl, and
+        NonNullableFormBuilder for type-safe form handling.
+      rationale: |
+        Typed forms catch errors at compile time and provide better
+        autocomplete for form values.
+      good_examples:
+        - |
+          import { FormGroup, FormControl, Validators, NonNullableFormBuilder } from '@angular/forms';
+
+          interface UserForm {
+            name: FormControl<string>;
+            email: FormControl<string>;
+            age: FormControl<number | null>;
+            address: FormGroup<{
+              street: FormControl<string>;
+              city: FormControl<string>;
+            }>;
+          }
+
+          @Component({...})
+          export class UserFormComponent {
+            private fb = inject(NonNullableFormBuilder);
+
+            // Typed form group
+            form = this.fb.group<UserForm>({
+              name: this.fb.control('', [Validators.required, Validators.minLength(2)]),
+              email: this.fb.control('', [Validators.required, Validators.email]),
+              age: this.fb.control<number | null>(null),
+              address: this.fb.group({
+                street: this.fb.control(''),
+                city: this.fb.control('', Validators.required)
+              })
+            });
+
+            // Type-safe access
+            onSubmit(): void {
+              if (this.form.valid) {
+                const value = this.form.getRawValue();
+                // value is typed as { name: string; email: string; age: number | null; ... }
+                this.userService.createUser(value);
+              }
+            }
+
+            // Partial updates maintain types
+            patchAddress(city: string): void {
+              this.form.controls.address.patchValue({ city });
+            }
+          }
+      tags:
+        - forms
+        - reactive-forms
+        - type-safety
+
+  - id: NG032
+    title: 'Form Validation Patterns'
+    category: forms
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '14.0'
+    content:
+      description: |
+        Create reusable validators, async validators, and cross-field validators.
+        Display errors using reactive patterns with signals.
+      rationale: |
+        Proper validation patterns ensure consistency, reusability,
+        and good user experience across forms.
+      good_examples:
+        - |
+          // Custom validator function
+          export function matchValidator(controlName: string, matchingName: string): ValidatorFn {
+            return (group: AbstractControl): ValidationErrors | null => {
+              const control = group.get(controlName);
+              const matching = group.get(matchingName);
+
+              if (control?.value !== matching?.value) {
+                matching?.setErrors({ match: true });
+                return { match: true };
+              }
+              return null;
+            };
+          }
+
+          // Async validator
+          export function uniqueEmailValidator(userService: UserService): AsyncValidatorFn {
+            return (control: AbstractControl): Observable<ValidationErrors | null> => {
+              return userService.checkEmail(control.value).pipe(
+                map(exists => exists ? { emailTaken: true } : null),
+                catchError(() => of(null))
+              );
+            };
+          }
+
+          // Component with validation
+          @Component({
+            template: `
+              <form [formGroup]="form" (ngSubmit)="submit()">
+                <input formControlName="email" />
+                @if (emailErrors(); as errors) {
+                  <div class="error">
+                    @if (errors['required']) { Email is required }
+                    @if (errors['email']) { Invalid email format }
+                    @if (errors['emailTaken']) { Email already registered }
+                  </div>
+                }
+              </form>
+            `
+          })
+          export class RegisterComponent {
+            form = this.fb.group({
+              email: ['', [Validators.required, Validators.email],
+                [uniqueEmailValidator(this.userService)]],
+              password: ['', [Validators.required, Validators.minLength(8)]],
+              confirmPassword: ['']
+            }, { validators: [matchValidator('password', 'confirmPassword')] });
+
+            // Signal for reactive error display
+            emailErrors = toSignal(
+              this.form.controls.email.statusChanges.pipe(
+                map(() => this.form.controls.email.errors)
+              )
+            );
+          }
+      tags:
+        - forms
+        - validation
+        - async
+
+  - id: NG033
+    title: 'Control Value Accessor'
+    category: forms
+    level: advanced
+    priority: medium
+    angular_version:
+      min_version: '14.0'
+    content:
+      description: |
+        Implement ControlValueAccessor for custom form controls that integrate
+        with both template-driven and reactive forms.
+      rationale: |
+        Custom form controls enable reusable, encapsulated form inputs
+        that work seamlessly with Angular's form system.
+      good_examples:
+        - |
+          @Component({
+            selector: 'app-rating',
+            standalone: true,
+            providers: [{
+              provide: NG_VALUE_ACCESSOR,
+              useExisting: RatingComponent,
+              multi: true
+            }],
+            template: `
+              @for (star of stars; track $index) {
+                <button
+                  type="button"
+                  [class.filled]="$index < value()"
+                  [disabled]="disabled()"
+                  (click)="setRating($index + 1)">
+                  ★
+                </button>
+              }
+            `
+          })
+          export class RatingComponent implements ControlValueAccessor {
+            stars = [1, 2, 3, 4, 5];
+
+            value = signal(0);
+            disabled = signal(false);
+
+            private onChange: (value: number) => void = () => {};
+            private onTouched: () => void = () => {};
+
+            writeValue(value: number): void {
+              this.value.set(value ?? 0);
+            }
+
+            registerOnChange(fn: (value: number) => void): void {
+              this.onChange = fn;
+            }
+
+            registerOnTouched(fn: () => void): void {
+              this.onTouched = fn;
+            }
+
+            setDisabledState(disabled: boolean): void {
+              this.disabled.set(disabled);
+            }
+
+            setRating(rating: number): void {
+              if (!this.disabled()) {
+                this.value.set(rating);
+                this.onChange(rating);
+                this.onTouched();
+              }
+            }
+          }
+
+          // Usage
+          <app-rating formControlName="rating" />
+          <app-rating [(ngModel)]="rating" />
+      tags:
+        - forms
+        - custom-controls
+        - cva
+
+  - id: NG034
+    title: 'Form Arrays'
+    category: forms
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '14.0'
+    content:
+      description: |
+        Use FormArray for dynamic form fields like lists of items, tags,
+        or repeatable form sections with proper typing.
+      rationale: |
+        FormArrays enable dynamic forms while maintaining type safety
+        and validation for variable-length data.
+      good_examples:
+        - |
+          interface OrderForm {
+            customerName: FormControl<string>;
+            items: FormArray<FormGroup<{
+              product: FormControl<string>;
+              quantity: FormControl<number>;
+              price: FormControl<number>;
+            }>>;
+          }
+
+          @Component({
+            template: `
+              <form [formGroup]="form">
+                <input formControlName="customerName" />
+
+                <div formArrayName="items">
+                  @for (item of items.controls; track $index) {
+                    <div [formGroupName]="$index">
+                      <input formControlName="product" />
+                      <input formControlName="quantity" type="number" />
+                      <input formControlName="price" type="number" />
+                      <button type="button" (click)="removeItem($index)">×</button>
+                    </div>
+                  }
+                </div>
+
+                <button type="button" (click)="addItem()">Add Item</button>
+                <p>Total: {{ total() }}</p>
+              </form>
+            `
+          })
+          export class OrderFormComponent {
+            private fb = inject(NonNullableFormBuilder);
+
+            form = this.fb.group<OrderForm>({
+              customerName: this.fb.control('', Validators.required),
+              items: this.fb.array<FormGroup<OrderForm['items']['controls'][0]['controls']>>([])
+            });
+
+            get items() {
+              return this.form.controls.items;
+            }
+
+            total = computed(() => {
+              return this.items.controls.reduce((sum, item) => {
+                return sum + item.value.quantity! * item.value.price!;
+              }, 0);
+            });
+
+            addItem(): void {
+              this.items.push(this.fb.group({
+                product: this.fb.control('', Validators.required),
+                quantity: this.fb.control(1, [Validators.required, Validators.min(1)]),
+                price: this.fb.control(0, [Validators.required, Validators.min(0)])
+              }));
+            }
+
+            removeItem(index: number): void {
+              this.items.removeAt(index);
+            }
+          }
+      tags:
+        - forms
+        - form-array
+        - dynamic-forms
+
+  - id: NG035
+    title: 'Form State Signals'
+    category: forms
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '17.0'
+    content:
+      description: |
+        Convert form status and value changes to signals for reactive
+        template bindings without manual subscriptions.
+      rationale: |
+        Signal-based form state simplifies templates and integrates
+        with Angular's signal-based change detection.
+      good_examples:
+        - |
+          @Component({
+            template: `
+              <form [formGroup]="form" (ngSubmit)="submit()">
+                <input formControlName="email" />
+
+                <button
+                  [disabled]="!isValid() || isSubmitting()"
+                  type="submit">
+                  @if (isSubmitting()) {
+                    Saving...
+                  } @else {
+                    Save
+                  }
+                </button>
+
+                @if (isDirty()) {
+                  <p>You have unsaved changes</p>
+                }
+              </form>
+            `
+          })
+          export class FormComponent {
+            form = this.fb.group({
+              email: ['', [Validators.required, Validators.email]]
+            });
+
+            isSubmitting = signal(false);
+
+            // Form state as signals
+            isValid = toSignal(
+              this.form.statusChanges.pipe(
+                map(() => this.form.valid),
+                startWith(this.form.valid)
+              ),
+              { initialValue: false }
+            );
+
+            isDirty = toSignal(
+              this.form.valueChanges.pipe(
+                map(() => this.form.dirty),
+                startWith(this.form.dirty)
+              ),
+              { initialValue: false }
+            );
+
+            formValue = toSignal(
+              this.form.valueChanges.pipe(startWith(this.form.value))
+            );
+
+            async submit(): Promise<void> {
+              if (!this.form.valid) return;
+
+              this.isSubmitting.set(true);
+              try {
+                await this.save(this.form.getRawValue());
+                this.form.markAsPristine();
+              } finally {
+                this.isSubmitting.set(false);
+              }
+            }
+          }
+      tags:
+        - forms
+        - signals
+        - state
+
+  # ============================================================================
+  # TESTING (NG036-NG040)
+  # ============================================================================
+
+  - id: NG036
+    title: 'Component Testing with Signals'
+    category: testing
+    level: intermediate
+    priority: critical
+    angular_version:
+      min_version: '17.0'
+    content:
+      description: |
+        Test components with signal inputs using ComponentFixture.componentRef.setInput().
+        Understand signal reactivity in tests.
+      rationale: |
+        Proper signal testing ensures components behave correctly when
+        inputs change and computed values update.
+      good_examples:
+        - |
+          describe('UserCardComponent', () => {
+            let fixture: ComponentFixture<UserCardComponent>;
+            let component: UserCardComponent;
+
+            beforeEach(async () => {
+              await TestBed.configureTestingModule({
+                imports: [UserCardComponent]
+              }).compileComponents();
+
+              fixture = TestBed.createComponent(UserCardComponent);
+              component = fixture.componentInstance;
+            });
+
+            it('should display user name', () => {
+              // Set signal input
+              fixture.componentRef.setInput('user', { name: 'John', email: 'john@test.com' });
+              fixture.detectChanges();
+
+              expect(fixture.nativeElement.textContent).toContain('John');
+            });
+
+            it('should update when input changes', () => {
+              fixture.componentRef.setInput('user', { name: 'John' });
+              fixture.detectChanges();
+
+              // Update input
+              fixture.componentRef.setInput('user', { name: 'Jane' });
+              fixture.detectChanges();
+
+              expect(fixture.nativeElement.textContent).toContain('Jane');
+            });
+
+            it('should compute full name', () => {
+              fixture.componentRef.setInput('firstName', 'John');
+              fixture.componentRef.setInput('lastName', 'Doe');
+              fixture.detectChanges();
+
+              // Access computed signal
+              expect(component.fullName()).toBe('John Doe');
+            });
+
+            it('should emit output event', () => {
+              const spy = jest.fn();
+              component.userSelected.subscribe(spy);
+
+              fixture.componentRef.setInput('user', { id: '1', name: 'John' });
+              fixture.detectChanges();
+
+              fixture.nativeElement.querySelector('button').click();
+
+              expect(spy).toHaveBeenCalledWith({ id: '1', name: 'John' });
+            });
+          });
+      tags:
+        - testing
+        - signals
+        - component-testing
+
+  - id: NG037
+    title: 'Service Testing'
+    category: testing
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '16.0'
+    content:
+      description: |
+        Test services with signal-based state using TestBed. Mock dependencies
+        with injection tokens. Test effects with fakeAsync.
+      rationale: |
+        Thorough service testing ensures business logic works correctly
+        and signal reactivity behaves as expected.
+      good_examples:
+        - |
+          describe('AuthService', () => {
+            let service: AuthService;
+            let httpMock: HttpTestingController;
+
+            beforeEach(() => {
+              TestBed.configureTestingModule({
+                imports: [HttpClientTestingModule],
+                providers: [
+                  AuthService,
+                  { provide: ENVIRONMENT, useValue: { apiUrl: 'http://test' } }
+                ]
+              });
+
+              service = TestBed.inject(AuthService);
+              httpMock = TestBed.inject(HttpTestingController);
+            });
+
+            afterEach(() => {
+              httpMock.verify();
+            });
+
+            it('should be unauthenticated initially', () => {
+              expect(service.isAuthenticated()).toBe(false);
+              expect(service.user()).toBeNull();
+            });
+
+            it('should update state on login', async () => {
+              const user = { id: '1', name: 'Test' };
+              const loginPromise = service.login({ email: 'test@test.com', password: 'pass' });
+
+              const req = httpMock.expectOne('http://test/api/auth/login');
+              req.flush(user);
+
+              await loginPromise;
+
+              expect(service.isAuthenticated()).toBe(true);
+              expect(service.user()).toEqual(user);
+            });
+
+            it('should handle login error', async () => {
+              const loginPromise = service.login({ email: 'test@test.com', password: 'wrong' });
+
+              const req = httpMock.expectOne('http://test/api/auth/login');
+              req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+              await expect(loginPromise).rejects.toThrow();
+              expect(service.error()).toBe('Login failed');
+              expect(service.isAuthenticated()).toBe(false);
+            });
+          });
+      tags:
+        - testing
+        - services
+        - http-testing
+
+  - id: NG038
+    title: 'Testing with Harnesses'
+    category: testing
+    level: advanced
+    priority: medium
+    angular_version:
+      min_version: '10.0'
+    content:
+      description: |
+        Use component harnesses for reliable, resilient UI testing.
+        Create custom harnesses for your components.
+      rationale: |
+        Harnesses abstract DOM queries, making tests more maintainable
+        and resistant to template changes.
+      good_examples:
+        - |
+          // Custom harness
+          export class UserCardHarness extends ComponentHarness {
+            static hostSelector = 'app-user-card';
+
+            private getNameElement = this.locatorFor('.user-name');
+            private getEditButton = this.locatorFor('button.edit');
+            private getDeleteButton = this.locatorForOptional('button.delete');
+
+            async getName(): Promise<string> {
+              const el = await this.getNameElement();
+              return el.text();
+            }
+
+            async clickEdit(): Promise<void> {
+              const button = await this.getEditButton();
+              return button.click();
+            }
+
+            async hasDeleteButton(): Promise<boolean> {
+              const button = await this.getDeleteButton();
+              return button !== null;
+            }
+          }
+
+          // Using harness in tests
+          describe('UserCardComponent', () => {
+            let loader: HarnessLoader;
+
+            beforeEach(async () => {
+              await TestBed.configureTestingModule({
+                imports: [UserCardComponent]
+              }).compileComponents();
+
+              const fixture = TestBed.createComponent(TestHostComponent);
+              loader = TestbedHarnessEnvironment.loader(fixture);
+            });
+
+            it('should display user name', async () => {
+              const harness = await loader.getHarness(UserCardHarness);
+              expect(await harness.getName()).toBe('John Doe');
+            });
+
+            it('should handle edit click', async () => {
+              const harness = await loader.getHarness(UserCardHarness);
+              await harness.clickEdit();
+              // Assert edit behavior
+            });
+          });
+      tags:
+        - testing
+        - harnesses
+        - component-testing
+
+  - id: NG039
+    title: 'Effect and Timer Testing'
+    category: testing
+    level: advanced
+    priority: medium
+    angular_version:
+      min_version: '16.0'
+    content:
+      description: |
+        Test effects and timer-based code using fakeAsync, tick, and flush.
+        Understand TestBed.flushEffects() for signal effects.
+      rationale: |
+        Async code requires special testing utilities to control time
+        and ensure all effects have completed.
+      good_examples:
+        - |
+          describe('SearchComponent', () => {
+            it('should debounce search', fakeAsync(() => {
+              const fixture = TestBed.createComponent(SearchComponent);
+              const component = fixture.componentInstance;
+              const searchSpy = jest.spyOn(component['searchService'], 'search')
+                .mockReturnValue(of([]));
+
+              component.query.set('test');
+
+              // Effect hasn't run yet
+              expect(searchSpy).not.toHaveBeenCalled();
+
+              // Advance past debounce time
+              tick(300);
+              TestBed.flushEffects();
+
+              expect(searchSpy).toHaveBeenCalledWith('test');
+            }));
+
+            it('should cancel pending search on new query', fakeAsync(() => {
+              const fixture = TestBed.createComponent(SearchComponent);
+              const component = fixture.componentInstance;
+              const searchSpy = jest.spyOn(component['searchService'], 'search')
+                .mockReturnValue(of([]));
+
+              component.query.set('first');
+              tick(100);
+
+              component.query.set('second');
+              tick(300);
+              TestBed.flushEffects();
+
+              // Only second search should happen
+              expect(searchSpy).toHaveBeenCalledTimes(1);
+              expect(searchSpy).toHaveBeenCalledWith('second');
+            }));
+
+            it('should handle interval updates', fakeAsync(() => {
+              const fixture = TestBed.createComponent(TimerComponent);
+              fixture.detectChanges();
+
+              expect(fixture.componentInstance.count()).toBe(0);
+
+              tick(1000);
+              expect(fixture.componentInstance.count()).toBe(1);
+
+              tick(5000);
+              expect(fixture.componentInstance.count()).toBe(6);
+
+              discardPeriodicTasks();
+            }));
+          });
+      tags:
+        - testing
+        - async
+        - effects
+
+  - id: NG040
+    title: 'E2E Testing Best Practices'
+    category: testing
+    level: advanced
+    priority: medium
+    angular_version:
+      min_version: '12.0'
+    content:
+      description: |
+        Write E2E tests using Playwright or Cypress with page object pattern.
+        Focus on user flows and critical paths.
+      rationale: |
+        E2E tests verify the application works correctly from a user's
+        perspective, catching integration issues.
+      good_examples:
+        - |
+          // Playwright example with page object
+          // pages/login.page.ts
+          export class LoginPage {
+            readonly page: Page;
+            readonly emailInput: Locator;
+            readonly passwordInput: Locator;
+            readonly submitButton: Locator;
+            readonly errorMessage: Locator;
+
+            constructor(page: Page) {
+              this.page = page;
+              this.emailInput = page.getByLabel('Email');
+              this.passwordInput = page.getByLabel('Password');
+              this.submitButton = page.getByRole('button', { name: 'Sign In' });
+              this.errorMessage = page.getByRole('alert');
+            }
+
+            async goto(): Promise<void> {
+              await this.page.goto('/login');
+            }
+
+            async login(email: string, password: string): Promise<void> {
+              await this.emailInput.fill(email);
+              await this.passwordInput.fill(password);
+              await this.submitButton.click();
+            }
+          }
+
+          // login.spec.ts
+          test.describe('Login', () => {
+            let loginPage: LoginPage;
+
+            test.beforeEach(async ({ page }) => {
+              loginPage = new LoginPage(page);
+              await loginPage.goto();
+            });
+
+            test('successful login redirects to dashboard', async ({ page }) => {
+              await loginPage.login('user@test.com', 'password');
+
+              await expect(page).toHaveURL('/dashboard');
+              await expect(page.getByText('Welcome')).toBeVisible();
+            });
+
+            test('invalid credentials show error', async () => {
+              await loginPage.login('user@test.com', 'wrong');
+
+              await expect(loginPage.errorMessage).toBeVisible();
+              await expect(loginPage.errorMessage).toContainText('Invalid credentials');
+            });
+          });
+      tags:
+        - testing
+        - e2e
+        - playwright
+
+  # ============================================================================
+  # PERFORMANCE (NG041-NG045)
+  # ============================================================================
+
+  - id: NG041
+    title: 'Track By for Lists'
+    category: performance
+    level: beginner
+    priority: critical
+    angular_version:
+      min_version: '17.0'
+    content:
+      description: |
+        Always use track expression in @for loops. It's required in Angular 17+
+        and essential for efficient DOM updates.
+      rationale: |
+        Track expressions enable Angular to identify items and minimize
+        DOM operations when lists change.
+      good_examples:
+        - |
+          @Component({
+            template: `
+              <!-- Track by unique ID (best) -->
+              @for (user of users(); track user.id) {
+                <app-user-card [user]="user" />
+              }
+
+              <!-- Track by index (use only for static lists) -->
+              @for (item of staticItems; track $index) {
+                <li>{{ item }}</li>
+              }
+
+              <!-- Track by composite key -->
+              @for (item of items(); track item.categoryId + '-' + item.id) {
+                <app-item [data]="item" />
+              }
+
+              <!-- Track by computed value -->
+              @for (order of orders(); track trackOrder(order)) {
+                <app-order [order]="order" />
+              }
+            `
+          })
+          export class ListComponent {
+            users = signal<User[]>([]);
+            items = signal<Item[]>([]);
+            orders = signal<Order[]>([]);
+            staticItems = ['A', 'B', 'C'];
+
+            trackOrder(order: Order): string {
+              return `${order.id}-${order.version}`;
+            }
+          }
+      bad_examples:
+        - |
+          // ❌ Missing track (error in Angular 17+)
+          @for (user of users()) {
+            <app-user-card [user]="user" />
+          }
+
+          // ❌ Track by index for dynamic lists
+          @for (user of users(); track $index) {
+            <app-user-card [user]="user" />
+          }
+      tags:
+        - performance
+        - for-loop
+        - track
+
+  - id: NG042
+    title: 'Virtual Scrolling'
+    category: performance
+    level: intermediate
+    priority: high
+    angular_version:
+      min_version: '7.0'
+    content:
+      description: |
+        Use CDK virtual scrolling for large lists to render only visible items.
+        Essential for lists with hundreds or thousands of items.
+      rationale: |
+        Virtual scrolling dramatically reduces memory usage and improves
+        performance by rendering only visible DOM elements.
+      good_examples:
+        - |
+          import { ScrollingModule } from '@angular/cdk/scrolling';
+
+          @Component({
+            standalone: true,
+            imports: [ScrollingModule],
+            template: `
+              <!-- Fixed size items -->
+              <cdk-virtual-scroll-viewport itemSize="50" class="list-viewport">
+                <div *cdkVirtualFor="let item of items(); trackBy: trackById" class="item">
+                  {{ item.name }}
+                </div>
+              </cdk-virtual-scroll-viewport>
+
+              <!-- Variable size items with autosize -->
+              <cdk-virtual-scroll-viewport autosize class="list-viewport">
+                <app-item
+                  *cdkVirtualFor="let item of items(); trackBy: trackById"
+                  [item]="item"
+                />
+              </cdk-virtual-scroll-viewport>
+            `,
+            styles: [`
+              .list-viewport {
+                height: 400px;
+                width: 100%;
+              }
+
+              .item {
+                height: 50px;
+              }
+            `]
+          })
+          export class VirtualListComponent {
+            items = signal<Item[]>([]);
+
+            trackById(index: number, item: Item): string {
+              return item.id;
+            }
+          }
+      tags:
+        - performance
+        - virtual-scroll
+        - cdk
+
+  - id: NG043
+    title: 'Image Optimization'
+    category: performance
+    level: beginner
+    priority: high
+    angular_version:
+      min_version: '15.0'
+    content:
+      description: |
+        Use NgOptimizedImage directive for automatic image optimization,
+        lazy loading, and proper sizing.
+      rationale: |
+        NgOptimizedImage enforces best practices and can significantly
+        improve LCP (Largest Contentful Paint) scores.
+      good_examples:
+        - |
+          import { NgOptimizedImage } from '@angular/common';
+
+          @Component({
+            standalone: true,
+            imports: [NgOptimizedImage],
+            template: `
+              <!-- Basic usage (must specify width and height) -->
+              <img
+                ngSrc="/images/hero.jpg"
+                width="1200"
+                height="600"
+                alt="Hero image"
+                priority
+              />
+
+              <!-- Responsive image with fill -->
+              <div class="image-container">
+                <img
+                  ngSrc="/images/product.jpg"
+                  fill
+                  [alt]="product().name"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
+
+              <!-- Lazy loaded (default) with placeholder -->
+              <img
+                ngSrc="/images/thumbnail.jpg"
+                width="200"
+                height="200"
+                [placeholder]="placeholderUrl"
+                alt="Thumbnail"
+              />
+
+              <!-- Using image loader -->
+              <img
+                ngSrc="product-123"
+                width="400"
+                height="400"
+                [loaderParams]="{ quality: 80 }"
+                alt="Product"
+              />
+            `,
+            styles: [`
+              .image-container {
+                position: relative;
+                width: 100%;
+                height: 300px;
+              }
+            `]
+          })
+          export class ImageComponent {
+            product = input.required<Product>();
+            placeholderUrl = 'data:image/svg+xml,...';
+          }
+      tags:
+        - performance
+        - images
+        - optimization
+
+  - id: NG044
+    title: 'Bundle Analysis and Optimization'
+    category: performance
+    level: advanced
+    priority: high
+    angular_version:
+      min_version: '16.0'
+    content:
+      description: |
+        Analyze and optimize bundle size using source-map-explorer or
+        webpack-bundle-analyzer. Identify and fix large dependencies.
+      rationale: |
+        Understanding bundle composition helps identify optimization
+        opportunities and prevent bundle bloat.
+      good_examples:
+        - |
+          // package.json scripts
+          {
+            "scripts": {
+              "analyze": "ng build --source-map && source-map-explorer dist/**/*.js",
+              "analyze:bundle": "ng build --stats-json && webpack-bundle-analyzer dist/stats.json"
+            }
+          }
+
+          // Common optimizations:
+
+          // 1. Import specific lodash functions
+          // ❌ import _ from 'lodash';
+          // ✅ import debounce from 'lodash/debounce';
+
+          // 2. Use date-fns instead of moment
+          // ❌ import moment from 'moment';
+          // ✅ import { format, parseISO } from 'date-fns';
+
+          // 3. Lazy load heavy components
+          @Component({
+            template: `
+              @defer (on viewport) {
+                <app-chart-library />
+              }
+            `
+          })
+
+          // 4. Tree-shake icons
+          // ❌ import { MatIconModule } from '@angular/material/icon';
+          // ✅ Import only needed icons
+
+          // 5. angular.json optimization
+          {
+            "optimization": {
+              "scripts": true,
+              "styles": {
+                "minify": true,
+                "inlineCritical": true
+              },
+              "fonts": {
+                "inline": true
+              }
+            }
+          }
+      tags:
+        - performance
+        - bundle-size
+        - optimization
+
+  - id: NG045
+    title: 'Zone.js Optimization'
+    category: performance
+    level: expert
+    priority: medium
+    angular_version:
+      min_version: '18.0'
+    content:
+      description: |
+        Optimize or eliminate Zone.js for better performance. Use zoneless
+        change detection with signals for maximum efficiency.
+      rationale: |
+        Zone.js patches all async APIs and triggers change detection.
+        Zoneless mode with signals provides fine-grained updates.
+      good_examples:
+        - |
+          // Enable experimental zoneless mode (Angular 18+)
+          // main.ts
+          bootstrapApplication(AppComponent, {
+            providers: [
+              provideExperimentalZonelessChangeDetection()
+            ]
+          });
+
+          // Component must use signals for reactivity
+          @Component({
+            changeDetection: ChangeDetectionStrategy.OnPush,
+            template: `
+              <p>Count: {{ count() }}</p>
+              <button (click)="increment()">+</button>
+            `
+          })
+          export class CounterComponent {
+            count = signal(0);
+
+            increment(): void {
+              this.count.update(c => c + 1);
+            }
+          }
+
+          // For Zone.js apps, optimize with runOutsideAngular
+          @Component({...})
+          export class AnimationComponent {
+            private ngZone = inject(NgZone);
+
+            startAnimation(): void {
+              this.ngZone.runOutsideAngular(() => {
+                // Heavy animation code that doesn't need CD
+                requestAnimationFrame(this.animate.bind(this));
+              });
+            }
+
+            onAnimationComplete(): void {
+              this.ngZone.run(() => {
+                // Update signals/trigger CD when needed
+                this.animationComplete.set(true);
+              });
+            }
+          }
+      tags:
+        - performance
+        - zoneless
+        - change-detection

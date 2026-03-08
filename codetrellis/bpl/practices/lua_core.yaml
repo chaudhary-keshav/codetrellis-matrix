@@ -1,0 +1,547 @@
+# CodeTrellis Best Practice Library - Lua Core Practices
+# v4.28: Lua Language Support (Lua 5.1, 5.2, 5.3, 5.4, LuaJIT)
+# 50 practices covering tables, metatables, modules, functions, coroutines,
+# error handling, OOP, FFI, performance, LÖVE2D, OpenResty, Lapis, testing, security, style.
+
+practices:
+  # ════════════════════════════════════════════════════════════════
+  # LUA_TABLES (LUA001-LUA005)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA001
+    title: "Use local variables over globals"
+    category: lua_tables
+    level: beginner
+    description: >
+      Always declare variables as local. Global variable access is significantly
+      slower than local access because globals require a hash table lookup.
+      Use 'local' for all variables and cache frequently used globals.
+    tags: [lua, performance, variables]
+
+  - id: LUA002
+    title: "Pre-allocate tables when size is known"
+    category: lua_tables
+    level: intermediate
+    description: >
+      When creating tables with a known number of elements, pre-allocate using
+      table constructors or the table.create LuaJIT extension to avoid
+      repeated table resizing. Use {nil, nil, nil} or table.create(n, 0).
+    tags: [lua, performance, tables]
+
+  - id: LUA003
+    title: "Use array-style tables for sequential data"
+    category: lua_tables
+    level: beginner
+    description: >
+      Prefer integer-indexed tables (arrays) over hash tables for sequential
+      data. Array access is faster and uses less memory. Use ipairs() for
+      array iteration and pairs() only for hash tables.
+    tags: [lua, tables, performance]
+
+  - id: LUA004
+    title: "Avoid table.insert for append operations"
+    category: lua_tables
+    level: intermediate
+    description: >
+      For appending to tables, use t[#t+1] = value instead of table.insert(t, value).
+      Direct assignment avoids function call overhead. Cache #t if appending
+      in a loop.
+    tags: [lua, performance, tables]
+
+  - id: LUA005
+    title: "Use weak tables for caches"
+    category: lua_tables
+    level: advanced
+    description: >
+      Set __mode metamethod to 'k', 'v', or 'kv' for cache tables to allow
+      garbage collection of unused entries. This prevents memory leaks in
+      long-running applications.
+    tags: [lua, memory, metatables]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_METATABLES (LUA006-LUA010)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA006
+    title: "Implement __tostring for debuggable types"
+    category: lua_metatables
+    level: beginner
+    description: >
+      Define __tostring metamethod for custom types to enable meaningful
+      print() and string.format() output. This greatly aids debugging
+      and logging.
+    tags: [lua, metatables, debugging]
+
+  - id: LUA007
+    title: "Use __index for prototype-based inheritance"
+    category: lua_metatables
+    level: intermediate
+    description: >
+      Set __index to a parent table for prototype inheritance. Use
+      setmetatable(child, {__index = parent}) pattern. For classes, set
+      the class table as __index of instance metatables.
+    tags: [lua, metatables, oop]
+
+  - id: LUA008
+    title: "Protect metatables with __metatable"
+    category: lua_metatables
+    level: intermediate
+    description: >
+      Set __metatable to a false value or error message to prevent external
+      code from modifying or reading the metatable via getmetatable().
+      This enforces encapsulation for library types.
+    tags: [lua, metatables, security]
+
+  - id: LUA009
+    title: "Implement __eq, __lt, __le for comparable types"
+    category: lua_metatables
+    level: intermediate
+    description: >
+      Define comparison metamethods for types that need ordering or equality
+      checks. Both operands must have the same metamethod for it to be called.
+      Consider __eq for value types and __lt for sortable types.
+    tags: [lua, metatables]
+
+  - id: LUA010
+    title: "Use __gc for resource cleanup (Lua 5.2+)"
+    category: lua_metatables
+    level: advanced
+    description: >
+      Implement __gc finalizer for tables holding external resources (file
+      handles, C pointers, network connections). In Lua 5.1, only userdata
+      has __gc; Lua 5.2+ extends this to tables.
+    tags: [lua, metatables, resources]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_MODULES (LUA011-LUA015)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA011
+    title: "Use return-table module pattern"
+    category: lua_modules
+    level: beginner
+    description: >
+      Define modules by returning a table of public functions. Avoid the
+      deprecated module() function from Lua 5.1. The return-table pattern
+      is compatible with all Lua versions.
+    tags: [lua, modules]
+
+  - id: LUA012
+    title: "Keep module locals truly local"
+    category: lua_modules
+    level: beginner
+    description: >
+      Declare helper functions and data as local within the module file.
+      Only expose intentional API through the returned table. This provides
+      proper encapsulation and prevents namespace pollution.
+    tags: [lua, modules, encapsulation]
+
+  - id: LUA013
+    title: "Cache require() results"
+    category: lua_modules
+    level: intermediate
+    description: >
+      Lua's require() caches modules in package.loaded. Never call require()
+      inside hot loops. Store require() results in local variables at the
+      top of the file for clarity and performance.
+    tags: [lua, modules, performance]
+
+  - id: LUA014
+    title: "Use consistent module structure"
+    category: lua_modules
+    level: intermediate
+    description: >
+      Follow a consistent module layout: requires at top, local constants,
+      local helpers, module table definition, public functions, return.
+      Document the module API with comments.
+    tags: [lua, modules, style]
+
+  - id: LUA015
+    title: "Avoid circular dependencies"
+    category: lua_modules
+    level: intermediate
+    description: >
+      Design module dependencies as a DAG. If circular require() is needed,
+      use lazy loading (require inside functions) or restructure to break
+      the cycle. Circular requires can cause nil references.
+    tags: [lua, modules, architecture]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_FUNCTIONS (LUA016-LUA020)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA016
+    title: "Use multiple return values"
+    category: lua_functions
+    level: beginner
+    description: >
+      Leverage Lua's multiple return values for error handling and rich
+      results. Convention: return nil, err_msg for errors, or return
+      value for success. Callers use if-not pattern for error checking.
+    tags: [lua, functions, error_handling]
+
+  - id: LUA017
+    title: "Use varargs correctly"
+    category: lua_functions
+    level: intermediate
+    description: >
+      Access varargs (...) via select('#', ...) for count and select(i, ...)
+      for indexing. In Lua 5.1, use arg table (deprecated in 5.2+). Pack
+      varargs with {n = select('#', ...), ...} to preserve nil values.
+    tags: [lua, functions]
+
+  - id: LUA018
+    title: "Prefer tail calls for recursion"
+    category: lua_functions
+    level: intermediate
+    description: >
+      Lua performs proper tail call optimization. Use 'return func(args)'
+      pattern for recursive algorithms to avoid stack overflow. Ensure
+      the call is in tail position (no operations after the call).
+    tags: [lua, functions, performance]
+
+  - id: LUA019
+    title: "Use closures for encapsulation"
+    category: lua_functions
+    level: intermediate
+    description: >
+      Create closures (functions capturing upvalues) for private state.
+      This is the idiomatic Lua way to create objects with private data
+      without metatables. Each closure instance has its own state.
+    tags: [lua, functions, oop]
+
+  - id: LUA020
+    title: "Document function contracts"
+    category: lua_functions
+    level: beginner
+    description: >
+      Document parameter types, return values, and error conditions in
+      comments above functions. Use LDoc/LuaDoc format for API documentation.
+      Specify nil behavior and optional parameters.
+    tags: [lua, functions, documentation]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_COROUTINES (LUA021-LUA025)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA021
+    title: "Use coroutines for cooperative multitasking"
+    category: lua_coroutines
+    level: intermediate
+    description: >
+      Leverage coroutine.create/resume/yield for cooperative scheduling.
+      Coroutines are ideal for game loops, async I/O simulation, and
+      state machines without callback complexity.
+    tags: [lua, coroutines]
+
+  - id: LUA022
+    title: "Use coroutine.wrap for iterators"
+    category: lua_coroutines
+    level: intermediate
+    description: >
+      Use coroutine.wrap() to create iterator functions that yield values.
+      This provides a clean API for lazy sequences and generators without
+      manual resume/yield management.
+    tags: [lua, coroutines, iterators]
+
+  - id: LUA023
+    title: "Handle coroutine errors properly"
+    category: lua_coroutines
+    level: intermediate
+    description: >
+      coroutine.resume() returns false + error on failure. Always check
+      the first return value. Use xpcall inside coroutines for stack
+      traces. Dead coroutines cannot be resumed.
+    tags: [lua, coroutines, error_handling]
+
+  - id: LUA024
+    title: "Avoid yielding across C boundaries"
+    category: lua_coroutines
+    level: advanced
+    description: >
+      Standard Lua cannot yield across C function calls (pcall, xpcall,
+      etc. in Lua 5.1). LuaJIT and Lua 5.2+ support yielding from pcall.
+      Design coroutine flow to avoid this limitation.
+    tags: [lua, coroutines, compatibility]
+
+  - id: LUA025
+    title: "Use coroutines for async I/O patterns"
+    category: lua_coroutines
+    level: advanced
+    description: >
+      Implement async/await patterns using coroutines. Wrap I/O operations
+      to yield while waiting and resume on completion. This is the pattern
+      used by OpenResty's cosocket API.
+    tags: [lua, coroutines, async]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_ERROR_HANDLING (LUA026-LUA030)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA026
+    title: "Use pcall/xpcall for protected calls"
+    category: lua_error_handling
+    level: beginner
+    description: >
+      Wrap potentially failing code in pcall() or xpcall(). Use xpcall()
+      with an error handler for stack traces. Never let errors propagate
+      to top level in production code.
+    tags: [lua, error_handling]
+
+  - id: LUA027
+    title: "Return nil, err_msg pattern for expected errors"
+    category: lua_error_handling
+    level: beginner
+    description: >
+      For expected error conditions (file not found, invalid input), return
+      nil followed by an error message string. Reserve error()/assert() for
+      programming errors and contract violations.
+    tags: [lua, error_handling, conventions]
+
+  - id: LUA028
+    title: "Use error objects instead of strings"
+    category: lua_error_handling
+    level: intermediate
+    description: >
+      Pass error tables with type, message, and context fields instead of
+      plain strings. This enables structured error handling and type-based
+      catch patterns using pcall.
+    tags: [lua, error_handling]
+
+  - id: LUA029
+    title: "Validate function arguments early"
+    category: lua_error_handling
+    level: beginner
+    description: >
+      Check argument types and values at function entry using assert() or
+      explicit checks. Fail fast with clear error messages including the
+      parameter name and expected type.
+    tags: [lua, error_handling, defensive]
+
+  - id: LUA030
+    title: "Use debug.traceback for error context"
+    category: lua_error_handling
+    level: intermediate
+    description: >
+      Pass debug.traceback as the message handler to xpcall() for full
+      stack traces on errors. In production, log the traceback; in
+      development, display it.
+    tags: [lua, error_handling, debugging]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_OOP (LUA031-LUA033)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA031
+    title: "Choose one OOP pattern per project"
+    category: lua_oop
+    level: beginner
+    description: >
+      Pick one OOP approach and use it consistently: middleclass for full
+      OOP, closures for simple encapsulation, or manual metatables for
+      maximum control. Mixing patterns causes confusion.
+    tags: [lua, oop, architecture]
+
+  - id: LUA032
+    title: "Use method syntax (colon) for instance methods"
+    category: lua_oop
+    level: beginner
+    description: >
+      Define and call instance methods with colon syntax (obj:method())
+      which implicitly passes self. Use dot syntax (Class.static()) for
+      static/class methods that don't need self.
+    tags: [lua, oop, style]
+
+  - id: LUA033
+    title: "Implement defensive constructors"
+    category: lua_oop
+    level: intermediate
+    description: >
+      Constructors should validate arguments, set defaults for optional
+      fields, and return fully initialized objects. Use assert() for
+      required parameters and document the constructor contract.
+    tags: [lua, oop, defensive]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_FFI (LUA034-LUA036)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA034
+    title: "Use FFI for performance-critical C interop"
+    category: lua_ffi
+    level: advanced
+    description: >
+      LuaJIT FFI provides zero-overhead C function calls and struct access.
+      Use ffi.cdef to declare C types, ffi.new for allocation, and ffi.load
+      for shared libraries. Prefer FFI over Lua C API for new bindings.
+    tags: [lua, luajit, ffi, performance]
+
+  - id: LUA035
+    title: "Use ffi.typeof for hot allocations"
+    category: lua_ffi
+    level: advanced
+    description: >
+      Cache ffi.typeof() results for frequently created types. Using
+      a cached type constructor (local vec_t = ffi.typeof('vec3_t'))
+      is significantly faster than ffi.new('vec3_t') in hot paths.
+    tags: [lua, luajit, ffi, performance]
+
+  - id: LUA036
+    title: "Handle FFI memory management carefully"
+    category: lua_ffi
+    level: advanced
+    description: >
+      FFI allocations via ffi.new are garbage collected, but ffi.C.malloc
+      is not. Use ffi.gc() to attach finalizers to C pointers. Be aware
+      of ownership semantics when passing pointers to C libraries.
+    tags: [lua, luajit, ffi, memory]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_PERFORMANCE (LUA037-LUA040)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA037
+    title: "Cache global function references"
+    category: lua_performance
+    level: intermediate
+    description: >
+      Localize frequently called global functions: local floor = math.floor.
+      This avoids repeated global table lookups. Especially important in
+      tight loops and performance-critical code.
+    tags: [lua, performance]
+
+  - id: LUA038
+    title: "Avoid string concatenation in loops"
+    category: lua_performance
+    level: intermediate
+    description: >
+      Use table.concat() instead of repeated .. concatenation in loops.
+      String concatenation creates new string objects each iteration.
+      Collect parts in a table and join once at the end.
+    tags: [lua, performance, strings]
+
+  - id: LUA039
+    title: "Use LuaJIT-friendly patterns"
+    category: lua_performance
+    level: advanced
+    description: >
+      Avoid patterns that prevent LuaJIT trace compilation: NYI functions,
+      excessive use of pairs() in hot loops, unstructured control flow.
+      Profile with -jv and -jp flags to identify trace aborts.
+    tags: [lua, luajit, performance]
+
+  - id: LUA040
+    title: "Minimize garbage collection pressure"
+    category: lua_performance
+    level: advanced
+    description: >
+      Reuse tables instead of creating new ones in loops. Use object pools
+      for frequently created/destroyed objects. Tune GC with collectgarbage()
+      parameters for real-time applications.
+    tags: [lua, performance, gc]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_LOVE2D (LUA041-LUA043)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA041
+    title: "Separate update and draw logic in LÖVE2D"
+    category: lua_love2d
+    level: beginner
+    description: >
+      Keep game logic in love.update(dt) and rendering in love.draw().
+      Never modify game state in draw(). Use dt (delta time) for
+      frame-rate independent movement.
+    tags: [lua, love2d, gamedev]
+
+  - id: LUA042
+    title: "Use SpriteBatches for draw call optimization"
+    category: lua_love2d
+    level: intermediate
+    description: >
+      Batch multiple sprites using love.graphics.SpriteBatch to reduce
+      draw calls. This significantly improves rendering performance for
+      tile maps, particle systems, and UI elements.
+    tags: [lua, love2d, performance]
+
+  - id: LUA043
+    title: "Implement game states with a state manager"
+    category: lua_love2d
+    level: intermediate
+    description: >
+      Use a state machine pattern (hump.gamestate or custom) for menu,
+      play, pause, and gameover states. Each state implements init, enter,
+      update, draw, leave callbacks.
+    tags: [lua, love2d, architecture]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_OPENRESTY (LUA044-LUA046)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA044
+    title: "Use cosocket API for non-blocking I/O"
+    category: lua_openresty
+    level: intermediate
+    description: >
+      Use ngx.socket.tcp() and resty.* libraries for non-blocking I/O.
+      Never use blocking I/O (LuaSocket, io.open) in OpenResty workers.
+      The cosocket API automatically yields to the event loop.
+    tags: [lua, openresty, async]
+
+  - id: LUA045
+    title: "Use shared dictionaries for inter-worker data"
+    category: lua_openresty
+    level: intermediate
+    description: >
+      Use lua_shared_dict and ngx.shared.DICT API for data shared between
+      worker processes. This is the safe way to share state. Avoid global
+      variables which are per-worker.
+    tags: [lua, openresty, concurrency]
+
+  - id: LUA046
+    title: "Handle OpenResty phases correctly"
+    category: lua_openresty
+    level: intermediate
+    description: >
+      Understand nginx request phases (init, set, rewrite, access, content,
+      log). Use the correct *_by_lua_block directive for each phase. Some
+      APIs are only available in specific phases.
+    tags: [lua, openresty, nginx]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_LAPIS (LUA047-LUA048)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA047
+    title: "Use Lapis request lifecycle correctly"
+    category: lua_lapis
+    level: intermediate
+    description: >
+      Leverage before_filter for authentication and authorization. Use
+      respond_to() for multi-format responses. Return {render = true}
+      for template rendering or {json = data} for API responses.
+    tags: [lua, lapis, web]
+
+  - id: LUA048
+    title: "Use Lapis Model validations"
+    category: lua_lapis
+    level: intermediate
+    description: >
+      Define validations in Model classes using the constraints table.
+      Validate user input before database operations. Use Model:create()
+      with validated data and handle validation errors gracefully.
+    tags: [lua, lapis, models]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_TESTING (LUA049)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA049
+    title: "Write tests with busted or luaunit"
+    category: lua_testing
+    level: beginner
+    description: >
+      Use busted (BDD-style) or luaunit (xUnit-style) for testing. Structure
+      tests with describe/it blocks (busted) or TestXxx classes (luaunit).
+      Mock external dependencies and test error conditions.
+    tags: [lua, testing]
+
+  # ════════════════════════════════════════════════════════════════
+  # LUA_STYLE (LUA050)
+  # ════════════════════════════════════════════════════════════════
+  - id: LUA050
+    title: "Follow Lua style conventions"
+    category: lua_style
+    level: beginner
+    description: >
+      Use snake_case for variables and functions, PascalCase for classes/modules.
+      Indent with 2 spaces (Lua community standard). Use luacheck for static
+      analysis. Keep lines under 80-100 characters.
+    tags: [lua, style, linting]

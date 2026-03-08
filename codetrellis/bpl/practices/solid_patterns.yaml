@@ -1,0 +1,580 @@
+# SOLID Principles and Design Patterns
+# Architecture-level best practices
+# Category: Software design principles
+
+practices:
+  # ============================================================================
+  # SOLID PRINCIPLES
+  # ============================================================================
+
+  - id: SOLID001
+    title: 'Single Responsibility Principle (SRP)'
+    category: solid_principles
+    level: intermediate
+    priority: high
+    solid_principles:
+      - single_responsibility
+    content:
+      description: |
+        A class should have only one reason to change. Each class should be
+        responsible for a single part of the functionality.
+      rationale: |
+        SRP makes classes easier to understand, test, and maintain. Changes
+        to one responsibility don't affect others.
+      good_examples:
+        - |
+          # Each class has one responsibility
+
+          class UserRepository:
+              """Handles user data persistence."""
+
+              async def get(self, user_id: int) -> User | None:
+                  return await self.db.get(User, user_id)
+
+              async def save(self, user: User) -> User:
+                  self.db.add(user)
+                  await self.db.commit()
+                  return user
+
+          class UserValidator:
+              """Handles user data validation."""
+
+              def validate_email(self, email: str) -> bool:
+                  return bool(EMAIL_PATTERN.match(email))
+
+              def validate_password(self, password: str) -> list[str]:
+                  errors = []
+                  if len(password) < 8:
+                      errors.append("Password too short")
+                  return errors
+
+          class UserNotifier:
+              """Handles user notifications."""
+
+              async def send_welcome_email(self, user: User) -> None:
+                  await self.email_service.send(user.email, "Welcome!")
+      bad_examples:
+        - |
+          # God class doing everything
+          class UserManager:
+              def save_to_database(self, user): ...
+              def validate_email(self, email): ...
+              def send_email(self, user): ...
+              def generate_report(self, users): ...
+              def authenticate(self, credentials): ...
+      references:
+        - 'https://en.wikipedia.org/wiki/Single-responsibility_principle'
+      tags:
+        - solid
+        - srp
+        - architecture
+
+  - id: SOLID002
+    title: 'Open/Closed Principle (OCP)'
+    category: solid_principles
+    level: intermediate
+    priority: high
+    solid_principles:
+      - open_closed
+    content:
+      description: |
+        Software entities should be open for extension but closed for
+        modification. Use abstraction to allow new behavior without
+        changing existing code.
+      rationale: |
+        OCP prevents breaking existing functionality when adding new features
+        and promotes code reuse through polymorphism.
+      good_examples:
+        - |
+          from abc import ABC, abstractmethod
+
+          class PaymentProcessor(ABC):
+              """Abstract base for payment processing."""
+
+              @abstractmethod
+              async def process(self, amount: float) -> PaymentResult:
+                  """Process a payment."""
+                  pass
+
+          class CreditCardProcessor(PaymentProcessor):
+              async def process(self, amount: float) -> PaymentResult:
+                  return await self.stripe_client.charge(amount)
+
+          class PayPalProcessor(PaymentProcessor):
+              async def process(self, amount: float) -> PaymentResult:
+                  return await self.paypal_client.create_payment(amount)
+
+          # Adding new payment method doesn't modify existing code
+          class CryptoProcessor(PaymentProcessor):
+              async def process(self, amount: float) -> PaymentResult:
+                  return await self.crypto_service.transfer(amount)
+      bad_examples:
+        - |
+          class PaymentProcessor:
+              def process(self, amount: float, method: str):
+                  if method == "credit_card":
+                      return self._process_credit_card(amount)
+                  elif method == "paypal":
+                      return self._process_paypal(amount)
+                  # Must modify this class for each new payment method!
+                  elif method == "crypto":
+                      return self._process_crypto(amount)
+      references:
+        - 'https://en.wikipedia.org/wiki/Open%E2%80%93closed_principle'
+      tags:
+        - solid
+        - ocp
+        - polymorphism
+
+  - id: SOLID003
+    title: 'Liskov Substitution Principle (LSP)'
+    category: solid_principles
+    level: advanced
+    priority: high
+    solid_principles:
+      - liskov_substitution
+    content:
+      description: |
+        Objects of a superclass should be replaceable with objects of its
+        subclasses without breaking the application.
+      rationale: |
+        LSP ensures that inheritance hierarchies are well-designed and that
+        polymorphism works correctly.
+      good_examples:
+        - |
+          from abc import ABC, abstractmethod
+
+          class Bird(ABC):
+              @abstractmethod
+              def move(self) -> None:
+                  """Move the bird."""
+                  pass
+
+          class FlyingBird(Bird):
+              def move(self) -> None:
+                  self.fly()
+
+              def fly(self) -> None:
+                  print("Flying through the air")
+
+          class SwimmingBird(Bird):
+              def move(self) -> None:
+                  self.swim()
+
+              def swim(self) -> None:
+                  print("Swimming in water")
+
+          # Both can be used interchangeably where Bird is expected
+          def exercise_bird(bird: Bird) -> None:
+              bird.move()  # Works for any Bird subclass
+      bad_examples:
+        - |
+          class Bird:
+              def fly(self) -> None:
+                  print("Flying")
+
+          class Penguin(Bird):
+              def fly(self) -> None:
+                  raise Exception("Penguins can't fly!")  # Violates LSP
+      references:
+        - 'https://en.wikipedia.org/wiki/Liskov_substitution_principle'
+      tags:
+        - solid
+        - lsp
+        - inheritance
+
+  - id: SOLID004
+    title: 'Interface Segregation Principle (ISP)'
+    category: solid_principles
+    level: advanced
+    priority: medium
+    solid_principles:
+      - interface_segregation
+    content:
+      description: |
+        Clients should not be forced to depend on interfaces they don't use.
+        Split large interfaces into smaller, focused ones.
+      rationale: |
+        ISP prevents classes from having to implement methods they don't need
+        and reduces coupling between components.
+      good_examples:
+        - |
+          from typing import Protocol
+
+          # Small, focused protocols
+          class Readable(Protocol):
+              def read(self) -> bytes: ...
+
+          class Writable(Protocol):
+              def write(self, data: bytes) -> None: ...
+
+          class Seekable(Protocol):
+              def seek(self, position: int) -> None: ...
+
+          # Classes implement only what they need
+          class ReadOnlyFile:
+              def read(self) -> bytes:
+                  return self._data
+
+          class NetworkStream:
+              """Network streams can read and write but not seek."""
+
+              def read(self) -> bytes:
+                  return self._receive()
+
+              def write(self, data: bytes) -> None:
+                  self._send(data)
+
+          # Function accepts only what it needs
+          def copy_data(source: Readable, dest: Writable) -> None:
+              dest.write(source.read())
+      bad_examples:
+        - |
+          class FileOperations(Protocol):
+              def read(self) -> bytes: ...
+              def write(self, data: bytes) -> None: ...
+              def seek(self, position: int) -> None: ...
+              def compress(self) -> bytes: ...
+              def encrypt(self, key: bytes) -> bytes: ...
+
+          # Forces all implementations to have all methods
+          class SimpleReader(FileOperations):
+              def read(self) -> bytes: ...
+              def write(self, data): raise NotImplementedError()
+              def seek(self, pos): raise NotImplementedError()
+              # Must implement ALL methods even if not needed
+      references:
+        - 'https://en.wikipedia.org/wiki/Interface_segregation_principle'
+      tags:
+        - solid
+        - isp
+        - protocols
+
+  - id: SOLID005
+    title: 'Dependency Inversion Principle (DIP)'
+    category: solid_principles
+    level: advanced
+    priority: high
+    solid_principles:
+      - dependency_inversion
+    content:
+      description: |
+        High-level modules should not depend on low-level modules. Both should
+        depend on abstractions. Abstractions should not depend on details.
+      rationale: |
+        DIP reduces coupling and makes code more testable and flexible
+        by depending on interfaces rather than implementations.
+      good_examples:
+        - |
+          from typing import Protocol
+
+          # Abstraction (protocol/interface)
+          class EmailSender(Protocol):
+              async def send(self, to: str, subject: str, body: str) -> None: ...
+
+          # High-level module depends on abstraction
+          class UserService:
+              def __init__(self, email_sender: EmailSender) -> None:
+                  self._email = email_sender
+
+              async def register_user(self, user: User) -> None:
+                  await self._repo.save(user)
+                  await self._email.send(
+                      user.email,
+                      "Welcome!",
+                      "Thanks for registering."
+                  )
+
+          # Low-level modules implement abstraction
+          class SMTPEmailSender:
+              async def send(self, to: str, subject: str, body: str) -> None:
+                  await self._smtp.send_message(to, subject, body)
+
+          class SendGridEmailSender:
+              async def send(self, to: str, subject: str, body: str) -> None:
+                  await self._client.send(to=to, subject=subject, html=body)
+
+          # Easy to swap implementations and test
+          service = UserService(email_sender=SendGridEmailSender())
+      bad_examples:
+        - |
+          class UserService:
+              def __init__(self):
+                  # Direct dependency on concrete implementation
+                  self._email = SMTPEmailSender("smtp.example.com")
+
+              async def register_user(self, user: User) -> None:
+                  await self._email.send(...)  # Hard to test/swap
+      references:
+        - 'https://en.wikipedia.org/wiki/Dependency_inversion_principle'
+      tags:
+        - solid
+        - dip
+        - dependency-injection
+
+  # ============================================================================
+  # DESIGN PATTERNS
+  # ============================================================================
+
+  - id: PATTERN001
+    title: 'Repository Pattern for Data Access'
+    category: design_patterns
+    level: intermediate
+    priority: high
+    design_patterns:
+      - repository
+    solid_principles:
+      - single_responsibility
+      - dependency_inversion
+    content:
+      description: |
+        Use the Repository pattern to abstract data access logic, providing
+        a collection-like interface for domain objects.
+      rationale: |
+        Repository pattern separates domain logic from data access, making
+        code more testable and allowing easy switching of data stores.
+      good_examples:
+        - |
+          from typing import Protocol
+
+          class UserRepository(Protocol):
+              """Abstract user repository interface."""
+
+              async def get(self, user_id: int) -> User | None: ...
+              async def get_by_email(self, email: str) -> User | None: ...
+              async def save(self, user: User) -> User: ...
+              async def delete(self, user_id: int) -> None: ...
+              async def list(self, limit: int = 100) -> list[User]: ...
+
+          class SQLAlchemyUserRepository:
+              """SQLAlchemy implementation of UserRepository."""
+
+              def __init__(self, session: AsyncSession) -> None:
+                  self._session = session
+
+              async def get(self, user_id: int) -> User | None:
+                  return await self._session.get(User, user_id)
+
+              async def save(self, user: User) -> User:
+                  self._session.add(user)
+                  await self._session.commit()
+                  await self._session.refresh(user)
+                  return user
+
+          class InMemoryUserRepository:
+              """In-memory implementation for testing."""
+
+              def __init__(self) -> None:
+                  self._users: dict[int, User] = {}
+
+              async def get(self, user_id: int) -> User | None:
+                  return self._users.get(user_id)
+      references:
+        - 'https://martinfowler.com/eaaCatalog/repository.html'
+      tags:
+        - repository
+        - data-access
+        - testing
+
+  - id: PATTERN002
+    title: 'Factory Pattern for Object Creation'
+    category: design_patterns
+    level: intermediate
+    priority: medium
+    design_patterns:
+      - factory
+    solid_principles:
+      - open_closed
+    content:
+      description: |
+        Use Factory pattern to encapsulate object creation logic, especially
+        when the creation process is complex or type depends on configuration.
+      rationale: |
+        Factory pattern centralizes object creation, making it easy to change
+        how objects are created without modifying client code.
+      good_examples:
+        - |
+          from abc import ABC, abstractmethod
+
+          class NotificationSender(ABC):
+              @abstractmethod
+              async def send(self, message: str) -> None: ...
+
+          class EmailNotification(NotificationSender):
+              async def send(self, message: str) -> None:
+                  await self._email_client.send(message)
+
+          class SMSNotification(NotificationSender):
+              async def send(self, message: str) -> None:
+                  await self._sms_client.send(message)
+
+          class NotificationFactory:
+              """Factory for creating notification senders."""
+
+              _senders: dict[str, type[NotificationSender]] = {
+                  "email": EmailNotification,
+                  "sms": SMSNotification,
+                  "push": PushNotification,
+              }
+
+              @classmethod
+              def create(cls, notification_type: str) -> NotificationSender:
+                  sender_class = cls._senders.get(notification_type)
+                  if not sender_class:
+                      raise ValueError(f"Unknown type: {notification_type}")
+                  return sender_class()
+
+              @classmethod
+              def register(cls, name: str, sender_class: type[NotificationSender]) -> None:
+                  cls._senders[name] = sender_class
+
+          # Usage
+          sender = NotificationFactory.create("email")
+          await sender.send("Hello!")
+      references:
+        - 'https://refactoring.guru/design-patterns/factory-method'
+      tags:
+        - factory
+        - creational
+        - extensibility
+
+  - id: PATTERN003
+    title: 'Strategy Pattern for Interchangeable Algorithms'
+    category: design_patterns
+    level: intermediate
+    priority: medium
+    design_patterns:
+      - strategy
+    solid_principles:
+      - open_closed
+      - dependency_inversion
+    content:
+      description: |
+        Use Strategy pattern to define a family of algorithms, encapsulate each
+        one, and make them interchangeable at runtime.
+      rationale: |
+        Strategy pattern allows selecting algorithms at runtime and adding new
+        algorithms without modifying existing code.
+      good_examples:
+        - |
+          from typing import Protocol
+
+          class PricingStrategy(Protocol):
+              """Strategy for calculating prices."""
+
+              def calculate(self, base_price: float, quantity: int) -> float: ...
+
+          class RegularPricing:
+              def calculate(self, base_price: float, quantity: int) -> float:
+                  return base_price * quantity
+
+          class BulkDiscountPricing:
+              def __init__(self, threshold: int = 10, discount: float = 0.1):
+                  self.threshold = threshold
+                  self.discount = discount
+
+              def calculate(self, base_price: float, quantity: int) -> float:
+                  total = base_price * quantity
+                  if quantity >= self.threshold:
+                      total *= (1 - self.discount)
+                  return total
+
+          class SeasonalPricing:
+              def __init__(self, multiplier: float = 1.2):
+                  self.multiplier = multiplier
+
+              def calculate(self, base_price: float, quantity: int) -> float:
+                  return base_price * self.multiplier * quantity
+
+          class ShoppingCart:
+              def __init__(self, pricing: PricingStrategy) -> None:
+                  self._pricing = pricing
+
+              def set_pricing(self, pricing: PricingStrategy) -> None:
+                  self._pricing = pricing
+
+              def get_total(self, items: list[CartItem]) -> float:
+                  return sum(
+                      self._pricing.calculate(item.price, item.quantity)
+                      for item in items
+                  )
+      references:
+        - 'https://refactoring.guru/design-patterns/strategy'
+      tags:
+        - strategy
+        - behavioral
+        - algorithms
+
+  - id: PATTERN004
+    title: 'Decorator Pattern for Adding Behavior'
+    category: design_patterns
+    level: intermediate
+    priority: medium
+    design_patterns:
+      - decorator
+    content:
+      description: |
+        Use Decorator pattern to add behavior to objects dynamically without
+        modifying their class. In Python, this often uses function decorators.
+      rationale: |
+        Decorator pattern provides flexible alternative to subclassing for
+        extending functionality.
+      good_examples:
+        - |
+          import functools
+          import time
+          from typing import Callable, TypeVar
+
+          T = TypeVar('T')
+
+          def retry(max_attempts: int = 3, delay: float = 1.0):
+              """Decorator to retry failed operations."""
+
+              def decorator(func: Callable[..., T]) -> Callable[..., T]:
+                  @functools.wraps(func)
+                  async def wrapper(*args, **kwargs) -> T:
+                      last_exception = None
+                      for attempt in range(max_attempts):
+                          try:
+                              return await func(*args, **kwargs)
+                          except Exception as e:
+                              last_exception = e
+                              if attempt < max_attempts - 1:
+                                  await asyncio.sleep(delay * (attempt + 1))
+                      raise last_exception
+                  return wrapper
+              return decorator
+
+          def cache(ttl_seconds: int = 300):
+              """Decorator to cache function results."""
+
+              def decorator(func: Callable[..., T]) -> Callable[..., T]:
+                  _cache: dict[str, tuple[float, T]] = {}
+
+                  @functools.wraps(func)
+                  async def wrapper(*args, **kwargs) -> T:
+                      key = str((args, sorted(kwargs.items())))
+                      now = time.time()
+
+                      if key in _cache:
+                          timestamp, value = _cache[key]
+                          if now - timestamp < ttl_seconds:
+                              return value
+
+                      result = await func(*args, **kwargs)
+                      _cache[key] = (now, result)
+                      return result
+                  return wrapper
+              return decorator
+
+          # Compose decorators
+          @retry(max_attempts=3)
+          @cache(ttl_seconds=60)
+          async def fetch_user(user_id: int) -> User:
+              return await api.get_user(user_id)
+      references:
+        - 'https://refactoring.guru/design-patterns/decorator'
+      tags:
+        - decorator
+        - structural
+        - composition

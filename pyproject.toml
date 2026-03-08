@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codetrellis"
+version = "4.16.0"
+description = "CodeTrellis - Project Self-Awareness System - AI context injection tool"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Keshav Chaudhary", email = "keshav@nsbrain.ai"}
+]
+keywords = [
+    "ai",
+    "context",
+    "code-analysis",
+    "project-scanner",
+    "prompt-engineering",
+    "copilot",
+    "developer-tools"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Documentation",
+]
+dependencies = [
+    "watchdog>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=24.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/build-for-test/ns-brain"
+Repository = "https://github.com/build-for-test/ns-brain/tree/main/tools/codetrellis"
+
+[project.scripts]
+codetrellis = "codetrellis.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["codetrellis*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",   # line-too-long — enforced by formatter, not linter
+    "E402",   # module-import-not-at-top — intentional in cli.py (sys.path.insert)
+    "F401",   # unused-import — too many pre-existing (595); tracked for cleanup
+    "F841",   # unused-variable — too many pre-existing (100); tracked for cleanup
+    "E741",   # ambiguous-variable-name — false positives on math/loop vars
+    "W293",   # blank-line-with-whitespace — cosmetic
+    "W291",   # trailing-whitespace — cosmetic
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+norecursedirs = ["tests/repos", "tests/repos/*", ".git", ".venv", "node_modules"]
+timeout = 120
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true

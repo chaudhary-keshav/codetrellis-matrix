@@ -1,0 +1,623 @@
+# Less CSS Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.45 - Less CSS Language Support
+# Practice IDs: LESS001-LESS050
+# Coverage: Variables, Mixins, Functions, Imports, Extend,
+#           Architecture, Performance, Naming, Best Practices, Tooling
+# Versions: Less 1.x, 2.x, 3.x, 4.x+
+
+practices:
+  # ============================================================================
+  # LESS VARIABLES (LESS001-LESS005)
+  # ============================================================================
+
+  - id: LESS001
+    title: "Use descriptive @variable names with semantic meaning"
+    description: "Name variables descriptively using semantic names (@color-primary) over literal (@blue). Follow kebab-case convention consistently."
+    category: "less_variables"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "variables", "naming", "semantic"]
+    example: |
+      // Good: semantic names
+      @color-primary: #3498db;
+      @spacing-sm: 8px;
+      @font-weight-bold: 700;
+      // Bad: literal / vague names
+      @blue: #3498db;
+      @s: 8px;
+
+  - id: LESS002
+    title: "Define variables in a central configuration file"
+    description: "Keep design tokens and configuration variables in dedicated files (variables.less, config.less). Avoid scattering variable definitions across component files."
+    category: "less_variables"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "variables", "organization", "architecture"]
+    example: |
+      // variables.less
+      @color-primary: #3498db;
+      @color-secondary: #2ecc71;
+      @font-size-base: 16px;
+      @border-radius-base: 4px;
+
+  - id: LESS003
+    title: "Leverage lazy evaluation carefully"
+    description: "Less variables are lazily evaluated — they take the last defined value. Be explicit about evaluation order and avoid depending on lazy evaluation for complex logic."
+    category: "less_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "variables", "lazy-evaluation", "scope"]
+    example: |
+      // Lazy evaluation: @var is 2, not 1
+      @var: 1;
+      .rule { value: @var; } // evaluates to 2
+      @var: 2;
+
+  - id: LESS004
+    title: "Use variable interpolation for dynamic selectors and URLs"
+    description: "Use @{var} interpolation syntax for selectors, URLs, and property names. Avoid string concatenation workarounds."
+    category: "less_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "variables", "interpolation", "dynamic"]
+    example: |
+      @component: nav;
+      .@{component}-item { display: block; }
+      // Output: .nav-item { display: block; }
+
+  - id: LESS005
+    title: "Avoid excessive variable nesting scope"
+    description: "Minimize variable definitions deep inside nested rulesets. Variables defined in nested scopes can shadow globals and cause confusion."
+    category: "less_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "variables", "scope", "nesting"]
+
+  # ============================================================================
+  # LESS MIXINS (LESS006-LESS010)
+  # ============================================================================
+
+  - id: LESS006
+    title: "Prefer parametric mixins over class-selector mixins"
+    description: "Use parentheses in mixin definitions — .mixin() — to prevent them from being output as CSS selectors. Mixins without () will appear in compiled CSS."
+    category: "less_mixins"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "mixins", "parametric", "output"]
+    example: |
+      // Good: parametric — not output as CSS
+      .border-radius(@radius: 4px) {
+        border-radius: @radius;
+      }
+      // Bad: class-selector — output in CSS
+      .border-radius {
+        border-radius: 4px;
+      }
+
+  - id: LESS007
+    title: "Use default parameter values for flexible mixins"
+    description: "Define default values for mixin parameters to make them optional. This improves reusability and reduces call-site verbosity."
+    category: "less_mixins"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "mixins", "defaults", "parameters"]
+    example: |
+      .transition(@property: all; @duration: 0.3s; @timing: ease) {
+        transition: @property @duration @timing;
+      }
+      // Usage: .transition(); or .transition(opacity; 0.5s);
+
+  - id: LESS008
+    title: "Use guards for conditional mixin behavior"
+    description: "Use when clauses instead of JavaScript-like conditionals. Guards provide type-safe conditional logic with built-in type-checking functions."
+    category: "less_mixins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "mixins", "guards", "conditional"]
+    example: |
+      .set-bg(@color) when (lightness(@color) > 50%) {
+        background: @color;
+        color: #000;
+      }
+      .set-bg(@color) when (lightness(@color) <= 50%) {
+        background: @color;
+        color: #fff;
+      }
+
+  - id: LESS009
+    title: "Organize mixins into namespaces for large projects"
+    description: "Group related mixins under namespace IDs (#bundle) to avoid naming collisions and improve organization in large codebases."
+    category: "less_mixins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "mixins", "namespaces", "organization"]
+    example: |
+      #typography {
+        .heading(@size: 24px) {
+          font-size: @size;
+          font-weight: bold;
+        }
+      }
+      // Usage: #typography > .heading(32px);
+
+  - id: LESS010
+    title: "Avoid deeply recursive mixins"
+    description: "Recursive mixins with guards can create loops but risk stack overflow. Always include a guard with a termination condition."
+    category: "less_mixins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "mixins", "recursion", "guards", "loops"]
+    example: |
+      .generate-columns(@n; @i: 1) when (@i <= @n) {
+        .col-@{i} { width: (@i / @n) * 100%; }
+        .generate-columns(@n; (@i + 1));
+      }
+      .generate-columns(12);
+
+  # ============================================================================
+  # LESS FUNCTIONS (LESS011-LESS015)
+  # ============================================================================
+
+  - id: LESS011
+    title: "Use built-in color functions over hardcoded values"
+    description: "Leverage Less's 40+ built-in color functions (darken, lighten, mix, fade, spin) instead of hardcoded color variations. This ensures consistency."
+    category: "less_functions"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "functions", "color", "consistency"]
+    example: |
+      @link-hover: darken(@color-primary, 10%);
+      @overlay: fade(@color-primary, 50%);
+      @accent: spin(@color-primary, 30);
+
+  - id: LESS012
+    title: "Use math functions for responsive calculations"
+    description: "Use built-in math functions (percentage, ceil, floor, round, unit) for responsive calculations instead of manual arithmetic."
+    category: "less_functions"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "functions", "math", "responsive"]
+    example: |
+      @col-width: percentage(1/12);  // 8.33333333%
+      @rounded: round(@val, 2);
+      @stripped: unit(@val);
+
+  - id: LESS013
+    title: "Use type-checking functions in guards"
+    description: "Use iscolor(), isnumber(), isstring(), iskeyword(), isurl(), ispixel(), isem(), ispercentage() in guards for type-safe mixin overloading."
+    category: "less_functions"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "functions", "type-checking", "guards"]
+    example: |
+      .size(@val) when (ispixel(@val)) { font-size: @val; }
+      .size(@val) when (ispercentage(@val)) { font-size: @val; }
+      .size(@val) when (isem(@val)) { font-size: @val; }
+
+  - id: LESS014
+    title: "Use @plugin for custom functions (Less 3.x+)"
+    description: "For complex custom functions, use the @plugin directive to load JavaScript plugins instead of creating convoluted mixin workarounds."
+    category: "less_functions"
+    severity: "optional"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "functions", "plugin", "custom", "less3"]
+    example: |
+      @plugin "my-functions";
+      .rule { value: my-custom-function(arg); }
+
+  - id: LESS015
+    title: "Use the each() function for iteration (Less 3.x+)"
+    description: "Use each() for iterating over lists and rulesets instead of recursive mixin patterns. Available in Less 3.x+."
+    category: "less_functions"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "functions", "each", "iteration", "less3"]
+    example: |
+      @colors: { primary: #3498db; secondary: #2ecc71; danger: #e74c3c; };
+      each(@colors, {
+        .text-@{key} { color: @value; }
+      });
+
+  # ============================================================================
+  # LESS IMPORTS (LESS016-LESS020)
+  # ============================================================================
+
+  - id: LESS016
+    title: "Use @import (reference) for libraries used only for mixins/variables"
+    description: "Import libraries with (reference) option to use their mixins and variables without including their CSS output."
+    category: "less_imports"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "imports", "reference", "optimization"]
+    example: |
+      @import (reference) "bootstrap/less/bootstrap";
+      // Use Bootstrap mixins without outputting all of Bootstrap CSS
+
+  - id: LESS017
+    title: "Use @import (once) to prevent duplicate imports"
+    description: "The default import behavior is (once) — files are imported only once. Be explicit with (once) when clarity matters, or use (multiple) when intentional."
+    category: "less_imports"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "imports", "once", "duplicates"]
+
+  - id: LESS018
+    title: "Use @import (optional) for conditionally available files"
+    description: "When importing files that may not exist (theme overrides, environment-specific), use (optional) to prevent compilation errors."
+    category: "less_imports"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "imports", "optional", "conditional"]
+    example: |
+      @import (optional) "custom-overrides";
+
+  - id: LESS019
+    title: "Organize imports by category"
+    description: "Group imports logically: (1) third-party libraries, (2) configuration/variables, (3) mixins/utilities, (4) base/reset, (5) components, (6) pages, (7) overrides."
+    category: "less_imports"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "imports", "organization", "architecture"]
+
+  - id: LESS020
+    title: "Avoid @import with URL for performance"
+    description: "Avoid @import url() as it creates additional HTTP requests. Use build-time Less @import instead to compile all files into one output."
+    category: "less_imports"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "imports", "performance", "url"]
+
+  # ============================================================================
+  # LESS EXTEND (LESS021-LESS025)
+  # ============================================================================
+
+  - id: LESS021
+    title: "Use :extend() for selector deduplication"
+    description: "Use :extend() instead of mixins when you only need to share declarations without parameters. Extend produces smaller CSS by grouping selectors."
+    category: "less_extend"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "extend", "deduplication", "output-size"]
+    example: |
+      .base-button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+      }
+      .primary-button:extend(.base-button) {
+        background: @color-primary;
+      }
+
+  - id: LESS022
+    title: "Use :extend(... all) carefully"
+    description: "The all keyword extends every instance of a selector including nested ones. Use it intentionally as it can cause unexpected CSS bloat."
+    category: "less_extend"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "extend", "all", "bloat"]
+
+  - id: LESS023
+    title: "Prefer inline extend syntax for single extensions"
+    description: "Use .selector:extend(.other) inline syntax for single extensions. Reserve the block syntax &:extend(.other) for multiple extensions."
+    category: "less_extend"
+    severity: "optional"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "extend", "syntax", "inline"]
+
+  - id: LESS024
+    title: "Avoid extending deeply nested selectors"
+    description: "Extending complex nested selectors can produce unexpected results and bloated CSS. Keep extend targets simple and flat."
+    category: "less_extend"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "extend", "nesting", "complexity"]
+
+  - id: LESS025
+    title: "Document extend relationships"
+    description: "Add comments documenting which selectors extend which bases, especially in large files. Extend relationships are not always obvious from code."
+    category: "less_extend"
+    severity: "optional"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "extend", "documentation"]
+
+  # ============================================================================
+  # LESS ARCHITECTURE (LESS026-LESS030)
+  # ============================================================================
+
+  - id: LESS026
+    title: "Limit nesting to 3 levels maximum"
+    description: "Deep nesting creates overly specific selectors and harder-to-maintain CSS. Keep nesting to 3 levels or less."
+    category: "less_architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "nesting", "depth", "specificity"]
+    example: |
+      // Good: 2 levels
+      .nav {
+        .nav-item {
+          color: @text-color;
+        }
+      }
+      // Bad: 5 levels
+      .page { .content { .sidebar { .nav { .item { } } } } }
+
+  - id: LESS027
+    title: "Use the parent selector & for BEM-style naming"
+    description: "Leverage the & parent selector for BEM patterns (&__element, &--modifier) to keep component styles organized and readable."
+    category: "less_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "nesting", "parent-selector", "BEM"]
+    example: |
+      .card {
+        &__header { padding: 16px; }
+        &__body { padding: 24px; }
+        &--featured { border: 2px solid @primary; }
+      }
+
+  - id: LESS028
+    title: "Use detached rulesets for reusable blocks"
+    description: "Detached rulesets allow passing blocks of rules as variables. Use them for media-query-driven blocks and theme switching."
+    category: "less_architecture"
+    severity: "optional"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "detached-rulesets", "reusability", "advanced"]
+    example: |
+      @mobile-styles: {
+        font-size: 14px;
+        padding: 8px;
+      };
+      .component {
+        @media (max-width: 768px) { @mobile-styles(); }
+      }
+
+  - id: LESS029
+    title: "Organize files following a clear architecture pattern"
+    description: "Follow an architecture pattern like ITCSS, SMACSS, or component-based structure. Group files into settings, tools, generic, elements, objects, components, utilities."
+    category: "less_architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "architecture", "organization", "ITCSS"]
+
+  - id: LESS030
+    title: "Separate concerns between variables, mixins, and components"
+    description: "Keep variables, mixins, and component styles in separate files. Avoid mixing configuration with component-specific styles."
+    category: "less_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "architecture", "separation-of-concerns"]
+
+  # ============================================================================
+  # LESS PERFORMANCE (LESS031-LESS035)
+  # ============================================================================
+
+  - id: LESS031
+    title: "Avoid wildcard selectors in Less files"
+    description: "Avoid * selectors in Less, especially nested ones. They produce expensive CSS selectors that harm rendering performance."
+    category: "less_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "performance", "selectors", "wildcard"]
+
+  - id: LESS032
+    title: "Minimize compiled CSS output size"
+    description: "Review compiled CSS for bloat from extend, deep nesting, and unused mixins. Use (reference) imports and parametric mixins to reduce output."
+    category: "less_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "performance", "output-size", "optimization"]
+
+  - id: LESS033
+    title: "Use property merging (+, +_) for shorthand-like patterns"
+    description: "Use property merging (+ for comma, +_ for space) when building composite values instead of complex string interpolation."
+    category: "less_performance"
+    severity: "optional"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "property-merge", "shorthand"]
+    example: |
+      .mixin() {
+        box-shadow+: 0 0 5px #000;
+      }
+      .rule {
+        .mixin();
+        box-shadow+: inset 0 0 10px #fff;
+      }
+      // Output: box-shadow: 0 0 5px #000, inset 0 0 10px #fff;
+
+  - id: LESS034
+    title: "Configure math mode for Less 4.x"
+    description: "Set --math=parens-division or --math=strict to avoid unintended division in property values. Less 4.x changed default math handling."
+    category: "less_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "math", "less4", "configuration"]
+
+  - id: LESS035
+    title: "Minimize use of JavaScript evaluation"
+    description: "Avoid backtick JavaScript evaluation in Less. It's deprecated and not supported in all Less implementations."
+    category: "less_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "performance", "javascript", "deprecated"]
+
+  # ============================================================================
+  # LESS NAMING (LESS036-LESS040)
+  # ============================================================================
+
+  - id: LESS036
+    title: "Use consistent naming convention for variables"
+    description: "Follow a consistent naming convention for @variables: kebab-case, category-prefixed (e.g., @color-*, @font-*, @spacing-*)."
+    category: "less_naming"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "naming", "variables", "convention"]
+
+  - id: LESS037
+    title: "Use verb-based names for mixins"
+    description: "Name mixins with action-oriented names (.make-*, .set-*, .generate-*) or noun-based for output mixins (.button, .card)."
+    category: "less_naming"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "naming", "mixins"]
+
+  - id: LESS038
+    title: "Prefix framework-specific variables"
+    description: "When overriding framework variables (Bootstrap, Ant Design), maintain the framework's naming convention and prefix custom ones distinctly."
+    category: "less_naming"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "naming", "framework", "prefixes"]
+
+  - id: LESS039
+    title: "Use clear namespace names"
+    description: "Name mixin namespaces (#ns) after their domain: #typography, #layout, #animation. Avoid single-letter or cryptic namespace IDs."
+    category: "less_naming"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "naming", "namespaces"]
+
+  - id: LESS040
+    title: "Document variable purpose with inline comments"
+    description: "Add concise inline comments for non-obvious variables and mixin parameters. This aids IDE tooltips and team understanding."
+    category: "less_naming"
+    severity: "optional"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "naming", "documentation", "comments"]
+
+  # ============================================================================
+  # LESS BEST PRACTICES (LESS041-LESS045)
+  # ============================================================================
+
+  - id: LESS041
+    title: "Migrate from Less to modern CSS where possible"
+    description: "Modern CSS supports variables (custom properties), nesting (CSS Nesting), and color functions (color-mix). Evaluate migration for reduced tooling."
+    category: "less_best_practices"
+    severity: "optional"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "migration", "css", "modernization"]
+
+  - id: LESS042
+    title: "Use Less source maps in development"
+    description: "Enable source maps in development for debugging. They map compiled CSS back to original .less files in browser DevTools."
+    category: "less_best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "source-maps", "debugging"]
+
+  - id: LESS043
+    title: "Avoid deep extend chains"
+    description: "Avoid chains of extends (A extends B extends C). They create fragile relationships and produce unexpected output when base selectors change."
+    category: "less_best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "extend", "chains", "maintainability"]
+
+  - id: LESS044
+    title: "Prefer explicit over implicit mixin output"
+    description: "Be explicit about what a mixin outputs. Document large mixins that generate many declarations, and prefer small focused mixins."
+    category: "less_best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "mixins", "explicit", "documentation"]
+
+  - id: LESS045
+    title: "Keep guard expressions simple"
+    description: "Keep guard when() expressions simple and readable. Complex boolean logic should be split into multiple mixin overloads."
+    category: "less_best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "guards", "simplicity", "readability"]
+
+  # ============================================================================
+  # LESS TOOLING (LESS046-LESS050)
+  # ============================================================================
+
+  - id: LESS046
+    title: "Use lessc with strict-math for production"
+    description: "Compile with --math=strict or --strict-math=on for production builds to avoid unintended arithmetic in property values."
+    category: "less_tooling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "tooling", "lessc", "strict-math"]
+
+  - id: LESS047
+    title: "Integrate Less linting into CI/CD"
+    description: "Use stylelint with stylelint-less plugin or lesshint for static analysis. Integrate into CI/CD pipeline for automated quality checks."
+    category: "less_tooling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "tooling", "linting", "ci-cd"]
+
+  - id: LESS048
+    title: "Use Autoprefixer in the build pipeline"
+    description: "Avoid manual vendor prefixes in Less. Use Autoprefixer as a PostCSS plugin to handle vendor prefixes automatically based on browserslist."
+    category: "less_tooling"
+    severity: "critical"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "tooling", "autoprefixer", "vendor-prefixes"]
+
+  - id: LESS049
+    title: "Configure IDE/editor for Less support"
+    description: "Use VS Code with Less IntelliSense extension or WebStorm's built-in Less support. Configure .editorconfig for consistent formatting."
+    category: "less_tooling"
+    severity: "optional"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "tooling", "ide", "editor"]
+
+  - id: LESS050
+    title: "Use less-plugin-clean-css for minification"
+    description: "Use less-plugin-clean-css or cssnano for production minification instead of manual optimization. Configure via lessc --clean-css."
+    category: "less_tooling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["less"]
+    tags: ["less", "tooling", "minification", "clean-css"]

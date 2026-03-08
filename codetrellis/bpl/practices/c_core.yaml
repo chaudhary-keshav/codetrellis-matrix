@@ -1,0 +1,545 @@
+# C Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.19 - C Language Support
+# Practice IDs: C001-C050
+# Category: c
+# Frameworks: c
+# Standards: C89/C90, C99, C11, C17, C23
+
+practices:
+  # ═══════════════════════════════════════════════
+  # Memory Management (C001-C010)
+  # ═══════════════════════════════════════════════
+
+  - id: C001
+    title: "Always free heap-allocated memory"
+    description: "Every malloc/calloc/realloc must have a corresponding free. Use ownership patterns — define clear ownership for every allocation. Document who owns the memory and who is responsible for freeing it."
+    category: "c_memory_management"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "memory", "malloc", "free"]
+    example: |
+      // Good: clear alloc/free pairing
+      char *buf = malloc(256);
+      if (!buf) return -ENOMEM;
+      // ... use buf ...
+      free(buf);
+      buf = NULL;
+
+  - id: C002
+    title: "Check return value of malloc/calloc/realloc"
+    description: "Memory allocation can fail. Always check the return value for NULL before using the pointer. For realloc, save the original pointer to avoid leaks if realloc fails."
+    category: "c_memory_management"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "memory", "null-check", "allocation"]
+    example: |
+      // Good
+      void *tmp = realloc(buf, new_size);
+      if (!tmp) { free(buf); return -1; }
+      buf = tmp;
+
+  - id: C003
+    title: "Set freed pointers to NULL"
+    description: "After calling free(), set the pointer to NULL to prevent use-after-free bugs. A NULL dereference crashes predictably; use-after-free is undefined behavior."
+    category: "c_memory_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "memory", "use-after-free", "defensive"]
+
+  - id: C004
+    title: "Use calloc for zero-initialized arrays"
+    description: "Prefer calloc(n, size) over malloc(n * size) for arrays. calloc zero-initializes memory and checks for multiplication overflow internally."
+    category: "c_memory_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "memory", "calloc", "initialization"]
+
+  - id: C005
+    title: "Avoid variable-length arrays (VLAs) in production code"
+    description: "VLAs allocate on the stack with no overflow check. Use heap allocation for user-controlled sizes. VLAs are optional since C11 and removed in some embedded profiles."
+    category: "c_memory_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "memory", "vla", "stack-overflow"]
+
+  - id: C006
+    title: "Use sizeof(*ptr) instead of sizeof(type) in allocations"
+    description: "Write malloc(sizeof(*ptr)) rather than malloc(sizeof(struct Foo)). This is resilient to type changes and avoids silent bugs if the type is changed."
+    category: "c_memory_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "memory", "sizeof", "defensive"]
+    example: |
+      // Good: type-safe
+      struct Node *n = malloc(sizeof(*n));
+      // Risky: type might diverge
+      struct Node *n = malloc(sizeof(struct Node));
+
+  - id: C007
+    title: "Implement cleanup patterns with goto for resource management"
+    description: "Use a single cleanup label with goto for functions that acquire multiple resources. This prevents resource leaks in error paths and is the standard pattern in the Linux kernel."
+    category: "c_memory_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "memory", "cleanup", "goto", "resource-management"]
+    example: |
+      int init(void) {
+          int *a = malloc(SIZE_A);
+          if (!a) goto err_a;
+          int *b = malloc(SIZE_B);
+          if (!b) goto err_b;
+          return 0;
+      err_b: free(a);
+      err_a: return -ENOMEM;
+      }
+
+  - id: C008
+    title: "Avoid double-free and use-after-free"
+    description: "Track ownership explicitly. Never free a pointer that has been passed to another owner. Use static analysis tools (Valgrind, ASan) to detect double-free."
+    category: "c_memory_management"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "memory", "double-free", "ownership"]
+
+  - id: C009
+    title: "Use arena/pool allocation for performance-critical paths"
+    description: "For high-frequency alloc/free patterns, use memory pools or arena allocators. This reduces fragmentation and improves cache locality."
+    category: "c_memory_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "memory", "arena", "pool", "performance"]
+
+  - id: C010
+    title: "Prefer stack allocation for small, fixed-size buffers"
+    description: "Use stack allocation (local variables) for small, fixed-size buffers. Reserve heap allocation for large or dynamically-sized data."
+    category: "c_memory_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "memory", "stack", "heap"]
+
+  # ═══════════════════════════════════════════════
+  # Pointer Safety (C011-C018)
+  # ═══════════════════════════════════════════════
+
+  - id: C011
+    title: "Always check pointers for NULL before dereference"
+    description: "Every pointer that can be NULL must be checked before dereference. This includes function parameters, return values from library functions, and struct member access."
+    category: "c_pointer_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "pointer", "null-check", "defensive"]
+
+  - id: C012
+    title: "Use const for pointers that should not be modified"
+    description: "Declare pointer parameters as const when the function does not modify the pointed-to data. Use const char *str for string inputs. This enables compiler optimizations and documents intent."
+    category: "c_pointer_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "pointer", "const", "api-design"]
+    example: |
+      // Good: clearly read-only
+      size_t strlen(const char *s);
+      // Bad: no const — caller doesn't know if str is modified
+      size_t strlen(char *s);
+
+  - id: C013
+    title: "Avoid returning pointers to local variables"
+    description: "Never return a pointer to a stack-allocated local variable. The memory is invalidated when the function returns. Use static, heap allocation, or output parameters instead."
+    category: "c_pointer_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "pointer", "stack", "dangling"]
+
+  - id: C014
+    title: "Use restrict keyword for non-aliasing pointers (C99+)"
+    description: "Use restrict to tell the compiler that two pointers do not alias the same memory. This enables vectorization and other optimizations. Only use when you can guarantee no aliasing."
+    category: "c_pointer_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "pointer", "restrict", "optimization", "c99"]
+
+  - id: C015
+    title: "Prefer explicit pointer arithmetic over index arithmetic"
+    description: "When iterating through arrays via pointers, be explicit about pointer types to avoid off-by-one errors. Use ptrdiff_t for pointer differences."
+    category: "c_pointer_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "pointer", "arithmetic", "safety"]
+
+  - id: C016
+    title: "Validate array bounds before access"
+    description: "C does not perform bounds checking. Always validate indices before accessing arrays. Use size_t for array indices and check against known array lengths."
+    category: "c_pointer_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "pointer", "bounds", "buffer-overflow"]
+
+  - id: C017
+    title: "Use void * carefully — cast only at boundaries"
+    description: "Minimize use of void* in APIs. When needed, cast to the correct type as close to the usage point as possible. Document the expected type for void* parameters."
+    category: "c_pointer_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "pointer", "void-pointer", "type-safety"]
+
+  - id: C018
+    title: "Use flexible array members instead of zero-length arrays"
+    description: "In C99+, use flexible array members (struct { int n; char data[]; }) instead of the non-standard zero-length array hack. Place the flexible member last in the struct."
+    category: "c_pointer_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "pointer", "flexible-array", "c99"]
+
+  # ═══════════════════════════════════════════════
+  # C Standard Compliance (C019-C024)
+  # ═══════════════════════════════════════════════
+
+  - id: C019
+    title: "Avoid undefined behavior — use sanitizers"
+    description: "Compile with -fsanitize=undefined,address during development. Common UB: signed overflow, null dereference, type-punning through union (pre-C99), uninitialized reads."
+    category: "c_standard_compliance"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "ub", "sanitizer", "asan", "ubsan"]
+
+  - id: C020
+    title: "Use stdint.h types for portable integer sizes"
+    description: "Use int32_t, uint64_t, etc. from <stdint.h> instead of long/int when specific sizes matter. Use size_t for sizes and ssize_t for signed sizes."
+    category: "c_standard_compliance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "types", "stdint", "portability"]
+
+  - id: C021
+    title: "Use stdbool.h for boolean values (C99+)"
+    description: "Include <stdbool.h> and use bool/true/false instead of int/1/0 for boolean logic. This improves readability and intent. In C23, bool/true/false are keywords."
+    category: "c_standard_compliance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "types", "bool", "c99", "readability"]
+
+  - id: C022
+    title: "Initialize all variables at declaration"
+    description: "Uninitialized variables are a common source of UB and security bugs. Initialize all variables, especially pointers (to NULL) and integers (to 0 or explicit values)."
+    category: "c_standard_compliance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "initialization", "defensive"]
+
+  - id: C023
+    title: "Use _Static_assert for compile-time checks (C11+)"
+    description: "Use _Static_assert (or static_assert with <assert.h>) to verify assumptions at compile time: struct sizes, alignment, enum ranges, etc."
+    category: "c_standard_compliance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "static-assert", "compile-time", "c11"]
+    example: |
+      _Static_assert(sizeof(struct header) == 16, "header must be 16 bytes");
+
+  - id: C024
+    title: "Use designated initializers for struct literals (C99+)"
+    description: "Use designated initializers (.field = value) instead of positional initialization. This is resilient to field reordering and documents which fields are being set."
+    category: "c_standard_compliance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "initialization", "designated", "c99"]
+    example: |
+      // Good (C99)
+      struct config cfg = { .timeout = 30, .retries = 3 };
+      // Bad: positional
+      struct config cfg = { 30, 3 };
+
+  # ═══════════════════════════════════════════════
+  # Preprocessor (C025-C030)
+  # ═══════════════════════════════════════════════
+
+  - id: C025
+    title: "Use include guards or #pragma once in every header"
+    description: "Protect every .h file with include guards (#ifndef FOO_H / #define FOO_H / #endif) or #pragma once. Use consistent naming: PROJECT_MODULE_H_."
+    category: "c_preprocessor"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "preprocessor", "include-guard", "header"]
+
+  - id: C026
+    title: "Parenthesize all macro parameters and expression bodies"
+    description: "Wrap every macro parameter in parentheses and wrap the full body in outer parentheses or do { } while(0). This prevents operator precedence bugs."
+    category: "c_preprocessor"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "preprocessor", "macro", "safety"]
+    example: |
+      // Good
+      #define MAX(a, b) ((a) > (b) ? (a) : (b))
+      // Bad: precedence bug with MAX(x+1, y)
+      #define MAX(a, b) a > b ? a : b
+
+  - id: C027
+    title: "Use inline functions instead of function-like macros (C99+)"
+    description: "Prefer static inline functions over function-like macros for type safety, debuggability, and avoiding double-evaluation. Keep macros for compile-time constants and conditional compilation."
+    category: "c_preprocessor"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "preprocessor", "inline", "macro", "c99"]
+
+  - id: C028
+    title: "Use do { } while(0) for multi-statement macros"
+    description: "Wrap multi-statement macros in do { ... } while(0) to ensure they behave as a single statement in all contexts (if/else, etc.)."
+    category: "c_preprocessor"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "preprocessor", "macro", "multi-statement"]
+
+  - id: C029
+    title: "Avoid #define for constants — use enum or static const"
+    description: "Use enum for integer constants and static const for typed constants. #define constants have no type information and pollute the namespace."
+    category: "c_preprocessor"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "preprocessor", "constants", "enum"]
+
+  - id: C030
+    title: "Use #ifdef for feature detection, not compiler detection"
+    description: "Check for feature macros (__STDC_VERSION__, __has_attribute, etc.) rather than compiler names (__GNUC__). This is more portable across compiler versions."
+    category: "c_preprocessor"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "preprocessor", "portability", "feature-detection"]
+
+  # ═══════════════════════════════════════════════
+  # API Design (C031-C036)
+  # ═══════════════════════════════════════════════
+
+  - id: C031
+    title: "Return error codes from functions, avoid global errno"
+    description: "Return int error codes (0 = success, negative = error) or use a dedicated error enum. Document error codes. Only rely on errno for POSIX/libc functions."
+    category: "c_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "api", "error-codes", "errno"]
+
+  - id: C032
+    title: "Use opaque types for encapsulation"
+    description: "Declare structs in headers as forward declarations (struct foo;) and define them only in the .c file. Expose only the API through function pointers. This hides implementation details."
+    category: "c_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "api", "encapsulation", "opaque"]
+    example: |
+      // foo.h — opaque handle
+      typedef struct foo foo_t;
+      foo_t *foo_create(void);
+      void foo_destroy(foo_t *f);
+
+  - id: C033
+    title: "Prefix all public API names with a namespace"
+    description: "C has no namespaces. Prefix all public functions, types, and macros with a project or module prefix (e.g., mylib_init, MYLIB_MAX_SIZE). This avoids symbol collisions."
+    category: "c_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "api", "namespace", "naming"]
+
+  - id: C034
+    title: "Document ownership in function signatures"
+    description: "Clearly document in comments whether a function takes ownership (caller must not free), borrows (function does not free), or transfers ownership (caller must free result)."
+    category: "c_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "api", "ownership", "documentation"]
+
+  - id: C035
+    title: "Use output parameters for multiple return values"
+    description: "When a function needs to return multiple values, use output parameters (pointers) and return an error code. Place output parameters last in the parameter list."
+    category: "c_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "api", "output-params", "convention"]
+    example: |
+      // Good: error code return + output param
+      int parse_int(const char *str, int *out_value);
+
+  - id: C036
+    title: "Provide init/destroy pairs for resource-owning structs"
+    description: "For structs that own resources, provide explicit init/destroy (or create/destroy) functions. Use consistent naming: module_type_init/module_type_destroy."
+    category: "c_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "api", "resource-management", "init-destroy"]
+
+  # ═══════════════════════════════════════════════
+  # Error Handling (C037-C040)
+  # ═══════════════════════════════════════════════
+
+  - id: C037
+    title: "Check return values of all system calls"
+    description: "Every POSIX system call (open, read, write, close, mmap, etc.) can fail. Always check return values. Handle EINTR for interruptible calls."
+    category: "c_error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "error-handling", "system-call", "posix"]
+
+  - id: C038
+    title: "Use errno correctly — check immediately after the call"
+    description: "errno can be modified by any function. Check errno immediately after the failing call. Save errno if you need to use it after other calls."
+    category: "c_error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "error-handling", "errno"]
+
+  - id: C039
+    title: "Log errors with context before propagating"
+    description: "When propagating errors up the call stack, log the error with relevant context (function name, parameters, errno value) at the point of detection."
+    category: "c_error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "error-handling", "logging"]
+
+  - id: C040
+    title: "Define error code enums for domain-specific errors"
+    description: "Define a project-specific error enum with named constants. Map to human-readable strings. Avoid bare integer error codes without documentation."
+    category: "c_error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "error-handling", "error-codes", "enum"]
+
+  # ═══════════════════════════════════════════════
+  # Concurrency (C041-C044)
+  # ═══════════════════════════════════════════════
+
+  - id: C041
+    title: "Always lock mutexes before accessing shared data"
+    description: "Protect all shared state with mutexes. Use a consistent locking order to prevent deadlocks. Document which mutex protects which data."
+    category: "c_concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "concurrency", "mutex", "threading"]
+
+  - id: C042
+    title: "Use _Atomic types for lock-free shared variables (C11+)"
+    description: "For simple shared counters or flags, use _Atomic types from <stdatomic.h> instead of mutex-protected variables. Choose appropriate memory ordering (relaxed, acquire-release, seq_cst)."
+    category: "c_concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "concurrency", "atomic", "c11", "lock-free"]
+
+  - id: C043
+    title: "Prefer C11 threads over pthreads for portability"
+    description: "For new code targeting C11+, prefer <threads.h> (thrd_create, mtx_lock, etc.) over pthreads for portability. Fall back to pthreads when C11 threads are not available."
+    category: "c_concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "concurrency", "c11", "threads", "portability"]
+
+  - id: C044
+    title: "Use thread-local storage for per-thread state"
+    description: "Use _Thread_local (C11) or __thread (GCC/Clang extension) for per-thread state. This avoids the need for mutex-protected global variables for thread-specific data."
+    category: "c_concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "concurrency", "thread-local", "c11"]
+
+  # ═══════════════════════════════════════════════
+  # Performance (C045-C047)
+  # ═══════════════════════════════════════════════
+
+  - id: C045
+    title: "Use compiler hints for branch prediction"
+    description: "Use __builtin_expect or C23 [[likely]]/[[unlikely]] attributes for hot paths. This helps the compiler generate better branch prediction code."
+    category: "c_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "performance", "branch-prediction", "likely"]
+
+  - id: C046
+    title: "Align data structures for cache performance"
+    description: "Order struct fields from largest to smallest to minimize padding. Use __attribute__((aligned(N))) for cache-line alignment in performance-critical structures."
+    category: "c_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "performance", "alignment", "cache"]
+
+  - id: C047
+    title: "Compile with optimization and warnings enabled"
+    description: "Always compile with -Wall -Wextra -Werror in CI. Use -O2 or -O3 for release builds. Enable -Wpedantic for strict standard compliance."
+    category: "c_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "performance", "warnings", "optimization"]
+
+  # ═══════════════════════════════════════════════
+  # Security (C048-C050)
+  # ═══════════════════════════════════════════════
+
+  - id: C048
+    title: "Use safe string functions — avoid strcpy, strcat, sprintf"
+    description: "Use strncpy/strlcpy, strncat/strlcat, snprintf instead of their unbounded equivalents. Better yet, use explicit length-tracking string libraries."
+    category: "c_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "security", "string", "buffer-overflow"]
+
+  - id: C049
+    title: "Validate all external inputs"
+    description: "Validate all inputs from files, network, environment variables, and user input. Check lengths, ranges, and formats before processing. Never trust external data."
+    category: "c_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "security", "input-validation", "defensive"]
+
+  - id: C050
+    title: "Use stack canaries and ASLR — compile with security flags"
+    description: "Compile with -fstack-protector-strong -D_FORTIFY_SOURCE=2 -pie -fPIE for production builds. Enable full RELRO (-Wl,-z,relro,-z,now) to prevent GOT overwrite attacks."
+    category: "c_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["c"]
+    tags: ["c", "security", "hardening", "compiler-flags"]

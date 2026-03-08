@@ -1,0 +1,679 @@
+# Python Core Best Practices
+# Version-aware practices for Python 3.9+
+# Category: Core Python idioms and patterns
+
+practices:
+  # ============================================================================
+  # TYPE SAFETY PRACTICES
+  # ============================================================================
+
+  - id: PY001
+    title: 'Use Type Hints for All Function Signatures'
+    category: type_safety
+    level: beginner
+    priority: high
+    python_version:
+      min_version: '3.9'
+    content:
+      description: |
+        Always annotate function parameters and return types with type hints.
+        Type hints improve code readability, enable static analysis, and help
+        catch bugs early through tools like mypy.
+      rationale: |
+        Type hints provide self-documentation, enable IDE autocompletion,
+        and allow static type checkers to catch errors before runtime.
+      good_examples:
+        - |
+          def calculate_total(items: list[float], tax_rate: float = 0.0) -> float:
+              """Calculate total with optional tax."""
+              subtotal = sum(items)
+              return subtotal * (1 + tax_rate)
+        - |
+          def fetch_user(user_id: int) -> User | None:
+              """Fetch user by ID, returns None if not found."""
+              return db.query(User).filter_by(id=user_id).first()
+      bad_examples:
+        - |
+          def calculate_total(items, tax_rate=0.0):
+              subtotal = sum(items)
+              return subtotal * (1 + tax_rate)
+      references:
+        - 'https://peps.python.org/pep-0484/'
+        - 'https://docs.python.org/3/library/typing.html'
+      tags:
+        - typing
+        - pep484
+        - static-analysis
+
+  - id: PY002
+    title: 'Use Modern Union Syntax (3.10+)'
+    category: type_safety
+    level: intermediate
+    priority: medium
+    python_version:
+      min_version: '3.10'
+    content:
+      description: |
+        Use the pipe operator (|) for union types instead of Union from typing.
+        Use X | None instead of Optional[X].
+      rationale: |
+        The pipe syntax is more readable and aligns with how developers
+        naturally think about types.
+      good_examples:
+        - |
+          def process(value: int | str | None) -> str:
+              if value is None:
+                  return "empty"
+              return str(value)
+      bad_examples:
+        - |
+          from typing import Optional, Union
+
+          def process(value: Union[int, str, None]) -> str:
+              if value is None:
+                  return "empty"
+              return str(value)
+      references:
+        - 'https://peps.python.org/pep-0604/'
+      tags:
+        - typing
+        - pep604
+        - python310
+
+  - id: PY003
+    title: 'Use Built-in Generic Types (3.9+)'
+    category: type_safety
+    level: beginner
+    priority: high
+    python_version:
+      min_version: '3.9'
+    content:
+      description: |
+        Use built-in generic types (list, dict, set, tuple) instead of
+        importing from typing module.
+      rationale: |
+        Python 3.9+ supports generic syntax for built-in collections,
+        reducing imports and improving readability.
+      good_examples:
+        - |
+          def process_items(items: list[str]) -> dict[str, int]:
+              return {item: len(item) for item in items}
+      bad_examples:
+        - |
+          from typing import List, Dict
+
+          def process_items(items: List[str]) -> Dict[str, int]:
+              return {item: len(item) for item in items}
+      references:
+        - 'https://peps.python.org/pep-0585/'
+      tags:
+        - typing
+        - pep585
+        - python39
+
+  # ============================================================================
+  # ERROR HANDLING PRACTICES
+  # ============================================================================
+
+  - id: PY010
+    title: 'Catch Specific Exceptions'
+    category: error_handling
+    level: beginner
+    priority: critical
+    content:
+      description: |
+        Always catch specific exceptions rather than bare except or Exception.
+        This prevents accidentally catching and hiding unexpected errors.
+      rationale: |
+        Bare except catches everything including SystemExit and KeyboardInterrupt,
+        making debugging difficult and potentially hiding bugs.
+      good_examples:
+        - |
+          try:
+              value = config[key]
+          except KeyError:
+              logger.warning(f"Key {key} not found, using default")
+              value = default
+        - |
+          try:
+              result = int(user_input)
+          except ValueError:
+              raise ValidationError(f"Invalid integer: {user_input}")
+      bad_examples:
+        - |
+          try:
+              value = config[key]
+          except:  # Catches everything!
+              value = default
+        - |
+          try:
+              result = int(user_input)
+          except Exception:  # Too broad
+              result = 0
+      references:
+        - 'https://docs.python.org/3/tutorial/errors.html'
+      tags:
+        - exceptions
+        - error-handling
+        - debugging
+
+  - id: PY011
+    title: 'Use Exception Chaining'
+    category: error_handling
+    level: intermediate
+    priority: high
+    python_version:
+      min_version: '3.0'
+    content:
+      description: |
+        When re-raising exceptions, use 'from' to chain exceptions and
+        preserve the original traceback.
+      rationale: |
+        Exception chaining preserves the full error context, making debugging
+        easier by showing both the original and derived exceptions.
+      good_examples:
+        - |
+          try:
+              data = json.loads(raw_data)
+          except json.JSONDecodeError as e:
+              raise ConfigurationError(f"Invalid config format") from e
+      bad_examples:
+        - |
+          try:
+              data = json.loads(raw_data)
+          except json.JSONDecodeError:
+              raise ConfigurationError("Invalid config format")  # Lost context!
+      references:
+        - 'https://peps.python.org/pep-3134/'
+      tags:
+        - exceptions
+        - debugging
+        - traceback
+
+  - id: PY012
+    title: 'Use Context Managers for Resource Management'
+    category: error_handling
+    level: beginner
+    priority: critical
+    content:
+      description: |
+        Always use context managers (with statement) for resources that need
+        cleanup, such as files, database connections, and locks.
+      rationale: |
+        Context managers guarantee cleanup even when exceptions occur,
+        preventing resource leaks.
+      good_examples:
+        - |
+          with open("config.json") as f:
+              config = json.load(f)
+        - |
+          with db.transaction():
+              db.execute(query)
+      bad_examples:
+        - |
+          f = open("config.json")
+          config = json.load(f)
+          f.close()  # Won't run if json.load fails!
+      references:
+        - 'https://peps.python.org/pep-0343/'
+      tags:
+        - context-manager
+        - resources
+        - cleanup
+
+  # ============================================================================
+  # CODE STYLE PRACTICES
+  # ============================================================================
+
+  - id: PY020
+    title: 'Use F-Strings for String Formatting'
+    category: code_style
+    level: beginner
+    priority: high
+    python_version:
+      min_version: '3.6'
+    content:
+      description: |
+        Use f-strings for string interpolation instead of .format() or % formatting.
+        F-strings are faster, more readable, and less error-prone.
+      rationale: |
+        F-strings are evaluated at runtime, provide better performance,
+        and allow inline expressions.
+      good_examples:
+        - |
+          name = "Alice"
+          age = 30
+          message = f"Hello, {name}! You are {age} years old."
+        - |
+          total = f"Total: ${price * quantity:.2f}"
+      bad_examples:
+        - |
+          message = "Hello, {}! You are {} years old.".format(name, age)
+        - |
+          message = "Hello, %s! You are %d years old." % (name, age)
+      references:
+        - 'https://peps.python.org/pep-0498/'
+      tags:
+        - f-strings
+        - formatting
+        - performance
+
+  - id: PY021
+    title: 'Use Pathlib for File Paths'
+    category: code_style
+    level: intermediate
+    priority: high
+    python_version:
+      min_version: '3.4'
+    content:
+      description: |
+        Use pathlib.Path instead of os.path for file path manipulation.
+        Pathlib provides an object-oriented interface that's more intuitive.
+      rationale: |
+        Pathlib is cross-platform, more readable, and provides method chaining
+        for common operations.
+      good_examples:
+        - |
+          from pathlib import Path
+
+          config_dir = Path.home() / ".config" / "myapp"
+          config_dir.mkdir(parents=True, exist_ok=True)
+
+          config_file = config_dir / "settings.json"
+          if config_file.exists():
+              data = config_file.read_text()
+      bad_examples:
+        - |
+          import os
+
+          config_dir = os.path.join(os.path.expanduser("~"), ".config", "myapp")
+          os.makedirs(config_dir, exist_ok=True)
+
+          config_file = os.path.join(config_dir, "settings.json")
+          if os.path.exists(config_file):
+              with open(config_file) as f:
+                  data = f.read()
+      references:
+        - 'https://docs.python.org/3/library/pathlib.html'
+      tags:
+        - pathlib
+        - files
+        - cross-platform
+
+  - id: PY022
+    title: 'Use Walrus Operator for Assignment Expressions'
+    category: code_style
+    level: intermediate
+    priority: low
+    python_version:
+      min_version: '3.8'
+    content:
+      description: |
+        Use the walrus operator (:=) when you need to both assign and use a
+        value in the same expression.
+      rationale: |
+        The walrus operator reduces code duplication and can make certain
+        patterns more concise.
+      good_examples:
+        - |
+          if (match := pattern.search(text)) is not None:
+              process(match.group(0))
+        - |
+          while (chunk := file.read(8192)):
+              process(chunk)
+      bad_examples:
+        - |
+          match = pattern.search(text)
+          if match is not None:
+              process(match.group(0))
+      references:
+        - 'https://peps.python.org/pep-0572/'
+      tags:
+        - walrus
+        - pep572
+        - expressions
+
+  # ============================================================================
+  # DOCUMENTATION PRACTICES
+  # ============================================================================
+
+  - id: PY030
+    title: 'Write Comprehensive Docstrings'
+    category: documentation
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Document all public functions, classes, and modules with docstrings
+        following Google or NumPy style conventions.
+      rationale: |
+        Good documentation helps users understand your code without reading
+        the implementation and enables better IDE support.
+      good_examples:
+        - |
+          def calculate_discount(price: float, percentage: float) -> float:
+              """Calculate the discounted price.
+
+              Args:
+                  price: Original price in dollars.
+                  percentage: Discount percentage (0-100).
+
+              Returns:
+                  The price after applying the discount.
+
+              Raises:
+                  ValueError: If percentage is not between 0 and 100.
+
+              Example:
+                  >>> calculate_discount(100.0, 20)
+                  80.0
+              """
+              if not 0 <= percentage <= 100:
+                  raise ValueError(f"Percentage must be 0-100, got {percentage}")
+              return price * (1 - percentage / 100)
+      bad_examples:
+        - |
+          def calculate_discount(price, percentage):
+              # calculates discount
+              return price * (1 - percentage / 100)
+      references:
+        - 'https://peps.python.org/pep-0257/'
+        - 'https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings'
+      tags:
+        - docstrings
+        - documentation
+        - pep257
+
+  # ============================================================================
+  # PERFORMANCE PRACTICES
+  # ============================================================================
+
+  - id: PY040
+    title: 'Use Generators for Large Datasets'
+    category: performance
+    level: intermediate
+    priority: high
+    content:
+      description: |
+        Use generators instead of lists when processing large datasets to
+        reduce memory usage.
+      rationale: |
+        Generators produce values lazily, using O(1) memory regardless of
+        dataset size.
+      good_examples:
+        - |
+          def read_large_file(path: Path):
+              """Read file line by line without loading entire file."""
+              with open(path) as f:
+                  for line in f:
+                      yield line.strip()
+        - |
+          # Generator expression for transformations
+          squares = (x**2 for x in range(1_000_000))
+      bad_examples:
+        - |
+          def read_large_file(path: Path):
+              with open(path) as f:
+                  return f.read().split('\n')  # Loads entire file!
+        - |
+          squares = [x**2 for x in range(1_000_000)]  # Uses lots of memory
+      references:
+        - 'https://peps.python.org/pep-0289/'
+      tags:
+        - generators
+        - memory
+        - performance
+
+  - id: PY041
+    title: 'Use __slots__ for Memory-Efficient Classes'
+    category: performance
+    level: advanced
+    priority: medium
+    content:
+      description: |
+        Use __slots__ for classes that will have many instances to reduce
+        memory usage and slightly improve attribute access speed.
+      rationale: |
+        __slots__ prevents the creation of __dict__ for each instance,
+        saving 40-50 bytes per instance.
+      good_examples:
+        - |
+          class Point:
+              __slots__ = ('x', 'y')
+
+              def __init__(self, x: float, y: float) -> None:
+                  self.x = x
+                  self.y = y
+      bad_examples:
+        - |
+          class Point:
+              def __init__(self, x: float, y: float) -> None:
+                  self.x = x
+                  self.y = y
+      references:
+        - 'https://docs.python.org/3/reference/datamodel.html#slots'
+      tags:
+        - slots
+        - memory
+        - optimization
+
+  # ============================================================================
+  # MAINTAINABILITY PRACTICES
+  # ============================================================================
+
+  - id: PY050
+    title: 'Use Dataclasses for Data Containers'
+    category: maintainability
+    level: beginner
+    priority: high
+    python_version:
+      min_version: '3.7'
+    content:
+      description: |
+        Use dataclasses for classes that primarily hold data. Dataclasses
+        automatically generate __init__, __repr__, __eq__, and more.
+      rationale: |
+        Dataclasses reduce boilerplate, provide type safety, and make code
+        more maintainable.
+      good_examples:
+        - |
+          from dataclasses import dataclass, field
+
+          @dataclass
+          class User:
+              id: int
+              name: str
+              email: str
+              roles: list[str] = field(default_factory=list)
+        - |
+          @dataclass(frozen=True)
+          class Point:
+              x: float
+              y: float
+      bad_examples:
+        - |
+          class User:
+              def __init__(self, id, name, email, roles=None):
+                  self.id = id
+                  self.name = name
+                  self.email = email
+                  self.roles = roles or []
+
+              def __repr__(self):
+                  return f"User(id={self.id}, name={self.name})"
+
+              def __eq__(self, other):
+                  return self.id == other.id
+      references:
+        - 'https://peps.python.org/pep-0557/'
+      tags:
+        - dataclasses
+        - data-modeling
+        - pep557
+
+  - id: PY051
+    title: 'Use Enums for Fixed Sets of Values'
+    category: maintainability
+    level: beginner
+    priority: high
+    content:
+      description: |
+        Use Enum classes instead of string constants for fixed sets of values.
+        Enums provide type safety and IDE support.
+      rationale: |
+        Enums prevent typos, provide autocompletion, and make refactoring safer.
+      good_examples:
+        - |
+          from enum import Enum, auto
+
+          class Status(Enum):
+              PENDING = auto()
+              ACTIVE = auto()
+              COMPLETED = auto()
+              FAILED = auto()
+
+          def process(status: Status) -> None:
+              match status:
+                  case Status.PENDING:
+                      start_processing()
+                  case Status.ACTIVE:
+                      continue_processing()
+      bad_examples:
+        - |
+          STATUS_PENDING = "pending"
+          STATUS_ACTIVE = "active"
+          STATUS_COMPLETED = "completed"
+
+          def process(status: str) -> None:
+              if status == "pending":  # Easy to typo!
+                  start_processing()
+      references:
+        - 'https://docs.python.org/3/library/enum.html'
+      tags:
+        - enums
+        - type-safety
+        - constants
+
+  - id: PY052
+    title: 'Use Structural Pattern Matching'
+    category: maintainability
+    level: intermediate
+    priority: medium
+    python_version:
+      min_version: '3.10'
+    content:
+      description: |
+        Use match statements for complex conditional logic, especially when
+        dealing with structured data like dataclasses or dictionaries.
+      rationale: |
+        Pattern matching is more readable than nested if/elif chains and
+        provides exhaustiveness checking.
+      good_examples:
+        - |
+          def handle_event(event: dict) -> str:
+              match event:
+                  case {"type": "click", "x": x, "y": y}:
+                      return f"Clicked at ({x}, {y})"
+                  case {"type": "keypress", "key": key}:
+                      return f"Pressed key: {key}"
+                  case {"type": "scroll", "direction": "up" | "down" as dir}:
+                      return f"Scrolled {dir}"
+                  case _:
+                      return "Unknown event"
+      bad_examples:
+        - |
+          def handle_event(event: dict) -> str:
+              if event.get("type") == "click":
+                  return f"Clicked at ({event['x']}, {event['y']})"
+              elif event.get("type") == "keypress":
+                  return f"Pressed key: {event['key']}"
+              # ... more nested conditions
+      references:
+        - 'https://peps.python.org/pep-0634/'
+      tags:
+        - pattern-matching
+        - pep634
+        - python310
+
+  # ============================================================================
+  # SECURITY PRACTICES
+  # ============================================================================
+
+  - id: PY060
+    title: 'Never Use eval() or exec() with User Input'
+    category: security
+    level: beginner
+    priority: critical
+    content:
+      description: |
+        Never use eval(), exec(), or compile() with untrusted input.
+        These functions can execute arbitrary code.
+      rationale: |
+        Code injection is one of the most severe security vulnerabilities.
+        Always use safe alternatives.
+      good_examples:
+        - |
+          # For math expressions, use ast.literal_eval or a math parser
+          import ast
+
+          user_input = "[1, 2, 3]"
+          data = ast.literal_eval(user_input)  # Safe for literals only
+        - |
+          # For JSON, use json.loads
+          import json
+
+          config = json.loads(config_string)
+      bad_examples:
+        - |
+          # DANGER: Code injection!
+          user_formula = request.get("formula")
+          result = eval(user_formula)
+      references:
+        - 'https://docs.python.org/3/library/functions.html#eval'
+      tags:
+        - security
+        - injection
+        - validation
+      solid_principles:
+        - single_responsibility
+
+  - id: PY061
+    title: 'Use Secrets Module for Cryptographic Randomness'
+    category: security
+    level: intermediate
+    priority: critical
+    python_version:
+      min_version: '3.6'
+    content:
+      description: |
+        Use the secrets module instead of random for security-sensitive
+        operations like generating tokens, passwords, or session IDs.
+      rationale: |
+        The random module uses a predictable PRNG that can be exploited.
+        The secrets module uses cryptographically secure randomness.
+      good_examples:
+        - |
+          import secrets
+
+          # Generate a secure token
+          token = secrets.token_urlsafe(32)
+
+          # Generate a secure password
+          password = secrets.token_hex(16)
+
+          # Secure comparison
+          if secrets.compare_digest(provided_token, stored_token):
+              grant_access()
+      bad_examples:
+        - |
+          import random
+          import string
+
+          # INSECURE: Predictable randomness!
+          token = ''.join(random.choices(string.ascii_letters, k=32))
+      references:
+        - 'https://docs.python.org/3/library/secrets.html'
+      tags:
+        - security
+        - cryptography
+        - tokens

@@ -1,0 +1,1264 @@
+# Preact Framework Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.64 - Preact Framework Support
+# Practice IDs: PREACT001-PREACT050
+# Coverage: Components, Hooks, Signals, Context, Performance,
+#           SSR, TypeScript, Compat, Routing, Patterns
+# Versions: Preact 8.x-10.19+, @preact/signals v1-v2,
+#           preact-compat, preact-render-to-string, preact-router,
+#           Fresh, htm, goober
+
+practices:
+  # ============================================================================
+  # PREACT COMPONENTS (PREACT001-PREACT010) - Component best practices
+  # ============================================================================
+
+  - id: PREACT001
+    title: "Prefer functional components over class components"
+    description: "Functional components are simpler, lighter, and enable hooks. Preact's functional components have zero overhead compared to React's. Use class components only when migrating legacy code or using componentDidCatch without useErrorBoundary."
+    category: "preact_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "component", "functional", "class"]
+    example: |
+      // ✅ Functional component
+      export function Counter({ initial = 0 }) {
+        const [count, setCount] = useState(initial);
+        return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
+      }
+
+      // ❌ Class component (prefer functional)
+      class Counter extends Component {
+        state = { count: 0 };
+        render() {
+          return <button onClick={() => this.setState({ count: this.state.count + 1 })}>{this.state.count}</button>;
+        }
+      }
+
+  - id: PREACT002
+    title: "Use h() or JSX pragma correctly for Preact"
+    description: "Preact uses h() as its createElement equivalent. When using JSX, configure jsxImportSource to 'preact' (automatic runtime) or set pragma to 'h' (classic runtime). Mixing React.createElement with Preact causes runtime errors."
+    category: "preact_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "jsx", "h", "pragma", "configuration"]
+    example: |
+      // tsconfig.json / jsconfig.json
+      {
+        "compilerOptions": {
+          "jsx": "react-jsx",
+          "jsxImportSource": "preact"
+        }
+      }
+
+      // ✅ Automatic runtime (recommended for Preact X)
+      export function App() {
+        return <div>Hello</div>;
+      }
+
+      // ✅ Classic runtime with h()
+      /** @jsx h */
+      import { h } from 'preact';
+      export function App() {
+        return h('div', null, 'Hello');
+      }
+
+  - id: PREACT003
+    title: "Type component props with TypeScript interfaces"
+    description: "Define explicit TypeScript interfaces for component props. Use Preact's JSX types (JSX.Element, ComponentChildren, VNode) for return types and children. Prefer ComponentChildren over VNode for children props."
+    category: "preact_components"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "props", "typescript", "types"]
+    example: |
+      import { ComponentChildren } from 'preact';
+
+      interface CardProps {
+        title: string;
+        children: ComponentChildren;
+        variant?: 'default' | 'outlined';
+      }
+
+      export function Card({ title, children, variant = 'default' }: CardProps) {
+        return (
+          <div class={`card card-${variant}`}>
+            <h2>{title}</h2>
+            {children}
+          </div>
+        );
+      }
+
+  - id: PREACT004
+    title: "Use memo() for expensive pure components"
+    description: "Wrap pure components with memo() to prevent unnecessary re-renders. Preact's memo is lighter than React's. Provide a custom comparison function when props contain objects or arrays."
+    category: "preact_components"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "memo", "performance", "pure"]
+    example: |
+      import { memo } from 'preact/compat';
+
+      // ✅ Memo for expensive rendering
+      const ExpensiveList = memo(function ExpensiveList({ items }) {
+        return <ul>{items.map(item => <li key={item.id}>{item.name}</li>)}</ul>;
+      });
+
+      // ✅ Custom comparison
+      const DataGrid = memo(
+        function DataGrid({ data, columns }) { /* ... */ },
+        (prev, next) => prev.data === next.data && prev.columns === next.columns
+      );
+
+  - id: PREACT005
+    title: "Use lazy() with Suspense for code splitting"
+    description: "Use lazy() for dynamic imports and wrap with Suspense to show fallback UI during loading. This enables route-level and component-level code splitting in Preact applications."
+    category: "preact_components"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "lazy", "suspense", "code-splitting", "dynamic-import"]
+    example: |
+      import { lazy, Suspense } from 'preact/compat';
+
+      const Dashboard = lazy(() => import('./Dashboard'));
+
+      export function App() {
+        return (
+          <Suspense fallback={<div>Loading...</div>}>
+            <Dashboard />
+          </Suspense>
+        );
+      }
+
+  - id: PREACT006
+    title: "Use forwardRef for ref forwarding"
+    description: "Use forwardRef to pass refs through component boundaries. Type the ref properly with TypeScript. This is essential for design system components and input wrappers."
+    category: "preact_components"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "forwardRef", "ref", "design-system"]
+    example: |
+      import { forwardRef, Ref } from 'preact/compat';
+
+      interface InputProps {
+        label: string;
+        error?: string;
+      }
+
+      const Input = forwardRef<HTMLInputElement, InputProps>(
+        ({ label, error, ...rest }, ref) => (
+          <div>
+            <label>{label}</label>
+            <input ref={ref} {...rest} />
+            {error && <span class="error">{error}</span>}
+          </div>
+        )
+      );
+
+  - id: PREACT007
+    title: "Use useErrorBoundary hook for error handling"
+    description: "Preact's useErrorBoundary hook provides a simpler alternative to class-based error boundaries. It returns an error and a reset function. Prefer it over componentDidCatch class method."
+    category: "preact_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.5"
+    tags: ["preact", "error-boundary", "hook", "error-handling"]
+    example: |
+      import { useErrorBoundary } from 'preact/hooks';
+
+      function ErrorBoundary({ children }) {
+        const [error, resetError] = useErrorBoundary((err) => {
+          // Log to error reporting service
+          reportError(err);
+        });
+
+        if (error) {
+          return (
+            <div class="error-fallback">
+              <h2>Something went wrong</h2>
+              <button onClick={resetError}>Try again</button>
+            </div>
+          );
+        }
+
+        return children;
+      }
+
+  - id: PREACT008
+    title: "Use Fragment or short syntax for multiple children"
+    description: "Use Fragment (<Fragment>) or short syntax (<>...</>) to group multiple elements without adding extra DOM nodes. Preact supports both forms natively."
+    category: "preact_components"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "fragment", "jsx", "dom"]
+    example: |
+      import { Fragment } from 'preact';
+
+      // ✅ Short syntax (preferred)
+      function UserInfo({ name, email }) {
+        return (
+          <>
+            <span>{name}</span>
+            <span>{email}</span>
+          </>
+        );
+      }
+
+      // ✅ Fragment with key (for lists)
+      function ItemList({ items }) {
+        return items.map(item => (
+          <Fragment key={item.id}>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
+          </Fragment>
+        ));
+      }
+
+  - id: PREACT009
+    title: "Use class instead of className in Preact"
+    description: "Preact supports both 'class' and 'className' for CSS classes, but 'class' is the native HTML attribute and is recommended for Preact-first projects. When using preact/compat, className also works for React library compatibility."
+    category: "preact_components"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "class", "className", "html", "compat"]
+    example: |
+      // ✅ Preact-native: use 'class'
+      function Button({ variant }) {
+        return <button class={`btn btn-${variant}`}>Click me</button>;
+      }
+
+      // ✅ With compat mode: className also works
+      import 'preact/compat';
+      function Button({ variant }) {
+        return <button className={`btn btn-${variant}`}>Click me</button>;
+      }
+
+  - id: PREACT010
+    title: "Keep components small and focused"
+    description: "Extract reusable logic into custom hooks and break large components into smaller ones. Preact's tiny runtime means component composition has minimal overhead. Aim for components under 100 lines."
+    category: "preact_components"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "composition", "separation-of-concerns", "custom-hooks"]
+    example: |
+      // ✅ Small focused component with extracted hook
+      function useToggle(initial = false) {
+        const [on, setOn] = useState(initial);
+        const toggle = useCallback(() => setOn(v => !v), []);
+        return [on, toggle];
+      }
+
+      function Accordion({ title, children }) {
+        const [open, toggle] = useToggle();
+        return (
+          <div>
+            <button onClick={toggle}>{title} {open ? '▼' : '▶'}</button>
+            {open && <div class="content">{children}</div>}
+          </div>
+        );
+      }
+
+  # ============================================================================
+  # PREACT HOOKS (PREACT011-PREACT020) - Hook best practices
+  # ============================================================================
+
+  - id: PREACT011
+    title: "Import hooks from preact/hooks"
+    description: "In Preact X, hooks are a separate module imported from 'preact/hooks'. This keeps the core bundle tiny. With preact/compat, you can also import from 'react' but direct 'preact/hooks' import is preferred."
+    category: "preact_hooks"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "hooks", "imports", "bundle-size"]
+    example: |
+      // ✅ Direct import from preact/hooks
+      import { useState, useEffect, useRef } from 'preact/hooks';
+
+      // ✅ Also valid with compat
+      import { useState } from 'preact/compat';
+
+      // ❌ Avoid: importing from 'react' without compat alias
+      import { useState } from 'react';  // won't work without preact/compat alias
+
+  - id: PREACT012
+    title: "Follow the Rules of Hooks"
+    description: "Hooks must be called at the top level of components or custom hooks — never inside loops, conditions, or nested functions. This applies identically to Preact and React hooks."
+    category: "preact_hooks"
+    severity: "critical"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "hooks", "rules", "conditional"]
+    example: |
+      // ✅ Hooks at top level
+      function UserProfile({ userId }) {
+        const [user, setUser] = useState(null);
+        const [loading, setLoading] = useState(true);
+
+        useEffect(() => {
+          fetchUser(userId).then(data => {
+            setUser(data);
+            setLoading(false);
+          });
+        }, [userId]);
+
+        if (loading) return <div>Loading...</div>;
+        return <div>{user.name}</div>;
+      }
+
+      // ❌ Hook inside condition
+      function Bad({ showExtra }) {
+        if (showExtra) {
+          const [extra] = useState('');  // ❌ Breaks hook rules
+        }
+      }
+
+  - id: PREACT013
+    title: "Provide correct dependency arrays for hooks"
+    description: "Always include all reactive values used inside useEffect/useMemo/useCallback in the dependency array. Missing dependencies cause stale closures. Empty [] means run-once on mount only."
+    category: "preact_hooks"
+    severity: "critical"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "hooks", "dependencies", "stale-closure"]
+    example: |
+      // ✅ All dependencies listed
+      function SearchResults({ query, filter }) {
+        const [results, setResults] = useState([]);
+
+        useEffect(() => {
+          search(query, filter).then(setResults);
+        }, [query, filter]);  // Both reactive values included
+
+        const filtered = useMemo(
+          () => results.filter(r => r.score > 0),
+          [results]  // Depends on results
+        );
+
+        return <ResultList items={filtered} />;
+      }
+
+  - id: PREACT014
+    title: "Clean up effects to prevent memory leaks"
+    description: "Return a cleanup function from useEffect when subscribing to events, timers, or external stores. The cleanup runs before the effect re-runs and on unmount."
+    category: "preact_hooks"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "hooks", "cleanup", "memory-leak", "useEffect"]
+    example: |
+      // ✅ Cleanup in useEffect
+      function WindowSize() {
+        const [size, setSize] = useState({ w: innerWidth, h: innerHeight });
+
+        useEffect(() => {
+          const handler = () => setSize({ w: innerWidth, h: innerHeight });
+          window.addEventListener('resize', handler);
+          return () => window.removeEventListener('resize', handler);  // cleanup
+        }, []);
+
+        return <span>{size.w}×{size.h}</span>;
+      }
+
+  - id: PREACT015
+    title: "Use useId for unique server-safe IDs"
+    description: "Preact's useId() generates unique IDs that are stable across server and client rendering. Use it for form labels, ARIA attributes, and accessibility. Available since Preact 10.5+."
+    category: "preact_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.5"
+    tags: ["preact", "useId", "ssr", "accessibility", "a11y"]
+    example: |
+      import { useId } from 'preact/hooks';
+
+      function FormField({ label, ...inputProps }) {
+        const id = useId();
+        return (
+          <div>
+            <label for={id}>{label}</label>
+            <input id={id} {...inputProps} />
+          </div>
+        );
+      }
+
+  - id: PREACT016
+    title: "Create custom hooks for reusable logic"
+    description: "Extract shared stateful logic into custom hooks (use* prefix). Custom hooks compose other hooks and can be tested independently. Keep custom hooks focused on a single concern."
+    category: "preact_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "custom-hooks", "reuse", "composition"]
+    example: |
+      // ✅ Custom hook for async data
+      function useAsync(fn, deps) {
+        const [state, setState] = useState({ loading: true, data: null, error: null });
+
+        useEffect(() => {
+          setState(s => ({ ...s, loading: true }));
+          fn()
+            .then(data => setState({ loading: false, data, error: null }))
+            .catch(error => setState({ loading: false, data: null, error }));
+        }, deps);
+
+        return state;
+      }
+
+      // Usage
+      function UserPage({ id }) {
+        const { data: user, loading, error } = useAsync(() => fetchUser(id), [id]);
+        if (loading) return <Spinner />;
+        if (error) return <Error message={error.message} />;
+        return <UserProfile user={user} />;
+      }
+
+  - id: PREACT017
+    title: "Use useReducer for complex state logic"
+    description: "When state has multiple sub-values or next state depends on previous state, useReducer is more predictable than multiple useState calls. Define action types for type-safety."
+    category: "preact_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "useReducer", "state", "complex-state"]
+    example: |
+      type Action =
+        | { type: 'increment' }
+        | { type: 'decrement' }
+        | { type: 'reset'; payload: number };
+
+      function reducer(state: number, action: Action): number {
+        switch (action.type) {
+          case 'increment': return state + 1;
+          case 'decrement': return state - 1;
+          case 'reset': return action.payload;
+        }
+      }
+
+      function Counter({ initial = 0 }) {
+        const [count, dispatch] = useReducer(reducer, initial);
+        return (
+          <div>
+            <span>{count}</span>
+            <button onClick={() => dispatch({ type: 'increment' })}>+</button>
+            <button onClick={() => dispatch({ type: 'reset', payload: initial })}>Reset</button>
+          </div>
+        );
+      }
+
+  - id: PREACT018
+    title: "Use useRef for mutable values and DOM access"
+    description: "useRef holds a mutable value that doesn't cause re-renders. Use it for DOM element references, previous values, and mutable instance variables. Access via .current property."
+    category: "preact_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "useRef", "ref", "dom", "mutable"]
+    example: |
+      function AutoFocusInput() {
+        const inputRef = useRef<HTMLInputElement>(null);
+
+        useEffect(() => {
+          inputRef.current?.focus();
+        }, []);
+
+        return <input ref={inputRef} />;
+      }
+
+  - id: PREACT019
+    title: "Memoize callbacks passed to child components"
+    description: "Use useCallback to memoize event handlers and callbacks passed as props. This prevents unnecessary re-renders of child components, especially when combined with memo()."
+    category: "preact_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "useCallback", "memoization", "performance"]
+    example: |
+      function ParentList({ items }) {
+        const [selected, setSelected] = useState(null);
+
+        // ✅ Memoized callback
+        const handleSelect = useCallback((id) => {
+          setSelected(id);
+        }, []);
+
+        return items.map(item => (
+          <ListItem key={item.id} item={item} onSelect={handleSelect} />
+        ));
+      }
+
+  - id: PREACT020
+    title: "Use useMemo for expensive computations"
+    description: "Wrap expensive calculations in useMemo to avoid recomputing on every render. Only use when the computation is genuinely expensive — premature memoization adds complexity."
+    category: "preact_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "useMemo", "memoization", "performance"]
+    example: |
+      function FilteredList({ items, filter }) {
+        // ✅ Memoize expensive filter/sort
+        const filtered = useMemo(() => {
+          return items
+            .filter(item => item.name.includes(filter))
+            .sort((a, b) => a.name.localeCompare(b.name));
+        }, [items, filter]);
+
+        return <ul>{filtered.map(item => <li key={item.id}>{item.name}</li>)}</ul>;
+      }
+
+  # ============================================================================
+  # PREACT SIGNALS (PREACT021-PREACT030) - @preact/signals best practices
+  # ============================================================================
+
+  - id: PREACT021
+    title: "Use signals for fine-grained reactivity"
+    description: "@preact/signals provides fine-grained reactivity without component re-renders. Signals update only the DOM text nodes that read .value, bypassing VDOM diffing entirely. This is Preact's biggest performance advantage."
+    category: "preact_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "signals", "reactivity", "performance"]
+    example: |
+      import { signal, computed } from '@preact/signals';
+
+      // ✅ Module-level signal — shared global state
+      const count = signal(0);
+      const doubled = computed(() => count.value * 2);
+
+      // Component reads .value — only text node updates, no re-render
+      function Counter() {
+        return (
+          <div>
+            <span>Count: {count}</span>
+            <span>Doubled: {doubled}</span>
+            <button onClick={() => count.value++}>+</button>
+          </div>
+        );
+      }
+
+  - id: PREACT022
+    title: "Prefer module-level signals for global state"
+    description: "Declare signals at module level for shared state. Module-level signals persist across renders and can be imported by any component. Use useSignal() for component-local reactive state."
+    category: "preact_signals"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "signals", "global-state", "module-level"]
+    example: |
+      // store.ts — module-level signals
+      import { signal, computed } from '@preact/signals';
+
+      export const todos = signal<Todo[]>([]);
+      export const filter = signal<'all' | 'active' | 'done'>('all');
+      export const filteredTodos = computed(() =>
+        filter.value === 'all'
+          ? todos.value
+          : todos.value.filter(t => t.done === (filter.value === 'done'))
+      );
+
+      // Component — just import and use
+      import { todos, filteredTodos } from './store';
+
+      function TodoList() {
+        return <ul>{filteredTodos.value.map(t => <TodoItem todo={t} />)}</ul>;
+      }
+
+  - id: PREACT023
+    title: "Use computed() for derived values"
+    description: "Use computed() to derive values from signals. Computed values are memoized — they only recompute when their source signals change. Avoid recalculating derived data in render."
+    category: "preact_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "signals", "computed", "derived-state"]
+    example: |
+      import { signal, computed } from '@preact/signals';
+
+      const cart = signal<CartItem[]>([]);
+
+      // ✅ Computed — memoized, only recalculates when cart changes
+      const totalPrice = computed(() =>
+        cart.value.reduce((sum, item) => sum + item.price * item.qty, 0)
+      );
+      const itemCount = computed(() =>
+        cart.value.reduce((sum, item) => sum + item.qty, 0)
+      );
+
+  - id: PREACT024
+    title: "Use effect() for signal side effects"
+    description: "Use effect() for side effects that should run when signals change. Effects automatically track which signals are read and re-run when they change. Return a cleanup function for subscriptions."
+    category: "preact_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "signals", "effect", "side-effect"]
+    example: |
+      import { signal, effect } from '@preact/signals';
+
+      const theme = signal('light');
+
+      // ✅ effect() — auto-tracks theme signal
+      const dispose = effect(() => {
+        document.body.className = theme.value;
+      });
+
+      // Cleanup when no longer needed
+      dispose();
+
+  - id: PREACT025
+    title: "Use batch() for multiple signal updates"
+    description: "Wrap multiple signal updates in batch() to prevent intermediate renders. Without batching, each .value assignment triggers an update. batch() defers updates until the batch completes."
+    category: "preact_signals"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "signals", "batch", "performance"]
+    example: |
+      import { signal, batch } from '@preact/signals';
+
+      const firstName = signal('');
+      const lastName = signal('');
+      const age = signal(0);
+
+      // ✅ Batch — single update instead of three
+      function updateUser(user) {
+        batch(() => {
+          firstName.value = user.firstName;
+          lastName.value = user.lastName;
+          age.value = user.age;
+        });
+      }
+
+  - id: PREACT026
+    title: "Use .peek() for untracked signal reads"
+    description: "Use .peek() to read a signal's value without subscribing to it. This is useful in effects where you need to read a signal but don't want the effect to re-run when that signal changes."
+    category: "preact_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "signals", "peek", "untracked"]
+    example: |
+      import { signal, effect } from '@preact/signals';
+
+      const count = signal(0);
+      const logEnabled = signal(true);
+
+      // ✅ peek() — reads logEnabled without tracking it
+      effect(() => {
+        if (logEnabled.peek()) {
+          console.log('Count changed:', count.value);
+        }
+      });
+      // This effect re-runs when count changes, but NOT when logEnabled changes
+
+  - id: PREACT027
+    title: "Pass signals directly to JSX for optimal updates"
+    description: "Preact can bind signals directly to JSX text and attributes. When you pass a signal (not .value) to JSX, Preact updates only the specific text node or attribute — no VDOM diff needed."
+    category: "preact_signals"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "signals", "jsx", "binding", "performance"]
+    example: |
+      import { signal } from '@preact/signals';
+
+      const name = signal('World');
+
+      // ✅ Pass signal directly — optimal, bypasses VDOM
+      function Greeting() {
+        return <h1>Hello, {name}!</h1>;
+      }
+
+      // ❌ Avoid: .value triggers full component re-render
+      function GreetingSlow() {
+        return <h1>Hello, {name.value}!</h1>;
+      }
+
+  - id: PREACT028
+    title: "Use useSignal/useComputed for component-scoped signals"
+    description: "Use useSignal() and useComputed() hooks for signals that should be scoped to a component instance. These are automatically disposed when the component unmounts."
+    category: "preact_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "signals", "useSignal", "useComputed", "component-scoped"]
+    example: |
+      import { useSignal, useComputed } from '@preact/signals';
+
+      function Counter() {
+        // ✅ Component-scoped signal
+        const count = useSignal(0);
+        const doubled = useComputed(() => count.value * 2);
+
+        return (
+          <div>
+            <span>{count} × 2 = {doubled}</span>
+            <button onClick={() => count.value++}>+</button>
+          </div>
+        );
+      }
+
+  - id: PREACT029
+    title: "Type signals with generics"
+    description: "Use Signal<T> and ReadonlySignal<T> generics for type-safe signals. This ensures .value access is properly typed and prevents assigning wrong types."
+    category: "preact_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "signals", "typescript", "generics"]
+    example: |
+      import { signal, computed, Signal, ReadonlySignal } from '@preact/signals';
+
+      interface User {
+        id: number;
+        name: string;
+      }
+
+      const currentUser: Signal<User | null> = signal(null);
+      const userName: ReadonlySignal<string> = computed(() => currentUser.value?.name ?? 'Guest');
+
+      // ✅ Type-safe access
+      function setUser(user: User) {
+        currentUser.value = user;  // typed correctly
+      }
+
+  - id: PREACT030
+    title: "Don't mix signals and useState unnecessarily"
+    description: "Choose either signals or useState for component state — don't mix both for the same concern. Signals are best for shared/global state and fine-grained updates. useState is fine for simple local state."
+    category: "preact_signals"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "signals", "useState", "consistency"]
+    example: |
+      // ✅ Signals for shared state
+      const theme = signal('light');
+      const lang = signal('en');
+
+      // ✅ useState for simple local UI state
+      function Modal({ children }) {
+        const [open, setOpen] = useState(false);
+        return open ? <div class="modal">{children}</div> : null;
+      }
+
+      // ❌ Avoid: mixing for same concern
+      function Bad() {
+        const count = useSignal(0);
+        const [count2, setCount2] = useState(0);  // redundant
+      }
+
+  # ============================================================================
+  # PREACT CONTEXT (PREACT031-PREACT035) - Context best practices
+  # ============================================================================
+
+  - id: PREACT031
+    title: "Use createContext with a meaningful default value"
+    description: "Provide a meaningful default value to createContext. This helps with type inference and enables components to work without a Provider during testing."
+    category: "preact_context"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "context", "createContext", "default-value"]
+    example: |
+      import { createContext } from 'preact';
+      import { useContext } from 'preact/hooks';
+
+      interface Theme { mode: 'light' | 'dark'; primary: string; }
+
+      // ✅ Meaningful default
+      const ThemeContext = createContext<Theme>({ mode: 'light', primary: '#007bff' });
+
+      function useTheme() {
+        return useContext(ThemeContext);
+      }
+
+  - id: PREACT032
+    title: "Memoize context values to prevent unnecessary re-renders"
+    description: "Wrap context Provider values in useMemo to prevent all consumers from re-rendering when the provider's parent re-renders. Object identity matters for context updates."
+    category: "preact_context"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "context", "useMemo", "performance"]
+    example: |
+      function AuthProvider({ children }) {
+        const [user, setUser] = useState(null);
+
+        // ✅ Memoize context value
+        const value = useMemo(() => ({
+          user,
+          login: (creds) => authService.login(creds).then(setUser),
+          logout: () => { authService.logout(); setUser(null); },
+        }), [user]);
+
+        return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+      }
+
+  - id: PREACT033
+    title: "Prefer signals over context for frequently updating values"
+    description: "For values that change often (timers, mouse position, real-time data), signals are more efficient than context because they update only the specific DOM nodes, not all consumers."
+    category: "preact_context"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+      min_version: "10.11"
+    tags: ["preact", "context", "signals", "performance", "frequent-updates"]
+    example: |
+      // ❌ Context re-renders all consumers on every tick
+      const TimerContext = createContext(0);
+      function TimerProvider({ children }) {
+        const [time, setTime] = useState(0);
+        useEffect(() => { const id = setInterval(() => setTime(t => t + 1), 1000); return () => clearInterval(id); }, []);
+        return <TimerContext.Provider value={time}>{children}</TimerContext.Provider>;
+      }
+
+      // ✅ Signal — only text node updates
+      import { signal } from '@preact/signals';
+      const timer = signal(0);
+      setInterval(() => timer.value++, 1000);
+      function Timer() { return <span>Time: {timer}</span>; }
+
+  - id: PREACT034
+    title: "Split contexts by update frequency"
+    description: "Separate frequently-changing state from rarely-changing state into different contexts. This prevents unnecessary re-renders in consumers that only need the static values."
+    category: "preact_context"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "context", "splitting", "performance"]
+    example: |
+      // ✅ Split: auth state (rare) vs notifications (frequent)
+      const AuthContext = createContext(null);
+      const NotificationContext = createContext([]);
+
+      function App() {
+        return (
+          <AuthProvider>
+            <NotificationProvider>
+              <Layout />
+            </NotificationProvider>
+          </AuthProvider>
+        );
+      }
+
+  - id: PREACT035
+    title: "Create custom hooks to encapsulate context access"
+    description: "Wrap useContext in a custom hook to provide a better API and enable error checking for missing Providers. This also makes refactoring easier if the state management approach changes."
+    category: "preact_context"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "context", "custom-hook", "encapsulation"]
+    example: |
+      const AuthContext = createContext(null);
+
+      // ✅ Custom hook with Provider check
+      function useAuth() {
+        const ctx = useContext(AuthContext);
+        if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+        return ctx;
+      }
+
+      // Usage — clean API
+      function UserMenu() {
+        const { user, logout } = useAuth();
+        return <button onClick={logout}>{user.name}</button>;
+      }
+
+  # ============================================================================
+  # PREACT PERFORMANCE (PREACT036-PREACT040) - Performance best practices
+  # ============================================================================
+
+  - id: PREACT036
+    title: "Use Preact's small bundle size advantage"
+    description: "Preact is ~3KB gzipped vs React's ~40KB. Leverage this by avoiding unnecessary polyfills and compat layers. Only use preact/compat when you need React library compatibility."
+    category: "preact_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "bundle-size", "performance", "compat"]
+    example: |
+      // ✅ Direct Preact imports (smallest bundle)
+      import { h, render } from 'preact';
+      import { useState } from 'preact/hooks';
+
+      // ⚠ preact/compat adds ~2KB — only use when needed
+      import { forwardRef, memo, lazy, Suspense } from 'preact/compat';
+
+      // ❌ Don't alias react → preact/compat unless using React libraries
+      // alias: { 'react': 'preact/compat', 'react-dom': 'preact/compat' }
+
+  - id: PREACT037
+    title: "Use key props correctly for list rendering"
+    description: "Always provide stable, unique keys when rendering lists. Keys help Preact's diffing algorithm identify which items changed, added, or removed. Avoid using array index as key."
+    category: "preact_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "key", "lists", "diffing", "performance"]
+    example: |
+      // ✅ Stable unique key
+      function TodoList({ todos }) {
+        return (
+          <ul>
+            {todos.map(todo => <TodoItem key={todo.id} todo={todo} />)}
+          </ul>
+        );
+      }
+
+      // ❌ Avoid: index as key (breaks on reorder/insert)
+      {items.map((item, i) => <Item key={i} item={item} />)}
+
+  - id: PREACT038
+    title: "Avoid creating objects/arrays in render"
+    description: "Creating new objects, arrays, or functions in JSX props causes unnecessary child re-renders because reference equality fails. Hoist constants, use useMemo, or use signals."
+    category: "preact_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "performance", "render", "object-creation"]
+    example: |
+      // ❌ New object every render
+      function Bad() {
+        return <Child style={{ color: 'red' }} />;
+      }
+
+      // ✅ Hoisted constant
+      const redStyle = { color: 'red' };
+      function Good() {
+        return <Child style={redStyle} />;
+      }
+
+      // ✅ Or useMemo for dynamic values
+      function Dynamic({ color }) {
+        const style = useMemo(() => ({ color }), [color]);
+        return <Child style={style} />;
+      }
+
+  - id: PREACT039
+    title: "Use preact/debug in development only"
+    description: "Import preact/debug at the top of your entry file for development warnings (missing keys, invalid nesting, etc.). Remove it for production builds to avoid the extra bundle size."
+    category: "preact_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "debug", "development", "warnings"]
+    example: |
+      // ✅ Conditional import in entry file
+      if (process.env.NODE_ENV === 'development') {
+        import('preact/debug');
+      }
+
+      // Or with build-tool tree-shaking:
+      import 'preact/debug';  // stripped by bundler in production
+
+  - id: PREACT040
+    title: "Use event delegation for many similar handlers"
+    description: "When rendering large lists with individual click handlers, consider event delegation on the parent element. This reduces memory usage from thousands of individual listeners."
+    category: "preact_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "events", "delegation", "performance", "lists"]
+    example: |
+      // ✅ Event delegation on parent
+      function ItemList({ items, onSelect }) {
+        const handleClick = (e) => {
+          const id = e.target.closest('[data-id]')?.dataset.id;
+          if (id) onSelect(id);
+        };
+
+        return (
+          <ul onClick={handleClick}>
+            {items.map(item => (
+              <li key={item.id} data-id={item.id}>{item.name}</li>
+            ))}
+          </ul>
+        );
+      }
+
+  # ============================================================================
+  # PREACT SSR (PREACT041-PREACT043) - Server-Side Rendering best practices
+  # ============================================================================
+
+  - id: PREACT041
+    title: "Use preact-render-to-string for SSR"
+    description: "Use renderToString or renderToStringAsync from preact-render-to-string for server rendering. renderToStringAsync supports Suspense boundaries. Use hydrate() on the client for interactive rehydration."
+    category: "preact_ssr"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "ssr", "render-to-string", "hydrate"]
+    example: |
+      // Server
+      import { renderToStringAsync } from 'preact-render-to-string';
+
+      const html = await renderToStringAsync(<App />);
+      res.send(`<!DOCTYPE html><html><body><div id="app">${html}</div></body></html>`);
+
+      // Client
+      import { hydrate } from 'preact';
+      hydrate(<App />, document.getElementById('app'));
+
+  - id: PREACT042
+    title: "Use preact-iso for islands architecture"
+    description: "preact-iso provides lazy(), LocationProvider, and ErrorBoundary optimized for island-based architectures. It's the recommended SSR solution for modern Preact apps and Fresh framework."
+    category: "preact_ssr"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "ssr", "preact-iso", "islands", "fresh"]
+    example: |
+      import { LocationProvider, Router, Route } from 'preact-iso';
+      import { lazy } from 'preact-iso';
+
+      const Home = lazy(() => import('./pages/Home'));
+      const About = lazy(() => import('./pages/About'));
+
+      export function App() {
+        return (
+          <LocationProvider>
+            <Router>
+              <Route path="/" component={Home} />
+              <Route path="/about" component={About} />
+            </Router>
+          </LocationProvider>
+        );
+      }
+
+  - id: PREACT043
+    title: "Guard against browser-only APIs in SSR"
+    description: "Check for window/document/navigator before accessing them in components that render on the server. Use useEffect for browser-only code since it only runs on the client."
+    category: "preact_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "ssr", "browser-api", "window", "hydration"]
+    example: |
+      // ✅ Browser-only code in useEffect
+      function AnalyticsTracker() {
+        useEffect(() => {
+          // Safe — only runs in browser
+          window.gtag('event', 'page_view');
+        }, []);
+        return null;
+      }
+
+      // ✅ Guard with typeof check
+      const isBrowser = typeof window !== 'undefined';
+
+      function LocalStorage({ key, value }) {
+        useEffect(() => {
+          if (isBrowser) localStorage.setItem(key, value);
+        }, [key, value]);
+      }
+
+  # ============================================================================
+  # PREACT TYPESCRIPT & PATTERNS (PREACT044-PREACT050)
+  # ============================================================================
+
+  - id: PREACT044
+    title: "Use Preact's TypeScript types correctly"
+    description: "Import types from 'preact' and 'preact/hooks'. Key types: JSX.Element, VNode, ComponentChildren, ComponentType, RefObject, FunctionComponent (FunctionalComponent in Preact)."
+    category: "preact_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "typescript", "types", "jsx"]
+    example: |
+      import { VNode, ComponentChildren, JSX } from 'preact';
+      import { StateUpdater } from 'preact/hooks';
+
+      // Component with typed children
+      interface LayoutProps {
+        children: ComponentChildren;
+        sidebar?: VNode;
+      }
+
+      // Event handler typing
+      function Form() {
+        const handleSubmit = (e: JSX.TargetedEvent<HTMLFormElement>) => {
+          e.preventDefault();
+          // ...
+        };
+        return <form onSubmit={handleSubmit}>...</form>;
+      }
+
+  - id: PREACT045
+    title: "Configure preact/compat aliases only when needed"
+    description: "Only set up react/react-dom → preact/compat aliases when using React-ecosystem libraries. Pure Preact apps should import directly from 'preact' and 'preact/hooks' for smallest bundle."
+    category: "preact_compat"
+    severity: "warning"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "compat", "alias", "react", "bundle-size"]
+    example: |
+      // vite.config.ts — only if using React libraries
+      import preact from '@preact/preset-vite';
+
+      export default defineConfig({
+        plugins: [preact()],
+        resolve: {
+          alias: {
+            'react': 'preact/compat',
+            'react-dom': 'preact/compat',
+            'react/jsx-runtime': 'preact/jsx-runtime',
+          }
+        }
+      });
+
+  - id: PREACT046
+    title: "Use htm as a JSX alternative for no-build setups"
+    description: "htm provides JSX-like syntax using tagged templates — no build step required. It works directly in browsers and is great for prototyping, CDN usage, and simple apps."
+    category: "preact_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "htm", "tagged-template", "no-build"]
+    example: |
+      import { h, render } from 'preact';
+      import htm from 'htm';
+
+      const html = htm.bind(h);
+
+      function App() {
+        const [count, setCount] = useState(0);
+        return html`
+          <div>
+            <h1>Count: ${count}</h1>
+            <button onClick=${() => setCount(count + 1)}>+</button>
+          </div>
+        `;
+      }
+
+      render(html`<${App} />`, document.body);
+
+  - id: PREACT047
+    title: "Use preact-router or wouter-preact for routing"
+    description: "preact-router is the official Preact router with minimal bundle size. wouter-preact is a hook-based alternative. Both support dynamic routes, redirects, and lazy loading."
+    category: "preact_routing"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "routing", "preact-router", "wouter"]
+    example: |
+      // preact-router
+      import Router from 'preact-router';
+
+      function App() {
+        return (
+          <Router>
+            <Home path="/" />
+            <Profile path="/profile/:user" />
+            <NotFound default />
+          </Router>
+        );
+      }
+
+      // wouter-preact (hook-based)
+      import { Route, Switch } from 'wouter-preact';
+
+      function App() {
+        return (
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/users/:id" component={UserPage} />
+            <Route>404 Not Found</Route>
+          </Switch>
+        );
+      }
+
+  - id: PREACT048
+    title: "Structure Preact projects by feature"
+    description: "Organize code by feature/domain rather than by type. Group components, hooks, styles, and tests for each feature together. Keep shared utilities and stores in a common directory."
+    category: "preact_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "project-structure", "feature-based", "organization"]
+    example: |
+      // ✅ Feature-based structure
+      src/
+        features/
+          auth/
+            AuthProvider.tsx
+            LoginForm.tsx
+            useAuth.ts
+            auth.signals.ts
+          todos/
+            TodoList.tsx
+            TodoItem.tsx
+            useTodos.ts
+            todos.signals.ts
+        shared/
+          components/
+            Button.tsx
+            Modal.tsx
+          hooks/
+            useAsync.ts
+          signals/
+            theme.ts
+
+  - id: PREACT049
+    title: "Test components with @testing-library/preact"
+    description: "Use @testing-library/preact for component testing. It provides the same API as @testing-library/react but works with Preact directly. Test behavior, not implementation details."
+    category: "preact_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["preact"]
+    tags: ["preact", "testing", "testing-library", "unit-tests"]
+    example: |
+      import { render, fireEvent, screen } from '@testing-library/preact';
+      import { Counter } from './Counter';
+
+      test('increments count on click', () => {
+        render(<Counter initial={0} />);
+        const button = screen.getByRole('button');
+        fireEvent.click(button);
+        expect(screen.getByText('1')).toBeTruthy();
+      });
+
+  - id: PREACT050
+    title: "Use Fresh framework for Deno + Preact SSR"
+    description: "Fresh is the official Deno full-stack framework built on Preact. It uses islands architecture for optimal performance — only interactive components ship JavaScript to the client."
+    category: "preact_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["preact", "fresh"]
+    tags: ["preact", "fresh", "deno", "islands", "ssr", "full-stack"]
+    example: |
+      // routes/index.tsx — server-rendered page (zero JS)
+      export default function Home() {
+        return (
+          <div>
+            <h1>Welcome to Fresh</h1>
+            <Counter start={3} />  {/* island — interactive */}
+          </div>
+        );
+      }
+
+      // islands/Counter.tsx — client-side interactive island
+      import { useSignal } from '@preact/signals';
+
+      export default function Counter({ start }: { start: number }) {
+        const count = useSignal(start);
+        return <button onClick={() => count.value++}>{count}</button>;
+      }

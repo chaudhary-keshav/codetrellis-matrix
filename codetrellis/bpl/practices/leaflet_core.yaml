@@ -1,0 +1,1367 @@
+# Leaflet/Mapbox Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.75 - Leaflet/Mapbox Mapping Framework Support
+# Practice IDs: LEAFLET001-LEAFLET050
+# Coverage: Maps, Layers, Markers, Controls, Popups, Events,
+#           GeoJSON, Plugins, Performance, Ecosystem
+# Versions: Leaflet v0.7-v1.9+, Mapbox GL JS v1-v3+, MapLibre GL JS,
+#           React-Leaflet, Vue-Leaflet, react-map-gl, deck.gl
+
+practices:
+  # ============================================================================
+  # MAPS (LEAFLET001-LEAFLET005)
+  # ============================================================================
+
+  - id: LEAFLET001
+    title: "Always set initial view with center and zoom level"
+    description: "Every Leaflet map requires an initial view. Use setView() with center coordinates [lat, lng] and zoom level, or pass center/zoom in the map options. Without an initial view, the map renders as a grey box. Mapbox GL uses center [lng, lat] (reversed order)."
+    category: "leaflet_maps"
+    severity: "error"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "map", "initialization", "center", "zoom", "setup"]
+    example: |
+      // ✅ Leaflet: set initial view
+      const map = L.map('map').setView([51.505, -0.09], 13);
+
+      // ✅ Leaflet: options object
+      const map = L.map('map', { center: [51.505, -0.09], zoom: 13 });
+
+      // ✅ React-Leaflet
+      <MapContainer center={[51.505, -0.09]} zoom={13}>
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      </MapContainer>
+
+      // ✅ Mapbox GL (note: [lng, lat] order)
+      const map = new mapboxgl.Map({
+        container: 'map',
+        center: [-0.09, 51.505],
+        zoom: 13,
+      });
+
+      // ❌ No initial view set
+      const map = L.map('map');  // Grey box!
+
+  - id: LEAFLET002
+    title: "Add a tile layer immediately after map creation"
+    description: "A map without a tile layer shows empty grey tiles. Always add a tile layer (OSM, Mapbox, etc.) immediately after creating the map. Include proper attribution as required by tile providers' terms of service."
+    category: "leaflet_maps"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "tiles", "layer", "osm", "attribution", "setup"]
+    example: |
+      // ✅ Add OpenStreetMap tiles with attribution
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      // ✅ React-Leaflet
+      <MapContainer center={center} zoom={13}>
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; OpenStreetMap contributors'
+        />
+      </MapContainer>
+
+      // ❌ No tile layer - map shows grey squares
+      const map = L.map('map').setView([51.505, -0.09], 13);
+      // Missing L.tileLayer(...)
+
+  - id: LEAFLET003
+    title: "Use appropriate CRS for your projection needs"
+    description: "Leaflet defaults to EPSG:3857 (Web Mercator). Use L.CRS.EPSG4326 for geographic coordinates, L.CRS.Simple for flat images/game maps. For custom projections use proj4leaflet. Mapbox GL only supports Mercator."
+    category: "leaflet_maps"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "crs", "projection", "coordinate-system", "advanced"]
+    example: |
+      // ✅ Custom CRS for WMS layers in national grid
+      import 'proj4leaflet';
+      const crs = new L.Proj.CRS('EPSG:27700', '+proj=tmerc ...', {
+        resolutions: [896, 448, 224, 112, 56, 28, 14, 7, 3.5],
+      });
+      const map = L.map('map', { crs: crs });
+
+      // ✅ Simple CRS for non-geographic images
+      const map = L.map('map', {
+        crs: L.CRS.Simple,
+        minZoom: -5,
+      });
+
+  - id: LEAFLET004
+    title: "Set maxBounds to restrict map panning area"
+    description: "Use maxBounds to restrict the viewable area. This prevents users from panning outside your area of interest. Combine with minZoom and maxZoom for complete viewport control."
+    category: "leaflet_maps"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "bounds", "panning", "viewport", "restriction"]
+    example: |
+      // ✅ Restrict to specific bounds
+      const bounds = L.latLngBounds(
+        L.latLng(49.5, -11.0),  // SW corner
+        L.latLng(61.0, 2.0)     // NE corner
+      );
+      const map = L.map('map', {
+        maxBounds: bounds,
+        maxBoundsViscosity: 1.0,
+        minZoom: 5,
+        maxZoom: 18,
+      });
+
+      // ✅ Mapbox GL equivalent
+      map.setMaxBounds([[-11.0, 49.5], [2.0, 61.0]]);
+
+  - id: LEAFLET005
+    title: "Properly size the map container with CSS"
+    description: "The map container must have explicit width and height set via CSS. Without dimensions, the map renders as 0x0 pixels. Use 100vh for full-screen maps, or set explicit pixel/percentage dimensions. Call invalidateSize() if the container changes size dynamically."
+    category: "leaflet_maps"
+    severity: "error"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "container", "css", "sizing", "layout", "render"]
+    example: |
+      /* ✅ Explicit height */
+      #map { height: 400px; width: 100%; }
+
+      /* ✅ Full-screen map */
+      #map { height: 100vh; width: 100vw; }
+
+      // ✅ Resize handler
+      window.addEventListener('resize', () => map.invalidateSize());
+
+      // ✅ After showing a hidden map
+      document.querySelector('.tab').addEventListener('shown', () => {
+        map.invalidateSize();
+      });
+
+      /* ❌ No height - map invisible */
+      #map { width: 100%; }
+
+  # ============================================================================
+  # LAYERS (LEAFLET006-LEAFLET010)
+  # ============================================================================
+
+  - id: LEAFLET006
+    title: "Use layer groups and feature groups for organized layer management"
+    description: "Group related layers using L.layerGroup or L.featureGroup. FeatureGroup extends LayerGroup with getBounds() and event propagation. Use layer groups with L.control.layers for toggle functionality."
+    category: "leaflet_layers"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "layers", "groups", "organization", "toggle"]
+    example: |
+      // ✅ Organized layer groups with control
+      const restaurants = L.layerGroup([marker1, marker2]);
+      const parks = L.layerGroup([marker3, marker4]);
+
+      L.control.layers(
+        { 'OSM': osmLayer, 'Satellite': satLayer },  // base layers
+        { 'Restaurants': restaurants, 'Parks': parks }  // overlays
+      ).addTo(map);
+
+      // ✅ FeatureGroup for fitBounds
+      const group = L.featureGroup([marker1, marker2, polygon]);
+      map.fitBounds(group.getBounds().pad(0.1));
+
+  - id: LEAFLET007
+    title: "Use vector tiles and WebGL rendering for large datasets"
+    description: "For datasets with thousands of features, use Mapbox GL's vector tiles instead of Leaflet's SVG/Canvas rendering. Alternatively, use Leaflet plugins like leaflet-mapbox-gl or L.canvas for better performance. Mapbox GL renders using WebGL natively."
+    category: "leaflet_layers"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "performance", "vector-tiles", "webgl", "large-data"]
+    example: |
+      // ✅ Mapbox GL with vector tiles
+      map.addSource('points', {
+        type: 'vector',
+        url: 'mapbox://mapbox.mapbox-streets-v8',
+      });
+      map.addLayer({
+        id: 'points-layer',
+        type: 'circle',
+        source: 'points',
+        'source-layer': 'poi_label',
+      });
+
+      // ✅ Leaflet Canvas renderer for better perf
+      const map = L.map('map', { renderer: L.canvas() });
+
+  - id: LEAFLET008
+    title: "Set appropriate z-index for layer ordering"
+    description: "Control layer stacking order using pane z-index or layer options. Create custom panes for fine-grained z-index control. Default panes: tile (200), overlay (400), shadow (500), marker (600), tooltip (650), popup (700)."
+    category: "leaflet_layers"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "z-index", "panes", "ordering", "stacking"]
+    example: |
+      // ✅ Custom pane for labels above markers
+      map.createPane('labels');
+      map.getPane('labels').style.zIndex = 650;
+      L.tileLayer('https://{s}.tiles.example.com/labels/{z}/{x}/{y}.png', {
+        pane: 'labels',
+      }).addTo(map);
+
+      // ✅ Custom pane in React-Leaflet
+      <Pane name="custom" style={{ zIndex: 500 }}>
+        <GeoJSON data={data} />
+      </Pane>
+
+  - id: LEAFLET009
+    title: "Handle tile loading errors and fallback gracefully"
+    description: "Add error handling for tile loading failures. Provide fallback tile layers or show user-friendly error messages. Handle network issues, expired API tokens, and rate limiting."
+    category: "leaflet_layers"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "tiles", "error-handling", "fallback", "network"]
+    example: |
+      // ✅ Tile error handling with fallback
+      const primary = L.tileLayer('https://api.mapbox.com/...', {
+        errorTileUrl: '/images/tile-error.png',
+      });
+
+      primary.on('tileerror', (error) => {
+        console.warn('Tile load failed, switching to OSM');
+        primary.remove();
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+          .addTo(map);
+      });
+
+      // ✅ Mapbox GL error handling
+      map.on('error', (e) => {
+        if (e.error?.status === 401) {
+          console.error('Invalid Mapbox token');
+        }
+      });
+
+  - id: LEAFLET010
+    title: "Remove layers properly to prevent memory leaks"
+    description: "Always remove layers using remove() or removeFrom(map). Clear layer groups with clearLayers(). Don't just hide layers - remove them when no longer needed. Clean up event listeners on layer removal."
+    category: "leaflet_layers"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "cleanup", "memory", "remove", "lifecycle"]
+    example: |
+      // ✅ Proper layer cleanup
+      marker.remove();          // or marker.removeFrom(map);
+      layerGroup.clearLayers(); // remove all children
+
+      // ✅ React-Leaflet cleanup via component lifecycle
+      useEffect(() => {
+        return () => {
+          layerGroup.clearLayers();
+        };
+      }, []);
+
+      // ✅ Mapbox GL cleanup
+      map.removeLayer('my-layer');
+      map.removeSource('my-source');
+
+  # ============================================================================
+  # MARKERS (LEAFLET011-LEAFLET015)
+  # ============================================================================
+
+  - id: LEAFLET011
+    title: "Use marker clustering for dense marker datasets"
+    description: "When displaying hundreds or thousands of markers, use leaflet.markercluster to group nearby markers into clusters. This dramatically improves performance and usability. For Mapbox GL, use Supercluster or the built-in cluster source option."
+    category: "leaflet_markers"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "markers", "clustering", "performance", "markercluster"]
+    example: |
+      // ✅ Leaflet MarkerCluster
+      import 'leaflet.markercluster';
+      const markers = L.markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+      });
+      data.forEach(d => markers.addLayer(L.marker([d.lat, d.lng])));
+      map.addLayer(markers);
+
+      // ✅ React-Leaflet MarkerCluster
+      <MarkerClusterGroup chunkedLoading>
+        {points.map(p => <Marker key={p.id} position={p.latlng} />)}
+      </MarkerClusterGroup>
+
+      // ✅ Mapbox GL clustering
+      map.addSource('earthquakes', {
+        type: 'geojson',
+        data: geojsonData,
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 50,
+      });
+
+  - id: LEAFLET012
+    title: "Use custom icons with proper anchor points and retina support"
+    description: "Create custom marker icons using L.icon or L.divIcon. Always set iconAnchor (tip of icon), popupAnchor (popup position relative to icon), and provide retina (2x) versions. Use divIcon for HTML-based markers."
+    category: "leaflet_markers"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "markers", "icons", "custom", "retina", "anchor"]
+    example: |
+      // ✅ Custom icon with proper anchors and retina
+      const customIcon = L.icon({
+        iconUrl: '/icons/marker.png',
+        iconRetinaUrl: '/icons/marker-2x.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],   // bottom center of icon
+        popupAnchor: [1, -34],  // above the icon
+        shadowUrl: '/icons/marker-shadow.png',
+        shadowSize: [41, 41],
+      });
+      L.marker([51.5, -0.09], { icon: customIcon }).addTo(map);
+
+      // ✅ DivIcon for HTML markers
+      const divIcon = L.divIcon({
+        className: 'custom-marker',
+        html: '<div class="marker-pin"></div>',
+        iconSize: [30, 42],
+        iconAnchor: [15, 42],
+      });
+
+  - id: LEAFLET013
+    title: "Optimize marker rendering with Canvas renderer"
+    description: "For many simple markers (circles), use L.circleMarker with the Canvas renderer instead of SVG. Canvas rendering is significantly faster for large numbers of simple shapes. Use preferCanvas map option."
+    category: "leaflet_markers"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet"]
+    tags: ["leaflet", "markers", "canvas", "performance", "rendering"]
+    example: |
+      // ✅ Canvas renderer for circle markers
+      const map = L.map('map', { preferCanvas: true });
+
+      data.forEach(d => {
+        L.circleMarker([d.lat, d.lng], {
+          radius: 5,
+          fillColor: d.color,
+          fillOpacity: 0.8,
+          weight: 1,
+        }).addTo(map);
+      });
+
+      // ✅ Explicit Canvas renderer
+      const canvasRenderer = L.canvas({ padding: 0.5 });
+      L.circleMarker([51.5, -0.09], {
+        renderer: canvasRenderer,
+        radius: 5,
+      }).addTo(map);
+
+  - id: LEAFLET014
+    title: "Make markers draggable with proper event handling"
+    description: "Enable marker dragging with the draggable option. Listen to dragstart, drag, and dragend events. Update your data store on dragend, not during drag (performance). Use drag constraints if needed."
+    category: "leaflet_markers"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "markers", "draggable", "events", "interaction"]
+    example: |
+      // ✅ Draggable marker with event handling
+      const marker = L.marker([51.5, -0.09], { draggable: true });
+      marker.on('dragend', (e) => {
+        const pos = e.target.getLatLng();
+        updatePosition(pos.lat, pos.lng);
+      });
+
+      // ✅ React-Leaflet draggable marker
+      <Marker
+        position={position}
+        draggable
+        eventHandlers={{
+          dragend: (e) => setPosition(e.target.getLatLng()),
+        }}
+      />
+
+  - id: LEAFLET015
+    title: "Batch marker operations for better performance"
+    description: "When adding many markers at once, add them to a layer group first, then add the group to the map. This triggers only one DOM update. Use chunkedLoading with MarkerCluster for gradual rendering."
+    category: "leaflet_markers"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "markers", "batch", "performance", "layer-group"]
+    example: |
+      // ✅ Batch add to layer group
+      const group = L.layerGroup();
+      for (const point of points) {
+        L.marker([point.lat, point.lng]).addTo(group);
+      }
+      group.addTo(map);  // Single DOM update
+
+      // ❌ Adding markers one by one to map
+      for (const point of points) {
+        L.marker([point.lat, point.lng]).addTo(map);  // N DOM updates
+      }
+
+  # ============================================================================
+  # CONTROLS (LEAFLET016-LEAFLET020)
+  # ============================================================================
+
+  - id: LEAFLET016
+    title: "Position controls appropriately using corner options"
+    description: "Place controls in one of four corners: topleft, topright, bottomleft, bottomright. Avoid stacking too many controls in the same corner. Consider mobile responsiveness when placing controls."
+    category: "leaflet_controls"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "controls", "position", "layout", "ui"]
+    example: |
+      // ✅ Controls in different corners
+      L.control.zoom({ position: 'topright' }).addTo(map);
+      L.control.layers(baseLayers, overlays, { position: 'topleft' }).addTo(map);
+      L.control.scale({ position: 'bottomleft' }).addTo(map);
+
+      // ✅ Mapbox GL control positioning
+      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
+
+  - id: LEAFLET017
+    title: "Create custom controls by extending L.Control"
+    description: "Build custom controls by extending L.Control with onAdd() and onRemove() methods. onAdd must return a DOM element. Use L.DomUtil.create for element creation and L.DomEvent to prevent map interaction through controls."
+    category: "leaflet_controls"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "controls", "custom", "extend", "dom"]
+    example: |
+      // ✅ Custom control
+      const InfoControl = L.Control.extend({
+        onAdd(map) {
+          const div = L.DomUtil.create('div', 'info-control');
+          div.innerHTML = '<h4>Legend</h4>';
+          L.DomEvent.disableClickPropagation(div);
+          return div;
+        },
+        onRemove(map) { /* cleanup */ },
+      });
+      new InfoControl({ position: 'bottomright' }).addTo(map);
+
+      // ✅ Mapbox GL custom control
+      class MyControl {
+        onAdd(map) {
+          this._container = document.createElement('div');
+          this._container.className = 'mapboxgl-ctrl';
+          return this._container;
+        }
+        onRemove() { this._container.remove(); }
+      }
+
+  - id: LEAFLET018
+    title: "Use scale control for distance reference"
+    description: "Add L.control.scale() to show a distance scale bar. Set metric and imperial options based on your audience. The scale bar updates automatically as the user zooms."
+    category: "leaflet_controls"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "controls", "scale", "distance", "reference"]
+    example: |
+      // ✅ Scale control with options
+      L.control.scale({
+        maxWidth: 200,
+        metric: true,
+        imperial: false,
+        position: 'bottomleft',
+      }).addTo(map);
+
+      // ✅ React-Leaflet
+      <ScaleControl position="bottomleft" metric imperial={false} />
+
+  - id: LEAFLET019
+    title: "Implement geocoding search with proper error handling"
+    description: "Use geocoding plugins (leaflet-control-geocoder, mapbox-geocoder) for address search. Handle no-results gracefully. Debounce search input. Restrict results to relevant geographic areas."
+    category: "leaflet_controls"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "mapbox-gl"]
+    tags: ["leaflet", "geocoding", "search", "address", "control"]
+    example: |
+      // ✅ Leaflet geocoder control
+      import 'leaflet-control-geocoder';
+      L.Control.geocoder({
+        defaultMarkGeocode: false,
+        geocoder: L.Control.Geocoder.nominatim({
+          geocodingQueryParams: { countrycodes: 'us' },
+        }),
+      })
+      .on('markgeocode', (e) => {
+        map.fitBounds(e.geocode.bbox);
+      })
+      .addTo(map);
+
+      // ✅ Mapbox GL geocoder
+      map.addControl(
+        new MapboxGeocoder({
+          accessToken: mapboxgl.accessToken,
+          mapboxgl: mapboxgl,
+          bbox: [-74.1, 40.6, -73.8, 40.9],  // restrict to NYC
+        })
+      );
+
+  - id: LEAFLET020
+    title: "Implement fullscreen control for immersive map experience"
+    description: "Add fullscreen capability using leaflet-fullscreen or browser Fullscreen API. Handle the fullscreen change event to resize the map properly. Ensure controls remain accessible in fullscreen mode."
+    category: "leaflet_controls"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "mapbox-gl"]
+    tags: ["leaflet", "controls", "fullscreen", "ui", "responsive"]
+    example: |
+      // ✅ Leaflet fullscreen
+      import 'leaflet.fullscreen';
+      const map = L.map('map', { fullscreenControl: true });
+
+      map.on('fullscreenchange', () => {
+        map.invalidateSize();
+      });
+
+      // ✅ Mapbox GL fullscreen
+      map.addControl(new mapboxgl.FullscreenControl());
+
+  # ============================================================================
+  # POPUPS (LEAFLET021-LEAFLET025)
+  # ============================================================================
+
+  - id: LEAFLET021
+    title: "Bind popups to layers instead of creating standalone popups"
+    description: "Use the bindPopup() method to attach popups to markers and layers. This handles open/close lifecycle automatically. Use standalone L.popup only for map-level popups not tied to features."
+    category: "leaflet_popups"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "popups", "bind", "lifecycle", "interaction"]
+    example: |
+      // ✅ Bind popup to marker
+      marker.bindPopup('<strong>Hello!</strong><br>I am a popup.').openPopup();
+
+      // ✅ Popup with options
+      marker.bindPopup(content, {
+        maxWidth: 300,
+        minWidth: 100,
+        closeButton: true,
+        autoClose: true,
+        className: 'custom-popup',
+      });
+
+      // ✅ React-Leaflet
+      <Marker position={pos}>
+        <Popup maxWidth={300}>
+          <div><h3>Title</h3><p>Content</p></div>
+        </Popup>
+      </Marker>
+
+  - id: LEAFLET022
+    title: "Use dynamic popup content with functions or React components"
+    description: "For dynamic content, pass a function to bindPopup() that receives the layer. In React-Leaflet, use JSX children. Avoid inline HTML strings for complex popups - use templates or components."
+    category: "leaflet_popups"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "popups", "dynamic", "content", "react", "templates"]
+    example: |
+      // ✅ Dynamic content function
+      markers.bindPopup((layer) => {
+        return `<div>
+          <h3>${layer.feature.properties.name}</h3>
+          <p>Population: ${layer.feature.properties.pop.toLocaleString()}</p>
+        </div>`;
+      });
+
+      // ✅ React-Leaflet dynamic popup
+      <GeoJSON data={geojson} onEachFeature={(feature, layer) => {
+        layer.bindPopup(`<strong>${feature.properties.name}</strong>`);
+      }} />
+
+      // ✅ Mapbox GL popup
+      map.on('click', 'points', (e) => {
+        new mapboxgl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML(`<h3>${e.features[0].properties.title}</h3>`)
+          .addTo(map);
+      });
+
+  - id: LEAFLET023
+    title: "Style popups with CSS classes instead of inline styles"
+    description: "Use the className option to add custom CSS classes to popups. Override default Leaflet popup styles with your own CSS. This keeps styling consistent and maintainable."
+    category: "leaflet_popups"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "popups", "styling", "css", "className"]
+    example: |
+      // ✅ Custom popup class
+      marker.bindPopup(content, { className: 'my-popup' });
+
+      /* CSS */
+      .my-popup .leaflet-popup-content-wrapper {
+        background: #333;
+        color: white;
+        border-radius: 8px;
+      }
+      .my-popup .leaflet-popup-tip { background: #333; }
+
+      // ✅ Mapbox GL popup styling
+      new mapboxgl.Popup({ className: 'my-popup' })
+        .setHTML(content)
+        .addTo(map);
+
+  - id: LEAFLET024
+    title: "Handle popup events for analytics and cleanup"
+    description: "Listen to popupopen and popupclose events for tracking user interactions, loading lazy content, or cleaning up resources. Use popupopen to initialize interactive elements inside popups."
+    category: "leaflet_popups"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "popups", "events", "analytics", "lifecycle"]
+    example: |
+      // ✅ Popup event handling
+      marker.on('popupopen', (e) => {
+        trackEvent('popup_opened', marker.feature.properties.id);
+        // Initialize interactive elements
+        e.popup.getElement().querySelector('.details-btn')
+          .addEventListener('click', loadDetails);
+      });
+
+      marker.on('popupclose', (e) => {
+        // Clean up any resources
+        cancelPendingRequests();
+      });
+
+  - id: LEAFLET025
+    title: "Use tooltips for hover information, popups for click details"
+    description: "Bind tooltips for brief hover information (labels, names). Use popups for detailed click interactions. Tooltips auto-close on mouseout. Set permanent: true for always-visible labels."
+    category: "leaflet_popups"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "tooltips", "hover", "labels", "interaction"]
+    example: |
+      // ✅ Tooltip for hover + popup for click
+      marker
+        .bindTooltip('Quick Label', { direction: 'top', offset: [0, -10] })
+        .bindPopup('<div>Detailed information...</div>');
+
+      // ✅ Permanent tooltip (always visible label)
+      marker.bindTooltip('City Name', {
+        permanent: true,
+        direction: 'center',
+        className: 'label-tooltip',
+      });
+
+      // ✅ React-Leaflet
+      <Marker position={pos}>
+        <Tooltip direction="top" permanent>Label</Tooltip>
+        <Popup>Details</Popup>
+      </Marker>
+
+  # ============================================================================
+  # EVENTS (LEAFLET026-LEAFLET030)
+  # ============================================================================
+
+  - id: LEAFLET026
+    title: "Use proper event delegation for GeoJSON layers"
+    description: "Use onEachFeature to bind events to individual GeoJSON features rather than the GeoJSON layer. This gives access to feature properties and individual layer references. Handle click, mouseover, mouseout events."
+    category: "leaflet_events"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "events", "geojson", "delegation", "features"]
+    example: |
+      // ✅ Event delegation via onEachFeature
+      L.geoJSON(geojsonData, {
+        onEachFeature: (feature, layer) => {
+          layer.on({
+            click: (e) => showDetails(feature.properties),
+            mouseover: (e) => highlightFeature(e),
+            mouseout: (e) => resetHighlight(e),
+          });
+          layer.bindPopup(feature.properties.name);
+        },
+      }).addTo(map);
+
+      function highlightFeature(e) {
+        const layer = e.target;
+        layer.setStyle({ weight: 3, color: '#666', fillOpacity: 0.7 });
+        layer.bringToFront();
+      }
+
+  - id: LEAFLET027
+    title: "Remove event listeners when cleaning up"
+    description: "Always remove event listeners when removing layers or destroying the map. Use off() to unbind specific events or all events. Memory leaks occur when listeners persist after layer removal."
+    category: "leaflet_events"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "events", "cleanup", "memory-leak", "lifecycle"]
+    example: |
+      // ✅ Remove specific listener
+      function onClick(e) { /* handler */ }
+      map.on('click', onClick);
+      // Later:
+      map.off('click', onClick);
+
+      // ✅ React cleanup
+      useEffect(() => {
+        map.on('moveend', handleMoveEnd);
+        return () => map.off('moveend', handleMoveEnd);
+      }, [map]);
+
+      // ✅ Mapbox GL cleanup
+      map.on('click', 'layer-id', handleClick);
+      // Later:
+      map.off('click', 'layer-id', handleClick);
+
+  - id: LEAFLET028
+    title: "Debounce moveend and zoomend events for data loading"
+    description: "The moveend and zoomend events fire frequently during map interaction. Debounce these when they trigger data fetching to avoid excessive API calls. Use a reasonable delay (200-500ms)."
+    category: "leaflet_events"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "events", "debounce", "performance", "data-loading"]
+    example: |
+      // ✅ Debounced data loading on map move
+      import { debounce } from 'lodash';
+
+      const loadData = debounce(() => {
+        const bounds = map.getBounds();
+        fetchPointsInBounds(bounds).then(addToMap);
+      }, 300);
+
+      map.on('moveend', loadData);
+
+      // ✅ React hook pattern
+      useEffect(() => {
+        const handler = debounce(() => {
+          const bounds = map.getBounds();
+          fetchData(bounds);
+        }, 300);
+        map.on('moveend', handler);
+        return () => map.off('moveend', handler);
+      }, [map]);
+
+  - id: LEAFLET029
+    title: "Prevent event propagation through overlapping elements"
+    description: "Use L.DomEvent.disableClickPropagation() and L.DomEvent.disableScrollPropagation() on custom controls and overlays to prevent map interactions when clicking on UI elements above the map."
+    category: "leaflet_events"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "events", "propagation", "controls", "overlay"]
+    example: |
+      // ✅ Prevent clicks through control panel
+      const panel = document.getElementById('sidebar');
+      L.DomEvent.disableClickPropagation(panel);
+      L.DomEvent.disableScrollPropagation(panel);
+
+      // ✅ In a custom control
+      onAdd(map) {
+        const div = L.DomUtil.create('div', 'my-control');
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        return div;
+      }
+
+  - id: LEAFLET030
+    title: "Use Leaflet's built-in event types for consistent handling"
+    description: "Use Leaflet's documented event types (click, dblclick, mouseover, mouseout, moveend, zoomend, etc.) for consistent cross-browser behavior. Leaflet normalizes touch and mouse events."
+    category: "leaflet_events"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "events", "types", "cross-browser", "touch"]
+    example: |
+      // ✅ Standard Leaflet events
+      map.on('click', (e) => console.log('Clicked at', e.latlng));
+      map.on('moveend', () => console.log('Bounds:', map.getBounds()));
+      map.on('zoomend', () => console.log('Zoom:', map.getZoom()));
+      map.on('locationfound', (e) => L.marker(e.latlng).addTo(map));
+      map.on('locationerror', (e) => alert(e.message));
+
+      // ✅ Layer events
+      marker.on('click', (e) => { /* marker clicked */ });
+      polygon.on('mouseover', (e) => e.target.setStyle({ weight: 3 }));
+
+  # ============================================================================
+  # GEOJSON (LEAFLET031-LEAFLET035)
+  # ============================================================================
+
+  - id: LEAFLET031
+    title: "Use the style function for dynamic GeoJSON styling"
+    description: "Pass a style function to L.geoJSON that receives each feature and returns style options. This enables choropleth maps and data-driven styling. For Mapbox GL, use data-driven expressions."
+    category: "leaflet_geojson"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "geojson", "styling", "choropleth", "data-driven"]
+    example: |
+      // ✅ Choropleth styling function
+      function getColor(density) {
+        return density > 1000 ? '#800026' :
+               density > 500  ? '#BD0026' :
+               density > 200  ? '#E31A1C' :
+               density > 100  ? '#FC4E2A' :
+               density > 50   ? '#FD8D3C' :
+               density > 20   ? '#FEB24C' :
+               density > 10   ? '#FED976' : '#FFEDA0';
+      }
+
+      L.geoJSON(geojsonData, {
+        style: (feature) => ({
+          fillColor: getColor(feature.properties.density),
+          weight: 2,
+          opacity: 1,
+          color: 'white',
+          fillOpacity: 0.7,
+        }),
+      }).addTo(map);
+
+  - id: LEAFLET032
+    title: "Use pointToLayer for custom GeoJSON point rendering"
+    description: "The pointToLayer option lets you control how GeoJSON points are rendered. Return L.marker, L.circleMarker, or L.divIcon for custom point visualizations instead of default markers."
+    category: "leaflet_geojson"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "geojson", "points", "custom-rendering", "markers"]
+    example: |
+      // ✅ Custom point rendering with circle markers
+      L.geoJSON(earthquakes, {
+        pointToLayer: (feature, latlng) => {
+          return L.circleMarker(latlng, {
+            radius: feature.properties.magnitude * 3,
+            fillColor: getColor(feature.properties.depth),
+            fillOpacity: 0.8,
+            weight: 1,
+          });
+        },
+      }).addTo(map);
+
+      // ✅ DivIcon for custom HTML points
+      L.geoJSON(data, {
+        pointToLayer: (feature, latlng) => {
+          return L.marker(latlng, {
+            icon: L.divIcon({
+              html: `<span class="badge">${feature.properties.count}</span>`,
+              className: 'count-icon',
+            }),
+          });
+        },
+      }).addTo(map);
+
+  - id: LEAFLET033
+    title: "Use filter option to selectively display GeoJSON features"
+    description: "Pass a filter function to L.geoJSON to control which features are displayed. Return true to include, false to exclude. This is more efficient than filtering the data array beforehand for large datasets."
+    category: "leaflet_geojson"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "geojson", "filter", "conditional", "display"]
+    example: |
+      // ✅ Filter features by property
+      L.geoJSON(data, {
+        filter: (feature) => feature.properties.population > 100000,
+        style: { color: 'blue', weight: 2 },
+      }).addTo(map);
+
+      // ✅ Dynamic filtering
+      function updateFilter(minPop) {
+        geoLayer.clearLayers();
+        geoLayer.addData(data);
+        geoLayer.eachLayer((layer) => {
+          if (layer.feature.properties.population < minPop) {
+            geoLayer.removeLayer(layer);
+          }
+        });
+      }
+
+  - id: LEAFLET034
+    title: "Validate and simplify GeoJSON data before loading"
+    description: "Validate GeoJSON structure before passing to L.geoJSON. Simplify complex geometries to reduce file size and improve rendering performance. Use Turf.js for spatial operations and simplification."
+    category: "leaflet_geojson"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "geojson", "validation", "simplification", "turf"]
+    example: |
+      // ✅ Simplify with Turf.js
+      import * as turf from '@turf/turf';
+      const simplified = turf.simplify(geojson, {
+        tolerance: 0.01,
+        highQuality: true,
+      });
+      L.geoJSON(simplified).addTo(map);
+
+      // ✅ Validate before loading
+      function isValidGeoJSON(data) {
+        return data && data.type &&
+          ['FeatureCollection', 'Feature', 'GeometryCollection']
+            .includes(data.type);
+      }
+
+  - id: LEAFLET035
+    title: "Load large GeoJSON asynchronously with progress indication"
+    description: "Fetch large GeoJSON files asynchronously and show loading state. Consider using TopoJSON for compressed geometry. For very large datasets, use vector tiles instead of client-side GeoJSON."
+    category: "leaflet_geojson"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "geojson", "async", "loading", "topojson", "large-data"]
+    example: |
+      // ✅ Async GeoJSON loading
+      async function loadGeoJSON(url) {
+        const loading = L.control({ position: 'topright' });
+        loading.onAdd = () => {
+          const div = L.DomUtil.create('div', 'loading');
+          div.textContent = 'Loading data...';
+          return div;
+        };
+        loading.addTo(map);
+
+        const response = await fetch(url);
+        const data = await response.json();
+        L.geoJSON(data).addTo(map);
+
+        loading.remove();
+      }
+
+      // ✅ TopoJSON for smaller files
+      import * as topojson from 'topojson-client';
+      const geojson = topojson.feature(topoData, topoData.objects.states);
+      L.geoJSON(geojson).addTo(map);
+
+  # ============================================================================
+  # PLUGINS (LEAFLET036-LEAFLET040)
+  # ============================================================================
+
+  - id: LEAFLET036
+    title: "Use leaflet-draw or geoman for drawing and editing shapes"
+    description: "For shape drawing/editing, use Leaflet.draw or Leaflet-Geoman (newer, actively maintained). Both support polygon, polyline, circle, rectangle, and marker drawing with editing capabilities."
+    category: "leaflet_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "draw", "geoman", "shapes", "editing", "plugin"]
+    example: |
+      // ✅ Leaflet-Geoman (recommended)
+      import '@geoman-io/leaflet-geoman-free';
+      map.pm.addControls({
+        position: 'topleft',
+        drawCircle: true,
+        drawPolygon: true,
+        editMode: true,
+        dragMode: true,
+        cutPolygon: true,
+      });
+
+      map.on('pm:create', (e) => {
+        const layer = e.layer;
+        const geojson = layer.toGeoJSON();
+        saveShape(geojson);
+      });
+
+      // ✅ Leaflet.draw
+      const drawnItems = new L.FeatureGroup();
+      map.addLayer(drawnItems);
+      const drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
+      });
+      map.addControl(drawControl);
+
+  - id: LEAFLET037
+    title: "Use leaflet-heat or Mapbox GL heatmap for density visualization"
+    description: "Visualize point density using heatmap plugins. leaflet-heat for Leaflet, built-in heatmap layer type for Mapbox GL. Configure intensity, radius, and color gradient for effective visualization."
+    category: "leaflet_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "mapbox-gl"]
+    tags: ["leaflet", "heatmap", "density", "visualization", "plugin"]
+    example: |
+      // ✅ Leaflet heat
+      import 'leaflet.heat';
+      const heat = L.heatLayer(points.map(p => [p.lat, p.lng, p.intensity]), {
+        radius: 25,
+        blur: 15,
+        maxZoom: 17,
+        gradient: { 0.4: 'blue', 0.65: 'lime', 1: 'red' },
+      }).addTo(map);
+
+      // ✅ Mapbox GL heatmap
+      map.addLayer({
+        id: 'heat',
+        type: 'heatmap',
+        source: 'earthquakes',
+        paint: {
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 9, 3],
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 2, 9, 20],
+          'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
+            0, 'rgba(0,0,255,0)', 0.5, 'lime', 1, 'red'],
+        },
+      });
+
+  - id: LEAFLET038
+    title: "Use routing plugins for directions and navigation"
+    description: "Implement routing with leaflet-routing-machine or Mapbox Directions API. Handle route calculation errors, show alternatives, and support waypoint editing."
+    category: "leaflet_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "mapbox-gl"]
+    tags: ["leaflet", "routing", "directions", "navigation", "plugin"]
+    example: |
+      // ✅ Leaflet Routing Machine
+      import 'leaflet-routing-machine';
+      L.Routing.control({
+        waypoints: [
+          L.latLng(51.505, -0.09),
+          L.latLng(51.51, -0.1),
+        ],
+        routeWhileDragging: true,
+        router: L.Routing.osrmv1({
+          serviceUrl: 'https://router.project-osrm.org/route/v1',
+        }),
+      }).addTo(map);
+
+      // ✅ Mapbox Directions
+      map.addControl(
+        new MapboxDirections({
+          accessToken: mapboxgl.accessToken,
+          unit: 'metric',
+          profile: 'mapbox/driving',
+        }),
+        'top-left'
+      );
+
+  - id: LEAFLET039
+    title: "Import only needed plugin CSS alongside JavaScript"
+    description: "Many Leaflet plugins require both CSS and JS imports. Always import the plugin CSS to ensure controls and UI elements render correctly. Missing CSS causes invisible or broken plugin UI."
+    category: "leaflet_plugins"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "plugins", "css", "imports", "setup"]
+    example: |
+      // ✅ Import both JS and CSS for plugins
+      import 'leaflet/dist/leaflet.css';
+      import 'leaflet.markercluster/dist/MarkerCluster.css';
+      import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+      import 'leaflet.markercluster';
+
+      import 'leaflet-draw/dist/leaflet.draw.css';
+      import 'leaflet-draw';
+
+      import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
+      import '@geoman-io/leaflet-geoman-free';
+
+      // ❌ Missing CSS - controls won't render properly
+      import 'leaflet.markercluster';  // No CSS imported!
+
+  - id: LEAFLET040
+    title: "Check plugin compatibility with your Leaflet/Mapbox version"
+    description: "Verify plugin compatibility before installation. Leaflet plugins may not work with all versions. Check the plugin's README for supported Leaflet versions. Use the Leaflet plugins page for discovery."
+    category: "leaflet_plugins"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl"]
+    tags: ["leaflet", "plugins", "compatibility", "versions", "dependencies"]
+    example: |
+      // ✅ Check compatibility in package.json
+      {
+        "dependencies": {
+          "leaflet": "^1.9.4",
+          "leaflet.markercluster": "^1.5.3",  // supports Leaflet 1.x
+          "react-leaflet": "^4.2.1",           // supports Leaflet 1.9+
+          "@react-leaflet/core": "^2.1.0"
+        }
+      }
+
+      // ✅ Conditional plugin loading
+      if (L.version >= '1.7.0') {
+        import('leaflet-geoman').then(({ default: Geoman }) => {
+          map.pm.addControls();
+        });
+      }
+
+  # ============================================================================
+  # PERFORMANCE (LEAFLET041-LEAFLET045)
+  # ============================================================================
+
+  - id: LEAFLET041
+    title: "Use Web Workers for heavy geospatial computation"
+    description: "Offload heavy geospatial operations (spatial joins, buffering, intersection) to Web Workers to keep the UI responsive. Libraries like Turf.js work well in workers."
+    category: "leaflet_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "performance", "web-workers", "computation", "turf"]
+    example: |
+      // ✅ Geospatial computation in Web Worker
+      // worker.js
+      import * as turf from '@turf/turf';
+      self.onmessage = (e) => {
+        const { points, polygon } = e.data;
+        const within = turf.pointsWithinPolygon(points, polygon);
+        self.postMessage(within);
+      };
+
+      // main.js
+      const worker = new Worker('worker.js');
+      worker.postMessage({ points, polygon });
+      worker.onmessage = (e) => {
+        L.geoJSON(e.data).addTo(map);
+      };
+
+  - id: LEAFLET042
+    title: "Implement viewport-based data loading"
+    description: "Only load and render data within the current map viewport. Use getBounds() to determine visible area and filter/fetch data accordingly. Remove off-screen features for memory efficiency."
+    category: "leaflet_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "performance", "viewport", "lazy-loading", "bounds"]
+    example: |
+      // ✅ Viewport-based data loading
+      map.on('moveend', async () => {
+        const bounds = map.getBounds();
+        const data = await fetchDataInBounds({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+          zoom: map.getZoom(),
+        });
+        updateLayerData(data);
+      });
+
+      // ✅ Mapbox GL with queryRenderedFeatures
+      map.on('moveend', () => {
+        const features = map.queryRenderedFeatures(
+          { layers: ['my-layer'] }
+        );
+        updateSidebar(features);
+      });
+
+  - id: LEAFLET043
+    title: "Use requestAnimationFrame for smooth map animations"
+    description: "When programmatically animating the map (custom fly animations, feature transitions), use requestAnimationFrame for smooth 60fps animations instead of setTimeout/setInterval."
+    category: "leaflet_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "performance", "animation", "raf", "smooth"]
+    example: |
+      // ✅ Smooth custom animation
+      function animateTo(targetLatLng, duration = 2000) {
+        const start = performance.now();
+        const startLatLng = map.getCenter();
+
+        function step(timestamp) {
+          const progress = Math.min((timestamp - start) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+
+          const lat = startLatLng.lat + (targetLatLng.lat - startLatLng.lat) * eased;
+          const lng = startLatLng.lng + (targetLatLng.lng - startLatLng.lng) * eased;
+
+          map.setView([lat, lng], map.getZoom(), { animate: false });
+
+          if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+
+  - id: LEAFLET044
+    title: "Implement proper map cleanup on component unmount"
+    description: "Always call map.remove() when the map component unmounts. This removes all event listeners, layers, and DOM elements. In React, use useEffect cleanup. This prevents memory leaks in SPAs."
+    category: "leaflet_performance"
+    severity: "error"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "performance", "cleanup", "memory-leak", "lifecycle"]
+    example: |
+      // ✅ React cleanup
+      useEffect(() => {
+        const map = L.map('map').setView([51.505, -0.09], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+          .addTo(map);
+
+        return () => {
+          map.remove();  // Cleans up everything
+        };
+      }, []);
+
+      // ✅ Mapbox GL cleanup
+      useEffect(() => {
+        const map = new mapboxgl.Map({ container: 'map', ... });
+        return () => map.remove();
+      }, []);
+
+      // ❌ No cleanup - memory leak in SPA
+      useEffect(() => {
+        const map = L.map('map').setView([51.505, -0.09], 13);
+        // No return cleanup!
+      }, []);
+
+  - id: LEAFLET045
+    title: "Use tile layer options to optimize tile loading"
+    description: "Configure tile layer options for optimal loading: set updateWhenZooming to false, use keepBuffer for smoother panning, set detectRetina for high-DPI screens, and configure crossOrigin for CORS."
+    category: "leaflet_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet"]
+    tags: ["leaflet", "performance", "tiles", "loading", "optimization"]
+    example: |
+      // ✅ Optimized tile layer options
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        detectRetina: true,        // Retina tiles on high-DPI
+        updateWhenZooming: false,   // Don't reload during zoom anim
+        updateWhenIdle: true,       // Only load when idle
+        keepBuffer: 4,              // Keep extra tiles for smooth pan
+        crossOrigin: true,          // CORS for canvas operations
+      }).addTo(map);
+
+  # ============================================================================
+  # ECOSYSTEM (LEAFLET046-LEAFLET050)
+  # ============================================================================
+
+  - id: LEAFLET046
+    title: "Use React-Leaflet v4+ with proper component patterns"
+    description: "React-Leaflet v4 uses a hook-based API with the core library. Use MapContainer (not Map), useMap() hook for map access, and eventHandlers prop for events. Components must be children of MapContainer."
+    category: "leaflet_ecosystem"
+    severity: "warning"
+    applicability:
+      frameworks: ["react-leaflet"]
+    tags: ["leaflet", "react", "react-leaflet", "hooks", "components"]
+    example: |
+      // ✅ React-Leaflet v4 patterns
+      import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+
+      function SetViewOnClick() {
+        const map = useMap();
+        map.on('click', (e) => map.setView(e.latlng, map.getZoom()));
+        return null;
+      }
+
+      function MyMap() {
+        return (
+          <MapContainer center={[51.505, -0.09]} zoom={13} style={{ height: '400px' }}>
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <Marker position={[51.505, -0.09]} />
+            <SetViewOnClick />
+          </MapContainer>
+        );
+      }
+
+      // ❌ Don't use Map (v2 API)
+      // ❌ Don't access map outside MapContainer children
+
+  - id: LEAFLET047
+    title: "Secure API tokens and access keys"
+    description: "Never expose Mapbox access tokens, API keys, or other secrets in client-side code repositories. Use environment variables, token scoping, URL restrictions, and server-side proxying for production."
+    category: "leaflet_ecosystem"
+    severity: "error"
+    applicability:
+      frameworks: ["mapbox-gl", "maplibre-gl", "leaflet"]
+    tags: ["leaflet", "security", "tokens", "api-keys", "environment"]
+    example: |
+      // ✅ Environment variable
+      mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
+      // ✅ Token restrictions (Mapbox dashboard)
+      // - Restrict to specific URLs
+      // - Set token scopes (read-only for public tokens)
+      // - Use separate tokens for dev/staging/production
+
+      // ✅ Server-side proxy for sensitive APIs
+      // /api/tiles/[z]/[x]/[y] → proxy to tile provider
+
+      // ❌ Hardcoded token
+      mapboxgl.accessToken = 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjazVz...';
+
+  - id: LEAFLET048
+    title: "Implement accessible maps with ARIA labels and keyboard navigation"
+    description: "Make maps accessible: add ARIA labels to the map container and controls, ensure keyboard navigation works, provide text alternatives for map data, and support screen readers."
+    category: "leaflet_ecosystem"
+    severity: "warning"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "accessibility", "a11y", "aria", "keyboard"]
+    example: |
+      // ✅ Accessible map setup
+      <div id="map" role="application" aria-label="Interactive map showing store locations">
+      </div>
+
+      // ✅ Keyboard accessible markers
+      marker.bindPopup(content);
+      const el = marker.getElement();
+      if (el) {
+        el.setAttribute('tabindex', '0');
+        el.setAttribute('role', 'button');
+        el.setAttribute('aria-label', 'Store: ' + name);
+      }
+
+      // ✅ Keyboard navigation
+      map.keyboard.enable();
+
+  - id: LEAFLET049
+    title: "Use TypeScript types for Leaflet and Mapbox GL"
+    description: "Install @types/leaflet, @types/mapbox-gl for TypeScript support. Use proper type imports for map options, layer options, and event types. React-Leaflet and MapLibre GL include built-in types."
+    category: "leaflet_ecosystem"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "typescript", "types", "type-safety", "dx"]
+    example: |
+      // ✅ TypeScript with Leaflet
+      import L, { LatLngExpression, MapOptions, MarkerOptions } from 'leaflet';
+
+      const center: LatLngExpression = [51.505, -0.09];
+      const options: MapOptions = { center, zoom: 13, zoomControl: true };
+      const map: L.Map = L.map('map', options);
+
+      // ✅ TypeScript with Mapbox GL
+      import mapboxgl, { Map, MapOptions, Marker } from 'mapbox-gl';
+
+      const map: Map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-74.5, 40],
+        zoom: 9,
+      } satisfies MapOptions);
+
+  - id: LEAFLET050
+    title: "Choose between Leaflet, Mapbox GL, and MapLibre GL appropriately"
+    description: "Leaflet: lightweight, plugin-rich, SVG/Canvas, great for standard maps. Mapbox GL: WebGL, vector tiles, 3D terrain, custom styles (requires token). MapLibre GL: open-source Mapbox GL fork, no token required. Choose based on your rendering needs and budget."
+    category: "leaflet_ecosystem"
+    severity: "info"
+    applicability:
+      frameworks: ["leaflet", "react-leaflet", "mapbox-gl", "maplibre-gl"]
+    tags: ["leaflet", "mapbox", "maplibre", "comparison", "architecture"]
+    example: |
+      // Leaflet: Best for standard 2D maps, plugin ecosystem
+      // - 42KB gzipped, extensive plugin library
+      // - SVG/Canvas rendering, great mobile support
+      // - Free, open source (BSD-2)
+
+      // Mapbox GL JS: Best for custom styles, 3D, vector tiles
+      // - WebGL rendering, smooth animations
+      // - Custom map styles via Mapbox Studio
+      // - Requires access token, pricing per map loads
+
+      // MapLibre GL JS: Open-source alternative to Mapbox GL
+      // - Fork of Mapbox GL v1.13 (before license change)
+      // - WebGL rendering, vector tiles
+      // - Free, no token required, community maintained
+
+      // React wrappers:
+      // - react-leaflet → Leaflet
+      // - react-map-gl → Mapbox GL / MapLibre GL
+      // - @vis.gl/react-google-maps → Google Maps

@@ -1,0 +1,979 @@
+# Zustand State Management Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.48 - Zustand State Management Framework Support
+# Practice IDs: ZUSTAND001-ZUSTAND050
+# Coverage: Store Creation, Selectors, Middleware, Actions, TypeScript,
+#           Performance, Testing, SSR, Patterns, Migration
+# Versions: Zustand v1.x-v5.x (create, createStore, createWithEqualityFn,
+#           persist, devtools, immer, subscribeWithSelector, useShallow)
+
+practices:
+  # ============================================================================
+  # ZUSTAND STORE CREATION (ZUSTAND001-ZUSTAND008) - Store setup best practices
+  # ============================================================================
+
+  - id: ZUSTAND001
+    title: "Use create() for React stores, createStore() for vanilla"
+    description: "Use create() from 'zustand' for React hook-based stores and createStore() from 'zustand/vanilla' for framework-agnostic vanilla stores. In Zustand v5, import create from 'zustand/react' instead of 'zustand'."
+    category: "zustand_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand", "react"]
+    tags: ["zustand", "store", "create", "createStore", "vanilla"]
+    example: |
+      // ✅ React store
+      import { create } from 'zustand';
+      const useStore = create((set) => ({ count: 0, inc: () => set((s) => ({ count: s.count + 1 })) }));
+
+      // ✅ Vanilla store (no React dependency)
+      import { createStore } from 'zustand/vanilla';
+      const store = createStore((set) => ({ count: 0 }));
+
+      // ✅ Zustand v5 (React 19)
+      import { create } from 'zustand/react';
+
+  - id: ZUSTAND002
+    title: "Co-locate state and actions in the same store"
+    description: "Define actions alongside state in the same create() call. Zustand stores are self-contained — avoid separating state and actions into different files unless using the slice pattern for very large stores."
+    category: "zustand_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "store", "actions", "co-location"]
+    example: |
+      // ✅ Co-located state + actions
+      const useStore = create((set, get) => ({
+        bears: 0,
+        fish: 0,
+        addBear: () => set((state) => ({ bears: state.bears + 1 })),
+        eatFish: () => set((state) => ({ fish: Math.max(0, state.fish - 1) })),
+        reset: () => set({ bears: 0, fish: 0 }),
+      }));
+
+  - id: ZUSTAND003
+    title: "Use the slice pattern for large stores"
+    description: "For large stores, split state into slices using the slice pattern. Each slice is a function that receives set/get and returns a partial state object. Combine slices in the main create() call with spread operators."
+    category: "zustand_store"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "slices", "modular", "large-store", "composition"]
+    example: |
+      // authSlice.ts
+      export const createAuthSlice = (set) => ({
+        user: null,
+        isAuthenticated: false,
+        login: (user) => set({ user, isAuthenticated: true }),
+        logout: () => set({ user: null, isAuthenticated: false }),
+      });
+
+      // store.ts
+      const useStore = create((...a) => ({
+        ...createAuthSlice(...a),
+        ...createUISlice(...a),
+      }));
+
+  - id: ZUSTAND004
+    title: "Name stores with 'use' prefix convention"
+    description: "Follow React hooks naming convention by prefixing store hooks with 'use'. This signals to React and linting tools that the value is a hook and must follow Rules of Hooks."
+    category: "zustand_store"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand", "react"]
+    tags: ["zustand", "naming", "hooks", "convention"]
+    example: |
+      // ✅ Correct naming
+      const useAuthStore = create((set) => ({ ... }));
+      const useCartStore = create((set) => ({ ... }));
+
+      // ❌ Missing 'use' prefix
+      const authStore = create((set) => ({ ... }));
+      const cartState = create((set) => ({ ... }));
+
+  - id: ZUSTAND005
+    title: "Keep stores small and focused"
+    description: "Each store should manage a single domain concern (auth, cart, UI). Avoid monolithic stores with unrelated state. Zustand makes it easy to create multiple independent stores."
+    category: "zustand_store"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "store", "separation-of-concerns", "domain"]
+    example: |
+      // ✅ Separate domain stores
+      const useAuthStore = create((set) => ({ user: null, token: null, login: () => {}, logout: () => {} }));
+      const useCartStore = create((set) => ({ items: [], addItem: () => {}, removeItem: () => {} }));
+      const useUIStore = create((set) => ({ theme: 'light', sidebar: false }));
+
+      // ❌ Monolithic store mixing concerns
+      const useStore = create((set) => ({ user: null, items: [], theme: 'light', ... }));
+
+  - id: ZUSTAND006
+    title: "Use set() with function updater for state depending on previous state"
+    description: "When the new state depends on the previous state, always use the function form of set(). Direct object form is fine only for independent state updates. This prevents race conditions in concurrent updates."
+    category: "zustand_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "set", "updater", "immutability"]
+    example: |
+      // ✅ Function updater (state-dependent)
+      increment: () => set((state) => ({ count: state.count + 1 })),
+      addItem: (item) => set((state) => ({ items: [...state.items, item] })),
+
+      // ✅ Direct object (state-independent)
+      reset: () => set({ count: 0, items: [] }),
+
+      // ❌ Stale closure risk
+      increment: () => set({ count: get().count + 1 }),
+
+  - id: ZUSTAND007
+    title: "Prefer partial state updates over replace"
+    description: "Zustand's set() merges state by default (shallow merge). Only use the second argument 'true' to replace state when intentional. Accidental replace can delete state fields."
+    category: "zustand_store"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "set", "merge", "replace"]
+    example: |
+      // ✅ Merge (default) — only updates specified fields
+      set({ count: 1 })  // other fields preserved
+
+      // ⚠️ Replace — use only when intentional
+      set({ count: 1 }, true)  // all other fields removed!
+
+  - id: ZUSTAND008
+    title: "Use getInitialState for SSR hydration and reset patterns"
+    description: "In Zustand v4.4+/v5, createStore exposes getInitialState(). Use it for SSR hydration and store reset patterns instead of duplicating initial state. This is especially useful with Next.js App Router."
+    category: "zustand_store"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand", "zustand-v4", "zustand-v5"]
+    tags: ["zustand", "getInitialState", "ssr", "reset", "hydration"]
+    example: |
+      const store = createStore((set) => ({ count: 0, text: '' }));
+      // Reset to initial state
+      store.setState(store.getInitialState());
+
+  # ============================================================================
+  # ZUSTAND SELECTORS (ZUSTAND009-ZUSTAND016) - Selector & render optimization
+  # ============================================================================
+
+  - id: ZUSTAND009
+    title: "Always use selectors to pick specific state fields"
+    description: "Never call useStore() without a selector. Subscribing to the entire store causes re-renders on every state change. Always select only the fields your component needs."
+    category: "zustand_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand", "react"]
+    tags: ["zustand", "selectors", "performance", "re-renders"]
+    example: |
+      // ✅ Select specific fields
+      const count = useStore((state) => state.count);
+      const { bears, fish } = useStore((state) => ({ bears: state.bears, fish: state.fish }));
+
+      // ❌ Subscribe to entire store (causes unnecessary re-renders)
+      const state = useStore();
+      const allState = useStore((s) => s);
+
+  - id: ZUSTAND010
+    title: "Use shallow for multi-field object selectors"
+    description: "When selecting multiple fields as an object, Zustand creates a new object reference every render, causing re-renders. Use shallow comparison from 'zustand/shallow' to prevent this."
+    category: "zustand_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "shallow", "selectors", "performance", "re-renders"]
+    example: |
+      // ✅ v4: shallow from zustand/shallow
+      import { shallow } from 'zustand/shallow';
+      const { bears, fish } = useStore(
+        (state) => ({ bears: state.bears, fish: state.fish }),
+        shallow
+      );
+
+      // ✅ v5: useShallow hook
+      import { useShallow } from 'zustand/react/shallow';
+      const { bears, fish } = useStore(
+        useShallow((state) => ({ bears: state.bears, fish: state.fish }))
+      );
+
+  - id: ZUSTAND011
+    title: "Use useShallow in Zustand v5 instead of shallow equality function"
+    description: "Zustand v5 introduces useShallow() as the recommended way to do shallow comparisons. It wraps the selector and integrates better with React 19's concurrent features."
+    category: "zustand_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand-v5"]
+    tags: ["zustand", "useShallow", "v5", "react-19", "migration"]
+    example: |
+      // ✅ Zustand v5 with useShallow
+      import { useShallow } from 'zustand/react/shallow';
+      const { name, age } = useStore(useShallow((s) => ({ name: s.name, age: s.age })));
+
+      // ❌ v4 pattern (still works but less idiomatic in v5)
+      const { name, age } = useStore((s) => ({ name: s.name, age: s.age }), shallow);
+
+  - id: ZUSTAND012
+    title: "Extract reusable selectors as named functions"
+    description: "For selectors used across multiple components, extract them as named functions outside the component. This improves reusability, testability, and avoids creating new function references."
+    category: "zustand_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "selectors", "reusability", "named-selectors"]
+    example: |
+      // ✅ Named selectors (reusable + stable reference)
+      const selectBears = (state) => state.bears;
+      const selectTotalAnimals = (state) => state.bears + state.fish;
+
+      // Component
+      const bears = useStore(selectBears);
+      const total = useStore(selectTotalAnimals);
+
+  - id: ZUSTAND013
+    title: "Avoid derived state in store — compute in selectors"
+    description: "Don't store computed/derived values in the store. Compute them in selectors instead. Storing derived state creates synchronization bugs and unnecessary complexity."
+    category: "zustand_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "derived-state", "computed", "selectors"]
+    example: |
+      // ✅ Compute in selector
+      const selectTotal = (state) => state.items.reduce((sum, i) => sum + i.price, 0);
+      const total = useStore(selectTotal);
+
+      // ❌ Store derived data (sync bugs)
+      set((state) => ({
+        items: [...state.items, newItem],
+        total: state.total + newItem.price,  // can get out of sync!
+      }));
+
+  - id: ZUSTAND014
+    title: "Use subscribeWithSelector for external subscriptions"
+    description: "When subscribing to state changes outside React, use the subscribeWithSelector middleware to subscribe to specific state slices. This is more efficient than subscribing to the entire store."
+    category: "zustand_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "subscribeWithSelector", "subscribe", "middleware"]
+    example: |
+      import { subscribeWithSelector } from 'zustand/middleware';
+      const useStore = create(subscribeWithSelector((set) => ({
+        count: 0,
+        inc: () => set((s) => ({ count: s.count + 1 })),
+      })));
+
+      // Subscribe to only 'count' changes
+      useStore.subscribe(
+        (state) => state.count,
+        (count, prevCount) => console.log('count changed', prevCount, '->', count)
+      );
+
+  - id: ZUSTAND015
+    title: "Avoid selecting actions — use getState() or separate action selectors"
+    description: "Actions (functions) never change identity, so selecting them doesn't cause re-renders. However, selecting them as part of an object with state creates unnecessary re-renders. Select actions separately or use getState()."
+    category: "zustand_selectors"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "actions", "selectors", "performance"]
+    example: |
+      // ✅ Select actions separately (stable, no re-renders)
+      const increment = useStore((s) => s.increment);
+      const count = useStore((s) => s.count);
+
+      // ✅ Or use getState() for actions outside render
+      const { increment } = useStore.getState();
+
+      // ❌ Selecting state + actions together (re-renders on state change)
+      const { count, increment } = useStore();
+
+  - id: ZUSTAND016
+    title: "Use createWithEqualityFn for custom equality globally"
+    description: "If all your selectors need a custom equality function, use createWithEqualityFn instead of passing equality to every useStore call. This sets a default equality check for the entire store."
+    category: "zustand_selectors"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand", "zustand-v4"]
+    tags: ["zustand", "createWithEqualityFn", "equality", "performance"]
+    example: |
+      import { createWithEqualityFn } from 'zustand/traditional';
+      import { shallow } from 'zustand/shallow';
+      const useStore = createWithEqualityFn((set) => ({ ... }), shallow);
+
+  # ============================================================================
+  # ZUSTAND MIDDLEWARE (ZUSTAND017-ZUSTAND024) - Middleware configuration
+  # ============================================================================
+
+  - id: ZUSTAND017
+    title: "Apply middleware in correct nesting order"
+    description: "Middleware order matters in Zustand. Apply from outermost to innermost: devtools → persist → immer → subscribeWithSelector → your store. devtools should always be outermost for accurate action naming."
+    category: "zustand_middleware"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "middleware", "order", "devtools", "persist", "immer"]
+    example: |
+      // ✅ Correct nesting order
+      const useStore = create(
+        devtools(
+          persist(
+            immer((set) => ({ ... })),
+            { name: 'store' }
+          ),
+          { name: 'MyStore' }
+        )
+      );
+
+  - id: ZUSTAND018
+    title: "Always name devtools stores"
+    description: "Pass a name option to devtools() middleware. Without a name, all stores appear as anonymous in Redux DevTools, making debugging impossible in apps with multiple stores."
+    category: "zustand_middleware"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "devtools", "naming", "debugging"]
+    example: |
+      // ✅ Named devtools
+      const useStore = create(
+        devtools((set) => ({ ... }), { name: 'AuthStore', enabled: process.env.NODE_ENV !== 'production' })
+      );
+
+      // ❌ Anonymous devtools
+      const useStore = create(devtools((set) => ({ ... })));
+
+  - id: ZUSTAND019
+    title: "Disable devtools in production"
+    description: "Devtools middleware should be disabled in production builds to prevent performance overhead and state exposure. Use the enabled option with environment checks."
+    category: "zustand_middleware"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "devtools", "production", "security", "performance"]
+    example: |
+      const useStore = create(
+        devtools(
+          (set) => ({ ... }),
+          { name: 'Store', enabled: process.env.NODE_ENV !== 'production' }
+        )
+      );
+
+  - id: ZUSTAND020
+    title: "Configure persist with partialize to exclude transient state"
+    description: "When using persist middleware, use partialize to exclude ephemeral state (loading flags, errors, UI state) from storage. Only persist data that should survive page reloads."
+    category: "zustand_middleware"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "persist", "partialize", "storage", "transient"]
+    example: |
+      const useStore = create(
+        persist(
+          (set) => ({
+            user: null,
+            token: null,
+            isLoading: false,  // transient
+            error: null,       // transient
+          }),
+          {
+            name: 'auth-storage',
+            partialize: (state) => ({ user: state.user, token: state.token }),
+          }
+        )
+      );
+
+  - id: ZUSTAND021
+    title: "Use version and migrate for persist schema evolution"
+    description: "When the persisted state shape changes between releases, use version and migrate options. This prevents hydration failures from stale localStorage data."
+    category: "zustand_middleware"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "persist", "migration", "version", "schema"]
+    example: |
+      persist(
+        (set) => ({ ... }),
+        {
+          name: 'app-store',
+          version: 2,
+          migrate: (persisted, version) => {
+            if (version === 0) { persisted.newField = 'default'; }
+            if (version === 1) { delete persisted.oldField; }
+            return persisted;
+          },
+        }
+      );
+
+  - id: ZUSTAND022
+    title: "Use createJSONStorage for custom storage adapters"
+    description: "For non-localStorage backends (sessionStorage, AsyncStorage, IndexedDB), use createJSONStorage() helper. It handles serialization and provides proper typing."
+    category: "zustand_middleware"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "persist", "createJSONStorage", "storage", "async"]
+    example: |
+      import { createJSONStorage } from 'zustand/middleware';
+
+      persist(
+        (set) => ({ ... }),
+        {
+          name: 'session-store',
+          storage: createJSONStorage(() => sessionStorage),
+        }
+      );
+
+  - id: ZUSTAND023
+    title: "Use skipHydration for SSR/Next.js persist"
+    description: "In SSR environments like Next.js, use skipHydration: true to prevent hydration mismatches. Then manually rehydrate on the client using useStore.persist.rehydrate()."
+    category: "zustand_middleware"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand", "nextjs"]
+    tags: ["zustand", "persist", "ssr", "nextjs", "hydration", "skipHydration"]
+    example: |
+      const useStore = create(
+        persist((set) => ({ ... }), {
+          name: 'store',
+          skipHydration: true,
+        })
+      );
+
+      // Client-side rehydration
+      useEffect(() => {
+        useStore.persist.rehydrate();
+      }, []);
+
+  - id: ZUSTAND024
+    title: "Use immer middleware for complex nested state updates"
+    description: "For stores with deeply nested objects or arrays, use the immer middleware. It allows writing mutable-looking code that produces immutable updates, reducing boilerplate and bugs."
+    category: "zustand_middleware"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "immer", "nested-state", "immutability"]
+    example: |
+      import { immer } from 'zustand/middleware/immer';
+
+      const useStore = create(immer((set) => ({
+        todos: [],
+        addTodo: (text) => set((state) => { state.todos.push({ text, done: false }); }),
+        toggleTodo: (idx) => set((state) => { state.todos[idx].done = !state.todos[idx].done; }),
+      })));
+
+  # ============================================================================
+  # ZUSTAND ACTIONS (ZUSTAND025-ZUSTAND030) - Action patterns
+  # ============================================================================
+
+  - id: ZUSTAND025
+    title: "Use get() for reading current state in actions"
+    description: "Use the get() parameter to read current state within actions. This is especially useful for conditional logic and async actions where closure state would be stale."
+    category: "zustand_actions"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "get", "actions", "stale-closure"]
+    example: |
+      const useStore = create((set, get) => ({
+        items: [],
+        addIfNotExists: (item) => {
+          if (!get().items.find((i) => i.id === item.id)) {
+            set((s) => ({ items: [...s.items, item] }));
+          }
+        },
+      }));
+
+  - id: ZUSTAND026
+    title: "Handle async actions with proper error/loading state"
+    description: "For async actions (API calls), manage loading and error state explicitly. Zustand doesn't have built-in async support — handle it with try/catch patterns in the action."
+    category: "zustand_actions"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "async", "actions", "error-handling", "loading"]
+    example: |
+      const useStore = create((set) => ({
+        users: [],
+        loading: false,
+        error: null,
+        fetchUsers: async () => {
+          set({ loading: true, error: null });
+          try {
+            const res = await fetch('/api/users');
+            const users = await res.json();
+            set({ users, loading: false });
+          } catch (err) {
+            set({ error: err.message, loading: false });
+          }
+        },
+      }));
+
+  - id: ZUSTAND027
+    title: "Use getState/setState for outside-React access"
+    description: "Access store state imperatively outside React components using store.getState() and store.setState(). This is useful for utility functions, middleware, API interceptors, and tests."
+    category: "zustand_actions"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "getState", "setState", "imperative", "outside-react"]
+    example: |
+      // API interceptor (outside React)
+      axios.interceptors.request.use((config) => {
+        const token = useAuthStore.getState().token;
+        if (token) config.headers.Authorization = `Bearer ${token}`;
+        return config;
+      });
+
+      // Reset from anywhere
+      useStore.setState({ count: 0 });
+
+  - id: ZUSTAND028
+    title: "Use subscribe() for side effects outside React"
+    description: "Use store.subscribe() for side effects that should run on state changes outside the React render cycle (analytics, logging, syncing). Unsubscribe when done to prevent memory leaks."
+    category: "zustand_actions"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "subscribe", "side-effects", "analytics"]
+    example: |
+      // Subscribe to all changes
+      const unsub = useStore.subscribe((state, prevState) => {
+        if (state.count !== prevState.count) {
+          analytics.track('count_changed', { count: state.count });
+        }
+      });
+
+      // Clean up
+      unsub();
+
+  - id: ZUSTAND029
+    title: "Implement store reset with initial state pattern"
+    description: "Create a reset function by capturing the initial state and using set() with replace. This is essential for logout flows and test cleanup."
+    category: "zustand_actions"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "reset", "initial-state", "logout", "testing"]
+    example: |
+      const initialState = { bears: 0, fish: 0 };
+      const useStore = create((set) => ({
+        ...initialState,
+        addBear: () => set((s) => ({ bears: s.bears + 1 })),
+        reset: () => set(initialState),
+      }));
+
+  - id: ZUSTAND030
+    title: "Avoid calling set() in render — use actions or effects"
+    description: "Never call set() directly during React rendering. This violates React's rules and causes infinite loops. Always trigger state changes from event handlers, effects, or actions."
+    category: "zustand_actions"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand", "react"]
+    tags: ["zustand", "set", "render", "react-rules", "infinite-loop"]
+    example: |
+      // ❌ set() during render (infinite loop)
+      function Component() {
+        const store = useStore();
+        store.increment();  // called every render!
+        return <div />;
+      }
+
+      // ✅ set() in event handler
+      function Component() {
+        const increment = useStore((s) => s.increment);
+        return <button onClick={increment}>+</button>;
+      }
+
+  # ============================================================================
+  # ZUSTAND TYPESCRIPT (ZUSTAND031-ZUSTAND036) - Type safety
+  # ============================================================================
+
+  - id: ZUSTAND031
+    title: "Define store state interface separately"
+    description: "Define the store state type as a separate interface or type alias. This enables reuse in selectors, components, and tests. In Zustand v4/v5 with TypeScript, pass the type as a generic to create<State>()."
+    category: "zustand_typescript"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand", "typescript"]
+    tags: ["zustand", "typescript", "interface", "types"]
+    example: |
+      interface BearState {
+        bears: number;
+        increase: (by: number) => void;
+        reset: () => void;
+      }
+
+      const useStore = create<BearState>()((set) => ({
+        bears: 0,
+        increase: (by) => set((s) => ({ bears: s.bears + by })),
+        reset: () => set({ bears: 0 }),
+      }));
+
+  - id: ZUSTAND032
+    title: "Separate state and actions types for clarity"
+    description: "For complex stores, split the type into State (data) and Actions (functions). This makes the contract clearer and enables better DX with auto-complete."
+    category: "zustand_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand", "typescript"]
+    tags: ["zustand", "typescript", "actions-type", "state-type"]
+    example: |
+      interface AuthState {
+        user: User | null;
+        token: string | null;
+      }
+
+      interface AuthActions {
+        login: (credentials: Credentials) => Promise<void>;
+        logout: () => void;
+      }
+
+      const useAuthStore = create<AuthState & AuthActions>()((set) => ({ ... }));
+
+  - id: ZUSTAND033
+    title: "Use StateCreator type for slice definitions"
+    description: "When using the slice pattern with TypeScript, type each slice function with StateCreator. This provides full type inference for set, get, and the complete store shape."
+    category: "zustand_typescript"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand", "typescript"]
+    tags: ["zustand", "typescript", "StateCreator", "slices", "type-safety"]
+    example: |
+      import { StateCreator } from 'zustand';
+
+      type Store = AuthSlice & UISlice;
+
+      interface AuthSlice { user: User | null; login: () => void; }
+
+      const createAuthSlice: StateCreator<Store, [], [], AuthSlice> = (set) => ({
+        user: null,
+        login: () => set({ user: { name: 'John' } }),
+      });
+
+  - id: ZUSTAND034
+    title: "Use the curried create<T>()() pattern with middleware"
+    description: "In TypeScript, when using middleware, use the curried form create<State>()(middleware(...)). This is required for proper type inference with devtools, persist, and other middleware."
+    category: "zustand_typescript"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand", "typescript"]
+    tags: ["zustand", "typescript", "curried", "middleware", "generics"]
+    example: |
+      // ✅ Curried form with middleware
+      const useStore = create<MyState>()(
+        devtools(
+          persist(
+            (set) => ({ ... }),
+            { name: 'store' }
+          )
+        )
+      );
+
+      // ❌ Non-curried doesn't infer middleware types
+      const useStore = create<MyState>(devtools(...));
+
+  - id: ZUSTAND035
+    title: "Type selectors for return type safety"
+    description: "When creating named selectors, explicitly type them or use the store type to ensure the selector returns the expected type. This prevents runtime errors from property typos."
+    category: "zustand_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand", "typescript"]
+    tags: ["zustand", "typescript", "selectors", "type-safety"]
+    example: |
+      // ✅ Typed selector
+      const selectBears = (state: BearState): number => state.bears;
+      const selectTotal = (state: BearState) => state.bears + state.fish;
+
+  - id: ZUSTAND036
+    title: "Use StoreApi type for vanilla store references"
+    description: "When passing vanilla store references around (especially in tests or utilities), type them with StoreApi<T> or UseBoundStore<StoreApi<T>> for React stores."
+    category: "zustand_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand", "typescript"]
+    tags: ["zustand", "typescript", "StoreApi", "vanilla", "types"]
+    example: |
+      import type { StoreApi } from 'zustand';
+
+      function resetStore<T>(store: StoreApi<T>, initial: T) {
+        store.setState(initial, true);
+      }
+
+  # ============================================================================
+  # ZUSTAND PERFORMANCE (ZUSTAND037-ZUSTAND041) - Performance optimization
+  # ============================================================================
+
+  - id: ZUSTAND037
+    title: "Avoid creating new objects/arrays in selectors"
+    description: "Selectors that return new objects or filter arrays create new references each render, defeating Zustand's reference equality check. Memoize computations or use shallow."
+    category: "zustand_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand", "react"]
+    tags: ["zustand", "performance", "selectors", "memoization", "re-renders"]
+    example: |
+      // ❌ New array every render (re-renders every time)
+      const active = useStore((s) => s.todos.filter((t) => !t.done));
+
+      // ✅ Use useMemo for derived collections
+      const todos = useStore((s) => s.todos);
+      const active = useMemo(() => todos.filter((t) => !t.done), [todos]);
+
+      // ✅ Or use shallow for object picks
+      import { useShallow } from 'zustand/react/shallow';
+      const { name, age } = useStore(useShallow((s) => ({ name: s.name, age: s.age })));
+
+  - id: ZUSTAND038
+    title: "Split large stores to reduce subscriber scope"
+    description: "When a store grows large, subscribers to any part trigger equality checks on their selectors. Splitting into multiple stores isolates update scopes for better performance."
+    category: "zustand_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "performance", "splitting", "stores", "isolation"]
+    example: |
+      // ✅ Separate stores — auth changes don't check cart selectors
+      const useAuthStore = create((set) => ({ ... }));
+      const useCartStore = create((set) => ({ ... }));
+
+      // ❌ Single store — all selectors checked on any change
+      const useStore = create((set) => ({ auth: { ... }, cart: { ... } }));
+
+  - id: ZUSTAND039
+    title: "Use transient updates for high-frequency state changes"
+    description: "For state that changes at high frequency (mouse position, scroll, animations), use transient updates with subscribe() and refs instead of set(). This skips React re-renders entirely."
+    category: "zustand_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand", "react"]
+    tags: ["zustand", "transient", "performance", "animation", "ref"]
+    example: |
+      // ✅ Transient update (no re-renders)
+      const ref = useRef(document.getElementById('cursor'));
+      useEffect(() =>
+        useStore.subscribe(
+          (s) => s.position,
+          (pos) => { ref.current.style.transform = `translate(${pos.x}px, ${pos.y}px)`; }
+        ),
+      []);
+
+  - id: ZUSTAND040
+    title: "Batch related state updates in a single set() call"
+    description: "Zustand batches React 18+ updates automatically, but for clarity and atomicity, combine related state changes in a single set() call rather than multiple sequential set() calls."
+    category: "zustand_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "batching", "set", "atomic", "react-18"]
+    example: |
+      // ✅ Single set() for related updates
+      set({ loading: false, data: result, error: null });
+
+      // ❌ Multiple set() calls (works but less clear)
+      set({ loading: false });
+      set({ data: result });
+      set({ error: null });
+
+  - id: ZUSTAND041
+    title: "Avoid storing large objects — normalize data"
+    description: "Don't store large nested objects or arrays of complex entities. Normalize data into dictionaries (byId) and ID arrays (allIds) for O(1) lookups and surgical updates."
+    category: "zustand_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "normalization", "performance", "entities", "byId"]
+    example: |
+      // ✅ Normalized
+      const useStore = create((set) => ({
+        usersById: {},
+        userIds: [],
+        addUser: (user) => set((s) => ({
+          usersById: { ...s.usersById, [user.id]: user },
+          userIds: [...s.userIds, user.id],
+        })),
+      }));
+
+  # ============================================================================
+  # ZUSTAND TESTING (ZUSTAND042-ZUSTAND045) - Testing patterns
+  # ============================================================================
+
+  - id: ZUSTAND042
+    title: "Reset store state between tests"
+    description: "Always reset Zustand stores between tests to prevent state leakage. Use store.setState() with initial state or the reset action pattern. For React Testing Library, wrap with fresh store providers."
+    category: "zustand_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "testing", "reset", "isolation", "jest", "vitest"]
+    example: |
+      // Reset between tests
+      beforeEach(() => {
+        useStore.setState({ bears: 0, fish: 0 });
+      });
+
+      // Or with getInitialState (v4.4+)
+      beforeEach(() => {
+        useStore.setState(useStore.getInitialState());
+      });
+
+  - id: ZUSTAND043
+    title: "Test store actions independently of components"
+    description: "Test Zustand store actions in isolation using getState() and setState(). This is simpler and faster than testing through rendered components."
+    category: "zustand_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "testing", "unit-test", "actions", "getState"]
+    example: |
+      test('increment increases count', () => {
+        const { increment } = useStore.getState();
+        increment();
+        expect(useStore.getState().count).toBe(1);
+      });
+
+      test('async fetchUsers populates users', async () => {
+        const { fetchUsers } = useStore.getState();
+        await fetchUsers();
+        expect(useStore.getState().users).toHaveLength(3);
+      });
+
+  - id: ZUSTAND044
+    title: "Mock stores for component testing"
+    description: "For component tests, mock the store with specific state using setState() in beforeEach. Avoid testing store logic through complex component interactions."
+    category: "zustand_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand", "react"]
+    tags: ["zustand", "testing", "mock", "component", "react-testing-library"]
+    example: |
+      beforeEach(() => {
+        useAuthStore.setState({ user: mockUser, isAuthenticated: true });
+      });
+
+      test('shows user name', () => {
+        render(<Profile />);
+        expect(screen.getByText(mockUser.name)).toBeInTheDocument();
+      });
+
+  - id: ZUSTAND045
+    title: "Test persist rehydration and migration"
+    description: "Write specific tests for persist middleware: verify correct keys are stored, test migration functions with old state shapes, and verify skipHydration behavior."
+    category: "zustand_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "testing", "persist", "migration", "rehydration"]
+    example: |
+      test('migrates v1 state to v2', () => {
+        const oldState = { name: 'test' };
+        const migrated = migrate(oldState, 1);
+        expect(migrated).toHaveProperty('displayName', 'test');
+        expect(migrated).not.toHaveProperty('name');
+      });
+
+  # ============================================================================
+  # ZUSTAND SSR & NEXT.JS (ZUSTAND046-ZUSTAND048) - Server-side rendering
+  # ============================================================================
+
+  - id: ZUSTAND046
+    title: "Use context pattern for Next.js App Router per-request stores"
+    description: "In Next.js App Router, create stores per-request using React context to avoid shared state between requests. Use createStore() + React.createContext + provider pattern."
+    category: "zustand_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand", "nextjs"]
+    tags: ["zustand", "nextjs", "app-router", "context", "ssr", "per-request"]
+    example: |
+      // store.ts
+      import { createStore } from 'zustand/vanilla';
+      export const createAppStore = (initialState) => createStore((set) => ({ ...initialState }));
+
+      // provider.tsx
+      const StoreContext = createContext(null);
+      export function StoreProvider({ children, initialState }) {
+        const storeRef = useRef(createAppStore(initialState));
+        return <StoreContext.Provider value={storeRef.current}>{children}</StoreContext.Provider>;
+      }
+
+  - id: ZUSTAND047
+    title: "Handle hydration mismatch in SSR with useEffect"
+    description: "Zustand stores are initialized on the server and client independently. Use useEffect for client-only state to prevent hydration mismatches. Mark server-rendered state as stable."
+    category: "zustand_ssr"
+    severity: "warning"
+    applicability:
+      frameworks: ["zustand", "nextjs"]
+    tags: ["zustand", "ssr", "hydration", "useEffect", "mismatch"]
+    example: |
+      // ✅ Client-only state via effect
+      const useStore = create((set) => ({
+        isClient: false,
+        windowWidth: 0,
+      }));
+
+      function Layout() {
+        useEffect(() => {
+          useStore.setState({ isClient: true, windowWidth: window.innerWidth });
+        }, []);
+      }
+
+  - id: ZUSTAND048
+    title: "Avoid persist middleware with SSR unless using skipHydration"
+    description: "persist middleware accesses localStorage which doesn't exist on the server. Always use skipHydration: true in SSR environments and rehydrate on the client."
+    category: "zustand_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand", "nextjs"]
+    tags: ["zustand", "persist", "ssr", "skipHydration", "localStorage"]
+    example: |
+      // ✅ SSR-safe persist
+      const useStore = create(
+        persist(
+          (set) => ({ ... }),
+          { name: 'store', skipHydration: true }
+        )
+      );
+
+      // Client component
+      'use client';
+      useEffect(() => { useStore.persist.rehydrate(); }, []);
+
+  # ============================================================================
+  # ZUSTAND PATTERNS & MIGRATION (ZUSTAND049-ZUSTAND050)
+  # ============================================================================
+
+  - id: ZUSTAND049
+    title: "Use temporal middleware (zundo) for undo/redo"
+    description: "For undo/redo functionality, use the zundo (zustand-undo) library instead of implementing custom history. It integrates naturally with Zustand's middleware pattern."
+    category: "zustand_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["zustand"]
+    tags: ["zustand", "zundo", "undo", "redo", "temporal", "history"]
+    example: |
+      import { temporal } from 'zundo';
+      const useStore = create(temporal((set) => ({
+        text: '',
+        setText: (text) => set({ text }),
+      })));
+
+      // Undo/redo
+      const { undo, redo } = useStore.temporal.getState();
+
+  - id: ZUSTAND050
+    title: "Migrate from v4 to v5 — update import paths"
+    description: "When migrating to Zustand v5 (React 19), update import paths: create from 'zustand' → 'zustand/react', useShallow from 'zustand/shallow' → 'zustand/react/shallow'. The 'zustand' entry point becomes vanilla-only in v5."
+    category: "zustand_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["zustand-v5"]
+    tags: ["zustand", "v5", "migration", "import-paths", "react-19"]
+    example: |
+      // ✅ Zustand v5 imports
+      import { create } from 'zustand/react';
+      import { useShallow } from 'zustand/react/shallow';
+      import { createStore } from 'zustand';  // vanilla only
+
+      // ❌ Zustand v4 imports (deprecated in v5)
+      import { create } from 'zustand';
+      import { shallow } from 'zustand/shallow';

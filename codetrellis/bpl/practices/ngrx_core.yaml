@@ -1,0 +1,897 @@
+# NgRx Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.53 - NgRx Framework Support
+# Practice IDs: NGRX001-NGRX050
+# Coverage: Store, Effects, Selectors, Actions, Entity,
+#           Performance, Testing, Type Safety, Migration, Signals
+# Versions: NgRx 1.x-19.x, ComponentStore (v12+), SignalStore (v16+)
+
+practices:
+  # ============================================================================
+  # NGRX STORE (NGRX001-NGRX005) - Store configuration best practices
+  # ============================================================================
+
+  - id: NGRX001
+    title: "Use provideStore/provideState for standalone apps"
+    description: "In Angular 15+ standalone applications, use provideStore() and provideState() instead of StoreModule.forRoot()/forFeature(). Standalone APIs are tree-shakeable and align with Angular's standalone component model."
+    category: "ngrx_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store", "angular"]
+    tags: ["ngrx", "store", "standalone", "provideStore", "provideState"]
+    example: |
+      // ✅ Standalone: provideStore + provideState
+      bootstrapApplication(AppComponent, {
+        providers: [
+          provideStore({ router: routerReducer }),
+          provideState({ name: 'users', reducer: usersReducer }),
+          provideEffects(UserEffects),
+          provideStoreDevtools({ maxAge: 25 }),
+        ],
+      });
+
+      // ❌ Module-based (legacy): StoreModule
+      @NgModule({ imports: [StoreModule.forRoot(reducers)] })
+
+  - id: NGRX002
+    title: "Enable strict runtime checks in development"
+    description: "Configure runtimeChecks with strictStateImmutability, strictActionImmutability, strictActionSerializability, and strictStateSerializability to catch common errors during development."
+    category: "ngrx_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store"]
+    tags: ["ngrx", "runtimeChecks", "immutability", "serializability"]
+    example: |
+      provideStore(reducers, {
+        runtimeChecks: {
+          strictStateImmutability: true,
+          strictActionImmutability: true,
+          strictStateSerializability: true,
+          strictActionSerializability: true,
+          strictActionWithinNgZone: true,
+          strictActionTypeUniqueness: true,
+        },
+      });
+
+  - id: NGRX003
+    title: "Use meta-reducers for cross-cutting concerns"
+    description: "Use meta-reducers for logging, state hydration, and development utilities. Meta-reducers wrap the entire reducer chain and are ideal for cross-cutting concerns like localStorage sync."
+    category: "ngrx_store"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store"]
+    tags: ["ngrx", "meta-reducers", "logging", "hydration"]
+    example: |
+      const metaReducers: MetaReducer[] = !environment.production
+        ? [storeFreeze, logger]
+        : [hydrationMetaReducer];
+      provideStore(reducers, { metaReducers });
+
+  - id: NGRX004
+    title: "Organize state by feature module"
+    description: "Structure NgRx state by Angular feature modules. Each feature has its own actions, reducer, effects, and selectors. Use provideState() for lazy-loaded features."
+    category: "ngrx_store"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "angular"]
+    tags: ["ngrx", "feature", "modules", "lazy-loading"]
+    example: |
+      // Feature module state
+      // users/state/users.actions.ts
+      // users/state/users.reducer.ts
+      // users/state/users.effects.ts
+      // users/state/users.selectors.ts
+
+      // Lazy feature route
+      { path: 'users', providers: [provideState(usersFeature), provideEffects(UsersEffects)] }
+
+  - id: NGRX005
+    title: "Use StoreDevtoolsModule only in development"
+    description: "Enable NgRx DevTools only in development to avoid performance overhead and state exposure in production. Use maxAge to limit the number of stored actions."
+    category: "ngrx_store"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store-devtools"]
+    tags: ["ngrx", "devtools", "development", "maxAge"]
+    example: |
+      provideStoreDevtools({
+        maxAge: 25,
+        logOnly: environment.production,
+        autoPause: true,
+        connectInZone: true,
+      });
+
+  # ============================================================================
+  # NGRX EFFECTS (NGRX006-NGRX010) - Effects best practices
+  # ============================================================================
+
+  - id: NGRX006
+    title: "Handle errors in effects with catchError"
+    description: "Always handle errors in effects to prevent the effect stream from dying. Use catchError with EMPTY or return a failure action. Never let errors propagate unhandled."
+    category: "ngrx_effects"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-effects", "rxjs"]
+    tags: ["ngrx", "effects", "catchError", "error-handling"]
+    example: |
+      loadUsers$ = createEffect(() => this.actions$.pipe(
+        ofType(UsersActions.load),
+        exhaustMap(() => this.usersService.getAll().pipe(
+          map(users => UsersActions.loadSuccess({ users })),
+          catchError(error => of(UsersActions.loadFailure({ error }))),
+        )),
+      ));
+
+  - id: NGRX007
+    title: "Use appropriate RxJS flattening operators"
+    description: "Choose the right flattening operator: switchMap for read/cancellable requests, exhaustMap for non-parallel writes, concatMap for ordered sequential, mergeMap for parallel operations."
+    category: "ngrx_effects"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-effects", "rxjs"]
+    tags:
+      ["ngrx", "effects", "switchMap", "exhaustMap", "concatMap", "mergeMap"]
+    example: |
+      // ✅ switchMap: cancels previous (search, navigation)
+      search$ = createEffect(() => this.actions$.pipe(
+        ofType(search), switchMap(({ query }) => this.api.search(query))
+      ));
+
+      // ✅ exhaustMap: ignores new while running (form submit)
+      submit$ = createEffect(() => this.actions$.pipe(
+        ofType(submit), exhaustMap(({ data }) => this.api.save(data))
+      ));
+
+  - id: NGRX008
+    title: "Use concatLatestFrom for store access in effects"
+    description: "Use concatLatestFrom from @ngrx/operators instead of withLatestFrom. concatLatestFrom lazily evaluates the selector only when the effect fires, improving performance."
+    category: "ngrx_effects"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-operators"]
+    tags: ["ngrx", "effects", "concatLatestFrom", "withLatestFrom", "store"]
+    example: |
+      // ✅ concatLatestFrom (lazy evaluation)
+      loadIfNeeded$ = createEffect(() => this.actions$.pipe(
+        ofType(UsersActions.load),
+        concatLatestFrom(() => this.store.select(selectUsersLoaded)),
+        filter(([_, loaded]) => !loaded),
+        switchMap(() => this.api.getUsers()),
+      ));
+
+  - id: NGRX009
+    title: "Use dispatch: false for non-dispatching effects"
+    description: "When an effect performs a side effect without dispatching a new action (navigation, logging, analytics), set dispatch: false to avoid infinite loops."
+    category: "ngrx_effects"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-effects"]
+    tags: ["ngrx", "effects", "dispatch", "side-effects"]
+    example: |
+      redirectAfterLogin$ = createEffect(() => this.actions$.pipe(
+        ofType(AuthActions.loginSuccess),
+        tap(() => this.router.navigate(['/dashboard'])),
+      ), { dispatch: false });
+
+  - id: NGRX010
+    title: "Prefer functional effects in NgRx 16+"
+    description: "In NgRx 16+, use functional effects with inject() for simpler, more testable effects. Functional effects can be tree-shaken and work with standalone APIs."
+    category: "ngrx_effects"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-v16+"]
+    tags: ["ngrx", "functional-effects", "inject", "v16"]
+    example: |
+      export const loadUsers = createEffect(
+        (actions$ = inject(Actions), api = inject(UsersApi)) =>
+          actions$.pipe(
+            ofType(UsersActions.load),
+            exhaustMap(() => api.getAll().pipe(
+              map(users => UsersActions.loadSuccess({ users })),
+              catchError(error => of(UsersActions.loadFailure({ error }))),
+            )),
+          ),
+        { functional: true },
+      );
+
+  # ============================================================================
+  # NGRX SELECTORS (NGRX011-NGRX015) - Selectors best practices
+  # ============================================================================
+
+  - id: NGRX011
+    title: "Use createSelector for memoized derived state"
+    description: "Always use createSelector for derived data. Selectors are memoized and only recompute when inputs change, preventing unnecessary re-renders."
+    category: "ngrx_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store"]
+    tags: ["ngrx", "selectors", "createSelector", "memoization"]
+    example: |
+      export const selectUsersList = createSelector(
+        selectUsersState,
+        (state) => state.users
+      );
+      export const selectActiveUsers = createSelector(
+        selectUsersList,
+        (users) => users.filter(u => u.isActive)
+      );
+
+  - id: NGRX012
+    title: "Use createFeatureSelector for feature state access"
+    description: "Use createFeatureSelector to type-safely access feature state slices. This serves as the root selector for all feature-level selectors."
+    category: "ngrx_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store"]
+    tags: ["ngrx", "selectors", "createFeatureSelector", "feature"]
+    example: |
+      export const selectUsersState = createFeatureSelector<UsersState>('users');
+      export const selectAllUsers = createSelector(selectUsersState, s => s.users);
+      export const selectLoading = createSelector(selectUsersState, s => s.loading);
+
+  - id: NGRX013
+    title: "Use createFeature for auto-generated selectors"
+    description: "In NgRx 12.1+, use createFeature() to automatically generate selectors for each state property. Reduces boilerplate and ensures selector naming consistency."
+    category: "ngrx_selectors"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store"]
+    tags: ["ngrx", "createFeature", "auto-selectors", "v12"]
+    example: |
+      export const usersFeature = createFeature({
+        name: 'users',
+        reducer: createReducer(
+          initialState,
+          on(UsersActions.loadSuccess, (state, { users }) => ({ ...state, users, loading: false })),
+        ),
+      });
+      // Auto-generated: selectUsersState, selectUsers, selectLoading, etc.
+      export const { selectUsers, selectLoading } = usersFeature;
+
+  - id: NGRX014
+    title: "Compose selectors instead of accessing deep state"
+    description: "Build complex selectors by composing simpler ones. Never access nested state paths directly. Composition improves reusability and memoization."
+    category: "ngrx_selectors"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store"]
+    tags: ["ngrx", "selectors", "composition", "memoization"]
+    example: |
+      // ✅ Composed selectors
+      export const selectUserById = (id: string) => createSelector(
+        selectUsersEntities,
+        (entities) => entities[id]
+      );
+
+      // ❌ Avoid: deep path access
+      store.select(state => state.users.entities[id]);
+
+  - id: NGRX015
+    title: "Use selectSignal in NgRx 16+ for Signal integration"
+    description: "In NgRx 16+, use store.selectSignal() to get Angular Signals instead of Observables. Signals integrate natively with Angular's change detection."
+    category: "ngrx_selectors"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-v16+", "angular"]
+    tags: ["ngrx", "selectSignal", "signals", "v16"]
+    example: |
+      @Component({ ... })
+      export class UsersComponent {
+        users = this.store.selectSignal(selectAllUsers);
+        loading = this.store.selectSignal(selectLoading);
+        constructor(private store: Store) {}
+      }
+
+  # ============================================================================
+  # NGRX ACTIONS (NGRX016-NGRX020) - Actions best practices
+  # ============================================================================
+
+  - id: NGRX016
+    title: "Use createAction with [Source] Event naming pattern"
+    description: "Name actions with the [Source] Event convention. The source indicates where the action originates (component, API, effect). Events describe what happened, not what should happen."
+    category: "ngrx_actions"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store"]
+    tags: ["ngrx", "actions", "createAction", "naming"]
+    example: |
+      // ✅ [Source] Event pattern
+      export const loadUsers = createAction('[Users Page] Load Users');
+      export const loadUsersSuccess = createAction('[Users API] Load Users Success', props<{ users: User[] }>());
+      export const loadUsersFailure = createAction('[Users API] Load Users Failure', props<{ error: string }>());
+
+  - id: NGRX017
+    title: "Use createActionGroup for related actions"
+    description: "In NgRx 13.2+, use createActionGroup to define related actions in a single declaration. Reduces boilerplate and ensures consistent naming."
+    category: "ngrx_actions"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store"]
+    tags: ["ngrx", "actions", "createActionGroup", "v13"]
+    example: |
+      export const UsersApiActions = createActionGroup({
+        source: 'Users API',
+        events: {
+          'Load Users Success': props<{ users: User[] }>(),
+          'Load Users Failure': props<{ error: string }>(),
+        },
+      });
+      // Usage: UsersApiActions.loadUsersSuccess({ users })
+
+  - id: NGRX018
+    title: "Use props<T>() for type-safe action payloads"
+    description: "Always use props<T>() to define typed action payloads. Never use plain objects or any type. This ensures type safety throughout the NgRx flow."
+    category: "ngrx_actions"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store", "typescript"]
+    tags: ["ngrx", "actions", "props", "type-safety"]
+    example: |
+      // ✅ Type-safe props
+      export const updateUser = createAction(
+        '[Users Page] Update User',
+        props<{ userId: string; changes: Partial<User> }>()
+      );
+
+      // ❌ Avoid: untyped
+      export const updateUser = createAction('[Users Page] Update User', (user: any) => ({ user }));
+
+  - id: NGRX019
+    title: "Model actions as events, not commands"
+    description: "Actions should describe events that happened, not commands to execute. Multiple reducers/effects can respond to a single event. This leads to better separation of concerns."
+    category: "ngrx_actions"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx"]
+    tags: ["ngrx", "actions", "events", "architecture"]
+    example: |
+      // ✅ Event: describes what happened
+      '[Login Page] Login Submitted'
+      '[Auth API] Login Success'
+      '[Auth API] Login Failure'
+
+      // ❌ Command: prescribes what to do
+      '[Auth] Set User'
+      '[Auth] Set Loading True'
+
+  - id: NGRX020
+    title: "Keep actions unique with strict action type uniqueness"
+    description: "Enable strictActionTypeUniqueness in runtimeChecks to catch duplicate action type strings at development time. Every action must have a unique type string."
+    category: "ngrx_actions"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store"]
+    tags: ["ngrx", "actions", "uniqueness", "runtimeChecks"]
+    example: |
+      provideStore(reducers, {
+        runtimeChecks: {
+          strictActionTypeUniqueness: true,
+        },
+      });
+
+  # ============================================================================
+  # NGRX ENTITY (NGRX021-NGRX025) - Entity adapter best practices
+  # ============================================================================
+
+  - id: NGRX021
+    title: "Use @ngrx/entity for normalized collections"
+    description: "Use createEntityAdapter for all entity-like collections. It provides optimized CRUD operations, normalized state shape (ids + entities map), and built-in selectors."
+    category: "ngrx_entity"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-entity"]
+    tags: ["ngrx", "entity", "createEntityAdapter", "normalized"]
+    example: |
+      export const adapter = createEntityAdapter<User>({
+        selectId: (user) => user.id,
+        sortComparer: (a, b) => a.name.localeCompare(b.name),
+      });
+      export const initialState: State = adapter.getInitialState({ loading: false });
+
+  - id: NGRX022
+    title: "Use entity adapter methods in reducers"
+    description: "Use adapter.addOne, addMany, setAll, updateOne, removeOne, upsertOne etc. instead of manually manipulating entity state. These methods maintain the normalized ids/entities shape."
+    category: "ngrx_entity"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-entity"]
+    tags: ["ngrx", "entity", "CRUD", "adapter"]
+    example: |
+      const reducer = createReducer(initialState,
+        on(loadSuccess, (state, { users }) => adapter.setAll(users, state)),
+        on(addUser, (state, { user }) => adapter.addOne(user, state)),
+        on(updateUser, (state, { update }) => adapter.updateOne(update, state)),
+        on(deleteUser, (state, { id }) => adapter.removeOne(id, state)),
+      );
+
+  - id: NGRX023
+    title: "Export entity selectors from adapter"
+    description: "Use adapter.getSelectors() with createFeatureSelector to export selectAll, selectEntities, selectIds, and selectTotal. These are memoized and optimized."
+    category: "ngrx_entity"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-entity"]
+    tags: ["ngrx", "entity", "selectors", "getSelectors"]
+    example: |
+      export const { selectAll, selectEntities, selectIds, selectTotal } =
+        adapter.getSelectors(selectUsersState);
+
+  - id: NGRX024
+    title: "Define custom selectId for non-standard IDs"
+    description: "When entities don't use a standard 'id' field, provide a custom selectId function to the adapter. This tells the adapter how to extract the unique identifier."
+    category: "ngrx_entity"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-entity"]
+    tags: ["ngrx", "entity", "selectId", "custom"]
+    example: |
+      const adapter = createEntityAdapter<Product>({
+        selectId: (product) => product.sku,
+      });
+
+  - id: NGRX025
+    title: "Use sortComparer for ordered entity collections"
+    description: "Provide sortComparer to maintain a consistent sorted order of entities. Without it, entities are ordered by insertion time."
+    category: "ngrx_entity"
+    severity: "info"
+    applicability:
+      frameworks: ["ngrx", "ngrx-entity"]
+    tags: ["ngrx", "entity", "sortComparer", "ordering"]
+    example: |
+      const adapter = createEntityAdapter<Task>({
+        sortComparer: (a, b) => a.priority - b.priority || a.title.localeCompare(b.title),
+      });
+
+  # ============================================================================
+  # NGRX PERFORMANCE (NGRX026-NGRX030) - Performance best practices
+  # ============================================================================
+
+  - id: NGRX026
+    title: "Use OnPush change detection with NgRx"
+    description: "Always use ChangeDetectionStrategy.OnPush in components that use NgRx selectors. This ensures Angular only checks for changes when Observable or Signal values change."
+    category: "ngrx_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "angular"]
+    tags: ["ngrx", "performance", "OnPush", "change-detection"]
+    example: |
+      @Component({
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<div *ngIf="users$ | async as users">...</div>`,
+      })
+      export class UsersComponent {
+        users$ = this.store.select(selectAllUsers);
+      }
+
+  - id: NGRX027
+    title: "Avoid selecting entire state objects"
+    description: "Select only the specific state properties needed. Selecting the entire feature state causes unnecessary re-renders when any property changes."
+    category: "ngrx_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-store"]
+    tags: ["ngrx", "performance", "selectors", "granular"]
+    example: |
+      // ✅ Select specific data
+      users$ = this.store.select(selectActiveUsers);
+      loading$ = this.store.select(selectUsersLoading);
+
+      // ❌ Avoid: entire state
+      state$ = this.store.select(selectUsersState);
+
+  - id: NGRX028
+    title: "Use shareReplay for shared selectors in services"
+    description: "When sharing NgRx selectors across multiple components through a service, use shareReplay(1) to prevent multiple subscriptions to the same state slice."
+    category: "ngrx_performance"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "rxjs"]
+    tags: ["ngrx", "performance", "shareReplay", "multicast"]
+    example: |
+      @Injectable({ providedIn: 'root' })
+      export class UsersFacade {
+        users$ = this.store.select(selectAllUsers).pipe(shareReplay(1));
+        constructor(private store: Store) {}
+      }
+
+  - id: NGRX029
+    title: "Avoid dispatching actions in component constructors"
+    description: "Dispatch load actions in ngOnInit or via route resolvers, not in constructors. Constructor dispatch can cause timing issues and makes testing harder."
+    category: "ngrx_performance"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "angular"]
+    tags: ["ngrx", "performance", "ngOnInit", "dispatch"]
+    example: |
+      // ✅ ngOnInit
+      ngOnInit() { this.store.dispatch(UsersActions.loadUsers()); }
+
+      // ❌ constructor
+      constructor(store: Store) { store.dispatch(UsersActions.loadUsers()); }
+
+  - id: NGRX030
+    title: "Use trackBy with NgRx entity selectors"
+    description: "When rendering NgRx entity lists, always use trackBy with the entity ID to prevent DOM re-creation when the list updates."
+    category: "ngrx_performance"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "angular"]
+    tags: ["ngrx", "performance", "trackBy", "entity"]
+    example: |
+      <div *ngFor="let user of users$ | async; trackBy: trackById">
+      trackById = (_: number, item: User) => item.id;
+
+  # ============================================================================
+  # NGRX TESTING (NGRX031-NGRX035) - Testing best practices
+  # ============================================================================
+
+  - id: NGRX031
+    title: "Use provideMockStore for component testing"
+    description: "Use provideMockStore from @ngrx/store/testing to test components that use the store. Provide initial state and override selectors without creating a real store."
+    category: "ngrx_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "angular"]
+    tags: ["ngrx", "testing", "provideMockStore", "MockStore"]
+    example: |
+      TestBed.configureTestingModule({
+        providers: [
+          provideMockStore({
+            initialState: { users: { users: mockUsers, loading: false } },
+            selectors: [
+              { selector: selectAllUsers, value: mockUsers },
+              { selector: selectLoading, value: false },
+            ],
+          }),
+        ],
+      });
+
+  - id: NGRX032
+    title: "Test reducers as pure functions"
+    description: "Test reducers by calling them directly with a state and action. Reducers are pure functions, making them the easiest part of NgRx to test."
+    category: "ngrx_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx"]
+    tags: ["ngrx", "testing", "reducers", "pure-functions"]
+    example: |
+      it('should load users', () => {
+        const action = UsersActions.loadSuccess({ users: mockUsers });
+        const result = reducer(initialState, action);
+        expect(result.users).toEqual(mockUsers);
+        expect(result.loading).toBe(false);
+      });
+
+  - id: NGRX033
+    title: "Use provideMockActions for effect testing"
+    description: "Use provideMockActions from @ngrx/effects/testing to test effects. Provide a ReplaySubject or hot/cold observables as the Actions stream."
+    category: "ngrx_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-effects"]
+    tags: ["ngrx", "testing", "effects", "provideMockActions"]
+    example: |
+      let actions$: ReplaySubject<Action>;
+      beforeEach(() => {
+        actions$ = new ReplaySubject<Action>();
+        TestBed.configureTestingModule({
+          providers: [
+            UserEffects,
+            provideMockActions(() => actions$),
+            { provide: UsersService, useValue: jasmine.createSpyObj('UsersService', ['getAll']) },
+          ],
+        });
+      });
+
+  - id: NGRX034
+    title: "Test selectors with projector function"
+    description: "Test selectors by calling the projector function directly with input values, bypassing memoization. This tests the selector logic in isolation."
+    category: "ngrx_testing"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx"]
+    tags: ["ngrx", "testing", "selectors", "projector"]
+    example: |
+      it('should select active users', () => {
+        const result = selectActiveUsers.projector(mockUsers);
+        expect(result.length).toBe(2);
+        expect(result.every(u => u.isActive)).toBe(true);
+      });
+
+  - id: NGRX035
+    title: "Verify action dispatches with store.scannedActions$"
+    description: "In integration tests, use MockStore's scannedActions$ to verify which actions were dispatched and in what order."
+    category: "ngrx_testing"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx"]
+    tags: ["ngrx", "testing", "dispatch", "scannedActions"]
+    example: |
+      const store = TestBed.inject(MockStore);
+      const dispatchSpy = spyOn(store, 'dispatch');
+      component.onSave();
+      expect(dispatchSpy).toHaveBeenCalledWith(UsersActions.updateUser({ userId: '1', changes: { name: 'Test' } }));
+
+  # ============================================================================
+  # NGRX TYPE SAFETY (NGRX036-NGRX040) - TypeScript best practices
+  # ============================================================================
+
+  - id: NGRX036
+    title: "Type state interfaces for each feature"
+    description: "Define explicit TypeScript interfaces for each feature state. Never use 'any' for state or action payloads."
+    category: "ngrx_type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "typescript"]
+    tags: ["ngrx", "typescript", "state", "interfaces"]
+    example: |
+      export interface UsersState {
+        users: User[];
+        selectedUserId: string | null;
+        loading: boolean;
+        error: string | null;
+      }
+      export const initialState: UsersState = { users: [], selectedUserId: null, loading: false, error: null };
+
+  - id: NGRX037
+    title: "Use ActionReducerMap for type-safe root state"
+    description: "Define ActionReducerMap<AppState> for the root state to ensure all feature reducers are type-checked against the global state shape."
+    category: "ngrx_type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "typescript"]
+    tags: ["ngrx", "typescript", "ActionReducerMap", "root-state"]
+    example: |
+      export interface AppState {
+        router: RouterReducerState;
+        users: UsersState;
+        auth: AuthState;
+      }
+      export const reducers: ActionReducerMap<AppState> = {
+        router: routerReducer,
+        users: usersReducer,
+        auth: authReducer,
+      };
+
+  - id: NGRX038
+    title: "Type effect dependencies with inject()"
+    description: "In NgRx 16+, use inject() for type-safe dependency injection in functional effects. This provides better tree-shaking and type inference."
+    category: "ngrx_type_safety"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-v16+", "typescript"]
+    tags: ["ngrx", "typescript", "inject", "effects"]
+    example: |
+      export const loadUsers = createEffect(
+        (actions$ = inject(Actions), api = inject(UsersApi), store = inject(Store)) =>
+          actions$.pipe(
+            ofType(UsersActions.load),
+            concatLatestFrom(() => store.select(selectUsersLoaded)),
+            filter(([_, loaded]) => !loaded),
+            exhaustMap(() => api.getAll()),
+          ),
+        { functional: true },
+      );
+
+  - id: NGRX039
+    title: "Use EntityState<T> for entity type safety"
+    description: "Extend EntityState<T> for typed entity collections. Define the additional state properties alongside the entity adapter state."
+    category: "ngrx_type_safety"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-entity", "typescript"]
+    tags: ["ngrx", "entity", "EntityState", "typescript"]
+    example: |
+      export interface UsersState extends EntityState<User> {
+        selectedUserId: string | null;
+        loading: boolean;
+        error: string | null;
+      }
+
+  - id: NGRX040
+    title: "Avoid type assertions in selectors"
+    description: "Ensure selectors are fully typed through the chain. Avoid 'as' casts and use proper generic parameters on createFeatureSelector<T>."
+    category: "ngrx_type_safety"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "typescript"]
+    tags: ["ngrx", "typescript", "selectors", "type-assertions"]
+    example: |
+      // ✅ Typed chain
+      export const selectUsersState = createFeatureSelector<UsersState>('users');
+      export const selectAllUsers = createSelector(selectUsersState, (state) => state.users);
+
+      // ❌ Avoid: type assertion
+      export const selectAllUsers = createSelector(selectUsersState, (state) => (state as any).users);
+
+  # ============================================================================
+  # NGRX MIGRATION (NGRX041-NGRX045) - Migration best practices
+  # ============================================================================
+
+  - id: NGRX041
+    title: "Migrate from @Effect() decorator to createEffect"
+    description: "The @Effect() decorator is deprecated since NgRx v12. Migrate all effects to use createEffect() which is type-safe and supports functional effects."
+    category: "ngrx_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx"]
+    tags: ["ngrx", "migration", "Effect", "createEffect"]
+    example: |
+      // ✅ createEffect (v8+)
+      loadUsers$ = createEffect(() => this.actions$.pipe(...));
+
+      // ❌ Deprecated: @Effect() decorator
+      @Effect() loadUsers$ = this.actions$.pipe(...);
+
+  - id: NGRX042
+    title: "Migrate from class actions to createAction"
+    description: "Replace class-based actions with createAction and props<T>(). Class actions are verbose and provide no additional type safety."
+    category: "ngrx_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx"]
+    tags: ["ngrx", "migration", "class-actions", "createAction"]
+    example: |
+      // ✅ createAction (v8+)
+      export const loadUsers = createAction('[Users] Load', props<{ page: number }>());
+
+      // ❌ Class-based action
+      export class LoadUsers implements Action {
+        readonly type = '[Users] Load';
+        constructor(public payload: { page: number }) {}
+      }
+
+  - id: NGRX043
+    title: "Migrate StoreModule to standalone APIs"
+    description: "In Angular 15+, migrate from StoreModule.forRoot()/forFeature() to provideStore()/provideState() for standalone compatibility."
+    category: "ngrx_migration"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "angular"]
+    tags: ["ngrx", "migration", "standalone", "provideStore"]
+    example: |
+      // ✅ Standalone (v15+)
+      bootstrapApplication(App, { providers: [provideStore(reducers), provideEffects(Effects)] });
+
+      // ❌ Module-based
+      @NgModule({ imports: [StoreModule.forRoot(reducers), EffectsModule.forRoot([Effects])] })
+
+  - id: NGRX044
+    title: "Migrate to createFeature for reduced boilerplate"
+    description: "Use createFeature (v12.1+) to replace manual createFeatureSelector + createSelector boilerplate. It auto-generates selectors for each state property."
+    category: "ngrx_migration"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx"]
+    tags: ["ngrx", "migration", "createFeature", "auto-selectors"]
+    example: |
+      // ✅ createFeature (v12.1+) - auto-generates selectors
+      export const usersFeature = createFeature({ name: 'users', reducer });
+      export const { selectUsers, selectLoading } = usersFeature;
+
+      // ❌ Manual boilerplate
+      const selectState = createFeatureSelector<UsersState>('users');
+      const selectUsers = createSelector(selectState, s => s.users);
+      const selectLoading = createSelector(selectState, s => s.loading);
+
+  - id: NGRX045
+    title: "Consider SignalStore for new features"
+    description: "For new Angular 16+ features, consider using SignalStore for simpler state management with built-in Signals support, less boilerplate, and better tree-shaking."
+    category: "ngrx_migration"
+    severity: "info"
+    applicability:
+      frameworks: ["ngrx", "ngrx-signals"]
+    tags: ["ngrx", "migration", "SignalStore", "signals"]
+    example: |
+      export const UsersStore = signalStore(
+        withState({ users: [] as User[], loading: false }),
+        withComputed(({ users }) => ({
+          activeUsers: computed(() => users().filter(u => u.isActive)),
+        })),
+        withMethods((store, api = inject(UsersApi)) => ({
+          async loadUsers() {
+            patchState(store, { loading: true });
+            const users = await firstValueFrom(api.getAll());
+            patchState(store, { users, loading: false });
+          },
+        })),
+      );
+
+  # ============================================================================
+  # NGRX SIGNALS (NGRX046-NGRX050) - SignalStore best practices
+  # ============================================================================
+
+  - id: NGRX046
+    title: "Use withState for initial signal store state"
+    description: "Define SignalStore state with withState(). Each property becomes a Signal that can be read in templates without async pipe."
+    category: "ngrx_signals"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-signals"]
+    tags: ["ngrx", "signals", "withState", "SignalStore"]
+    example: |
+      export const TodosStore = signalStore(
+        withState<TodosState>({ todos: [], filter: 'all', loading: false }),
+      );
+
+  - id: NGRX047
+    title: "Use withComputed for derived state in SignalStore"
+    description: "Use withComputed to create derived signals. These are memoized computed signals that automatically update when dependencies change."
+    category: "ngrx_signals"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-signals"]
+    tags: ["ngrx", "signals", "withComputed", "computed"]
+    example: |
+      export const TodosStore = signalStore(
+        withState<TodosState>({ todos: [], filter: 'all' }),
+        withComputed(({ todos, filter }) => ({
+          filteredTodos: computed(() =>
+            filter() === 'all' ? todos() : todos().filter(t => t.status === filter())
+          ),
+          todosCount: computed(() => todos().length),
+        })),
+      );
+
+  - id: NGRX048
+    title: "Use withMethods for SignalStore operations"
+    description: "Define store methods with withMethods. Use patchState() for state updates and inject() for dependencies. Methods can be sync or async."
+    category: "ngrx_signals"
+    severity: "critical"
+    applicability:
+      frameworks: ["ngrx", "ngrx-signals"]
+    tags: ["ngrx", "signals", "withMethods", "patchState"]
+    example: |
+      withMethods((store, api = inject(TodosApi)) => ({
+        addTodo(text: string) {
+          patchState(store, { todos: [...store.todos(), { text, done: false }] });
+        },
+        async loadTodos() {
+          patchState(store, { loading: true });
+          const todos = await firstValueFrom(api.getAll());
+          patchState(store, { todos, loading: false });
+        },
+      }))
+
+  - id: NGRX049
+    title: "Use withEntities for entity management in SignalStore"
+    description: "Use withEntities from @ngrx/signals/entities for normalized entity management in SignalStore, similar to @ngrx/entity but with Signals."
+    category: "ngrx_signals"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-signals"]
+    tags: ["ngrx", "signals", "withEntities", "entity"]
+    example: |
+      import { withEntities, setAllEntities, addEntity, removeEntity } from '@ngrx/signals/entities';
+      export const TodosStore = signalStore(
+        withEntities<Todo>(),
+        withMethods((store) => ({
+          setTodos(todos: Todo[]) { patchState(store, setAllEntities(todos)); },
+          addTodo(todo: Todo) { patchState(store, addEntity(todo)); },
+          removeTodo(id: string) { patchState(store, removeEntity(id)); },
+        })),
+      );
+
+  - id: NGRX050
+    title: "Create reusable SignalStore features"
+    description: "Use signalStoreFeature to create reusable, composable store features. Features encapsulate state, computed, and methods that can be mixed into any SignalStore."
+    category: "ngrx_signals"
+    severity: "important"
+    applicability:
+      frameworks: ["ngrx", "ngrx-signals"]
+    tags: ["ngrx", "signals", "signalStoreFeature", "reusable"]
+    example: |
+      export function withLoading() {
+        return signalStoreFeature(
+          withState({ loading: false }),
+          withMethods((store) => ({
+            setLoading(loading: boolean) { patchState(store, { loading }); },
+          })),
+        );
+      }
+
+      // Usage
+      export const TodosStore = signalStore(
+        withLoading(),
+        withState({ todos: [] as Todo[] }),
+        withMethods((store) => ({ ... })),
+      );

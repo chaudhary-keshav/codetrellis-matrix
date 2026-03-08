@@ -1,0 +1,1064 @@
+# Astro Framework Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.60 - Astro Framework Support
+# Practice IDs: ASTRO001-ASTRO050
+# Coverage: Components, Islands, Routing, Content Collections, SSR,
+#           Performance, TypeScript, Testing, Security, Patterns
+# Versions: Astro v1.x, v2.x, v3.x, v4.x, v5.x (by Astro Technology Company)
+# Library: https://docs.astro.build
+
+practices:
+  # ============================================================================
+  # ASTRO COMPONENTS (ASTRO001-ASTRO010) - Component authoring best practices
+  # ============================================================================
+
+  - id: ASTRO001
+    title: "Use Astro.props with TypeScript interface for type-safe props"
+    description: "Define a Props interface in frontmatter to enable type checking for component props. Destructure Astro.props for cleaner template usage. This catches prop type errors at build time."
+    category: "astro_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "props", "typescript", "components"]
+    example: |
+      ---
+      interface Props {
+        title: string;
+        description?: string;
+        variant: 'primary' | 'secondary';
+      }
+      const { title, description, variant = 'primary' } = Astro.props;
+      ---
+      <h1 class:list={['heading', variant]}>{title}</h1>
+      {description && <p>{description}</p>}
+
+  - id: ASTRO002
+    title: "Use named slots for flexible component composition"
+    description: "Astro supports named slots for projecting content into specific regions of a component. Use <slot name='x' /> in the component and slot='x' attribute on the caller. Provide fallback content inside <slot> for defaults."
+    category: "astro_components"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "slots", "composition", "components"]
+    example: |
+      <!-- Layout.astro -->
+      ---
+      interface Props { title: string; }
+      const { title } = Astro.props;
+      ---
+      <html>
+        <head><slot name="head" /></head>
+        <body>
+          <header><slot name="header"><h1>{title}</h1></slot></header>
+          <main><slot /></main>
+          <footer><slot name="footer"><p>Default footer</p></slot></footer>
+        </body>
+      </html>
+
+  - id: ASTRO003
+    title: "Scope styles by default, use is:global sparingly"
+    description: "Astro scopes <style> tags to the component by default, preventing style leaks. Only use is:global when you intentionally need global styles (e.g., typography, CSS resets). Prefer scoped styles for component-specific styling."
+    category: "astro_components"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "styles", "scoping", "css"]
+    example: |
+      <!-- ✅ Scoped by default -->
+      <style>
+        .card { border: 1px solid #ccc; }
+      </style>
+
+      <!-- ✅ Global only when needed -->
+      <style is:global>
+        :root { --color-primary: #4f46e5; }
+      </style>
+
+  - id: ASTRO004
+    title: "Use class:list for conditional CSS classes"
+    description: "Astro's class:list directive provides a clean way to conditionally apply CSS classes, similar to clsx/classnames. It accepts strings, arrays, objects, and Set values."
+    category: "astro_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "class:list", "css", "directives"]
+    example: |
+      ---
+      const { isActive, size = 'md' } = Astro.props;
+      ---
+      <div class:list={[
+        'card',
+        { active: isActive },
+        `size-${size}`,
+      ]}>
+        <slot />
+      </div>
+
+  - id: ASTRO005
+    title: "Use define:vars to pass frontmatter variables to styles and scripts"
+    description: "The define:vars directive passes frontmatter variables as CSS custom properties or script variables. This bridges the server-side frontmatter and client-side styles/scripts without inline styles."
+    category: "astro_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "define:vars", "css-vars", "directives"]
+    example: |
+      ---
+      const primaryColor = '#4f46e5';
+      const fontSize = '1.25rem';
+      ---
+      <style define:vars={{ primaryColor, fontSize }}>
+        .heading {
+          color: var(--primaryColor);
+          font-size: var(--fontSize);
+        }
+      </style>
+      <h1 class="heading"><slot /></h1>
+
+  - id: ASTRO006
+    title: "Prefer set:html only for trusted content to avoid XSS"
+    description: "set:html renders raw HTML without escaping. Only use it with trusted content (e.g., from your own CMS or markdown pipeline). Never use set:html with user-supplied input. Use set:text for user content."
+    category: "astro_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "set:html", "security", "xss"]
+    example: |
+      ---
+      // ✅ Trusted content from markdown pipeline
+      const { compiledContent } = await entry.render();
+      ---
+      <article set:html={compiledContent} />
+
+      <!-- ✅ User content - use set:text (auto-escaped) -->
+      <p set:text={userComment} />
+
+  - id: ASTRO007
+    title: "Use Fragment component to avoid wrapper elements"
+    description: "Use Astro's Fragment component (or <Fragment>) when you need to return multiple elements without adding an extra wrapper div. This keeps the DOM clean and avoids unnecessary nesting."
+    category: "astro_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "Fragment", "dom", "components"]
+    example: |
+      ---
+      import { Fragment } from 'astro/components';
+      const items = ['Home', 'About', 'Contact'];
+      ---
+      <nav>
+        {items.map((item, i) => (
+          <Fragment>
+            {i > 0 && <span class="divider">|</span>}
+            <a href={`/${item.toLowerCase()}`}>{item}</a>
+          </Fragment>
+        ))}
+      </nav>
+
+  - id: ASTRO008
+    title: "Extract reusable UI into small, focused .astro components"
+    description: "Break large pages into smaller .astro components for reusability and maintainability. Each component should have a single responsibility. Import and compose them in pages and layouts."
+    category: "astro_components"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "components", "composition", "architecture"]
+    example: |
+      ---
+      // src/pages/blog/[slug].astro
+      import BaseLayout from '@layouts/BaseLayout.astro';
+      import PostHeader from '@components/PostHeader.astro';
+      import PostContent from '@components/PostContent.astro';
+      import RelatedPosts from '@components/RelatedPosts.astro';
+      const { entry } = Astro.props;
+      ---
+      <BaseLayout title={entry.data.title}>
+        <PostHeader entry={entry} />
+        <PostContent entry={entry} />
+        <RelatedPosts tags={entry.data.tags} />
+      </BaseLayout>
+
+  - id: ASTRO009
+    title: "Use ViewTransitions for smooth page navigation"
+    description: "Import ViewTransitions from astro:transitions and include it in your <head> for smooth client-side navigation. Use transition:name for persistent elements and transition:animate for custom animations."
+    category: "astro_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v3"
+    tags: ["astro", "ViewTransitions", "navigation", "animations"]
+    example: |
+      ---
+      // BaseLayout.astro
+      import { ViewTransitions } from 'astro:transitions';
+      ---
+      <html>
+        <head>
+          <ViewTransitions />
+        </head>
+        <body>
+          <nav transition:persist>...</nav>
+          <main transition:animate="slide">
+            <slot />
+          </main>
+        </body>
+      </html>
+
+  - id: ASTRO010
+    title: "Avoid complex JavaScript expressions in templates"
+    description: "Keep template expressions simple. Move complex logic to frontmatter variables or helper functions. This improves readability and makes components easier to test and maintain."
+    category: "astro_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "templates", "readability", "maintainability"]
+    example: |
+      ---
+      // ✅ Complex logic in frontmatter
+      const sortedPosts = posts
+        .filter(p => !p.data.draft)
+        .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+        .slice(0, 5);
+      ---
+      {sortedPosts.map(post => <PostCard post={post} />)}
+
+  # ============================================================================
+  # ASTRO ISLANDS (ASTRO011-ASTRO018) - Partial hydration best practices
+  # ============================================================================
+
+  - id: ASTRO011
+    title: "Use client:load only for immediately interactive components"
+    description: "client:load hydrates the component immediately on page load. Only use it for components that must be interactive right away (e.g., auth forms, navigation dropdowns). For most components, prefer client:idle or client:visible."
+    category: "astro_islands"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "islands", "client:load", "hydration"]
+    example: |
+      <!-- ✅ Immediately needed: auth dropdown -->
+      <AuthMenu client:load />
+
+      <!-- ❌ Not immediately needed: use client:idle or client:visible -->
+      <Newsletter client:load />
+
+  - id: ASTRO012
+    title: "Use client:visible for below-the-fold interactive components"
+    description: "client:visible defers hydration until the component enters the viewport via IntersectionObserver. Use it for components below the fold to improve initial page load performance."
+    category: "astro_islands"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "islands", "client:visible", "performance"]
+    example: |
+      <!-- ✅ Below fold: deferred until visible -->
+      <CommentSection client:visible />
+      <ImageGallery client:visible />
+      <RelatedProducts client:visible />
+
+  - id: ASTRO013
+    title: "Use client:idle for non-critical interactive components"
+    description: "client:idle hydrates when the browser is idle (requestIdleCallback). Use it for components that need interactivity but aren't critical for the first user interaction (e.g., analytics widgets, chat)."
+    category: "astro_islands"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "islands", "client:idle", "performance"]
+    example: |
+      <!-- ✅ Not critical for first interaction -->
+      <AnalyticsWidget client:idle />
+      <ChatBot client:idle />
+      <ShareButtons client:idle />
+
+  - id: ASTRO014
+    title: "Use client:media for responsive interactive components"
+    description: "client:media hydrates only when a CSS media query matches. Use it for components that are only interactive on certain screen sizes (e.g., mobile hamburger menu, desktop sidebar)."
+    category: "astro_islands"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "islands", "client:media", "responsive"]
+    example: |
+      <!-- ✅ Only interactive on mobile -->
+      <MobileNav client:media="(max-width: 768px)" />
+
+      <!-- ✅ Only interactive on desktop -->
+      <DesktopSidebar client:media="(min-width: 1024px)" />
+
+  - id: ASTRO015
+    title: "Use client:only for components that cannot render on the server"
+    description: "client:only skips server rendering entirely and only renders on the client. Use it for components that depend on browser APIs (window, document, localStorage). You must specify the framework: client:only='react'."
+    category: "astro_islands"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "islands", "client:only", "browser-api"]
+    example: |
+      <!-- ✅ Depends on browser APIs -->
+      <MapComponent client:only="react" />
+      <CanvasEditor client:only="svelte" />
+
+      <!-- ❌ Don't use client:only for SSR-compatible components -->
+
+  - id: ASTRO016
+    title: "Minimize the number and size of island components"
+    description: "Each island adds JavaScript that must be loaded and hydrated. Keep islands small and focused. Move static UI to Astro components and only make interactive parts into islands."
+    category: "astro_islands"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "islands", "performance", "architecture"]
+    example: |
+      <!-- ✅ Only the interactive part is an island -->
+      <article>
+        <h1>{post.title}</h1>
+        <p>{post.content}</p>
+        <!-- Only the like button needs JS -->
+        <LikeButton client:visible postId={post.id} />
+      </article>
+
+      <!-- ❌ Entire page as an island -->
+      <BlogPost client:load post={post} />
+
+  - id: ASTRO017
+    title: "Pass serializable props to island components"
+    description: "Props passed to island components must be serializable (JSON-compatible). Functions, Dates, Maps, Sets, and class instances cannot be passed as props. Transform data in frontmatter before passing."
+    category: "astro_islands"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "islands", "props", "serialization"]
+    example: |
+      ---
+      // ✅ Serialize before passing
+      const items = await getItems();
+      const serialized = items.map(i => ({
+        id: i.id,
+        name: i.name,
+        date: i.date.toISOString(),
+      }));
+      ---
+      <ItemList client:visible items={serialized} />
+
+  - id: ASTRO018
+    title: "Use server:defer for Server Islands to defer expensive server rendering"
+    description: "Server Islands (server:defer) defer expensive server-rendered components. The page shell loads immediately while deferred content streams in. Available in Astro v5+."
+    category: "astro_islands"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v5"
+    tags: ["astro", "server-islands", "server:defer", "streaming"]
+    example: |
+      <!-- ✅ Expensive personalized content deferred -->
+      <UserDashboard server:defer>
+        <p slot="fallback">Loading dashboard...</p>
+      </UserDashboard>
+
+  # ============================================================================
+  # ASTRO ROUTING (ASTRO019-ASTRO026) - Routing and endpoints best practices
+  # ============================================================================
+
+  - id: ASTRO019
+    title: "Use file-based routing with src/pages/ for all routes"
+    description: "Astro uses file-based routing. Every .astro or .md/.mdx file in src/pages/ becomes a route. Organize pages logically with subdirectories. Use index.astro for directory root routes."
+    category: "astro_routing"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "routing", "pages", "file-based"]
+    example: |
+      src/pages/
+        index.astro        → /
+        about.astro        → /about
+        blog/
+          index.astro      → /blog
+          [slug].astro     → /blog/:slug
+          [...page].astro  → /blog/* (catch-all)
+
+  - id: ASTRO020
+    title: "Use getStaticPaths for dynamic routes in static mode"
+    description: "In static (SSG) mode, every dynamic route must export getStaticPaths() to tell Astro which pages to generate. Return an array of params objects. Each params object must match the route parameter names."
+    category: "astro_routing"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "getStaticPaths", "dynamic-routes", "ssg"]
+    example: |
+      ---
+      // src/pages/blog/[slug].astro
+      export async function getStaticPaths() {
+        const posts = await getCollection('blog');
+        return posts.map(post => ({
+          params: { slug: post.slug },
+          props: { post },
+        }));
+      }
+      const { post } = Astro.props;
+      ---
+      <h1>{post.data.title}</h1>
+
+  - id: ASTRO021
+    title: "Use paginate() for paginated dynamic routes"
+    description: "Astro's built-in paginate() function in getStaticPaths generates paginated routes automatically. Use [...page].astro pattern with paginate to create /blog/1, /blog/2, etc."
+    category: "astro_routing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "pagination", "getStaticPaths", "routing"]
+    example: |
+      ---
+      // src/pages/blog/[...page].astro
+      export async function getStaticPaths({ paginate }) {
+        const posts = await getCollection('blog');
+        return paginate(posts, { pageSize: 10 });
+      }
+      const { page } = Astro.props;
+      ---
+      {page.data.map(post => <PostCard post={post} />)}
+      <Pagination page={page} />
+
+  - id: ASTRO022
+    title: "Use API endpoints (.ts/.js in src/pages/) for data APIs"
+    description: "Export named HTTP method functions (GET, POST, PUT, DELETE) from .ts/.js files in src/pages/ to create API endpoints. Return a Response object with proper status codes and headers."
+    category: "astro_routing"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "api", "endpoints", "rest"]
+    example: |
+      // src/pages/api/posts.ts
+      import type { APIRoute } from 'astro';
+
+      export const GET: APIRoute = async ({ request }) => {
+        const posts = await db.getPosts();
+        return new Response(JSON.stringify(posts), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      };
+
+      export const POST: APIRoute = async ({ request }) => {
+        const body = await request.json();
+        const post = await db.createPost(body);
+        return new Response(JSON.stringify(post), { status: 201 });
+      };
+
+  - id: ASTRO023
+    title: "Use middleware for cross-cutting concerns"
+    description: "Define middleware in src/middleware.ts to handle auth, logging, localization, or header modification. Use the sequence() helper to compose multiple middleware functions."
+    category: "astro_routing"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "middleware", "auth", "cross-cutting"]
+    example: |
+      // src/middleware.ts
+      import { defineMiddleware, sequence } from 'astro:middleware';
+
+      const auth = defineMiddleware(async (context, next) => {
+        const token = context.cookies.get('token')?.value;
+        if (!token && context.url.pathname.startsWith('/dashboard')) {
+          return context.redirect('/login');
+        }
+        context.locals.user = await verifyToken(token);
+        return next();
+      });
+
+      const logger = defineMiddleware(async (context, next) => {
+        console.log(`${context.request.method} ${context.url.pathname}`);
+        return next();
+      });
+
+      export const onRequest = sequence(auth, logger);
+
+  - id: ASTRO024
+    title: "Set prerender export for hybrid rendering control"
+    description: "In hybrid or server mode, use 'export const prerender = true/false' to control whether individual pages are statically generated or server-rendered. This gives per-route rendering control."
+    category: "astro_routing"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v2"
+    tags: ["astro", "prerender", "ssr", "hybrid"]
+    example: |
+      ---
+      // Static page in server mode
+      export const prerender = true;
+      ---
+      <h1>About Us</h1>
+
+      ---
+      // Server-rendered page in hybrid mode
+      export const prerender = false;
+      const user = await getUser(Astro.cookies.get('session'));
+      ---
+      <h1>Dashboard for {user.name}</h1>
+
+  - id: ASTRO025
+    title: "Use Astro.redirect for server-side redirects"
+    description: "Use Astro.redirect() in frontmatter or endpoints for server-side redirects. Set the status code (301 permanent, 302 temporary). Only works in SSR mode or server-rendered pages."
+    category: "astro_routing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "redirect", "routing", "ssr"]
+    example: |
+      ---
+      // Redirect based on auth
+      const session = Astro.cookies.get('session');
+      if (!session) {
+        return Astro.redirect('/login', 302);
+      }
+      ---
+
+  - id: ASTRO026
+    title: "Validate dynamic route params with Astro.params"
+    description: "Always validate Astro.params values in dynamic routes. Params are strings that may not match expected formats. Return 404 for invalid params to prevent errors."
+    category: "astro_routing"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "params", "validation", "dynamic-routes"]
+    example: |
+      ---
+      const { id } = Astro.params;
+      if (!id || isNaN(Number(id))) {
+        return new Response(null, { status: 404 });
+      }
+      const post = await getPost(Number(id));
+      if (!post) {
+        return new Response(null, { status: 404 });
+      }
+      ---
+      <h1>{post.title}</h1>
+
+  # ============================================================================
+  # ASTRO CONTENT (ASTRO027-ASTRO034) - Content Collections best practices
+  # ============================================================================
+
+  - id: ASTRO027
+    title: "Use Content Collections with Zod schemas for type-safe content"
+    description: "Define content collections in src/content/config.ts with Zod schemas. This provides type-safe frontmatter, build-time validation, and auto-generated TypeScript types."
+    category: "astro_content"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v2"
+    tags: ["astro", "content-collections", "zod", "type-safety"]
+    example: |
+      // src/content/config.ts
+      import { defineCollection, z } from 'astro:content';
+
+      const blog = defineCollection({
+        type: 'content',
+        schema: z.object({
+          title: z.string(),
+          description: z.string(),
+          pubDate: z.coerce.date(),
+          tags: z.array(z.string()).default([]),
+          draft: z.boolean().default(false),
+          image: z.string().optional(),
+        }),
+      });
+
+      export const collections = { blog };
+
+  - id: ASTRO028
+    title: "Use getCollection and getEntry for type-safe content queries"
+    description: "Import getCollection and getEntry from astro:content to query content collections. These functions return fully typed results based on your Zod schemas. Filter with the optional filter function parameter."
+    category: "astro_content"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v2"
+    tags: ["astro", "getCollection", "getEntry", "content-api"]
+    example: |
+      ---
+      import { getCollection, getEntry } from 'astro:content';
+
+      // Get all published blog posts
+      const posts = await getCollection('blog', ({ data }) => !data.draft);
+
+      // Get a single entry by slug
+      const featured = await getEntry('blog', 'my-first-post');
+      ---
+
+  - id: ASTRO029
+    title: "Use 'data' collections for structured data (authors, settings)"
+    description: "Use type: 'data' for collections of structured data (JSON/YAML) like authors, navigation, or site settings. Data collections use .json or .yaml files and support Zod schemas."
+    category: "astro_content"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v2"
+    tags: ["astro", "content-collections", "data", "json"]
+    example: |
+      // src/content/config.ts
+      const authors = defineCollection({
+        type: 'data',
+        schema: z.object({
+          name: z.string(),
+          bio: z.string(),
+          avatar: z.string(),
+          social: z.object({
+            twitter: z.string().optional(),
+            github: z.string().optional(),
+          }),
+        }),
+      });
+
+  - id: ASTRO030
+    title: "Use reference() for cross-collection relationships"
+    description: "Use the reference() function in Zod schemas to create relationships between content collections. This enables type-safe references and automatic validation of referenced entries."
+    category: "astro_content"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v2"
+    tags: ["astro", "content-collections", "references", "relationships"]
+    example: |
+      import { defineCollection, reference, z } from 'astro:content';
+
+      const blog = defineCollection({
+        type: 'content',
+        schema: z.object({
+          title: z.string(),
+          author: reference('authors'),
+          relatedPosts: z.array(reference('blog')).optional(),
+        }),
+      });
+
+  - id: ASTRO031
+    title: "Render content entries with entry.render() for compiled HTML"
+    description: "Use the render() method on content entries to get the compiled HTML Content component. This handles markdown/MDX rendering automatically, including code highlighting and component rendering."
+    category: "astro_content"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v2"
+    tags: ["astro", "content-collections", "render", "markdown"]
+    example: |
+      ---
+      import { getEntry } from 'astro:content';
+      const entry = await getEntry('blog', Astro.params.slug);
+      const { Content, headings } = await entry.render();
+      ---
+      <article>
+        <h1>{entry.data.title}</h1>
+        <TableOfContents headings={headings} />
+        <Content />
+      </article>
+
+  - id: ASTRO032
+    title: "Use image() helper in content collection schemas for optimized images"
+    description: "Use the image() schema helper from astro:content in your collection schemas to enable automatic image optimization. Pair with the <Image /> component from astro:assets for responsive images."
+    category: "astro_content"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v3"
+    tags: ["astro", "images", "content-collections", "optimization"]
+    example: |
+      // src/content/config.ts
+      import { defineCollection, z } from 'astro:content';
+      const blog = defineCollection({
+        schema: ({ image }) => z.object({
+          title: z.string(),
+          cover: image(),
+          thumbnail: image().optional(),
+        }),
+      });
+
+  - id: ASTRO033
+    title: "Organize content with subdirectories in collection folders"
+    description: "Use subdirectories within content collection folders to organize content logically. The directory structure is reflected in entry IDs but doesn't affect routing. Use getCollection filter for category-based queries."
+    category: "astro_content"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "content-collections", "organization", "architecture"]
+    example: |
+      src/content/blog/
+        getting-started/
+          intro.md
+          setup.md
+        advanced/
+          optimization.md
+          deployment.md
+
+  - id: ASTRO034
+    title: "Validate content at build time using schema constraints"
+    description: "Leverage Zod schema constraints (min, max, regex, url, email) for build-time validation. Invalid content will fail the build, catching errors before deployment."
+    category: "astro_content"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v2"
+    tags: ["astro", "content-collections", "validation", "zod"]
+    example: |
+      const blog = defineCollection({
+        schema: z.object({
+          title: z.string().min(5).max(100),
+          slug: z.string().regex(/^[a-z0-9-]+$/),
+          pubDate: z.coerce.date(),
+          tags: z.array(z.string()).min(1),
+          rating: z.number().min(1).max(5).optional(),
+        }),
+      });
+
+  # ============================================================================
+  # ASTRO PERFORMANCE (ASTRO035-ASTRO040) - Performance optimization
+  # ============================================================================
+
+  - id: ASTRO035
+    title: "Ship zero JS by default, add only what's needed"
+    description: "Astro ships zero JavaScript by default. Only add client:* directives to components that genuinely need interactivity. Audit your islands periodically to remove unnecessary hydration."
+    category: "astro_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "performance", "zero-js", "optimization"]
+    example: |
+      <!-- ✅ Static: no JS shipped -->
+      <Header />
+      <Footer />
+      <PostCard post={post} />
+
+      <!-- Only interactive parts get JS -->
+      <SearchDialog client:idle />
+
+  - id: ASTRO036
+    title: "Use Image and Picture components from astro:assets for optimized images"
+    description: "Import Image and Picture from astro:assets for automatic image optimization. Images are resized, converted to modern formats (WebP/AVIF), and given proper dimensions to prevent layout shift."
+    category: "astro_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v3"
+    tags: ["astro", "images", "astro:assets", "optimization"]
+    example: |
+      ---
+      import { Image } from 'astro:assets';
+      import heroImage from '@assets/hero.png';
+      ---
+      <Image
+        src={heroImage}
+        alt="Hero image"
+        width={800}
+        height={400}
+        format="webp"
+        quality={80}
+      />
+
+  - id: ASTRO037
+    title: "Enable prefetch for faster navigation"
+    description: "Enable Astro's built-in prefetch to preload linked pages on hover or viewport entry. Configure prefetch strategy in astro.config to balance between speed and bandwidth usage."
+    category: "astro_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v4"
+    tags: ["astro", "prefetch", "navigation", "performance"]
+    example: |
+      // astro.config.mjs
+      export default defineConfig({
+        prefetch: {
+          prefetchAll: false,
+          defaultStrategy: 'hover',
+        },
+      });
+
+      <!-- Per-link control -->
+      <a href="/about" data-astro-prefetch="viewport">About</a>
+      <a href="/heavy-page" data-astro-prefetch="false">Skip</a>
+
+  - id: ASTRO038
+    title: "Lazy load below-the-fold images and heavy content"
+    description: "Use loading='lazy' for images below the fold. Combine with client:visible for interactive components. Keep the critical rendering path minimal for fast LCP."
+    category: "astro_performance"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "lazy-loading", "images", "performance"]
+    example: |
+      <!-- Above fold: eager load -->
+      <Image src={hero} alt="Hero" loading="eager" />
+
+      <!-- Below fold: lazy load -->
+      <Image src={thumbnail} alt="Thumbnail" loading="lazy" />
+
+  - id: ASTRO039
+    title: "Use output: 'static' for fully static sites"
+    description: "Default to output: 'static' for sites that don't need server-side rendering. Static sites are faster, cheaper to host, and more secure. Only switch to 'server' or 'hybrid' when you need SSR features."
+    category: "astro_performance"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "static", "output", "deployment"]
+    example: |
+      // astro.config.mjs - static is the default
+      export default defineConfig({
+        output: 'static', // default, generates all pages at build time
+      });
+
+  - id: ASTRO040
+    title: "Use transition:persist to keep island state across page navigations"
+    description: "Apply transition:persist on island components to preserve their client-side state during View Transitions. This avoids re-mounting and re-fetching data when navigating between pages."
+    category: "astro_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+      min_version: "v3"
+    tags: ["astro", "ViewTransitions", "persist", "state"]
+    example: |
+      <!-- Audio player keeps playing across navigation -->
+      <AudioPlayer client:load transition:persist />
+
+      <!-- Shopping cart persists -->
+      <CartWidget client:load transition:persist />
+
+  # ============================================================================
+  # ASTRO TYPESCRIPT (ASTRO041-ASTRO043) - TypeScript integration
+  # ============================================================================
+
+  - id: ASTRO041
+    title: "Use TypeScript in frontmatter for type safety"
+    description: "Astro supports TypeScript in frontmatter by default. Define Props interfaces, use type imports, and leverage type inference for safer component development."
+    category: "astro_typescript"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "typescript", "type-safety", "frontmatter"]
+    example: |
+      ---
+      import type { CollectionEntry } from 'astro:content';
+
+      interface Props {
+        post: CollectionEntry<'blog'>;
+        showAuthor?: boolean;
+      }
+
+      const { post, showAuthor = true } = Astro.props;
+      const { title, pubDate, author } = post.data;
+      ---
+
+  - id: ASTRO042
+    title: "Use Astro's built-in types for API routes and middleware"
+    description: "Import APIRoute, APIContext, MiddlewareHandler, and other built-in types from 'astro' for type-safe API endpoints and middleware."
+    category: "astro_typescript"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "typescript", "api-types", "middleware"]
+    example: |
+      import type { APIRoute } from 'astro';
+
+      export const GET: APIRoute = async ({ params, request, cookies }) => {
+        const id = params.id;
+        return new Response(JSON.stringify({ id }));
+      };
+
+  - id: ASTRO043
+    title: "Configure path aliases in tsconfig.json for clean imports"
+    description: "Set up path aliases in tsconfig.json for cleaner imports across your Astro project. Use @components, @layouts, @utils, @assets prefixes to avoid deep relative imports."
+    category: "astro_typescript"
+    severity: "recommended"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "typescript", "imports", "path-aliases"]
+    example: |
+      // tsconfig.json
+      {
+        "compilerOptions": {
+          "baseUrl": ".",
+          "paths": {
+            "@components/*": ["src/components/*"],
+            "@layouts/*": ["src/layouts/*"],
+            "@utils/*": ["src/utils/*"],
+            "@assets/*": ["src/assets/*"],
+            "@content/*": ["src/content/*"]
+          }
+        }
+      }
+
+  # ============================================================================
+  # ASTRO TESTING (ASTRO044-ASTRO045) - Testing strategies
+  # ============================================================================
+
+  - id: ASTRO044
+    title: "Test content collection schemas independently"
+    description: "Test your Zod schemas independently from Astro to validate content structure. Create unit tests that parse sample frontmatter against your schemas to catch validation errors early."
+    category: "astro_testing"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "testing", "content-collections", "zod"]
+    example: |
+      // tests/schemas.test.ts
+      import { blogSchema } from '../src/content/config';
+
+      test('valid blog post passes schema', () => {
+        const result = blogSchema.safeParse({
+          title: 'Test Post',
+          pubDate: '2024-01-01',
+          tags: ['test'],
+        });
+        expect(result.success).toBe(true);
+      });
+
+      test('missing title fails schema', () => {
+        const result = blogSchema.safeParse({ pubDate: '2024-01-01' });
+        expect(result.success).toBe(false);
+      });
+
+  - id: ASTRO045
+    title: "Use @astrojs/check for type checking in CI"
+    description: "Install @astrojs/check and run 'astro check' in CI to validate TypeScript types, component props, and content collection schemas. This catches type errors before deployment."
+    category: "astro_testing"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "testing", "type-checking", "ci"]
+    example: |
+      # package.json
+      {
+        "scripts": {
+          "check": "astro check",
+          "build": "astro check && astro build"
+        }
+      }
+
+      # CI workflow
+      - run: npm run check
+      - run: npm run build
+
+  # ============================================================================
+  # ASTRO SECURITY (ASTRO046-ASTRO047) - Security best practices
+  # ============================================================================
+
+  - id: ASTRO046
+    title: "Sanitize user input in SSR pages and API endpoints"
+    description: "In SSR mode, always sanitize and validate user input from request params, query strings, cookies, and form data. Never trust client input. Use Zod or similar for validation."
+    category: "astro_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "security", "input-validation", "ssr"]
+    example: |
+      ---
+      import { z } from 'zod';
+
+      const searchSchema = z.object({
+        q: z.string().min(1).max(200).trim(),
+        page: z.coerce.number().int().positive().default(1),
+      });
+
+      const url = new URL(Astro.request.url);
+      const result = searchSchema.safeParse(Object.fromEntries(url.searchParams));
+      if (!result.success) {
+        return new Response('Invalid search params', { status: 400 });
+      }
+      const { q, page } = result.data;
+      ---
+
+  - id: ASTRO047
+    title: "Set security headers in middleware or adapter config"
+    description: "Configure security headers (CSP, X-Frame-Options, HSTS, etc.) via middleware for SSR or via hosting config for static sites. Protect against XSS, clickjacking, and other common attacks."
+    category: "astro_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "security", "headers", "csp"]
+    example: |
+      // src/middleware.ts
+      import { defineMiddleware } from 'astro:middleware';
+
+      export const onRequest = defineMiddleware(async (context, next) => {
+        const response = await next();
+        response.headers.set('X-Content-Type-Options', 'nosniff');
+        response.headers.set('X-Frame-Options', 'DENY');
+        response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        return response;
+      });
+
+  # ============================================================================
+  # ASTRO SSR (ASTRO048) - Server-side rendering patterns
+  # ============================================================================
+
+  - id: ASTRO048
+    title: "Choose the right output mode for your use case"
+    description: "Astro offers three output modes: 'static' (default, all pages pre-built), 'hybrid' (static by default, opt-in SSR per page), and 'server' (SSR by default, opt-in prerender per page). Choose based on your content dynamism needs."
+    category: "astro_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "ssr", "output-mode", "hybrid"]
+    example: |
+      // Static marketing site
+      export default defineConfig({ output: 'static' });
+
+      // Mostly static with some dynamic pages (dashboard, auth)
+      export default defineConfig({
+        output: 'hybrid',
+        adapter: node({ mode: 'standalone' }),
+      });
+
+      // Fully dynamic app
+      export default defineConfig({
+        output: 'server',
+        adapter: vercel(),
+      });
+
+  # ============================================================================
+  # ASTRO PATTERNS (ASTRO049-ASTRO050) - Architecture patterns
+  # ============================================================================
+
+  - id: ASTRO049
+    title: "Use layouts for consistent page structure"
+    description: "Create layout components in src/layouts/ for consistent page structure. Pass title and other metadata as props. Nest layouts for section-specific structure (e.g., BlogLayout extends BaseLayout)."
+    category: "astro_patterns"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "layouts", "architecture", "composition"]
+    example: |
+      ---
+      // src/layouts/BaseLayout.astro
+      interface Props {
+        title: string;
+        description?: string;
+      }
+      const { title, description } = Astro.props;
+      ---
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <title>{title}</title>
+          {description && <meta name="description" content={description} />}
+          <ViewTransitions />
+        </head>
+        <body>
+          <slot />
+        </body>
+      </html>
+
+  - id: ASTRO050
+    title: "Colocate related files using the project structure convention"
+    description: "Follow Astro's project structure conventions: src/pages/ for routes, src/components/ for components, src/layouts/ for layouts, src/content/ for collections, src/assets/ for optimized assets, public/ for static files."
+    category: "astro_patterns"
+    severity: "important"
+    applicability:
+      frameworks: ["astro"]
+    tags: ["astro", "project-structure", "conventions", "architecture"]
+    example: |
+      src/
+        assets/         # Optimized by Astro (images, fonts)
+        components/     # Reusable .astro components
+        content/        # Content collections (blog/, authors/)
+          config.ts     # Collection schemas
+        layouts/        # Page layouts
+        pages/          # File-based routes
+          api/          # API endpoints
+        styles/         # Global styles
+        utils/          # Helper functions
+      public/           # Static files (robots.txt, favicon.ico)
+      astro.config.mjs  # Astro configuration

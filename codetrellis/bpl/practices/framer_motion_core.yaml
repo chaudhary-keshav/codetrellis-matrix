@@ -1,0 +1,668 @@
+# ─── Framer Motion Animation Best Practices (v4.76) ───────────────────────
+# 50 practices covering animation, variants, gestures, layout, scroll,
+# transitions, performance, accessibility, hooks, and ecosystem.
+# Category mapping: FRAMER_ANIMATIONS, FRAMER_VARIANTS, FRAMER_GESTURES,
+# FRAMER_LAYOUT, FRAMER_SCROLL, FRAMER_TRANSITIONS, FRAMER_PERFORMANCE,
+# FRAMER_ACCESSIBILITY, FRAMER_HOOKS, FRAMER_ECOSYSTEM
+# Framework: framer-motion (framer-motion v1-v10, motion v11+)
+
+practices:
+  # ── FRAMER_ANIMATIONS (5 practices) ──────────────────────────────────────
+  - id: FRAMER001
+    title: Use motion components for declarative animations
+    description: >
+      Prefer motion.div, motion.span over imperative DOM manipulation.
+      Motion components provide declarative animate, initial, and exit props
+      that integrate with React rendering lifecycle.
+    category: framer_animations
+    level: beginner
+    frameworks: ["framer-motion"]
+    tags: ["animation", "components", "declarative"]
+    references:
+      - "https://www.framer.com/motion/component/"
+
+  - id: FRAMER002
+    title: Define initial and animate props explicitly
+    description: >
+      Always set initial state with `initial` prop and target state with
+      `animate` prop. This ensures animations run on mount and provides
+      predictable starting states for all animated elements.
+    category: framer_animations
+    level: beginner
+    frameworks: ["framer-motion"]
+    tags: ["animation", "initial", "animate", "mount"]
+    references:
+      - "https://www.framer.com/motion/animation/"
+
+  - id: FRAMER003
+    title: Use AnimatePresence for enter/exit animations
+    description: >
+      Wrap conditionally rendered elements in <AnimatePresence> and define
+      exit props on child motion components. Use `mode="wait"` to finish
+      exit before enter, `mode="popLayout"` for layout-aware transitions.
+    category: framer_animations
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["AnimatePresence", "exit", "enter", "conditional"]
+    references:
+      - "https://www.framer.com/motion/animate-presence/"
+
+  - id: FRAMER004
+    title: Avoid animating layout-triggering properties
+    description: >
+      Prefer animating transform (x, y, scale, rotate) and opacity over
+      width, height, top, left. Transform animations are GPU-accelerated
+      and don't trigger browser reflows.
+    category: framer_animations
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["animation", "performance", "transform", "gpu"]
+    references:
+      - "https://www.framer.com/motion/animation/#performance"
+
+  - id: FRAMER005
+    title: Use keyframe arrays for multi-step animations
+    description: >
+      Pass arrays to animate props for multi-step keyframe animations:
+      `animate={{ x: [0, 100, 0] }}`. This is cleaner than chaining
+      multiple animations and handles timing automatically.
+    category: framer_animations
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["keyframes", "multi-step", "array"]
+    references:
+      - "https://www.framer.com/motion/animation/#keyframes"
+
+  # ── FRAMER_VARIANTS (5 practices) ────────────────────────────────────────
+  - id: FRAMER006
+    title: Extract animation definitions into variants objects
+    description: >
+      Define named variant objects outside components for reusable animation
+      states. Variants keep JSX clean, enable state sharing, and make
+      animations testable and maintainable.
+    category: framer_variants
+    level: beginner
+    frameworks: ["framer-motion"]
+    tags: ["variants", "reusability", "organization"]
+    references:
+      - "https://www.framer.com/motion/animation/#variants"
+
+  - id: FRAMER007
+    title: Use variant propagation for orchestrated child animations
+    description: >
+      Define variants on parent and children with matching state names.
+      Children automatically inherit parent variant changes. Use
+      staggerChildren and delayChildren in transition for orchestration.
+    category: framer_variants
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["variants", "propagation", "orchestration", "stagger"]
+    references:
+      - "https://www.framer.com/motion/animation/#propagation"
+
+  - id: FRAMER008
+    title: Use dynamic variants with custom prop
+    description: >
+      Pass dynamic data to variants using the `custom` prop. Variant functions
+      receive custom as argument: `variants={{ hidden: (i) => ({ opacity: 0, y: i * 10 }) }}`.
+      Enables index-based stagger and data-driven animations.
+    category: framer_variants
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["variants", "dynamic", "custom", "data-driven"]
+    references:
+      - "https://www.framer.com/motion/animation/#dynamic-variants"
+
+  - id: FRAMER009
+    title: Define type-safe variants with TypeScript
+    description: >
+      Type variant objects with Variants type from framer-motion.
+      Define custom variant state names as string unions. This catches
+      typos at compile time and provides IDE autocompletion.
+    category: framer_variants
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["variants", "typescript", "type-safety"]
+    references:
+      - "https://www.framer.com/motion/component/#motionprops"
+
+  - id: FRAMER010
+    title: Keep variant state names semantic and consistent
+    description: >
+      Use descriptive state names like 'hidden'/'visible', 'collapsed'/'expanded',
+      'idle'/'active'. Keep naming consistent across components for
+      easier variant propagation and maintenance.
+    category: framer_variants
+    level: beginner
+    frameworks: ["framer-motion"]
+    tags: ["variants", "naming", "consistency"]
+    references:
+      - "https://www.framer.com/motion/animation/#variants"
+
+  # ── FRAMER_GESTURES (5 practices) ────────────────────────────────────────
+  - id: FRAMER011
+    title: Use whileHover and whileTap for interactive feedback
+    description: >
+      Add whileHover and whileTap props to motion components for instant
+      interactive feedback. These are declarative, handle touch/mouse
+      automatically, and revert when the gesture ends.
+    category: framer_gestures
+    level: beginner
+    frameworks: ["framer-motion"]
+    tags: ["gestures", "hover", "tap", "interaction"]
+    references:
+      - "https://www.framer.com/motion/gestures/"
+
+  - id: FRAMER012
+    title: Constrain drag with dragConstraints and dragElastic
+    description: >
+      Always set dragConstraints (ref or pixel bounds) on draggable elements.
+      Use dragElastic (0-1) to control over-drag behavior. Set dragMomentum
+      to false for precise positioning without inertia.
+    category: framer_gestures
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["drag", "constraints", "elastic", "momentum"]
+    references:
+      - "https://www.framer.com/motion/gestures/#drag"
+
+  - id: FRAMER013
+    title: Use useDragControls for programmatic drag control
+    description: >
+      Use useDragControls() hook when you need to start drag from a
+      different element (drag handle pattern). Call controls.start(event)
+      from the handle's onPointerDown.
+    category: framer_gestures
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["drag", "controls", "handle", "programmatic"]
+    references:
+      - "https://www.framer.com/motion/gestures/#drag-controls"
+
+  - id: FRAMER014
+    title: Combine gesture props for multi-gesture interactions
+    description: >
+      Combine whileHover, whileTap, whileFocus, and whileDrag on the
+      same component for rich interactions. Framer Motion handles gesture
+      priority and state transitions automatically.
+    category: framer_gestures
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["gestures", "multi-gesture", "combined"]
+    references:
+      - "https://www.framer.com/motion/gestures/"
+
+  - id: FRAMER015
+    title: Use whileInView for scroll-triggered animations
+    description: >
+      Use whileInView prop for animations triggered by viewport visibility.
+      Combine with viewport={{ once: true }} for one-time reveal animations
+      and viewport={{ amount: 0.5 }} for threshold control.
+    category: framer_gestures
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["viewport", "scroll", "inView", "reveal"]
+    references:
+      - "https://www.framer.com/motion/gestures/#viewport"
+
+  # ── FRAMER_LAYOUT (5 practices) ──────────────────────────────────────────
+  - id: FRAMER016
+    title: Use layout prop for automatic layout animations
+    description: >
+      Add `layout` prop to motion components that change size or position.
+      Framer Motion automatically animates layout changes with FLIP
+      technique. Use layout="position" for position-only animations.
+    category: framer_layout
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["layout", "FLIP", "automatic", "position"]
+    references:
+      - "https://www.framer.com/motion/layout-animations/"
+
+  - id: FRAMER017
+    title: Use layoutId for shared element transitions
+    description: >
+      Assign matching layoutId strings to elements across different
+      components/views. Framer Motion animates seamlessly between them
+      during route changes or conditional renders.
+    category: framer_layout
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["layout", "shared", "layoutId", "transitions"]
+    references:
+      - "https://www.framer.com/motion/layout-animations/#shared-layout-animations"
+
+  - id: FRAMER018
+    title: Use LayoutGroup to scope layout animations
+    description: >
+      Wrap related layout-animating elements in <LayoutGroup> to prevent
+      layout animations from affecting unrelated parts of the page.
+      This isolates FLIP calculations.
+    category: framer_layout
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["layout", "LayoutGroup", "scope", "isolation"]
+    references:
+      - "https://www.framer.com/motion/layout-group/"
+
+  - id: FRAMER019
+    title: Handle layout animation distortion with layoutScroll
+    description: >
+      When layout-animated elements are inside scrollable containers,
+      use layoutScroll prop on the scrollable parent to correct FLIP
+      measurements. Prevents visual jumping during animations.
+    category: framer_layout
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["layout", "scroll", "distortion", "correction"]
+    references:
+      - "https://www.framer.com/motion/layout-animations/#scroll"
+
+  - id: FRAMER020
+    title: Use Reorder components for drag-to-reorder lists
+    description: >
+      Use <Reorder.Group> and <Reorder.Item> for drag-to-reorder lists.
+      They handle layout animations, drag gestures, and keyboard
+      accessibility automatically.
+    category: framer_layout
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["reorder", "drag", "list", "sortable"]
+    references:
+      - "https://www.framer.com/motion/reorder/"
+
+  # ── FRAMER_SCROLL (5 practices) ──────────────────────────────────────────
+  - id: FRAMER021
+    title: Use useScroll for scroll-linked animations
+    description: >
+      Use useScroll() to get scrollYProgress (0-1) and chain with
+      useTransform for scroll-driven animations. Pass target ref for
+      element scroll progress, or use page-level scroll by default.
+    category: framer_scroll
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["scroll", "useScroll", "progress", "linked"]
+    references:
+      - "https://www.framer.com/motion/scroll-animations/"
+
+  - id: FRAMER022
+    title: Use useInView for intersection-based triggers
+    description: >
+      Use useInView(ref, options) for boolean viewport detection.
+      Preferred over whileInView when you need conditional logic
+      beyond animation props (data fetching, analytics, etc.).
+    category: framer_scroll
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["scroll", "useInView", "intersection", "trigger"]
+    references:
+      - "https://www.framer.com/motion/use-in-view/"
+
+  - id: FRAMER023
+    title: Use offset option for precise scroll trigger points
+    description: >
+      Customize useScroll offset for precise trigger points:
+      `offset: ["start end", "end start"]` defines when scrollYProgress
+      is 0 (element enters) and 1 (element exits).
+    category: framer_scroll
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["scroll", "offset", "trigger", "precision"]
+    references:
+      - "https://www.framer.com/motion/scroll-animations/#scroll-offset"
+
+  - id: FRAMER024
+    title: Create parallax effects with useTransform
+    description: >
+      Chain useScroll().scrollYProgress with useTransform for parallax:
+      `const y = useTransform(scrollYProgress, [0, 1], [0, -200])`.
+      Apply the motion value to style.y for smooth parallax effects.
+    category: framer_scroll
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["parallax", "useTransform", "scroll", "effect"]
+    references:
+      - "https://www.framer.com/motion/use-transform/"
+
+  - id: FRAMER025
+    title: Use useSpring with scroll for smooth spring-based scroll tracking
+    description: >
+      Wrap scroll motion values with useSpring for smooth spring-based
+      tracking: `const smoothY = useSpring(scrollYProgress, { stiffness: 100 })`.
+      Creates buttery smooth scroll-linked animations.
+    category: framer_scroll
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["scroll", "spring", "smooth", "useSpring"]
+    references:
+      - "https://www.framer.com/motion/use-spring/"
+
+  # ── FRAMER_TRANSITIONS (5 practices) ─────────────────────────────────────
+  - id: FRAMER026
+    title: Choose appropriate transition types
+    description: >
+      Use spring for natural movement (default), tween for precise timing,
+      and inertia for velocity-based decay. Springs are preferred for
+      most UI animations as they feel natural without duration.
+    category: framer_transitions
+    level: beginner
+    frameworks: ["framer-motion"]
+    tags: ["transition", "spring", "tween", "inertia"]
+    references:
+      - "https://www.framer.com/motion/transition/"
+
+  - id: FRAMER027
+    title: Configure spring physics for natural feel
+    description: >
+      Tune spring transitions with stiffness (100-1000), damping (10-50),
+      and mass (0.5-3). Lower stiffness = bouncier, higher damping =
+      less overshoot. Use bounce (0-1) for simplified control.
+    category: framer_transitions
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["spring", "physics", "stiffness", "damping"]
+    references:
+      - "https://www.framer.com/motion/transition/#spring"
+
+  - id: FRAMER028
+    title: Use staggerChildren for sequential child animations
+    description: >
+      Set transition.staggerChildren in parent variants to stagger
+      child animations. Use staggerDirection: -1 for reverse stagger.
+      Combine with delayChildren for initial delay before staggering.
+    category: framer_transitions
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["stagger", "sequential", "children", "orchestration"]
+    references:
+      - "https://www.framer.com/motion/transition/#orchestration"
+
+  - id: FRAMER029
+    title: Use per-property transitions for fine control
+    description: >
+      Define different transition types per property in the transition
+      object: `transition: { x: { type: "spring" }, opacity: { duration: 0.3 } }`.
+      This allows mixing spring and tween for different properties.
+    category: framer_transitions
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["transition", "per-property", "mixed", "control"]
+    references:
+      - "https://www.framer.com/motion/transition/"
+
+  - id: FRAMER030
+    title: Use ease presets for tween animations
+    description: >
+      Use ease presets ('easeIn', 'easeOut', 'easeInOut', 'circIn',
+      'circOut', 'anticipate') or Bezier arrays [0.42, 0, 0.58, 1].
+      'anticipate' adds a small wind-up for playful interactions.
+    category: framer_transitions
+    level: beginner
+    frameworks: ["framer-motion"]
+    tags: ["ease", "tween", "timing", "bezier"]
+    references:
+      - "https://www.framer.com/motion/transition/#tween"
+
+  # ── FRAMER_PERFORMANCE (5 practices) ─────────────────────────────────────
+  - id: FRAMER031
+    title: Use LazyMotion for tree-shaking and bundle size
+    description: >
+      Wrap app with <LazyMotion features={domAnimation}> and use `m`
+      instead of `motion` for smaller bundles. Use domMax for full
+      features or domAnimation for basic features only.
+    category: framer_performance
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["performance", "bundle", "LazyMotion", "tree-shaking"]
+    references:
+      - "https://www.framer.com/motion/lazy-motion/"
+
+  - id: FRAMER032
+    title: Use useReducedMotion for accessibility compliance
+    description: >
+      Use useReducedMotion() hook to detect OS-level reduced motion
+      preference. Skip or simplify animations for users who prefer
+      reduced motion. Required for WCAG 2.1 compliance.
+    category: framer_performance
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["performance", "accessibility", "reduced-motion", "wcag"]
+    references:
+      - "https://www.framer.com/motion/use-reduced-motion/"
+
+  - id: FRAMER033
+    title: Avoid animating expensive CSS properties
+    description: >
+      Only animate transform and opacity on the compositor layer.
+      Avoid animating box-shadow, filter, backdrop-filter, clip-path
+      on many elements simultaneously for better frame rates.
+    category: framer_performance
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["performance", "css", "compositor", "paint"]
+    references:
+      - "https://www.framer.com/motion/animation/#performance"
+
+  - id: FRAMER034
+    title: Use useWillChange for compositor hints
+    description: >
+      Apply useWillChange() on motion values that will animate to hint
+      the browser about upcoming changes. This promotes elements to
+      their own compositor layer for smoother animations.
+    category: framer_performance
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["performance", "will-change", "compositor", "gpu"]
+    references:
+      - "https://www.framer.com/motion/use-will-change/"
+
+  - id: FRAMER035
+    title: Batch animations and avoid layout thrashing
+    description: >
+      Group related animation triggers together. Avoid reading DOM
+      measurements between animation frames. Use layout animations
+      instead of manual getBoundingClientRect + animate sequences.
+    category: framer_performance
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["performance", "batch", "layout-thrashing", "optimization"]
+    references:
+      - "https://www.framer.com/motion/layout-animations/"
+
+  # ── FRAMER_ACCESSIBILITY (5 practices) ───────────────────────────────────
+  - id: FRAMER036
+    title: Respect prefers-reduced-motion system setting
+    description: >
+      Always check prefers-reduced-motion media query. Either use
+      useReducedMotion() hook or <MotionConfig reducedMotion="user">
+      for automatic system-level reduced motion handling.
+    category: framer_accessibility
+    level: beginner
+    frameworks: ["framer-motion"]
+    tags: ["accessibility", "reduced-motion", "system-preference"]
+    references:
+      - "https://www.framer.com/motion/motion-config/"
+
+  - id: FRAMER037
+    title: Ensure draggable elements have keyboard alternatives
+    description: >
+      Draggable motion components may not be keyboard accessible.
+      Provide keyboard-based controls (arrow keys, Enter) as alternative
+      interaction methods for drag operations.
+    category: framer_accessibility
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["accessibility", "keyboard", "drag", "alternatives"]
+    references:
+      - "https://www.framer.com/motion/gestures/#drag"
+
+  - id: FRAMER038
+    title: Use appropriate ARIA attributes on animated elements
+    description: >
+      Add aria-hidden to decorative animations, aria-live to dynamically
+      appearing content, and role attributes to interactive animated
+      elements. Screen readers must understand animated content changes.
+    category: framer_accessibility
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["accessibility", "aria", "screen-reader", "semantic"]
+    references:
+      - "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA"
+
+  - id: FRAMER039
+    title: Avoid animation-triggered seizures
+    description: >
+      Limit flashing animations to below 3 flashes per second (WCAG 2.3.1).
+      Avoid large-area flashing, rapid color changes, or strobing effects.
+      Provide controls to pause or stop animations.
+    category: framer_accessibility
+    level: beginner
+    frameworks: ["framer-motion"]
+    tags: ["accessibility", "seizures", "flashing", "wcag"]
+    references:
+      - "https://www.w3.org/WAI/WCAG21/Understanding/three-flashes-or-below-threshold"
+
+  - id: FRAMER040
+    title: Provide animation pause controls
+    description: >
+      For auto-playing or looping animations, provide visible controls
+      to pause, stop, or hide the animation. WCAG 2.2.2 requires this
+      for content that moves for more than 5 seconds.
+    category: framer_accessibility
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["accessibility", "pause", "controls", "wcag"]
+    references:
+      - "https://www.w3.org/WAI/WCAG21/Understanding/pause-stop-hide"
+
+  # ── FRAMER_HOOKS (5 practices) ───────────────────────────────────────────
+  - id: FRAMER041
+    title: Use useMotionValue for high-performance values
+    description: >
+      Use useMotionValue() for values that change rapidly (mouse position,
+      scroll). Motion values update outside React render cycle, providing
+      60fps performance without re-renders.
+    category: framer_hooks
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["hooks", "useMotionValue", "performance", "no-rerender"]
+    references:
+      - "https://www.framer.com/motion/use-motion-value/"
+
+  - id: FRAMER042
+    title: Chain useTransform for derived motion values
+    description: >
+      Use useTransform to derive values from other motion values:
+      `const opacity = useTransform(x, [0, 100], [1, 0])`. Transformations
+      run synchronously without React renders.
+    category: framer_hooks
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["hooks", "useTransform", "derived", "chain"]
+    references:
+      - "https://www.framer.com/motion/use-transform/"
+
+  - id: FRAMER043
+    title: Use useAnimate for imperative animation control
+    description: >
+      Use useAnimate() (v10+) for imperative, timeline-like animation
+      sequences. Returns [scope, animate] where animate() can chain
+      animations with await. Preferred over useAnimation.
+    category: framer_hooks
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["hooks", "useAnimate", "imperative", "timeline"]
+    references:
+      - "https://www.framer.com/motion/use-animate/"
+
+  - id: FRAMER044
+    title: Use useSpring for physics-based reactive values
+    description: >
+      Use useSpring(motionValue, config) to create spring-animated
+      derived values. Great for smooth cursor followers, magnetic
+      buttons, and scroll-linked spring animations.
+    category: framer_hooks
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["hooks", "useSpring", "physics", "reactive"]
+    references:
+      - "https://www.framer.com/motion/use-spring/"
+
+  - id: FRAMER045
+    title: Use useVelocity for velocity-aware animations
+    description: >
+      Use useVelocity(motionValue) to track velocity of any motion value.
+      Enables velocity-dependent effects like skewing elements during
+      scroll or applying force-proportional animations.
+    category: framer_hooks
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["hooks", "useVelocity", "velocity", "physics"]
+    references:
+      - "https://www.framer.com/motion/use-velocity/"
+
+  # ── FRAMER_ECOSYSTEM (5 practices) ───────────────────────────────────────
+  - id: FRAMER046
+    title: Use motion package for v11+ projects
+    description: >
+      For new projects, use the 'motion' package (v11+) instead of
+      'framer-motion'. It has the same API but smaller bundle size
+      and better tree-shaking.
+    category: framer_ecosystem
+    level: beginner
+    frameworks: ["framer-motion"]
+    tags: ["ecosystem", "motion", "v11", "migration"]
+    references:
+      - "https://motion.dev/"
+
+  - id: FRAMER047
+    title: Use MotionConfig for consistent animation defaults
+    description: >
+      Wrap components with <MotionConfig transition={{ type: "spring" }}>
+      to set default transitions for all child motion components.
+      Reduces repetition and ensures consistency.
+    category: framer_ecosystem
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["ecosystem", "MotionConfig", "defaults", "consistency"]
+    references:
+      - "https://www.framer.com/motion/motion-config/"
+
+  - id: FRAMER048
+    title: Structure animation variants in dedicated files
+    description: >
+      Extract shared variant definitions into dedicated files like
+      animations.ts or variants.ts. Import and reuse across components
+      for consistent animations and maintainability.
+    category: framer_ecosystem
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["ecosystem", "organization", "variants", "modules"]
+    references:
+      - "https://www.framer.com/motion/animation/#variants"
+
+  - id: FRAMER049
+    title: Use framer-motion-3d for Three.js integration
+    description: >
+      Use framer-motion-3d for animating Three.js / React Three Fiber
+      components with the familiar framer-motion API. Supports motion.mesh,
+      motion.group, and all standard animation props.
+    category: framer_ecosystem
+    level: advanced
+    frameworks: ["framer-motion"]
+    tags: ["ecosystem", "3d", "three.js", "r3f"]
+    references:
+      - "https://www.framer.com/motion/three-introduction/"
+
+  - id: FRAMER050
+    title: Test animations with jest and testing-library
+    description: >
+      Mock framer-motion in tests to avoid animation timing issues.
+      Use `jest.mock('framer-motion', () => ({ motion: { div: 'div' } }))` for
+      component tests. Use Playwright/Cypress for visual animation tests.
+    category: framer_ecosystem
+    level: intermediate
+    frameworks: ["framer-motion"]
+    tags: ["ecosystem", "testing", "jest", "mock"]
+    references:
+      - "https://www.framer.com/motion/"

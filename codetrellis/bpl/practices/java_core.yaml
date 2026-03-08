@@ -1,0 +1,612 @@
+# Java Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.12 - Java Language Support
+# Practice IDs: JAVA001-JAVA050
+# Category: java
+# Frameworks: java, spring, spring_boot, spring_mvc, jpa, quarkus, micronaut, jakarta
+
+practices:
+  # ── Core Java ──────────────────────────────────────────────────
+
+  - id: JAVA001
+    title: "Prefer immutable objects — use final fields and records"
+    description: "Design classes to be immutable by default. Use final fields, no setters, and Java 14+ records for value types. Immutable objects are thread-safe and easier to reason about."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "immutability", "records"]
+    example: |
+      // Good: Java 14+ record (immutable by default)
+      public record UserDTO(String name, String email) {}
+      // Good: Immutable class
+      public final class Money {
+          private final BigDecimal amount;
+          private final Currency currency;
+          public Money(BigDecimal amount, Currency currency) {
+              this.amount = amount;
+              this.currency = currency;
+          }
+      }
+
+  - id: JAVA002
+    title: "Use Optional instead of returning null"
+    description: "Return Optional<T> from methods that may not produce a result. Never use Optional as a field type or method parameter. Use orElse, orElseGet, map, flatMap for chaining."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "optional", "null-safety"]
+    example: |
+      // Good
+      public Optional<User> findById(Long id) {
+          return repository.findById(id);
+      }
+      // Usage
+      String name = findById(id)
+          .map(User::getName)
+          .orElse("Unknown");
+
+  - id: JAVA003
+    title: "Use try-with-resources for AutoCloseable resources"
+    description: "Always use try-with-resources to manage AutoCloseable resources (streams, connections, readers). This guarantees cleanup even if exceptions occur."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "resources", "safety"]
+    example: |
+      // Good
+      try (var conn = dataSource.getConnection();
+           var stmt = conn.prepareStatement(sql)) {
+          return stmt.executeQuery();
+      }
+
+  - id: JAVA004
+    title: "Use sealed classes/interfaces to restrict hierarchy (Java 17+)"
+    description: "Use sealed types when a class hierarchy is intentionally closed. The compiler can verify exhaustiveness in switch expressions and pattern matching."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "sealed", "java17"]
+    example: |
+      public sealed interface Shape
+          permits Circle, Rectangle, Triangle {}
+      public record Circle(double radius) implements Shape {}
+      public record Rectangle(double w, double h) implements Shape {}
+
+  - id: JAVA005
+    title: "Use pattern matching for instanceof (Java 16+)"
+    description: "Use pattern matching instanceof to combine type check and cast in a single expression. Avoids redundant casting and improves readability."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "pattern-matching", "java16"]
+    example: |
+      // Good (Java 16+)
+      if (obj instanceof String s) {
+          System.out.println(s.length());
+      }
+      // Java 21: switch pattern matching
+      return switch (shape) {
+          case Circle c -> Math.PI * c.radius() * c.radius();
+          case Rectangle r -> r.w() * r.h();
+      };
+
+  - id: JAVA006
+    title: "Prefer Stream API for collection transformations"
+    description: "Use Stream API (map, filter, collect, reduce) for declarative collection processing. Avoid mutation in stream operations. Use parallel streams only for CPU-bound work on large datasets."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "streams", "functional"]
+    example: |
+      List<String> activeUserNames = users.stream()
+          .filter(User::isActive)
+          .map(User::getName)
+          .sorted()
+          .toList(); // Java 16+ — immutable list
+
+  - id: JAVA007
+    title: "Override equals, hashCode, and toString consistently"
+    description: "When overriding equals, always override hashCode (contract). Use Objects.equals and Objects.hash for null-safe implementations. Consider records which provide these automatically."
+    category: "best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "equals", "hashcode"]
+
+  - id: JAVA008
+    title: "Use enums with behavior instead of switch on constants"
+    description: "Enums can have fields, methods, and implement interfaces. Use abstract methods on enums to enforce behavior per constant instead of external switch statements."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "enum", "polymorphism"]
+    example: |
+      public enum PaymentMethod {
+          CREDIT_CARD {
+              @Override public void process(Payment p) { ... }
+          },
+          BANK_TRANSFER {
+              @Override public void process(Payment p) { ... }
+          };
+          public abstract void process(Payment payment);
+      }
+
+  - id: JAVA009
+    title: "Use text blocks for multi-line strings (Java 13+)"
+    description: "Use text blocks (triple-quote) for SQL, JSON, HTML, and other multi-line strings. They preserve formatting and avoid concatenation noise."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "text-blocks", "java13"]
+    example: |
+      String sql = """
+          SELECT u.name, u.email
+          FROM users u
+          WHERE u.active = true
+          ORDER BY u.name
+          """;
+
+  - id: JAVA010
+    title: "Use var for local variables with obvious types (Java 10+)"
+    description: "Use var for local variable type inference when the type is obvious from the right-hand side. Avoid var when it reduces readability."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "var", "java10"]
+
+  # ── Error Handling ─────────────────────────────────────────────
+
+  - id: JAVA011
+    title: "Catch specific exceptions — never catch Exception or Throwable"
+    description: "Catch the most specific exception type. Catching generic Exception masks bugs. Use multi-catch (catch (IOException | SQLException e)) when handling multiple types identically."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "exception", "error-handling"]
+
+  - id: JAVA012
+    title: "Use custom exceptions for domain errors"
+    description: "Create domain-specific exception classes extending RuntimeException (unchecked) or Exception (checked). Include relevant context fields."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "exception", "domain"]
+    example: |
+      public class OrderNotFoundException extends RuntimeException {
+          private final Long orderId;
+          public OrderNotFoundException(Long orderId) {
+              super("Order not found: " + orderId);
+              this.orderId = orderId;
+          }
+      }
+
+  - id: JAVA013
+    title: "Log exceptions with full stack trace at appropriate level"
+    description: 'Use SLF4J/Logback for logging. Log exceptions with logger.error("msg", exception) to preserve stack trace. Use appropriate log levels (ERROR for failures, WARN for recoverable issues).'
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "logging", "slf4j"]
+
+  # ── Spring Boot / Spring MVC ───────────────────────────────────
+
+  - id: JAVA014
+    title: "Use constructor injection — avoid field injection"
+    description: "Always use constructor injection for mandatory dependencies. Field injection with @Autowired hides dependencies, makes testing difficult, and allows partial construction. Lombok @RequiredArgsConstructor works well."
+    category: "spring"
+    severity: "critical"
+    applicability:
+      frameworks: ["spring", "spring_boot"]
+    tags: ["java", "spring", "dependency-injection"]
+    example: |
+      // Good: constructor injection (Spring auto-detects single constructor)
+      @Service
+      public class OrderService {
+          private final OrderRepository orderRepo;
+          private final PaymentGateway paymentGateway;
+          public OrderService(OrderRepository orderRepo, PaymentGateway paymentGateway) {
+              this.orderRepo = orderRepo;
+              this.paymentGateway = paymentGateway;
+          }
+      }
+
+  - id: JAVA015
+    title: "Use @RestControllerAdvice for global exception handling"
+    description: "Centralize exception handling with @RestControllerAdvice and @ExceptionHandler. Return consistent error response DTOs with proper HTTP status codes."
+    category: "spring"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring", "spring_boot", "spring_mvc"]
+    tags: ["java", "spring", "error-handling"]
+    example: |
+      @RestControllerAdvice
+      public class GlobalExceptionHandler {
+          @ExceptionHandler(EntityNotFoundException.class)
+          @ResponseStatus(HttpStatus.NOT_FOUND)
+          public ErrorResponse handleNotFound(EntityNotFoundException ex) {
+              return new ErrorResponse(ex.getMessage());
+          }
+      }
+
+  - id: JAVA016
+    title: "Use @Validated and Jakarta validation annotations"
+    description: "Use @Valid/@Validated with Jakarta Bean Validation annotations (@NotNull, @NotBlank, @Size, @Email, etc.) on DTOs and request bodies. Use @ControllerAdvice to handle MethodArgumentNotValidException."
+    category: "spring"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring", "spring_boot", "spring_mvc"]
+    tags: ["java", "spring", "validation"]
+
+  - id: JAVA017
+    title: "Use DTOs to decouple API from domain model"
+    description: "Never expose JPA entities directly in REST APIs. Use DTOs (Data Transfer Objects) to control serialization, avoid lazy-loading issues, and decouple the API contract from the persistence model."
+    category: "spring"
+    severity: "critical"
+    applicability:
+      frameworks: ["spring", "spring_boot", "spring_mvc"]
+    tags: ["java", "spring", "dto", "api-design"]
+    example: |
+      // DTO
+      public record UserResponse(Long id, String name, String email) {
+          public static UserResponse from(User user) {
+              return new UserResponse(user.getId(), user.getName(), user.getEmail());
+          }
+      }
+
+  - id: JAVA018
+    title: "Use @Transactional at service layer, not controller"
+    description: "Place @Transactional on service methods, not controllers or repositories. Use readOnly=true for queries. Keep transactions short — no HTTP calls inside transactions."
+    category: "spring"
+    severity: "critical"
+    applicability:
+      frameworks: ["spring", "spring_boot", "jpa"]
+    tags: ["java", "spring", "transaction"]
+
+  - id: JAVA019
+    title: "Use Spring profiles for environment-specific configuration"
+    description: "Use @Profile and application-{profile}.yml for environment-specific settings. Common profiles: dev, test, staging, prod. Use @ConfigurationProperties for type-safe configuration."
+    category: "spring"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring", "spring_boot"]
+    tags: ["java", "spring", "configuration"]
+
+  - id: JAVA020
+    title: "Use @ConfigurationProperties for type-safe config"
+    description: "Prefer @ConfigurationProperties over @Value for configuration binding. It provides type safety, validation, IDE support, and immutable configuration with record-style classes."
+    category: "spring"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring", "spring_boot"]
+    tags: ["java", "spring", "configuration"]
+    example: |
+      @ConfigurationProperties(prefix = "app.mail")
+      public record MailProperties(
+          String host,
+          int port,
+          @DefaultValue("true") boolean ssl
+      ) {}
+
+  - id: JAVA021
+    title: "Use Spring Security with method-level security"
+    description: "Use @PreAuthorize, @Secured, or @RolesAllowed for method-level authorization. Configure SecurityFilterChain as a @Bean. Never store sensitive data in application.properties without encryption."
+    category: "spring"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring", "spring_boot", "spring_security"]
+    tags: ["java", "spring", "security"]
+
+  - id: JAVA022
+    title: "Use ResponseEntity for explicit HTTP responses"
+    description: "Return ResponseEntity<T> from controllers to control status codes, headers, and body explicitly. Use ResponseEntity.ok(), .created(), .notFound(), .badRequest() builder methods."
+    category: "spring"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring", "spring_boot", "spring_mvc"]
+    tags: ["java", "spring", "api-design"]
+
+  # ── JPA / Hibernate ───────────────────────────────────────────
+
+  - id: JAVA023
+    title: "Use FetchType.LAZY by default for JPA relationships"
+    description: "All @ManyToOne and @OneToMany should use FetchType.LAZY. Eager fetching causes N+1 queries and performance issues. Use JOIN FETCH in JPQL or EntityGraph when eager data is needed."
+    category: "jpa"
+    severity: "critical"
+    applicability:
+      frameworks: ["jpa", "hibernate"]
+    tags: ["java", "jpa", "performance"]
+
+  - id: JAVA024
+    title: "Use @EntityGraph or JOIN FETCH to solve N+1 queries"
+    description: "When accessing lazy associations causes N+1 selects, use @EntityGraph on repository methods or JOIN FETCH in JPQL. Never rely on EAGER fetching as a solution."
+    category: "jpa"
+    severity: "critical"
+    applicability:
+      frameworks: ["jpa", "hibernate"]
+    tags: ["java", "jpa", "n-plus-one", "performance"]
+    example: |
+      // Using @EntityGraph
+      @EntityGraph(attributePaths = {"orders", "orders.items"})
+      Optional<Customer> findWithOrdersById(Long id);
+      // Using JPQL JOIN FETCH
+      @Query("SELECT c FROM Customer c JOIN FETCH c.orders WHERE c.id = :id")
+      Optional<Customer> findWithOrders(@Param("id") Long id);
+
+  - id: JAVA025
+    title: "Use database migrations (Flyway/Liquibase) — never hibernate.ddl-auto in production"
+    description: "Use Flyway or Liquibase for version-controlled database migrations. Set spring.jpa.hibernate.ddl-auto=validate in production. Never use update/create/create-drop in production."
+    category: "jpa"
+    severity: "critical"
+    applicability:
+      frameworks: ["jpa", "hibernate", "spring_boot"]
+    tags: ["java", "jpa", "database", "migration"]
+
+  - id: JAVA026
+    title: "Use Spring Data repository query methods effectively"
+    description: "Use derived query methods (findByNameAndEmail) for simple queries. Use @Query for complex JPQL. Use Specification<T> for dynamic queries. Avoid native queries unless necessary for performance."
+    category: "jpa"
+    severity: "recommended"
+    applicability:
+      frameworks: ["jpa", "spring_data"]
+    tags: ["java", "jpa", "spring-data", "repository"]
+
+  - id: JAVA027
+    title: "Use UUID or sequence-based IDs — avoid AUTO generation strategy"
+    description: "Use @GeneratedValue(strategy = SEQUENCE) with @SequenceGenerator for best batch insert performance. Alternatively use UUID for distributed systems. Avoid TABLE and AUTO strategies."
+    category: "jpa"
+    severity: "recommended"
+    applicability:
+      frameworks: ["jpa", "hibernate"]
+    tags: ["java", "jpa", "identity", "database"]
+
+  - id: JAVA028
+    title: "Use @Version for optimistic locking"
+    description: "Add @Version field to entities for optimistic locking. JPA automatically increments the version on update and throws OptimisticLockException on conflicts."
+    category: "jpa"
+    severity: "recommended"
+    applicability:
+      frameworks: ["jpa", "hibernate"]
+    tags: ["java", "jpa", "concurrency"]
+
+  # ── Testing ────────────────────────────────────────────────────
+
+  - id: JAVA029
+    title: "Use @SpringBootTest sparingly — prefer slice tests"
+    description: "Use @WebMvcTest for controller tests, @DataJpaTest for repository tests, @WebFluxTest for reactive controllers. Full @SpringBootTest is expensive — reserve for integration tests."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring", "spring_boot"]
+    tags: ["java", "spring", "testing"]
+
+  - id: JAVA030
+    title: "Use Testcontainers for database integration tests"
+    description: "Use Testcontainers to spin up real database containers for integration tests. Avoids H2/in-memory database behavior differences. Use @Container and @Testcontainers annotations."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring", "spring_boot", "jpa"]
+    tags: ["java", "testing", "testcontainers", "integration"]
+
+  - id: JAVA031
+    title: "Use AssertJ for fluent test assertions"
+    description: "Prefer AssertJ (assertThat) over JUnit assertions (assertEquals) for fluent, readable assertions with better error messages and IDE discoverability."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "testing", "assertj"]
+    example: |
+      assertThat(users)
+          .hasSize(3)
+          .extracting(User::getName)
+          .containsExactlyInAnyOrder("Alice", "Bob", "Charlie");
+
+  - id: JAVA032
+    title: "Use Mockito @Mock and @InjectMocks for unit tests"
+    description: "Use Mockito for unit testing service layers. Use @Mock for dependencies, @InjectMocks for the class under test. Prefer when/thenReturn over doReturn/when."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "testing", "mockito", "unit-test"]
+
+  # ── API Design ─────────────────────────────────────────────────
+
+  - id: JAVA033
+    title: "Use semantic HTTP methods and status codes"
+    description: "GET for retrieval (200), POST for creation (201), PUT/PATCH for update (200), DELETE for removal (204). Return 404 for not found, 400 for bad request, 409 for conflict."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring_mvc", "jaxrs", "quarkus", "micronaut"]
+    tags: ["java", "rest", "api-design"]
+
+  - id: JAVA034
+    title: "Use pagination for collection endpoints"
+    description: "Return paginated results using Spring Data Page<T> or Quarkus PanacheQuery. Include total count, page number, and navigation links. Never return unbounded collections."
+    category: "api_design"
+    severity: "critical"
+    applicability:
+      frameworks: ["spring_mvc", "spring_data", "quarkus"]
+    tags: ["java", "rest", "pagination", "performance"]
+
+  - id: JAVA035
+    title: "Version your API — use URL path or header versioning"
+    description: "Version APIs from day one. Use path versioning (/api/v1/users) for simplicity or Accept header versioning for REST purity. Never break existing API contracts."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring_mvc", "jaxrs", "quarkus", "micronaut"]
+    tags: ["java", "rest", "api-versioning"]
+
+  # ── Quarkus ────────────────────────────────────────────────────
+
+  - id: JAVA036
+    title: "Use CDI @ApplicationScoped for stateless beans in Quarkus"
+    description: "Prefer @ApplicationScoped over @Singleton for CDI beans. @ApplicationScoped creates a proxy, enabling interceptors and lazy initialization. Use @Singleton only when proxy is undesirable."
+    category: "quarkus"
+    severity: "recommended"
+    applicability:
+      frameworks: ["quarkus"]
+    tags: ["java", "quarkus", "cdi"]
+
+  - id: JAVA037
+    title: "Use Quarkus Dev Services for local development"
+    description: "Leverage Quarkus Dev Services to auto-start databases, Kafka, Redis in dev mode. Configure in application.properties with %dev profile. Use quarkus:dev for hot reload."
+    category: "quarkus"
+    severity: "recommended"
+    applicability:
+      frameworks: ["quarkus"]
+    tags: ["java", "quarkus", "dev-services"]
+
+  - id: JAVA038
+    title: "Use Panache for simplified JPA/MongoDB in Quarkus"
+    description: "Use PanacheEntity (active record) or PanacheRepository (repository pattern) for simplified data access. Provides find, list, delete shortcuts without boilerplate."
+    category: "quarkus"
+    severity: "recommended"
+    applicability:
+      frameworks: ["quarkus", "jpa"]
+    tags: ["java", "quarkus", "panache", "jpa"]
+
+  # ── Micronaut ──────────────────────────────────────────────────
+
+  - id: JAVA039
+    title: "Use @Singleton for Micronaut beans — compile-time DI"
+    description: "Micronaut uses compile-time DI (no reflection). Use @Singleton for application-scoped beans. Avoid @Prototype unless needed. Constructor injection is preferred."
+    category: "micronaut"
+    severity: "recommended"
+    applicability:
+      frameworks: ["micronaut"]
+    tags: ["java", "micronaut", "di"]
+
+  - id: JAVA040
+    title: "Use @Introspected for GraalVM-compatible beans in Micronaut"
+    description: "Annotate DTOs and beans with @Introspected for compile-time bean introspection. Required for serialization, validation, and GraalVM native image compilation."
+    category: "micronaut"
+    severity: "recommended"
+    applicability:
+      frameworks: ["micronaut"]
+    tags: ["java", "micronaut", "graalvm", "native-image"]
+
+  # ── Concurrency & Performance ──────────────────────────────────
+
+  - id: JAVA041
+    title: "Use virtual threads for I/O-bound tasks (Java 21+)"
+    description: "Use virtual threads (Thread.ofVirtual()) or structured concurrency for I/O-bound tasks. Virtual threads scale to millions of concurrent operations without thread pool tuning."
+    category: "concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "virtual-threads", "java21", "concurrency"]
+    example: |
+      // Java 21+ virtual threads
+      try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+          var future1 = executor.submit(() -> fetchUser(id));
+          var future2 = executor.submit(() -> fetchOrders(id));
+          return new UserProfile(future1.get(), future2.get());
+      }
+
+  - id: JAVA042
+    title: "Use CompletableFuture for async composition"
+    description: "Use CompletableFuture for async operations with thenApply, thenCompose, allOf, anyOf. Handle exceptions with exceptionally or handle. Avoid get() — use join() or non-blocking callbacks."
+    category: "concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "async", "completable-future"]
+
+  - id: JAVA043
+    title: "Use ConcurrentHashMap — never synchronize on HashMap"
+    description: "Use ConcurrentHashMap for thread-safe maps. Use computeIfAbsent for atomic check-and-create. Never use Collections.synchronizedMap in high-concurrency scenarios."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "concurrency", "thread-safety"]
+
+  # ── Messaging ──────────────────────────────────────────────────
+
+  - id: JAVA044
+    title: "Design Kafka consumers to be idempotent"
+    description: "Kafka delivers at-least-once. Design consumers to handle duplicate messages safely. Use unique keys, database upserts, or deduplication tables. Track processed message offsets."
+    category: "messaging"
+    severity: "critical"
+    applicability:
+      frameworks: ["kafka", "spring_boot", "quarkus"]
+    tags: ["java", "kafka", "idempotency", "messaging"]
+
+  - id: JAVA045
+    title: "Use dead-letter topics/queues for failed messages"
+    description: "Configure DLT (Dead Letter Topic) for Kafka or DLQ for RabbitMQ/JMS. Failed messages after max retries should be routed to DLT/DLQ for investigation, not silently dropped."
+    category: "messaging"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kafka", "rabbitmq", "spring_boot"]
+    tags: ["java", "kafka", "rabbitmq", "error-handling"]
+
+  # ── Build & Project Structure ──────────────────────────────────
+
+  - id: JAVA046
+    title: "Follow standard Maven/Gradle project layout"
+    description: "Follow src/main/java, src/main/resources, src/test/java conventions. Group packages by feature/domain (not by technical layer). Keep package structure flat — avoid deep nesting."
+    category: "project_structure"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "project-structure", "maven", "gradle"]
+
+  - id: JAVA047
+    title: "Use BOM (Bill of Materials) for dependency management"
+    description: "Use Spring Boot starter parent, Quarkus BOM, or Micronaut BOM for consistent dependency versions. Import BOMs in dependencyManagement section. Never mix incompatible library versions."
+    category: "project_structure"
+    severity: "recommended"
+    applicability:
+      frameworks: ["spring_boot", "quarkus", "micronaut"]
+    tags: ["java", "maven", "gradle", "dependencies"]
+
+  - id: JAVA048
+    title: "Use multi-module Maven/Gradle for large projects"
+    description: "Split large projects into Maven/Gradle modules (api, domain, infrastructure, web). Use dependency inversion — domain module should not depend on infrastructure."
+    category: "project_structure"
+    severity: "recommended"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "multi-module", "architecture"]
+
+  # ── Security ───────────────────────────────────────────────────
+
+  - id: JAVA049
+    title: "Use parameterized queries — never concatenate SQL"
+    description: "Always use PreparedStatement or JPA parameterized queries. Never concatenate user input into SQL strings. This prevents SQL injection attacks."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["java", "jpa"]
+    tags: ["java", "security", "sql-injection"]
+    example: |
+      // Good: parameterized
+      @Query("SELECT u FROM User u WHERE u.email = :email")
+      Optional<User> findByEmail(@Param("email") String email);
+      // Bad: string concatenation
+      // "SELECT * FROM users WHERE email = '" + email + "'"
+
+  - id: JAVA050
+    title: "Never log sensitive data (passwords, tokens, PII)"
+    description: "Never log passwords, API keys, tokens, credit card numbers, or PII. Use @ToString.Exclude (Lombok) or custom toString. Mask sensitive fields in error responses."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["java"]
+    tags: ["java", "security", "logging", "pii"]

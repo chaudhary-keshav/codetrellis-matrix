@@ -1,0 +1,680 @@
+# ============================================================================
+# C++ Best Practices (CPP001–CPP050)
+# CodeTrellis v4.20 – C++ Language Support
+#
+# Covers: Modern C++ (C++11–C++26), memory management, smart pointers, RAII,
+# templates, concurrency, STL, OOP design, error handling, performance,
+# security, and API design.
+# ============================================================================
+
+practices:
+  # ── Memory Management ────────────────────────────────────────────────────
+  - id: CPP001
+    title: "Prefer smart pointers over raw new/delete"
+    description: |
+      Use std::unique_ptr for exclusive ownership, std::shared_ptr for shared
+      ownership. Avoid raw new/delete except in custom allocators or
+      performance-critical low-level code.
+    category: cpp_memory_management
+    level: beginner
+    priority: critical
+    tags: [memory, smart_pointers, modern_cpp]
+    examples:
+      good: "auto ptr = std::make_unique<Widget>(args);"
+      bad: "Widget* ptr = new Widget(args); // raw new"
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  - id: CPP002
+    title: "Use std::make_unique and std::make_shared"
+    description: |
+      Prefer make_unique (C++14) and make_shared over direct new.
+      make_shared provides a single allocation for control block + object.
+      make_unique prevents exception-safety issues in argument evaluation.
+    category: cpp_memory_management
+    level: beginner
+    priority: high
+    tags: [memory, smart_pointers, factory]
+    examples:
+      good: "auto p = std::make_shared<T>(args);"
+      bad: "std::shared_ptr<T> p(new T(args));"
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++14"
+
+  - id: CPP003
+    title: "Follow the Rule of Five (or Rule of Zero)"
+    description: |
+      If a class manages resources, implement destructor, copy constructor,
+      copy assignment, move constructor, and move assignment (Rule of Five).
+      If using smart pointers/RAII wrappers, default all five (Rule of Zero).
+    category: cpp_memory_management
+    level: intermediate
+    priority: critical
+    tags: [memory, raii, special_members]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP004
+    title: "Avoid raw owning pointers"
+    description: |
+      Use raw pointers only for non-owning references. Owning pointers should
+      always be wrapped in smart pointers or RAII containers.
+    category: cpp_memory_management
+    level: beginner
+    priority: high
+    tags: [memory, ownership, safety]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP005
+    title: "Use std::span for non-owning array views (C++20)"
+    description: |
+      Prefer std::span<T> over raw pointer+size pairs for function parameters
+      that view contiguous data. It's bounds-safe and self-documenting.
+    category: cpp_memory_management
+    level: intermediate
+    priority: medium
+    tags: [memory, views, c++20]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++20"
+
+  # ── RAII & Resource Management ───────────────────────────────────────────
+  - id: CPP006
+    title: "Use RAII for all resource management"
+    description: |
+      Wrap every resource (files, locks, sockets, DB connections) in an RAII
+      class so that cleanup happens automatically in destructors.
+    category: cpp_raii
+    level: beginner
+    priority: critical
+    tags: [raii, resources, cleanup]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP007
+    title: "Use std::lock_guard or std::scoped_lock for mutexes"
+    description: |
+      Never lock a mutex without an RAII guard. Use lock_guard for single
+      mutexes, scoped_lock (C++17) for multiple mutexes to prevent deadlocks.
+    category: cpp_raii
+    level: beginner
+    priority: critical
+    tags: [raii, concurrency, mutex]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP008
+    title: "Prefer std::unique_lock when needing flexible locking"
+    description: |
+      Use unique_lock when you need deferred locking, try-locking, timed
+      locking, or condition_variable wait operations.
+    category: cpp_raii
+    level: intermediate
+    priority: medium
+    tags: [raii, concurrency, locking]
+    applicability:
+      frameworks: [cpp]
+
+  # ── Templates & Generic Programming ─────────────────────────────────────
+  - id: CPP009
+    title: "Use concepts to constrain templates (C++20)"
+    description: |
+      Replace SFINAE and enable_if with C++20 concepts for clearer
+      template constraints and better error messages.
+    category: cpp_templates
+    level: intermediate
+    priority: high
+    tags: [templates, concepts, c++20]
+    examples:
+      good: "template<std::integral T> T add(T a, T b);"
+      bad: "template<class T, class = std::enable_if_t<std::is_integral_v<T>>>"
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++20"
+
+  - id: CPP010
+    title: "Avoid unnecessary template instantiation bloat"
+    description: |
+      Use extern template declarations, type-erased wrappers, or CRTP to
+      reduce code bloat from excessive template instantiation.
+    category: cpp_templates
+    level: advanced
+    priority: medium
+    tags: [templates, bloat, compilation]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP011
+    title: "Use constexpr and consteval for compile-time computation"
+    description: |
+      Mark functions constexpr when they can be evaluated at compile time.
+      Use consteval (C++20) to force compile-time evaluation.
+    category: cpp_templates
+    level: intermediate
+    priority: high
+    tags: [constexpr, compile_time, performance]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  - id: CPP012
+    title: "Prefer template aliases over nested typedefs"
+    description: |
+      Use 'using' template aliases instead of nested typedef for cleaner
+      metaprogramming and better error messages.
+    category: cpp_templates
+    level: intermediate
+    priority: medium
+    tags: [templates, aliases, readability]
+    examples:
+      good: "template<class T> using Vec = std::vector<T>;"
+      bad: "template<class T> struct Vec { typedef std::vector<T> type; };"
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  # ── Modern C++ Features ─────────────────────────────────────────────────
+  - id: CPP013
+    title: "Use auto judiciously"
+    description: |
+      Use auto for complex iterator types, lambda storage, and when the type
+      is obvious from context. Avoid auto when it hides important type info.
+    category: cpp_modern_features
+    level: beginner
+    priority: medium
+    tags: [auto, readability, c++11]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  - id: CPP014
+    title: "Use structured bindings (C++17)"
+    description: |
+      Use auto [key, value] for pair/tuple/struct decomposition instead of
+      .first/.second or std::get<>.
+    category: cpp_modern_features
+    level: beginner
+    priority: medium
+    tags: [structured_bindings, c++17, readability]
+    examples:
+      good: "auto [key, value] = *map.begin();"
+      bad: "auto it = map.begin(); auto key = it->first;"
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++17"
+
+  - id: CPP015
+    title: "Use std::optional for nullable values"
+    description: |
+      Prefer std::optional<T> over raw pointers, sentinel values, or bool+T
+      pairs for optional return values and parameters.
+    category: cpp_modern_features
+    level: beginner
+    priority: high
+    tags: [optional, nullable, c++17]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++17"
+
+  - id: CPP016
+    title: "Use std::variant for type-safe unions"
+    description: |
+      Replace C unions and inheritance-based polymorphism with std::variant
+      when the set of types is known at compile time.
+    category: cpp_modern_features
+    level: intermediate
+    priority: medium
+    tags: [variant, type_safety, c++17]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++17"
+
+  - id: CPP017
+    title: "Use std::string_view for read-only string parameters"
+    description: |
+      Prefer std::string_view over const std::string& for function parameters
+      that only read the string. It avoids unnecessary copies and works with
+      string literals, std::string, and substrings.
+    category: cpp_modern_features
+    level: beginner
+    priority: high
+    tags: [string_view, performance, c++17]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++17"
+
+  - id: CPP018
+    title: "Use std::expected for error handling (C++23)"
+    description: |
+      Prefer std::expected<T, E> over exceptions or error codes for
+      functions that can fail. It makes the error channel explicit.
+    category: cpp_modern_features
+    level: advanced
+    priority: medium
+    tags: [expected, error_handling, c++23]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++23"
+
+  - id: CPP019
+    title: "Use ranges and views for declarative algorithms (C++20)"
+    description: |
+      Prefer std::ranges algorithms and std::views for lazy, composable
+      data transformations. They replace manual loops and iterators.
+    category: cpp_modern_features
+    level: intermediate
+    priority: medium
+    tags: [ranges, views, algorithms, c++20]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++20"
+
+  - id: CPP020
+    title: "Use std::format for type-safe formatting (C++20)"
+    description: |
+      Prefer std::format/std::print over printf or stringstream for
+      type-safe, readable string formatting.
+    category: cpp_modern_features
+    level: beginner
+    priority: medium
+    tags: [format, string, c++20]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++20"
+
+  # ── Concurrency ─────────────────────────────────────────────────────────
+  - id: CPP021
+    title: "Prefer std::jthread over std::thread (C++20)"
+    description: |
+      Use std::jthread for automatic joining on destruction and built-in
+      stop_token support for cooperative cancellation.
+    category: cpp_concurrency
+    level: intermediate
+    priority: medium
+    tags: [concurrency, jthread, c++20]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++20"
+
+  - id: CPP022
+    title: "Use std::atomic for lock-free shared data"
+    description: |
+      Prefer std::atomic<T> over mutex-protected simple counters/flags.
+      Specify memory ordering when default (seq_cst) is too expensive.
+    category: cpp_concurrency
+    level: advanced
+    priority: high
+    tags: [concurrency, atomic, lock_free]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  - id: CPP023
+    title: "Use std::async for simple parallelism"
+    description: |
+      For fire-and-forget parallel tasks, use std::async with
+      std::launch::async policy. Use futures for result retrieval.
+    category: cpp_concurrency
+    level: intermediate
+    priority: medium
+    tags: [concurrency, async, futures]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  - id: CPP024
+    title: "Avoid data races with proper synchronization"
+    description: |
+      Every shared mutable variable must be protected by a mutex, atomic,
+      or other synchronization primitive. Use thread sanitizer (TSan) to
+      detect data races.
+    category: cpp_concurrency
+    level: intermediate
+    priority: critical
+    tags: [concurrency, data_race, safety]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP025
+    title: "Use coroutines for async I/O (C++20)"
+    description: |
+      Prefer C++20 coroutines (co_await, co_yield, co_return) for
+      asynchronous operations over callbacks or manual state machines.
+    category: cpp_concurrency
+    level: advanced
+    priority: medium
+    tags: [coroutines, async, c++20]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++20"
+
+  # ── STL Usage ───────────────────────────────────────────────────────────
+  - id: CPP026
+    title: "Use STL algorithms over raw loops"
+    description: |
+      Prefer std::find, std::transform, std::accumulate, std::for_each,
+      etc. over hand-written loops. They're optimized, safer, and more
+      expressive.
+    category: cpp_stl_usage
+    level: beginner
+    priority: high
+    tags: [stl, algorithms, loops]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP027
+    title: "Choose the right container for the job"
+    description: |
+      Use vector by default. Use deque for front/back insertion. Use
+      unordered_map for O(1) lookup. Use set for sorted unique elements.
+      Use flat_map (C++23) for small sorted maps.
+    category: cpp_stl_usage
+    level: intermediate
+    priority: high
+    tags: [stl, containers, performance]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP028
+    title: "Reserve capacity for vectors when size is known"
+    description: |
+      Call vector::reserve() before inserting a known number of elements
+      to avoid repeated reallocations.
+    category: cpp_stl_usage
+    level: beginner
+    priority: medium
+    tags: [stl, vector, performance]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP029
+    title: "Use emplace_back over push_back"
+    description: |
+      Use emplace_back to construct elements in-place, avoiding unnecessary
+      copies or moves. Use push_back only for pre-constructed objects.
+    category: cpp_stl_usage
+    level: beginner
+    priority: medium
+    tags: [stl, containers, performance]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  # ── OOP Design ──────────────────────────────────────────────────────────
+  - id: CPP030
+    title: "Make base class destructors virtual or protected"
+    description: |
+      If a class has virtual functions, its destructor must be virtual.
+      If a class is not meant to be deleted through a base pointer, make
+      the destructor protected and non-virtual.
+    category: cpp_oop_design
+    level: beginner
+    priority: critical
+    tags: [oop, virtual, destructor]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP031
+    title: "Use override and final keywords"
+    description: |
+      Always mark overriding methods with 'override'. Use 'final' to
+      prevent further overriding. This catches errors at compile time.
+    category: cpp_oop_design
+    level: beginner
+    priority: high
+    tags: [oop, override, final, c++11]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  - id: CPP032
+    title: "Prefer composition over inheritance"
+    description: |
+      Use composition and delegation instead of deep inheritance hierarchies.
+      Use interfaces (pure virtual classes) to define contracts.
+    category: cpp_oop_design
+    level: intermediate
+    priority: high
+    tags: [oop, composition, design]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP033
+    title: "Use the NVI (Non-Virtual Interface) idiom"
+    description: |
+      Make public methods non-virtual and delegate to private virtual
+      methods. This allows base class to enforce invariants and add
+      instrumentation.
+    category: cpp_oop_design
+    level: advanced
+    priority: medium
+    tags: [oop, nvi, design_pattern]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP034
+    title: "Use CRTP for static polymorphism"
+    description: |
+      When runtime polymorphism is not needed, use the Curiously Recurring
+      Template Pattern (CRTP) for zero-cost static polymorphism.
+    category: cpp_oop_design
+    level: advanced
+    priority: low
+    tags: [oop, crtp, templates, performance]
+    applicability:
+      frameworks: [cpp]
+
+  # ── Error Handling ──────────────────────────────────────────────────────
+  - id: CPP035
+    title: "Use exceptions for exceptional errors only"
+    description: |
+      Reserve exceptions for truly exceptional conditions (out of memory,
+      file not found, contract violations). Use return values, optional,
+      or expected for expected failure paths.
+    category: cpp_error_handling
+    level: intermediate
+    priority: high
+    tags: [exceptions, error_handling, design]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP036
+    title: "Catch exceptions by const reference"
+    description: |
+      Always catch exceptions as 'const ExceptionType&' to avoid slicing
+      and unnecessary copies.
+    category: cpp_error_handling
+    level: beginner
+    priority: high
+    tags: [exceptions, catch, safety]
+    examples:
+      good: "catch (const std::exception& e) { ... }"
+      bad: "catch (std::exception e) { ... }"
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP037
+    title: "Mark functions noexcept when they cannot throw"
+    description: |
+      Use noexcept for move constructors, move assignment, swap, and
+      destructors. It enables compiler optimizations and better container
+      behavior.
+    category: cpp_error_handling
+    level: intermediate
+    priority: high
+    tags: [noexcept, performance, contract]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  - id: CPP038
+    title: "Use static_assert for compile-time checks"
+    description: |
+      Validate template arguments, type traits, and compile-time
+      constants with static_assert instead of runtime checks.
+    category: cpp_error_handling
+    level: intermediate
+    priority: medium
+    tags: [static_assert, compile_time, safety]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  # ── Performance ─────────────────────────────────────────────────────────
+  - id: CPP039
+    title: "Use move semantics to avoid copies"
+    description: |
+      Return local objects by value (NRVO/copy elision). Use std::move
+      when transferring ownership. Implement move constructors and move
+      assignment operators for resource-owning classes.
+    category: cpp_performance
+    level: intermediate
+    priority: high
+    tags: [move_semantics, performance, c++11]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  - id: CPP040
+    title: "Avoid premature optimization"
+    description: |
+      Profile before optimizing. Use tools like perf, VTune, or
+      Instruments. Focus on algorithmic complexity first, micro-optimizations
+      last.
+    category: cpp_performance
+    level: intermediate
+    priority: medium
+    tags: [performance, profiling, optimization]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP041
+    title: "Use constexpr variables instead of const globals"
+    description: |
+      Prefer constexpr over const for compile-time constants. This avoids
+      static initialization order fiasco and enables compiler optimizations.
+    category: cpp_performance
+    level: beginner
+    priority: medium
+    tags: [constexpr, constants, initialization]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++11"
+
+  - id: CPP042
+    title: "Prefer stack allocation over heap"
+    description: |
+      Use stack-allocated objects, std::array, and small buffer optimization
+      when object lifetime is local. Heap allocation has overhead from
+      malloc/free and cache misses.
+    category: cpp_performance
+    level: intermediate
+    priority: medium
+    tags: [performance, memory, allocation]
+    applicability:
+      frameworks: [cpp]
+
+  # ── Security ────────────────────────────────────────────────────────────
+  - id: CPP043
+    title: "Avoid undefined behavior"
+    description: |
+      Never rely on undefined behavior: no signed integer overflow, no
+      dangling references, no out-of-bounds access, no use-after-free.
+      Use sanitizers (ASan, UBSan, MSan) in CI.
+    category: cpp_security
+    level: beginner
+    priority: critical
+    tags: [security, undefined_behavior, sanitizers]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP044
+    title: "Use bounds-checked containers and algorithms"
+    description: |
+      Use .at() instead of [] when bounds checking is needed. Use
+      std::span and ranges to avoid buffer overflows. Enable
+      iterator debug mode in development builds.
+    category: cpp_security
+    level: beginner
+    priority: high
+    tags: [security, bounds_checking, safety]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP045
+    title: "Validate all external input"
+    description: |
+      Sanitize and validate all data from files, network, user input, or
+      IPC before processing. Never trust external data sizes or formats.
+    category: cpp_security
+    level: beginner
+    priority: critical
+    tags: [security, input_validation, safety]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP046
+    title: "Use RAII for cryptographic key material"
+    description: |
+      Wrap sensitive data (keys, passwords) in RAII classes that
+      zero memory on destruction. Use SecureZeroMemory/explicit_bzero.
+    category: cpp_security
+    level: advanced
+    priority: high
+    tags: [security, cryptography, raii]
+    applicability:
+      frameworks: [cpp]
+
+  # ── API Design ──────────────────────────────────────────────────────────
+  - id: CPP047
+    title: "Use the 'swap trick' for strong exception safety"
+    description: |
+      Implement copy-and-swap idiom for assignment operators to provide
+      strong exception safety guarantee.
+    category: cpp_api_design
+    level: intermediate
+    priority: medium
+    tags: [api_design, exceptions, safety]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP048
+    title: "Design headers for minimal coupling"
+    description: |
+      Use forward declarations, PIMPL idiom, and include-what-you-use
+      to minimize header dependencies and reduce compile times.
+    category: cpp_api_design
+    level: intermediate
+    priority: high
+    tags: [api_design, headers, compilation]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP049
+    title: "Follow the C++ Core Guidelines naming conventions"
+    description: |
+      Use consistent naming: PascalCase for types, camelCase or snake_case
+      for functions/variables, ALL_CAPS for macros only. Follow project
+      conventions consistently.
+    category: cpp_api_design
+    level: beginner
+    priority: medium
+    tags: [naming, style, conventions]
+    applicability:
+      frameworks: [cpp]
+
+  - id: CPP050
+    title: "Use modules to replace headers (C++20)"
+    description: |
+      Migrate from header files to C++20 modules for faster compilation,
+      better encapsulation, and elimination of include-order issues.
+    category: cpp_api_design
+    level: advanced
+    priority: low
+    tags: [modules, c++20, compilation]
+    applicability:
+      frameworks: [cpp]
+      min_version: "c++20"

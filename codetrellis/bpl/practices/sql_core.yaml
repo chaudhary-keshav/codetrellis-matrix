@@ -1,0 +1,537 @@
+# SQL Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.15 - SQL Language Support
+# Practice IDs: SQL001-SQL050
+# Coverage: Schema Design, Query Optimization, Indexing, Security,
+#           Stored Procedures, Data Integrity, Migrations, Anti-Patterns
+# Dialects: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, ANSI SQL
+
+practices:
+  # ============================================================================
+  # SCHEMA DESIGN (SQL001-SQL010)
+  # ============================================================================
+
+  - id: SQL001
+    title: "Use appropriate data types for columns"
+    description: "Choose the most specific and smallest data type that can represent the data. Use INTEGER not BIGINT for small counters, VARCHAR(255) not TEXT for bounded strings, TIMESTAMP WITH TIME ZONE not VARCHAR for dates."
+    category: "schema_design"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "schema", "data-types"]
+    example: |
+      -- Good: Specific types
+      CREATE TABLE orders (
+        id BIGINT GENERATED ALWAYS AS IDENTITY,
+        status VARCHAR(20) NOT NULL,
+        total NUMERIC(12,2) NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+      -- Bad: Overly generic types
+      CREATE TABLE orders (
+        id TEXT,
+        status TEXT,
+        total FLOAT,
+        created_at TEXT
+      );
+
+  - id: SQL002
+    title: "Always define primary keys"
+    description: "Every table should have a primary key. Prefer BIGINT GENERATED ALWAYS AS IDENTITY (PostgreSQL) or AUTO_INCREMENT (MySQL) for surrogate keys. Use composite natural keys only when the domain requires it."
+    category: "schema_design"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "schema", "primary-key"]
+
+  - id: SQL003
+    title: "Use NOT NULL constraints by default"
+    description: "Columns should be NOT NULL unless there is a clear semantic reason for NULL. NULLable columns complicate queries (three-valued logic), indexes, and application code."
+    category: "data_integrity"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "constraints", "null"]
+
+  - id: SQL004
+    title: "Define foreign key constraints for referential integrity"
+    description: "Use FOREIGN KEY constraints to enforce relationships between tables. Specify ON DELETE and ON UPDATE actions explicitly (CASCADE, SET NULL, RESTRICT)."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "constraints", "foreign-key"]
+    example: |
+      CREATE TABLE order_items (
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE RESTRICT
+      );
+
+  - id: SQL005
+    title: "Use CHECK constraints for domain validation"
+    description: "Use CHECK constraints to enforce business rules at the database level. This provides a safety net regardless of which application writes to the table."
+    category: "data_integrity"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "constraints", "check"]
+    example: |
+      CREATE TABLE products (
+        price NUMERIC(10,2) CHECK (price >= 0),
+        status VARCHAR(20) CHECK (status IN ('active', 'inactive', 'archived')),
+        start_date DATE,
+        end_date DATE,
+        CHECK (end_date IS NULL OR end_date > start_date)
+      );
+
+  - id: SQL006
+    title: "Use TIMESTAMPTZ instead of TIMESTAMP for time data"
+    description: "Store timestamps with time zone information (TIMESTAMP WITH TIME ZONE / TIMESTAMPTZ). This avoids ambiguity and makes it possible to correctly convert between time zones."
+    category: "schema_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postgresql", "sql"]
+    tags: ["sql", "timestamp", "timezone", "postgresql"]
+
+  - id: SQL007
+    title: "Use UUID for distributed system identifiers"
+    description: "Use UUID (uuid_generate_v4() or gen_random_uuid()) for primary keys in distributed systems to avoid ID collision. For single-database systems, BIGINT IDENTITY is simpler and more performant."
+    category: "schema_design"
+    severity: "optional"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "uuid", "distributed"]
+
+  - id: SQL008
+    title: "Normalize to 3NF then denormalize selectively"
+    description: "Start with Third Normal Form (3NF) for data integrity. Denormalize only when measured performance requirements demand it, using materialized views or computed columns rather than redundant data."
+    category: "schema_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "normalization", "design"]
+
+  - id: SQL009
+    title: "Use consistent naming conventions"
+    description: "Use snake_case for table and column names. Use plural nouns for tables (users, orders). Prefix junction tables with both table names (user_roles). Suffix foreign keys with _id."
+    category: "schema_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "naming", "conventions"]
+
+  - id: SQL010
+    title: "Add COMMENT ON for documentation"
+    description: "Use COMMENT ON TABLE/COLUMN to document the purpose and semantics of database objects. This makes the schema self-documenting and helps with tooling."
+    category: "schema_design"
+    severity: "optional"
+    applicability:
+      frameworks: ["postgresql", "sql"]
+    tags: ["sql", "documentation", "comments"]
+
+  # ============================================================================
+  # QUERY OPTIMIZATION (SQL011-SQL020)
+  # ============================================================================
+
+  - id: SQL011
+    title: "Avoid SELECT * in production queries"
+    description: "Specify only the columns you need. SELECT * prevents index-only scans, increases I/O, breaks when columns are added, and transmits unnecessary data over the network."
+    category: "query_optimization"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "performance", "select"]
+
+  - id: SQL012
+    title: "Use EXISTS instead of COUNT(*) for existence checks"
+    description: "Use EXISTS (SELECT 1 FROM ...) instead of COUNT(*) > 0. EXISTS short-circuits after finding the first row, while COUNT must scan all matching rows."
+    category: "query_optimization"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "performance", "exists"]
+    example: |
+      -- Good: Short-circuits
+      SELECT CASE WHEN EXISTS (SELECT 1 FROM orders WHERE user_id = 42) THEN 1 ELSE 0 END;
+      -- Bad: Counts all rows
+      SELECT CASE WHEN (SELECT COUNT(*) FROM orders WHERE user_id = 42) > 0 THEN 1 ELSE 0 END;
+
+  - id: SQL013
+    title: "Avoid functions on indexed columns in WHERE clauses"
+    description: "Do not wrap indexed columns in functions (UPPER(), DATE(), CAST()). This prevents index usage. Use expression indexes or rewrite the query to keep the column unwrapped."
+    category: "query_optimization"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "performance", "sargable", "index"]
+    example: |
+      -- Bad: Prevents index usage
+      WHERE UPPER(email) = 'USER@EXAMPLE.COM'
+      -- Good: Use expression index or citext
+      CREATE INDEX idx_users_email_upper ON users (UPPER(email));
+      -- Or better: Use citext type (PostgreSQL)
+
+  - id: SQL014
+    title: "Use EXPLAIN ANALYZE to validate query plans"
+    description: "Always run EXPLAIN ANALYZE on queries before deploying to production. Look for sequential scans on large tables, nested loops on uncorrelated joins, and high actual row counts vs estimates."
+    category: "query_optimization"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "performance", "explain"]
+
+  - id: SQL015
+    title: "Use CTEs for readability, subqueries for performance"
+    description: "Common Table Expressions (WITH) improve readability for complex queries. However, in some databases (pre-PG12) CTEs are optimization fences. Use subqueries when CTE performance is a concern."
+    category: "query_optimization"
+    severity: "optional"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "cte", "readability"]
+
+  - id: SQL016
+    title: "Use LIMIT with ORDER BY for pagination"
+    description: "Always use ORDER BY with LIMIT/OFFSET for pagination. For deep pagination, use keyset pagination (WHERE id > last_seen_id ORDER BY id LIMIT N) instead of OFFSET."
+    category: "query_optimization"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "pagination", "performance"]
+
+  - id: SQL017
+    title: "Prefer JOINs over correlated subqueries"
+    description: "Rewrite correlated subqueries as JOINs when possible. JOINs are typically optimized better by the query planner and avoid per-row subquery execution."
+    category: "query_optimization"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "joins", "performance"]
+
+  - id: SQL018
+    title: "Use UNION ALL instead of UNION when duplicates are acceptable"
+    description: "UNION removes duplicates (requiring a sort/hash), while UNION ALL does not. If you know the result sets are disjoint or duplicates are acceptable, use UNION ALL."
+    category: "query_optimization"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "union", "performance"]
+
+  - id: SQL019
+    title: "Batch INSERT statements for bulk loading"
+    description: "Use multi-row INSERT (VALUES (...), (...), ...) or COPY (PostgreSQL) / LOAD DATA (MySQL) for bulk inserts. Avoid individual INSERT statements in loops."
+    category: "query_optimization"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "bulk", "insert", "performance"]
+
+  - id: SQL020
+    title: "Use window functions instead of self-joins"
+    description: "Replace self-joins for ranking, running totals, and row comparisons with window functions (ROW_NUMBER, RANK, LAG, LEAD, SUM OVER). They are cleaner and typically faster."
+    category: "query_optimization"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "window-functions", "performance"]
+
+  # ============================================================================
+  # INDEXING (SQL021-SQL028)
+  # ============================================================================
+
+  - id: SQL021
+    title: "Create indexes on foreign key columns"
+    description: "Always index foreign key columns. Without an index, JOINs and ON DELETE CASCADE operations require full table scans on the referencing table."
+    category: "indexing"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "index", "foreign-key"]
+
+  - id: SQL022
+    title: "Use composite indexes with correct column order"
+    description: "In composite indexes, put the most selective (highest cardinality) column first, followed by columns used in range scans. The index follows the leftmost prefix rule."
+    category: "indexing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "index", "composite"]
+    example: |
+      -- For queries: WHERE tenant_id = ? AND status = ? AND created_at > ?
+      CREATE INDEX idx_orders_tenant_status_created
+        ON orders (tenant_id, status, created_at);
+
+  - id: SQL023
+    title: "Use partial indexes for filtered queries"
+    description: "Create partial indexes (WHERE clause) for queries that consistently filter on a condition. This keeps the index small and focused."
+    category: "indexing"
+    severity: "optional"
+    applicability:
+      frameworks: ["postgresql", "sql"]
+    tags: ["sql", "index", "partial", "postgresql"]
+    example: |
+      -- Only index active orders (90% of queries filter by active)
+      CREATE INDEX idx_orders_active ON orders (created_at)
+        WHERE status = 'active';
+
+  - id: SQL024
+    title: "Use covering indexes (INCLUDE) for index-only scans"
+    description: "Use INCLUDE clause to add non-key columns to an index, enabling index-only scans without accessing the heap/table."
+    category: "indexing"
+    severity: "optional"
+    applicability:
+      frameworks: ["postgresql", "sqlserver", "sql"]
+    tags: ["sql", "index", "covering", "include"]
+
+  - id: SQL025
+    title: "Use GIN indexes for JSONB and full-text search"
+    description: "Use GIN (Generalized Inverted Index) for JSONB containment queries (@>, ?), array operations, and full-text search (tsvector). Use GiST for range types and PostGIS geometry."
+    category: "indexing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postgresql", "sql"]
+    tags: ["sql", "index", "gin", "jsonb", "postgresql"]
+
+  - id: SQL026
+    title: "Use CREATE INDEX CONCURRENTLY to avoid locks"
+    description: "In PostgreSQL, use CREATE INDEX CONCURRENTLY to build indexes without blocking writes. This is essential for production databases. Note: cannot be used inside a transaction."
+    category: "indexing"
+    severity: "critical"
+    applicability:
+      frameworks: ["postgresql", "sql"]
+    tags: ["sql", "index", "concurrent", "postgresql"]
+
+  - id: SQL027
+    title: "Monitor and remove unused indexes"
+    description: "Unused indexes waste disk space, slow down writes, and increase vacuum time. Use pg_stat_user_indexes (PostgreSQL) or sys.dm_db_index_usage_stats (SQL Server) to identify them."
+    category: "indexing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "index", "monitoring"]
+
+  - id: SQL028
+    title: "Avoid over-indexing OLTP tables"
+    description: "Each index adds write overhead (INSERT/UPDATE/DELETE must maintain all indexes). For OLTP workloads, limit indexes to those proven necessary by query analysis."
+    category: "indexing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "index", "oltp"]
+
+  # ============================================================================
+  # SECURITY (SQL029-SQL035)
+  # ============================================================================
+
+  - id: SQL029
+    title: "Use parameterized queries to prevent SQL injection"
+    description: "Never concatenate user input into SQL strings. Always use parameterized queries ($1, ?, :param) or prepared statements."
+    category: "sql_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "security", "injection"]
+
+  - id: SQL030
+    title: "Apply principle of least privilege for database roles"
+    description: "Application database users should only have the minimum required permissions (SELECT, INSERT, UPDATE on specific tables). Never use superuser roles in applications."
+    category: "sql_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "security", "roles", "privileges"]
+
+  - id: SQL031
+    title: "Use Row Level Security (RLS) for multi-tenant isolation"
+    description: "In multi-tenant applications, use RLS policies to ensure tenants can only access their own data. This provides defense-in-depth beyond application-level filtering."
+    category: "sql_security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postgresql", "sql"]
+    tags: ["sql", "security", "rls", "multi-tenant"]
+
+  - id: SQL032
+    title: "Encrypt sensitive data at rest"
+    description: "Use pgcrypto (PostgreSQL), TDE (SQL Server/Oracle), or application-level encryption for PII, passwords, tokens. Never store plaintext passwords — use bcrypt/argon2."
+    category: "sql_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "security", "encryption"]
+
+  - id: SQL033
+    title: "Audit sensitive data access with triggers or audit tables"
+    description: "Log access to sensitive tables using audit triggers or change data capture (CDC). Track who accessed what data and when for compliance."
+    category: "sql_security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "security", "audit"]
+
+  - id: SQL034
+    title: "Use SSL/TLS for database connections"
+    description: "Always encrypt database connections in production. Configure sslmode=verify-full (PostgreSQL) or Encrypt=true;TrustServerCertificate=false (SQL Server)."
+    category: "sql_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "security", "ssl", "tls"]
+
+  - id: SQL035
+    title: "Revoke PUBLIC schema permissions"
+    description: "In PostgreSQL, revoke CREATE on the public schema from PUBLIC role. Create dedicated schemas for applications with explicit grants."
+    category: "sql_security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postgresql", "sql"]
+    tags: ["sql", "security", "schema", "postgresql"]
+
+  # ============================================================================
+  # STORED PROCEDURES & FUNCTIONS (SQL036-SQL040)
+  # ============================================================================
+
+  - id: SQL036
+    title: "Set appropriate volatility for functions"
+    description: "Mark functions as IMMUTABLE (deterministic, no side effects), STABLE (reads DB, same result in single transaction), or VOLATILE (default). This enables query planner optimizations."
+    category: "stored_procedures"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postgresql", "sql"]
+    tags: ["sql", "functions", "volatility", "postgresql"]
+
+  - id: SQL037
+    title: "Use SECURITY DEFINER carefully"
+    description: "SECURITY DEFINER functions execute with the owner's privileges. Always set search_path explicitly and validate inputs to prevent privilege escalation."
+    category: "stored_procedures"
+    severity: "critical"
+    applicability:
+      frameworks: ["postgresql", "sql"]
+    tags: ["sql", "functions", "security-definer"]
+
+  - id: SQL038
+    title: "Handle exceptions in stored procedures"
+    description: "Use EXCEPTION blocks (PostgreSQL) or TRY...CATCH (SQL Server) in stored procedures. Log errors, re-raise when appropriate, and ensure transactions are properly rolled back."
+    category: "stored_procedures"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "procedures", "error-handling"]
+
+  - id: SQL039
+    title: "Avoid dynamic SQL unless necessary"
+    description: "Dynamic SQL (EXECUTE, sp_executesql) is harder to debug, cannot be plan-cached as effectively, and is vulnerable to injection if not parameterized. Use static SQL when possible."
+    category: "stored_procedures"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "procedures", "dynamic-sql"]
+
+  - id: SQL040
+    title: "Use OUT parameters or RETURNS TABLE for multiple return values"
+    description: "Instead of returning multiple result sets or using temporary tables, use OUT parameters or RETURNS TABLE for structured function output."
+    category: "stored_procedures"
+    severity: "optional"
+    applicability:
+      frameworks: ["postgresql", "sql"]
+    tags: ["sql", "functions", "return-types"]
+
+  # ============================================================================
+  # MIGRATION PATTERNS (SQL041-SQL045)
+  # ============================================================================
+
+  - id: SQL041
+    title: "Make migrations idempotent"
+    description: "Use IF NOT EXISTS / IF EXISTS in migrations so they can be safely re-run. This is essential for disaster recovery and deployment rollback scenarios."
+    category: "migration_patterns"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "migration", "idempotent"]
+    example: |
+      CREATE TABLE IF NOT EXISTS users (...);
+      DROP INDEX IF EXISTS idx_users_email;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
+
+  - id: SQL042
+    title: "Separate schema migrations from data migrations"
+    description: "Keep DDL (CREATE, ALTER, DROP) and DML (INSERT, UPDATE, DELETE) in separate migration files. This makes rollback simpler and avoids long-running transactions."
+    category: "migration_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "migration", "separation"]
+
+  - id: SQL043
+    title: "Always provide reversible (down) migrations"
+    description: "Write both UP and DOWN migrations. For destructive changes (DROP COLUMN), the down migration should recreate the column with a reasonable default."
+    category: "migration_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "migration", "reversible"]
+
+  - id: SQL044
+    title: "Use transactions in migrations"
+    description: "Wrap migration statements in BEGIN/COMMIT to ensure atomicity. If any statement fails, the entire migration is rolled back. Note: DDL is not transactional in MySQL."
+    category: "migration_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "migration", "transaction"]
+
+  - id: SQL045
+    title: "Avoid long-running locks in migrations"
+    description: "Use CREATE INDEX CONCURRENTLY, add columns with defaults (PG11+), and avoid ALTER TABLE ... ADD CONSTRAINT NOT VALID/VALIDATE CONSTRAINT pattern to minimize lock duration."
+    category: "migration_patterns"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "migration", "locks", "zero-downtime"]
+
+  # ============================================================================
+  # SQL ANTI-PATTERNS (SQL046-SQL050)
+  # ============================================================================
+
+  - id: SQL046
+    title: "Avoid storing comma-separated values in a column"
+    description: "Use junction/association tables instead of CSV strings. CSV columns cannot be indexed, joined, or constrained effectively and violate First Normal Form."
+    category: "sql_anti_patterns"
+    severity: "critical"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "anti-pattern", "normalization"]
+
+  - id: SQL047
+    title: "Avoid EAV (Entity-Attribute-Value) pattern"
+    description: "Entity-Attribute-Value tables lose type safety, constraint enforcement, and query performance. Use JSONB columns (PostgreSQL) or proper normalized tables instead."
+    category: "sql_anti_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "anti-pattern", "eav"]
+
+  - id: SQL048
+    title: "Avoid implicit type conversions in comparisons"
+    description: "Ensure both sides of a comparison have the same type. Implicit conversions (e.g., comparing VARCHAR to INT) prevent index usage and can produce unexpected results."
+    category: "sql_anti_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "anti-pattern", "type-conversion"]
+
+  - id: SQL049
+    title: "Avoid using NATURAL JOIN"
+    description: "NATURAL JOIN is fragile — it joins on ALL columns with the same name. If a column is added to either table, the join behavior changes silently. Use explicit JOIN ON instead."
+    category: "sql_anti_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "anti-pattern", "natural-join"]
+
+  - id: SQL050
+    title: "Avoid excessive use of triggers for business logic"
+    description: "Triggers are hard to debug, can cause cascading effects, and make the system behavior non-obvious. Use triggers for auditing and constraints, but keep business logic in application code or stored procedures."
+    category: "sql_anti_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sql"]
+    tags: ["sql", "anti-pattern", "triggers"]

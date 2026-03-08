@@ -1,0 +1,1073 @@
+# Qwik Framework Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.63 - Qwik Framework Support
+# Practice IDs: QWIK001-QWIK050
+# Coverage: Components, Signals, Tasks, Routing, Context,
+#           Performance, SSR, TypeScript, Qwik City, Patterns
+# Versions: Qwik v0.x-v2.x, Qwik City / @qwik.dev/router,
+#           @builder.io/qwik, @builder.io/qwik-city
+
+practices:
+  # ============================================================================
+  # QWIK COMPONENTS (QWIK001-QWIK010) - Component best practices
+  # ============================================================================
+
+  - id: QWIK001
+    title: "Always wrap components with component$()"
+    description: "All Qwik components must be wrapped with component$() to enable lazy-loading through the Optimizer. This creates a QRL boundary that allows code to be split and loaded on demand."
+    category: "qwik_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "component", "optimizer", "lazy-loading", "qrl"]
+    example: |
+      // ✅ Correct: wrapped with component$()
+      export const MyComponent = component$(() => {
+        return <div>Hello</div>;
+      });
+
+      // ❌ Wrong: plain function (not lazy-loadable)
+      export function MyComponent() {
+        return <div>Hello</div>;
+      }
+
+  - id: QWIK002
+    title: "Use <Slot> for content projection"
+    description: "Use the <Slot> component for content projection instead of passing children as props. Slot is Qwik's content projection mechanism that supports named slots."
+    category: "qwik_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "slot", "projection", "composition"]
+    example: |
+      // ✅ Content projection with Slot
+      export const Card = component$(() => {
+        return (
+          <div class="card">
+            <div class="card-header"><Slot name="header" /></div>
+            <div class="card-body"><Slot /></div>
+          </div>
+        );
+      });
+
+      // Usage with named slots
+      <Card>
+        <div q:slot="header">Title</div>
+        <p>Body content</p>
+      </Card>
+
+  - id: QWIK003
+    title: "Use PropsOf<> for component prop types"
+    description: "Use PropsOf<'element'> to derive prop types from HTML elements. For custom props, define explicit interfaces and use QwikIntrinsicElements for polymorphic components."
+    category: "qwik_components"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "props", "typescript", "types"]
+    example: |
+      // ✅ Explicit prop interface
+      interface ButtonProps {
+        variant?: 'primary' | 'secondary';
+        size?: 'sm' | 'md' | 'lg';
+      }
+
+      export const Button = component$<ButtonProps>(({ variant = 'primary', size = 'md' }) => {
+        return <button class={`btn-${variant} btn-${size}`}><Slot /></button>;
+      });
+
+      // ✅ Using PropsOf for HTML element props
+      type InputProps = PropsOf<'input'> & { label: string };
+
+  - id: QWIK004
+    title: "Export components for lazy-loading"
+    description: "Export components with the export keyword to enable tree-shaking and lazy-loading by the Qwik Optimizer. Non-exported components are bundled with their parent."
+    category: "qwik_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "export", "lazy-loading", "optimizer"]
+    example: |
+      // ✅ Exported component (independently lazy-loadable)
+      export const Header = component$(() => { ... });
+
+      // ⚠️ Non-exported (bundled with parent)
+      const InternalHelper = component$(() => { ... });
+
+  - id: QWIK005
+    title: "Avoid passing non-serializable values as props"
+    description: "Component props must be serializable by Qwik's serialization system. Avoid passing functions, class instances, or DOM nodes directly. Use $() for function props."
+    category: "qwik_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "serialization", "props", "qrl"]
+    example: |
+      // ✅ Use $ for function props (QRL)
+      interface ItemProps {
+        onClick$?: QRL<(id: string) => void>;
+      }
+
+      export const Item = component$<ItemProps>(({ onClick$ }) => {
+        return <button onClick$={onClick$}>Click</button>;
+      });
+
+      // ❌ Wrong: passing plain function (not serializable)
+      <Item onClick={() => console.log('clicked')} />
+
+  - id: QWIK006
+    title: "Use event$ suffix for handler props"
+    description: "Name event handler props with the $ suffix (onClick$, onSubmit$) to indicate they are QRL functions. This is a Qwik convention that enables lazy-loading of handlers."
+    category: "qwik_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "events", "qrl", "naming", "convention"]
+    example: |
+      // ✅ $ suffix for event handler props
+      <button onClick$={() => setCount(count + 1)}>+1</button>
+      <input onInput$={(ev) => setSearch(ev.target.value)} />
+
+      // ❌ Wrong: no $ suffix (won't be lazy-loaded)
+      <button onClick={() => setCount(count + 1)}>+1</button>
+
+  - id: QWIK007
+    title: "Use useOn/useOnWindow/useOnDocument for programmatic events"
+    description: "Use useOn(), useOnWindow(), useOnDocument() for programmatic event registration instead of adding listeners manually. These hooks are serializable and work with SSR."
+    category: "qwik_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "events", "useOn", "ssr", "serialization"]
+    example: |
+      // ✅ Programmatic event registration
+      useOnDocument('keydown', $((event) => {
+        if (event.key === 'Escape') closeModal();
+      }));
+
+      useOnWindow('resize', $(() => {
+        updateLayout();
+      }));
+
+      // ❌ Wrong: manual event listener (not serializable)
+      document.addEventListener('keydown', handler);
+
+  - id: QWIK008
+    title: "Prefer inline components for simple wrappers"
+    description: "For simple wrapper components that don't need lazy-loading, consider inline components. However, always use component$() for components that benefit from code splitting."
+    category: "qwik_components"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "inline", "optimization", "code-splitting"]
+    example: |
+      // ✅ Inline for simple wrappers
+      const Wrapper = (props: { class: string }) => (
+        <div class={props.class}>{props.children}</div>
+      );
+
+      // ✅ component$() for substantial components
+      export const Dashboard = component$(() => {
+        const data = useSignal<DashboardData | null>(null);
+        // ... complex logic
+        return <div>...</div>;
+      });
+
+  - id: QWIK009
+    title: "Use key prop for list rendering"
+    description: "Always provide a unique key prop when rendering lists to help Qwik efficiently track and update DOM elements. Keys should be stable identifiers, not array indices."
+    category: "qwik_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "key", "list", "rendering", "performance"]
+    example: |
+      // ✅ Stable key prop
+      {items.value.map((item) => (
+        <li key={item.id}>{item.name}</li>
+      ))}
+
+      // ❌ Wrong: index as key
+      {items.value.map((item, index) => (
+        <li key={index}>{item.name}</li>
+      ))}
+
+  - id: QWIK010
+    title: "Use useStylesScoped$ for component-scoped styles"
+    description: "Use useStylesScoped$() for CSS that should be scoped to a specific component. Use useStyles$() for global styles. Scoped styles prevent style leaking between components."
+    category: "qwik_components"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "styles", "scoped", "css", "useStyles"]
+    example: |
+      // ✅ Scoped styles
+      export const StyledCard = component$(() => {
+        useStylesScoped$(`.card { border: 1px solid #ccc; padding: 16px; }`);
+        return <div class="card"><Slot /></div>;
+      });
+
+      // ✅ Global styles
+      export const App = component$(() => {
+        useStyles$(globalStyles);
+        return <main><Slot /></main>;
+      });
+
+  # ============================================================================
+  # QWIK SIGNALS (QWIK011-QWIK020) - State management best practices
+  # ============================================================================
+
+  - id: QWIK011
+    title: "Use useSignal for primitive reactive state"
+    description: "Use useSignal() for single primitive values (numbers, strings, booleans). Access the value through .value property. Signals are the primary reactive primitive in Qwik."
+    category: "qwik_signals"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "signal", "state", "reactive", "primitive"]
+    example: |
+      // ✅ Primitive state with useSignal
+      const count = useSignal(0);
+      const name = useSignal('');
+      const isOpen = useSignal(false);
+
+      // Access/update via .value
+      count.value++;
+      return <div>{count.value}</div>;
+
+  - id: QWIK012
+    title: "Use useStore for complex reactive state"
+    description: "Use useStore() for objects with multiple properties. Stores are deep reactive proxies — nested property mutations are automatically tracked."
+    category: "qwik_signals"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "store", "state", "reactive", "object"]
+    example: |
+      // ✅ Object state with useStore
+      const state = useStore({
+        items: [] as Item[],
+        filter: 'all',
+        page: 1,
+      });
+
+      // Direct mutation tracked automatically
+      state.items.push(newItem);
+      state.filter = 'active';
+
+      // ⚠️ Replace arrays instead of mutating for better performance
+      state.items = [...state.items, newItem];
+
+  - id: QWIK013
+    title: "Use useComputed$ for derived state"
+    description: "Use useComputed$() for values derived from signals/stores. Computed values are memoized and only recalculate when dependencies change. Returns a ReadonlySignal."
+    category: "qwik_signals"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "computed", "derived", "memoization", "performance"]
+    example: |
+      // ✅ Derived state with useComputed$
+      const count = useSignal(0);
+      const doubled = useComputed$(() => count.value * 2);
+      const filtered = useComputed$(() =>
+        state.items.filter(i => i.status === state.filter)
+      );
+
+      return <div>Doubled: {doubled.value}</div>;
+
+  - id: QWIK014
+    title: "Use { deep: false } for flat stores"
+    description: "Pass { deep: false } to useStore() when you don't need deep reactivity. This improves performance for large flat objects where only top-level properties change."
+    category: "qwik_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "store", "performance", "shallow", "deep"]
+    example: |
+      // ✅ Shallow store for flat data
+      const config = useStore({ theme: 'dark', lang: 'en' }, { deep: false });
+
+      // ✅ Deep store for nested data (default)
+      const formState = useStore({
+        user: { name: '', address: { city: '' } },
+        errors: {},
+      });
+
+  - id: QWIK015
+    title: "Use useSignal<Element> for DOM element references"
+    description: "Use useSignal<Element>() to create refs for DOM elements. Assign with ref={signal}. The signal's .value will be the DOM element after mount."
+    category: "qwik_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "signal", "ref", "dom", "element"]
+    example: |
+      // ✅ Element ref with useSignal
+      const inputRef = useSignal<HTMLInputElement>();
+
+      return (
+        <>
+          <input ref={inputRef} type="text" />
+          <button onClick$={() => inputRef.value?.focus()}>Focus</button>
+        </>
+      );
+
+  - id: QWIK016
+    title: "Use noSerialize() for non-serializable values"
+    description: "Wrap non-serializable values (event listeners, WebSocket connections, timers, third-party instances) with noSerialize() to prevent serialization errors."
+    category: "qwik_signals"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "noSerialize", "serialization", "ssr", "resumability"]
+    example: |
+      // ✅ Non-serializable value wrapped
+      const ws = useSignal<NoSerialize<WebSocket>>();
+
+      useVisibleTask$(() => {
+        const socket = new WebSocket('wss://example.com');
+        ws.value = noSerialize(socket);
+
+        return () => socket.close();
+      });
+
+      // ❌ Wrong: WebSocket stored without noSerialize
+      ws.value = new WebSocket('wss://example.com');
+
+  - id: QWIK017
+    title: "Use createContextId for type-safe context sharing"
+    description: "Create context IDs with createContextId<T>() for sharing state across components. Use unique string identifiers to prevent collisions."
+    category: "qwik_context"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "context", "createContextId", "shared-state"]
+    example: |
+      // ✅ Type-safe context
+      interface ThemeContext { mode: 'light' | 'dark'; primary: string; }
+      export const ThemeCtx = createContextId<ThemeContext>('theme');
+
+      // Provider
+      export const ThemeProvider = component$(() => {
+        const theme = useStore<ThemeContext>({ mode: 'light', primary: '#007bff' });
+        useContextProvider(ThemeCtx, theme);
+        return <Slot />;
+      });
+
+      // Consumer
+      const theme = useContext(ThemeCtx);
+
+  - id: QWIK018
+    title: "Avoid accessing .value in module scope"
+    description: "Signal .value access should only happen inside component$(), useTask$(), useVisibleTask$(), or event handlers — never at module scope. Module-scope code runs during SSR and cannot track reactivity."
+    category: "qwik_signals"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "signal", "scope", "reactivity", "ssr"]
+    example: |
+      // ❌ Wrong: module-scope .value access
+      const count = useSignal(0);
+      const doubled = count.value * 2;  // Not reactive, runs once
+
+      // ✅ Correct: inside component or computed
+      const doubled = useComputed$(() => count.value * 2);
+
+  - id: QWIK019
+    title: "Use useStore for form state"
+    description: "Prefer useStore() over multiple useSignal() calls for form state. Group related form fields in a single store for cleaner state management."
+    category: "qwik_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "store", "form", "state", "pattern"]
+    example: |
+      // ✅ Form state with useStore
+      const form = useStore({
+        name: '',
+        email: '',
+        message: '',
+        errors: {} as Record<string, string>,
+      });
+
+      // ❌ Multiple signals for form (verbose)
+      const name = useSignal('');
+      const email = useSignal('');
+      const message = useSignal('');
+
+  - id: QWIK020
+    title: "Use Signal type for prop callbacks"
+    description: "When passing reactive state between components, type props as Signal<T> to maintain reactivity across component boundaries."
+    category: "qwik_signals"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "signal", "props", "reactivity", "types"]
+    example: |
+      // ✅ Signal prop for reactivity
+      interface CounterDisplayProps { count: Signal<number>; }
+
+      export const CounterDisplay = component$<CounterDisplayProps>(({ count }) => {
+        return <span>{count.value}</span>;
+      });
+
+      // Parent passes signal directly
+      const count = useSignal(0);
+      <CounterDisplay count={count} />
+
+  # ============================================================================
+  # QWIK TASKS (QWIK021-QWIK028) - Lifecycle and side effects
+  # ============================================================================
+
+  - id: QWIK021
+    title: "Use useTask$ for server+client side effects"
+    description: "useTask$() runs on both server and client. Use it for side effects that should happen during SSR and on the client. Use track() to declare dependencies."
+    category: "qwik_tasks"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "task", "lifecycle", "ssr", "track"]
+    example: |
+      // ✅ Task with track
+      useTask$(({ track }) => {
+        const val = track(() => count.value);
+        console.log('count changed to', val);
+      });
+
+      // ✅ Task with cleanup
+      useTask$(({ track, cleanup }) => {
+        const id = track(() => itemId.value);
+        const ctrl = new AbortController();
+        cleanup(() => ctrl.abort());
+        fetchItem(id, { signal: ctrl.signal });
+      });
+
+  - id: QWIK022
+    title: "Use useVisibleTask$ only for browser APIs"
+    description: "useVisibleTask$() runs only in the browser after the component is visible. Reserve it for browser-only APIs (DOM, window, canvas, intersection observer). It eagerly downloads code."
+    category: "qwik_tasks"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "visibleTask", "browser", "client-only", "performance"]
+    example: |
+      // ✅ Browser-only API in useVisibleTask$
+      useVisibleTask$(() => {
+        const observer = new IntersectionObserver(callback);
+        observer.observe(elementRef.value!);
+        return () => observer.disconnect();
+      });
+
+      // ❌ Wrong: data fetching in useVisibleTask$ (use useTask$ or routeLoader$)
+      useVisibleTask$(async () => {
+        const data = await fetch('/api/data');
+        state.data = await data.json();
+      });
+
+  - id: QWIK023
+    title: "Use eagerness option strategically"
+    description: "Set eagerness: 'visible' | 'load' | 'idle' on useVisibleTask$ to control when code downloads. 'visible' (default) waits until component is visible; 'load' runs on page load; 'idle' during idle time."
+    category: "qwik_tasks"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "visibleTask", "eagerness", "performance", "loading"]
+    example: |
+      // ✅ Analytics (load immediately)
+      useVisibleTask$(() => { initAnalytics(); }, { strategy: 'document-ready' });
+
+      // ✅ Lazy animation (when visible)
+      useVisibleTask$(() => { startAnimation(); });
+
+  - id: QWIK024
+    title: "Use useResource$ for async data loading"
+    description: "useResource$() is the primary way to fetch async data in components. It runs on server during SSR and re-runs on client when tracked signals change. Use with <Resource> for loading states."
+    category: "qwik_tasks"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "resource", "async", "data-fetching", "ssr"]
+    example: |
+      // ✅ Data loading with useResource$
+      const userResource = useResource$<User>(async ({ track, cleanup }) => {
+        const id = track(() => userId.value);
+        const ctrl = new AbortController();
+        cleanup(() => ctrl.abort());
+        const res = await fetch(`/api/users/${id}`, { signal: ctrl.signal });
+        return res.json();
+      });
+
+      // ✅ Render with <Resource>
+      return (
+        <Resource
+          value={userResource}
+          onPending={() => <Spinner />}
+          onRejected={(err) => <Error message={err.message} />}
+          onResolved={(user) => <UserProfile user={user} />}
+        />
+      );
+
+  - id: QWIK025
+    title: "Always use track() in tasks and resources"
+    description: "Explicitly track signal dependencies with track() inside useTask$() and useResource$(). Without track(), tasks won't re-run when signals change."
+    category: "qwik_tasks"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "track", "task", "resource", "reactivity"]
+    example: |
+      // ✅ Explicit tracking
+      useTask$(({ track }) => {
+        const q = track(() => searchQuery.value);
+        // Re-runs whenever searchQuery changes
+      });
+
+      // ❌ Wrong: no track (runs once, never re-runs)
+      useTask$(() => {
+        console.log(searchQuery.value);  // Won't re-run
+      });
+
+  - id: QWIK026
+    title: "Use cleanup in tasks for resource disposal"
+    description: "Always return cleanup functions or use the cleanup() callback to dispose resources in tasks and visible tasks. Prevents memory leaks from timers, subscriptions, and abort controllers."
+    category: "qwik_tasks"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "cleanup", "task", "memory-leak", "disposal"]
+    example: |
+      // ✅ Cleanup in useVisibleTask$
+      useVisibleTask$(({ cleanup }) => {
+        const interval = setInterval(() => tick(), 1000);
+        cleanup(() => clearInterval(interval));
+      });
+
+      // ✅ Cleanup in useResource$
+      useResource$(async ({ cleanup }) => {
+        const controller = new AbortController();
+        cleanup(() => controller.abort());
+        return fetch(url, { signal: controller.signal });
+      });
+
+  - id: QWIK027
+    title: "Migrate from useWatch$ to useTask$"
+    description: "useWatch$ was renamed to useTask$ in Qwik v1. Update legacy code to use the new API name. Similarly, useClientEffect$ was renamed to useVisibleTask$."
+    category: "qwik_tasks"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "migration", "legacy", "useWatch", "useTask"]
+    example: |
+      // ✅ Modern API
+      useTask$(({ track }) => { ... });
+      useVisibleTask$(() => { ... });
+
+      // ❌ Deprecated API (v0.x)
+      useWatch$(({ track }) => { ... });
+      useClientEffect$(() => { ... });
+
+  - id: QWIK028
+    title: "Prefer routeLoader$ over useResource$ for route data"
+    description: "For page-level data loading, prefer routeLoader$() in Qwik City over useResource$(). Route loaders run before rendering and enable streaming SSR with optimal performance."
+    category: "qwik_tasks"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "routeLoader", "data-fetching", "qwik-city", "ssr"]
+    example: |
+      // ✅ Route-level data loading
+      export const useUserData = routeLoader$(async ({ params }) => {
+        return fetchUser(params.id);
+      });
+
+      export default component$(() => {
+        const user = useUserData();
+        return <div>{user.value.name}</div>;
+      });
+
+      // ⚠️ useResource$ for component-level data (fine, but not for route data)
+
+  # ============================================================================
+  # QWIK ROUTING (QWIK029-QWIK036) - Qwik City routing best practices
+  # ============================================================================
+
+  - id: QWIK029
+    title: "Use routeAction$ for form mutations"
+    description: "Use routeAction$() for server-side mutations triggered by form submissions. Pair with <Form> component and zod() for validation."
+    category: "qwik_routing"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "routeAction", "form", "mutation", "qwik-city"]
+    example: |
+      // ✅ Route action with validation
+      export const useAddTodo = routeAction$(
+        async (data) => {
+          await db.todos.create(data);
+          return { success: true };
+        },
+        zod$({ title: z.string().min(1), completed: z.boolean().default(false) })
+      );
+
+      export default component$(() => {
+        const action = useAddTodo();
+        return (
+          <Form action={action}>
+            <input name="title" />
+            <button type="submit">Add</button>
+            {action.value?.fieldErrors && <p>Error!</p>}
+          </Form>
+        );
+      });
+
+  - id: QWIK030
+    title: "Use server$ for RPC-style server calls"
+    description: "Use server$() for server-side functions that can be called from the client like RPC. They run exclusively on the server and automatically handle serialization."
+    category: "qwik_routing"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "server$", "rpc", "server-side", "qwik-city"]
+    example: |
+      // ✅ Server function for API calls
+      const getUserById = server$(async function (id: string) {
+        const user = await db.users.findById(id);
+        return user;
+      });
+
+      // Call from client like a regular function
+      const user = await getUserById('123');
+
+  - id: QWIK031
+    title: "Use file-based routing conventions"
+    description: "Follow Qwik City file-based routing: src/routes/index.tsx for root, [param] for dynamic segments, [...catchall] for catch-all, layout.tsx for layouts, and (group) for route groups."
+    category: "qwik_routing"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "routing", "file-based", "convention", "qwik-city"]
+    example: |
+      // File structure:
+      // src/routes/
+      //   index.tsx            → /
+      //   about/index.tsx      → /about
+      //   blog/[slug]/index.tsx → /blog/:slug
+      //   [...catchall]/index.tsx → catch-all
+      //   (auth)/login/index.tsx  → /login (grouped)
+      //   layout.tsx           → root layout
+
+  - id: QWIK032
+    title: "Use middleware for cross-cutting concerns"
+    description: "Define middleware functions (onRequest, onGet, onPost) in layout.tsx or plugin@*.ts files for authentication, logging, redirects, and other cross-cutting concerns."
+    category: "qwik_routing"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "middleware", "onRequest", "auth", "qwik-city"]
+    example: |
+      // ✅ Auth middleware in layout.tsx
+      export const onRequest: RequestHandler = async ({ cookie, redirect }) => {
+        const token = cookie.get('auth_token');
+        if (!token) {
+          throw redirect(302, '/login');
+        }
+      };
+
+      // ✅ Logging middleware in plugin@logger.ts
+      export const onRequest: RequestHandler = async ({ url, next }) => {
+        console.log(`${new Date().toISOString()} ${url.pathname}`);
+        await next();
+      };
+
+  - id: QWIK033
+    title: "Use useNavigate for programmatic navigation"
+    description: "Use useNavigate() for programmatic navigation in event handlers. Use useLocation() to read current URL, params, and search params."
+    category: "qwik_routing"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "navigation", "useNavigate", "useLocation", "routing"]
+    example: |
+      // ✅ Programmatic navigation
+      const nav = useNavigate();
+      const loc = useLocation();
+
+      <button onClick$={() => nav('/dashboard')}>Go to Dashboard</button>
+
+      // Current URL info
+      console.log(loc.url.pathname);
+      console.log(loc.params.id);
+
+  - id: QWIK034
+    title: "Use zod$ for route action validation"
+    description: "Use zod$() with routeAction$() and globalAction$() for type-safe form validation. Zod schemas provide both runtime validation and TypeScript types."
+    category: "qwik_routing"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "zod", "validation", "form", "type-safety"]
+    example: |
+      // ✅ Zod validation with routeAction$
+      export const useCreateUser = routeAction$(
+        async (data, { fail }) => {
+          const result = await createUser(data);
+          if (!result) return fail(400, { message: 'Failed' });
+          return { id: result.id };
+        },
+        zod$({
+          name: z.string().min(2),
+          email: z.string().email(),
+          age: z.number().min(18),
+        })
+      );
+
+  - id: QWIK035
+    title: "Use globalAction$ for cross-route actions"
+    description: "Use globalAction$() for server actions that can be triggered from any route, not just the defining route. Useful for shared actions like logout or global state mutations."
+    category: "qwik_routing"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "globalAction", "cross-route", "shared", "qwik-city"]
+    example: |
+      // ✅ Global action (can be used from any route)
+      export const useLogout = globalAction$(async (_, { cookie, redirect }) => {
+        cookie.delete('auth_token');
+        throw redirect(302, '/login');
+      });
+
+  - id: QWIK036
+    title: "Return data from routeLoader$ for SSR"
+    description: "routeLoader$ must return data, not void. The returned data is serialized and available via useLoader().value in components. Keep loaders focused on data fetching."
+    category: "qwik_routing"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "routeLoader", "ssr", "data", "return"]
+    example: |
+      // ✅ Return data from loader
+      export const useProducts = routeLoader$(async ({ query }) => {
+        const page = parseInt(query.get('page') ?? '1');
+        return fetchProducts({ page, limit: 20 });
+      });
+
+      export default component$(() => {
+        const products = useProducts();
+        return <ul>{products.value.map(p => <li key={p.id}>{p.name}</li>)}</ul>;
+      });
+
+  # ============================================================================
+  # QWIK PERFORMANCE (QWIK037-QWIK042) - Performance best practices
+  # ============================================================================
+
+  - id: QWIK037
+    title: "Leverage resumability over hydration"
+    description: "Qwik uses resumability, not hydration. Avoid patterns that force eager code execution. Let the framework lazy-load handlers on user interaction instead of re-executing everything on page load."
+    category: "qwik_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "resumability", "performance", "hydration", "lazy"]
+    example: |
+      // ✅ Resumable: handler loaded on click
+      <button onClick$={() => handleClick()}>Click</button>
+
+      // ❌ Anti-pattern: forces eager execution
+      useVisibleTask$(() => {
+        // All this code downloads immediately
+        setupComplexInteraction();
+      });
+
+  - id: QWIK038
+    title: "Minimize useVisibleTask$ usage"
+    description: "useVisibleTask$() forces code to download eagerly, bypassing resumability. Use it sparingly — only for browser-only APIs. Prefer useTask$() and routeLoader$() for most logic."
+    category: "qwik_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "visibleTask", "performance", "eager", "code-size"]
+    example: |
+      // ✅ Prefer useTask$ (doesn't force eager download)
+      useTask$(({ track }) => {
+        const q = track(() => query.value);
+        // Runs on server during SSR, lazy on client
+      });
+
+      // ⚠️ Use useVisibleTask$ only when necessary
+      useVisibleTask$(() => {
+        // Canvas API, WebGL, etc. — browser-only
+        const ctx = canvasRef.value!.getContext('2d');
+      });
+
+  - id: QWIK039
+    title: "Use $ boundaries for code splitting"
+    description: "The $ sign creates lazy-loading boundaries. Extract handler logic into $() functions to enable the Optimizer to code-split effectively."
+    category: "qwik_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "optimizer", "code-splitting", "qrl", "lazy"]
+    example: |
+      // ✅ Handler in $ boundary (code-split)
+      const handleSubmit = $(() => {
+        // This code is in a separate chunk
+        processForm(state);
+      });
+
+      // ✅ Inline $ in JSX (auto code-split)
+      <form onSubmit$={() => processForm(state)}>...</form>
+
+  - id: QWIK040
+    title: "Avoid importing large libraries at module scope"
+    description: "Import large third-party libraries inside $() boundaries or useTask$/useVisibleTask$ to keep them lazy-loaded. Module-scope imports are included in the initial bundle."
+    category: "qwik_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "imports", "lazy", "bundle-size", "optimization"]
+    example: |
+      // ✅ Lazy import inside $ boundary
+      const handleChart = $(() => {
+        const { Chart } = await import('chart.js');
+        // Chart.js only loaded when handler runs
+      });
+
+      // ❌ Module-scope import (always in bundle)
+      import { Chart } from 'chart.js';
+
+  - id: QWIK041
+    title: "Use prefetchStrategy for route prefetching"
+    description: "Configure prefetch strategies in Qwik City to preload route code and data before navigation. Improves perceived performance for single-page navigation."
+    category: "qwik_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "prefetch", "performance", "navigation", "qwik-city"]
+    example: |
+      // ✅ Link with prefetch
+      import { Link } from '@builder.io/qwik-city';
+
+      <Link href="/about" prefetch>About</Link>
+
+  - id: QWIK042
+    title: "Use isServer/isBrowser for conditional code"
+    description: "Use isServer and isBrowser constants from @builder.io/qwik/build to conditionally run code. The Optimizer can tree-shake server-only or browser-only code."
+    category: "qwik_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "isServer", "isBrowser", "tree-shaking", "conditional"]
+    example: |
+      // ✅ Conditional code with tree-shaking
+      import { isServer, isBrowser } from '@builder.io/qwik/build';
+
+      if (isServer) {
+        // Server-only code (removed from client bundle)
+        const dbResult = await queryDatabase();
+      }
+
+      if (isBrowser) {
+        // Browser-only code (removed from server bundle)
+        const canvas = document.createElement('canvas');
+      }
+
+  # ============================================================================
+  # QWIK SSR (QWIK043-QWIK045) - Server-side rendering best practices
+  # ============================================================================
+
+  - id: QWIK043
+    title: "Design for serialization boundaries"
+    description: "All component state must be serializable for Qwik's resumability. Design your data structures to be JSON-serializable. Use noSerialize() for exceptions."
+    category: "qwik_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "serialization", "ssr", "resumability", "state"]
+    example: |
+      // ✅ Serializable state
+      const state = useStore({
+        count: 0,
+        items: ['a', 'b'],
+        user: { name: 'John', role: 'admin' },
+      });
+
+      // ❌ Non-serializable state (will error)
+      const state = useStore({
+        date: new Date(),           // Use timestamp instead
+        regex: /pattern/,           // Use string pattern
+        fn: () => {},               // Use $() QRL instead
+        map: new Map(),             // Use plain object
+      });
+
+  - id: QWIK044
+    title: "Use SSRStream for streaming content"
+    description: "Use <SSRStream> and <SSRStreamBlock> for streaming server-rendered content. Enables progressive rendering for large pages."
+    category: "qwik_ssr"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "ssr", "streaming", "SSRStream", "progressive"]
+    example: |
+      // ✅ Streaming large content
+      import { SSRStream } from '@builder.io/qwik';
+
+      export default component$(() => {
+        return (
+          <SSRStream>
+            {async* () => {
+              for await (const chunk of fetchLargeData()) {
+                yield <div>{chunk}</div>;
+              }
+            }}
+          </SSRStream>
+        );
+      });
+
+  - id: QWIK045
+    title: "Use v2 package imports when targeting Qwik v2"
+    description: "Qwik v2 uses new package scopes: @qwik.dev/core instead of @builder.io/qwik, @qwik.dev/router instead of @builder.io/qwik-city. Migrate imports for v2 compatibility."
+    category: "qwik_ssr"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "v2", "migration", "imports", "packages"]
+    example: |
+      // ✅ Qwik v2 imports
+      import { component$, useSignal } from '@qwik.dev/core';
+      import { routeLoader$ } from '@qwik.dev/router';
+
+      // ❌ Qwik v1 imports (deprecated in v2)
+      import { component$, useSignal } from '@builder.io/qwik';
+      import { routeLoader$ } from '@builder.io/qwik-city';
+
+  # ============================================================================
+  # QWIK TYPESCRIPT & PATTERNS (QWIK046-QWIK050)
+  # ============================================================================
+
+  - id: QWIK046
+    title: "Type signals with generics"
+    description: "Always provide type parameters for useSignal<T>(), useStore<T>(), and useResource$<T>() for full TypeScript safety and IDE support."
+    category: "qwik_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "typescript", "generics", "type-safety", "signal"]
+    example: |
+      // ✅ Typed signals
+      const count = useSignal<number>(0);
+      const user = useSignal<User | null>(null);
+      const items = useStore<{ list: Item[]; loading: boolean }>({
+        list: [],
+        loading: false,
+      });
+
+      // ❌ Untyped (relies on inference, may lose precision)
+      const data = useSignal(null);  // Signal<null>, not Signal<User | null>
+
+  - id: QWIK047
+    title: "Use QRL type for function props"
+    description: "Type function props as QRL<(...args) => ReturnType> to indicate they must be wrapped with $(). This enables proper lazy-loading and serialization."
+    category: "qwik_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "typescript", "QRL", "props", "function"]
+    example: |
+      // ✅ QRL-typed function props
+      interface ModalProps {
+        onClose$: QRL<() => void>;
+        onConfirm$: QRL<(data: FormData) => Promise<void>>;
+      }
+
+      export const Modal = component$<ModalProps>(({ onClose$, onConfirm$ }) => {
+        return (
+          <div>
+            <button onClick$={onClose$}>Cancel</button>
+            <button onClick$={() => onConfirm$(formData)}>Confirm</button>
+          </div>
+        );
+      });
+
+  - id: QWIK048
+    title: "Organize route modules with co-located loaders and actions"
+    description: "Co-locate routeLoader$(), routeAction$(), and the default component export in the same route file. Keep loaders and actions near the components that consume them."
+    category: "qwik_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik", "qwik-city"]
+    tags: ["qwik", "patterns", "organization", "route-module", "co-location"]
+    example: |
+      // ✅ Co-located route module
+      // src/routes/todos/index.tsx
+
+      export const useTodos = routeLoader$(async () => {
+        return db.todos.findMany();
+      });
+
+      export const useAddTodo = routeAction$(async (data) => {
+        return db.todos.create(data);
+      }, zod$({ title: z.string().min(1) }));
+
+      export default component$(() => {
+        const todos = useTodos();
+        const addAction = useAddTodo();
+        return <div>...</div>;
+      });
+
+  - id: QWIK049
+    title: "Use error boundaries for resilient components"
+    description: "Implement error boundaries using useErrorBoundary() to catch and handle component errors gracefully without crashing the entire application."
+    category: "qwik_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "error-boundary", "resilience", "error-handling"]
+    example: |
+      // ✅ Error boundary
+      export const ErrorBoundary = component$(() => {
+        const error = useErrorBoundary();
+
+        if (error.value) {
+          return (
+            <div class="error">
+              <h2>Something went wrong</h2>
+              <p>{error.value.message}</p>
+              <button onClick$={() => error.retry()}>Retry</button>
+            </div>
+          );
+        }
+
+        return <Slot />;
+      });
+
+  - id: QWIK050
+    title: "Use @modular-forms/qwik for complex forms"
+    description: "For complex form handling with validation, dirty tracking, and field arrays, use @modular-forms/qwik instead of manual form state. Integrates with Qwik's reactivity system."
+    category: "qwik_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["qwik"]
+    tags: ["qwik", "forms", "modular-forms", "validation", "ecosystem"]
+    example: |
+      // ✅ Modular forms integration
+      import { useForm, zodForm$ } from '@modular-forms/qwik';
+      import { z } from 'zod';
+
+      const schema = z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+      });
+
+      export default component$(() => {
+        const [loginForm, { Form, Field }] = useForm<z.infer<typeof schema>>({
+          loader: useFormLoader(),
+          validate: zodForm$(schema),
+        });
+
+        return (
+          <Form>
+            <Field name="email">
+              {(field, props) => <input {...props} type="email" />}
+            </Field>
+          </Form>
+        );
+      });

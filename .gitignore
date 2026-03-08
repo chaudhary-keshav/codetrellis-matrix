@@ -1,0 +1,192 @@
+# .gitignore for nsBrain Platform
+# Updated: January 30, 2026 (Post-reorganization)
+
+# ===========================================
+# DEPENDENCIES
+# ===========================================
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+
+# ===========================================
+# ENVIRONMENT VARIABLES
+# ===========================================
+.env
+.env.*
+!.env.example
+.env.local
+.env.development
+.env.staging
+.env.production
+
+# ===========================================
+# BUILD OUTPUTS
+# ===========================================
+dist/
+build/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# ===========================================
+# TEST COVERAGE
+# ===========================================
+coverage/
+.nyc_output
+*.coverage
+.pytest_cache/
+htmlcov/
+
+# ===========================================
+# IDE & EDITORS
+# ===========================================
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+
+# ===========================================
+# TERRAFORM (infrastructure/)
+# ===========================================
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+tfplan
+*.tfvars
+!terraform.tfvars.example
+
+# ===========================================
+# LOGS
+# ===========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ===========================================
+# AI MODELS & CACHE (ai/ folder)
+# ===========================================
+# Sparse Reasoning AI
+ai/sparse-reasoning-ai/models/
+ai/sparse-reasoning-ai/checkpoints/
+ai/sparse-reasoning-ai/cache/
+ai/sparse-reasoning-ai/configs/models/
+ai/sparse-reasoning-ai/.venv/
+ai/sparse-reasoning-ai/venv/
+
+# AI Service
+ai/ai-service/models/
+ai/ai-service/cache/
+
+# Trading AI
+ai/trading-ai/models/
+ai/trading-ai/checkpoints/
+ai/trading-ai/venv/
+
+# Fine-tuning
+ai/fine-tuning/outputs/
+ai/fine-tuning/checkpoints/
+
+# Lightning logs
+ai/lightning_logs/
+
+# ===========================================
+# TOOLS (tools/ folder)
+# ===========================================
+tools/theorem-prover/models/
+tools/codeproof/__pycache__/
+
+# ===========================================
+# SERVICES (services/ folder)
+# ===========================================
+services/nexu-chat-ui/src/app/models/
+
+# ===========================================
+# MODEL FILES (global)
+# ===========================================
+cache/
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.ckpt
+*.safetensors
+
+# ===========================================
+# TRAINING DATA (large files)
+# ===========================================
+# Large training data files (exceeds GitHub 100MB limit)
+*.jsonl
+!**/examples/*.jsonl
+training_data.parquet
+trading_data/
+
+# ===========================================
+# LEGACY PATHS (backward compatibility)
+# ===========================================
+# Old paths before reorganization - keep for safety
+sparse-reasoning-ai/models/
+sparse-reasoning-ai/configs/models/
+sparse-reasoning-ai/trading/venv/
+sparse-reasoning-ai/trading/venv311/
+sparse-reasoning-ai/trading/tft_checkpoints/
+sparse-reasoning-ai/trading/training_log.txt
+sparse-reasoning-ai/trading/__pycache__/
+sparse-reasoning-ai/trading/lightning_logs/
+sparse-reasoning-ai/trading/trading_data/
+sparse-reasoning-ai/trading/tft_model_output/
+trading-ai/models/
+theorem-prover/models/
+ai-service/app/models/
+nexu-chat-ui/src/app/models/
+lightning_logs/
+
+# ===========================================
+# AWS & CLOUD
+# ===========================================
+.aws/
+
+# ===========================================
+# MISCELLANEOUS
+# ===========================================
+.cache
+.temp
+.tmp
+*.bak
+*.backup
+*.ipynb_checkpoints/
+
+
+# ===========================================
+# OS FILES
+# ===========================================
+Thumbs.db
+.Trash-*
+
+
+# codetrellis generated files
+.codetrellis
+.codetrellis-prompt
+*.matrix
+
+#luman-cli files
+tools/lumen-cli
+.aider*
+
+# CodeTrellis validation results
+scripts/validation/validation-results
+
+# CodeTrellis test results
+tests/repos

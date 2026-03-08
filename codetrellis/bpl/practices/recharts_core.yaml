@@ -1,0 +1,1352 @@
+# Recharts Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.74 - Recharts Framework Support
+# Practice IDs: RECHARTS001-RECHARTS050
+# Coverage: Components, Series, Axes, Tooltip, Legend, Animation,
+#           Styling, Performance, Advanced, Ecosystem
+# Versions: Recharts v1-v2+, React integration, D3-based internals
+
+practices:
+  # ============================================================================
+  # COMPONENTS (RECHARTS001-RECHARTS005)
+  # ============================================================================
+
+  - id: RECHARTS001
+    title: "Use specific chart container components for each chart type"
+    description: "Recharts provides dedicated container components for each chart type: LineChart, BarChart, AreaChart, PieChart, RadarChart, ScatterChart, ComposedChart, RadialBarChart, Treemap, FunnelChart, and Sankey. Always use the correct container for your data visualization needs rather than trying to force one chart type into another."
+    category: "recharts_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "components", "chart-type", "container", "setup"]
+    example: |
+      // ✅ Use the right container for each chart type
+      import { LineChart, Line, XAxis, YAxis } from 'recharts';
+
+      <LineChart width={600} height={300} data={data}>
+        <XAxis dataKey="name" />
+        <YAxis />
+        <Line type="monotone" dataKey="value" stroke="#8884d8" />
+      </LineChart>
+
+      // ✅ ComposedChart for mixing series types
+      import { ComposedChart, Line, Bar, Area } from 'recharts';
+
+      <ComposedChart data={data}>
+        <Bar dataKey="sales" fill="#413ea0" />
+        <Line dataKey="trend" stroke="#ff7300" />
+        <Area dataKey="range" fill="#8884d8" />
+      </ComposedChart>
+
+      // ❌ Don't put Bar inside LineChart
+      <LineChart data={data}>
+        <Bar dataKey="sales" />  {/* Wrong container */}
+      </LineChart>
+
+  - id: RECHARTS002
+    title: "Always wrap charts in ResponsiveContainer for fluid layouts"
+    description: "Use ResponsiveContainer to make charts responsive. It automatically adjusts chart dimensions to fit its parent container. Set width and height as percentages or use aspect ratio. Without ResponsiveContainer, charts have fixed pixel dimensions."
+    category: "recharts_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "responsive", "container", "layout", "resize"]
+    example: |
+      // ✅ Responsive chart with percentage width
+      import { ResponsiveContainer, LineChart, Line } from 'recharts';
+
+      <div style={{ width: '100%', height: 300 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <Line dataKey="value" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      // ✅ Using aspect ratio
+      <ResponsiveContainer width="100%" aspect={16/9}>
+        <BarChart data={data}>...</BarChart>
+      </ResponsiveContainer>
+
+      // ❌ Fixed dimensions - not responsive
+      <LineChart width={800} height={400} data={data}>
+        <Line dataKey="value" />
+      </LineChart>
+
+  - id: RECHARTS003
+    title: "Pass data as an array of objects to the chart container"
+    description: "Recharts expects data as an array of plain objects passed to the chart container's data prop. Each object represents a data point, and series components reference fields via dataKey. Keep data transformation outside the render method."
+    category: "recharts_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "data", "props", "array", "objects"]
+    example: |
+      // ✅ Clean data array
+      const data = [
+        { month: 'Jan', sales: 4000, profit: 2400 },
+        { month: 'Feb', sales: 3000, profit: 1398 },
+        { month: 'Mar', sales: 2000, profit: 9800 },
+      ];
+
+      <LineChart data={data}>
+        <XAxis dataKey="month" />
+        <Line dataKey="sales" stroke="#8884d8" />
+        <Line dataKey="profit" stroke="#82ca9d" />
+      </LineChart>
+
+      // ❌ Transforming data inline (causes re-renders)
+      <LineChart data={rawData.map(d => ({ ...d, sales: d.amount * 100 }))}>
+        ...
+      </LineChart>
+
+  - id: RECHARTS004
+    title: "Set explicit width and height or use ResponsiveContainer"
+    description: "Chart containers require width and height props. Either set explicit pixel values for fixed-size charts or wrap in ResponsiveContainer for fluid sizing. Never leave both width and height undefined."
+    category: "recharts_components"
+    severity: "error"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "dimensions", "width", "height", "sizing"]
+    example: |
+      // ✅ Explicit dimensions
+      <BarChart width={600} height={300} data={data}>
+        ...
+      </BarChart>
+
+      // ✅ ResponsiveContainer (preferred)
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={data}>...</BarChart>
+      </ResponsiveContainer>
+
+      // ❌ Missing dimensions - chart won't render
+      <BarChart data={data}>
+        <Bar dataKey="value" />
+      </BarChart>
+
+  - id: RECHARTS005
+    title: "Use margin prop for chart padding and label space"
+    description: "Use the margin prop on chart containers to add space for axis labels, legends, and titles. The margin object accepts top, right, bottom, and left values. Default margins may clip axis labels or legends."
+    category: "recharts_components"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "margin", "padding", "layout", "spacing"]
+    example: |
+      // ✅ Explicit margins for label space
+      <LineChart
+        width={600}
+        height={300}
+        data={data}
+        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+      >
+        <XAxis dataKey="name" />
+        <YAxis />
+        <Line dataKey="value" />
+      </LineChart>
+
+      // ❌ No margins - labels may be clipped
+      <LineChart width={600} height={300} data={data}>
+        <XAxis dataKey="name" />
+        <YAxis label={{ value: 'Revenue ($)', angle: -90 }} />
+        <Line dataKey="value" />
+      </LineChart>
+
+  # ============================================================================
+  # SERIES (RECHARTS006-RECHARTS010)
+  # ============================================================================
+
+  - id: RECHARTS006
+    title: "Always specify dataKey on series components"
+    description: "Every series component (Line, Bar, Area, Scatter, Pie, Radar) requires a dataKey prop that maps to a field in the data array. Without dataKey, the series will not render. Use string keys for simple access or functions for computed values."
+    category: "recharts_series"
+    severity: "error"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "dataKey", "series", "mapping", "data"]
+    example: |
+      // ✅ String dataKey
+      <Line dataKey="sales" stroke="#8884d8" />
+
+      // ✅ Function dataKey for computed values
+      <Line dataKey={(entry) => entry.revenue - entry.cost} stroke="#82ca9d" />
+
+      // ✅ Nested dataKey with accessor
+      <Bar dataKey="metrics.count" fill="#ffc658" />
+
+      // ❌ Missing dataKey - nothing renders
+      <Line stroke="#8884d8" />
+
+  - id: RECHARTS007
+    title: "Use stackId to create stacked charts"
+    description: "Add stackId prop to series components to stack them. All series sharing the same stackId will be stacked together. Different stackId values create separate stacks. This works with Bar, Area, and RadialBar components."
+    category: "recharts_series"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "stacking", "stackId", "bar", "area"]
+    example: |
+      // ✅ Stacked bar chart
+      <BarChart data={data}>
+        <Bar dataKey="desktop" stackId="a" fill="#8884d8" />
+        <Bar dataKey="mobile" stackId="a" fill="#82ca9d" />
+      </BarChart>
+
+      // ✅ Multiple stack groups
+      <BarChart data={data}>
+        <Bar dataKey="q1" stackId="quarter1" fill="#8884d8" />
+        <Bar dataKey="q2" stackId="quarter1" fill="#82ca9d" />
+        <Bar dataKey="q3" stackId="quarter2" fill="#ffc658" />
+        <Bar dataKey="q4" stackId="quarter2" fill="#ff7300" />
+      </BarChart>
+
+      // ❌ Missing stackId - bars side by side instead of stacked
+      <BarChart data={data}>
+        <Bar dataKey="desktop" fill="#8884d8" />
+        <Bar dataKey="mobile" fill="#82ca9d" />
+      </BarChart>
+
+  - id: RECHARTS008
+    title: "Use Cell components for per-data-point styling"
+    description: "Use Cell components inside series to apply individual colors or styles to each data point. This is especially useful for pie charts, bar charts with conditional coloring, and scatter plots. Each Cell maps to a data entry by index."
+    category: "recharts_series"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "cell", "styling", "conditional", "per-point"]
+    example: |
+      // ✅ Per-slice colors in pie chart
+      const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+      <PieChart>
+        <Pie data={data} dataKey="value">
+          {data.map((entry, index) => (
+            <Cell key={index} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Pie>
+      </PieChart>
+
+      // ✅ Conditional bar coloring
+      <BarChart data={data}>
+        <Bar dataKey="value">
+          {data.map((entry, index) => (
+            <Cell key={index} fill={entry.value > 0 ? '#82ca9d' : '#ff6b6b'} />
+          ))}
+        </Bar>
+      </BarChart>
+
+  - id: RECHARTS009
+    title: "Provide unique keys and names for multiple series"
+    description: "When rendering multiple series, give each a unique name prop for legend identification and key prop for React reconciliation. The name appears in tooltips and legends. Without names, series are identified by dataKey which may not be user-friendly."
+    category: "recharts_series"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "series", "name", "key", "legend", "multiple"]
+    example: |
+      // ✅ Named series with proper keys
+      <LineChart data={data}>
+        <Line key="sales" name="Total Sales" dataKey="sales" stroke="#8884d8" />
+        <Line key="profit" name="Net Profit" dataKey="profit" stroke="#82ca9d" />
+        <Legend />
+        <Tooltip />
+      </LineChart>
+
+      // ❌ Unnamed series - legend shows raw dataKey
+      <LineChart data={data}>
+        <Line dataKey="amt_usd_q1" stroke="#8884d8" />
+        <Line dataKey="amt_usd_q2" stroke="#82ca9d" />
+        <Legend />
+      </LineChart>
+
+  - id: RECHARTS010
+    title: "Use type prop for line interpolation curves"
+    description: "Set the type prop on Line and Area components to control curve interpolation. Options include 'monotone' (smooth, preserves monotonicity), 'linear' (straight lines), 'step', 'stepBefore', 'stepAfter', 'basis', 'natural', and more. Default is 'linear'."
+    category: "recharts_series"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "interpolation", "curve", "type", "line", "area"]
+    example: |
+      // ✅ Smooth monotone curve (most common)
+      <Line type="monotone" dataKey="value" stroke="#8884d8" />
+
+      // ✅ Step function for discrete changes
+      <Line type="step" dataKey="price" stroke="#82ca9d" />
+
+      // ✅ Natural spline
+      <Area type="natural" dataKey="range" fill="#ffc658" />
+
+      // Default: linear (straight line segments)
+      <Line dataKey="value" stroke="#8884d8" />
+
+  # ============================================================================
+  # AXES (RECHARTS011-RECHARTS015)
+  # ============================================================================
+
+  - id: RECHARTS011
+    title: "Add XAxis and YAxis for Cartesian chart readability"
+    description: "Always include XAxis and YAxis components in Cartesian charts (LineChart, BarChart, AreaChart, ScatterChart, ComposedChart). Set dataKey on XAxis to map to your category field. Charts without axes lack context and are harder to interpret."
+    category: "recharts_axes"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "xaxis", "yaxis", "cartesian", "readability"]
+    example: |
+      // ✅ Both axes with dataKey
+      <LineChart data={data}>
+        <XAxis dataKey="month" />
+        <YAxis />
+        <Line dataKey="sales" />
+      </LineChart>
+
+      // ✅ Labeled axes for clarity
+      <LineChart data={data}>
+        <XAxis dataKey="date" label={{ value: 'Date', position: 'insideBottom', offset: -5 }} />
+        <YAxis label={{ value: 'Revenue ($)', angle: -90, position: 'insideLeft' }} />
+        <Line dataKey="revenue" />
+      </LineChart>
+
+      // ❌ Missing axes - no context for data points
+      <LineChart data={data}>
+        <Line dataKey="sales" />
+      </LineChart>
+
+  - id: RECHARTS012
+    title: "Use tickFormatter for custom axis label formatting"
+    description: "Use the tickFormatter prop on XAxis/YAxis to format axis tick labels. Common uses include currency formatting, date formatting, percentage display, and abbreviating large numbers. Accepts a function that receives the tick value."
+    category: "recharts_axes"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "tickFormatter", "axis", "formatting", "labels"]
+    example: |
+      // ✅ Currency formatting
+      <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
+
+      // ✅ Abbreviate large numbers
+      <YAxis tickFormatter={(value) => {
+        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+        if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+        return value;
+      }} />
+
+      // ✅ Date formatting
+      <XAxis
+        dataKey="timestamp"
+        tickFormatter={(ts) => new Date(ts).toLocaleDateString()}
+      />
+
+  - id: RECHARTS013
+    title: "Set domain on YAxis for controlled value ranges"
+    description: "Use the domain prop on YAxis to control the value range. Set to ['auto', 'auto'] for automatic range, [0, 'auto'] to start from zero, or explicit bounds like [0, 100]. Use dataMin/dataMax keywords or functions for dynamic ranges."
+    category: "recharts_axes"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "domain", "axis", "range", "scale"]
+    example: |
+      // ✅ Start from zero
+      <YAxis domain={[0, 'auto']} />
+
+      // ✅ Percentage scale
+      <YAxis domain={[0, 100]} />
+
+      // ✅ Dynamic padding
+      <YAxis domain={['dataMin - 10', 'dataMax + 10']} />
+
+      // ✅ Function-based domain
+      <YAxis domain={[(dataMin) => Math.floor(dataMin * 0.9), (dataMax) => Math.ceil(dataMax * 1.1)]} />
+
+      // ❌ Auto domain may start mid-range, misleading visualization
+      <YAxis />  {/* domain defaults to ['auto', 'auto'] */}
+
+  - id: RECHARTS014
+    title: "Use CartesianGrid for visual reference in Cartesian charts"
+    description: "Add CartesianGrid component to provide gridlines that help readers estimate values. Use strokeDasharray for dashed lines (cleaner look), and control horizontal/vertical visibility. Place it before series components so grid renders behind data."
+    category: "recharts_axes"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "grid", "cartesian", "gridlines", "visual"]
+    example: |
+      // ✅ Dashed grid (clean look)
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="name" />
+        <YAxis />
+        <Line dataKey="value" />
+      </LineChart>
+
+      // ✅ Horizontal lines only
+      <CartesianGrid horizontal={true} vertical={false} stroke="#eee" />
+
+      // ✅ Custom grid styling
+      <CartesianGrid strokeDasharray="5 5" stroke="#ccc" strokeOpacity={0.5} />
+
+  - id: RECHARTS015
+    title: "Use scale prop for non-linear axis scales"
+    description: "Set the scale prop on axes for logarithmic, time, or other D3 scales. Common values: 'linear' (default), 'log', 'time', 'band', 'point'. For time scales, also set type='number' and use timestamp values."
+    category: "recharts_axes"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "scale", "logarithmic", "time", "axis"]
+    example: |
+      // ✅ Logarithmic scale for exponential data
+      <YAxis scale="log" domain={['auto', 'auto']} />
+
+      // ✅ Time scale with custom ticks
+      <XAxis
+        dataKey="date"
+        scale="time"
+        type="number"
+        domain={['dataMin', 'dataMax']}
+        tickFormatter={(ts) => new Date(ts).toLocaleDateString()}
+      />
+
+      // ✅ Band scale for categorical data
+      <XAxis dataKey="category" scale="band" />
+
+  # ============================================================================
+  # TOOLTIP (RECHARTS016-RECHARTS020)
+  # ============================================================================
+
+  - id: RECHARTS016
+    title: "Add Tooltip component for data inspection on hover"
+    description: "Include the Tooltip component in charts to show data values on hover. Place it as a child of the chart container. Recharts automatically connects the tooltip to all series. Without Tooltip, users must estimate values from visual position."
+    category: "recharts_tooltip"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "tooltip", "hover", "interaction", "data"]
+    example: |
+      // ✅ Basic tooltip
+      <LineChart data={data}>
+        <XAxis dataKey="name" />
+        <YAxis />
+        <Tooltip />
+        <Line dataKey="sales" />
+      </LineChart>
+
+      // ❌ No tooltip - users can't inspect exact values
+      <LineChart data={data}>
+        <Line dataKey="sales" />
+      </LineChart>
+
+  - id: RECHARTS017
+    title: "Use custom tooltip content for rich data display"
+    description: "Pass a custom React component to Tooltip's content prop for rich formatting. The component receives payload (series data), label (category), and active (hover state) props. Use this for currency formatting, additional context, or custom layouts."
+    category: "recharts_tooltip"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "tooltip", "custom", "content", "formatting"]
+    example: |
+      // ✅ Custom tooltip component
+      const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+          return (
+            <div className="custom-tooltip">
+              <p className="label">{label}</p>
+              {payload.map((entry, index) => (
+                <p key={index} style={{ color: entry.color }}>
+                  {entry.name}: ${entry.value.toLocaleString()}
+                </p>
+              ))}
+            </div>
+          );
+        }
+        return null;
+      };
+
+      <Tooltip content={<CustomTooltip />} />
+
+      // ✅ Formatter for simple value formatting
+      <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Revenue']} />
+
+  - id: RECHARTS018
+    title: "Use labelFormatter and formatter for tooltip value formatting"
+    description: "Use Tooltip's formatter prop to format series values and labelFormatter to format the category label. Formatter receives (value, name, props) and returns [formattedValue, formattedName]. LabelFormatter receives the label value."
+    category: "recharts_tooltip"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "tooltip", "formatter", "labelFormatter", "display"]
+    example: |
+      // ✅ Format values and labels
+      <Tooltip
+        formatter={(value, name) => [`$${value.toFixed(2)}`, name.toUpperCase()]}
+        labelFormatter={(label) => `Month: ${label}`}
+      />
+
+      // ✅ Percentage formatting
+      <Tooltip
+        formatter={(value) => [`${value.toFixed(1)}%`, 'Percentage']}
+      />
+
+      // ✅ Multiple return values
+      <Tooltip
+        formatter={(value, name, props) => {
+          const total = props.payload.revenue + props.payload.cost;
+          return [`${value} (${((value/total)*100).toFixed(1)}%)`, name];
+        }}
+      />
+
+  - id: RECHARTS019
+    title: "Control tooltip cursor and position behavior"
+    description: "Customize the tooltip cursor (crosshair/highlight) with the cursor prop. Set cursor={false} to hide it, or pass an object for custom styling. Use wrapperStyle for tooltip container positioning and coordinate for fixed position."
+    category: "recharts_tooltip"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "tooltip", "cursor", "position", "styling"]
+    example: |
+      // ✅ Styled cursor
+      <Tooltip cursor={{ stroke: '#ccc', strokeWidth: 2 }} />
+
+      // ✅ No cursor
+      <Tooltip cursor={false} />
+
+      // ✅ Custom wrapper style
+      <Tooltip
+        wrapperStyle={{ outline: 'none', borderRadius: 8 }}
+        contentStyle={{ backgroundColor: '#333', color: '#fff' }}
+      />
+
+      // ✅ Fixed tooltip position
+      <Tooltip position={{ x: 100, y: 0 }} />
+
+  - id: RECHARTS020
+    title: "Use shared tooltips in ComposedChart for correlated data"
+    description: "In ComposedChart with multiple series types, use shared tooltip to show all series values for the same data point. Set shared={true} (default) on Tooltip. For separate tooltips per series, use shared={false}."
+    category: "recharts_tooltip"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "tooltip", "shared", "composed", "correlation"]
+    example: |
+      // ✅ Shared tooltip showing all series
+      <ComposedChart data={data}>
+        <Bar dataKey="sales" fill="#8884d8" />
+        <Line dataKey="trend" stroke="#ff7300" />
+        <Tooltip />  {/* shared by default */}
+      </ComposedChart>
+
+      // ✅ Explicit shared tooltip
+      <Tooltip shared={true} />
+
+  # ============================================================================
+  # LEGEND (RECHARTS021-RECHARTS025)
+  # ============================================================================
+
+  - id: RECHARTS021
+    title: "Add Legend component for multi-series chart identification"
+    description: "Include Legend component when charts have multiple series. It automatically picks up series names and colors. Place it inside the chart container. For single-series charts, a legend is optional but provides context."
+    category: "recharts_legend"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "legend", "multi-series", "identification"]
+    example: |
+      // ✅ Legend for multi-series
+      <LineChart data={data}>
+        <Line name="Sales" dataKey="sales" stroke="#8884d8" />
+        <Line name="Profit" dataKey="profit" stroke="#82ca9d" />
+        <Legend />
+      </LineChart>
+
+      // ✅ Positioned legend
+      <Legend verticalAlign="top" align="right" />
+
+      // ❌ Multiple series without legend
+      <LineChart data={data}>
+        <Line dataKey="sales" stroke="#8884d8" />
+        <Line dataKey="profit" stroke="#82ca9d" />
+        {/* No way to tell which line is which */}
+      </LineChart>
+
+  - id: RECHARTS022
+    title: "Use custom legend content for rich legend rendering"
+    description: "Pass a custom React component to Legend's content prop for custom rendering. The component receives payload with series information. Use this for interactive legends, custom icons, or additional metadata."
+    category: "recharts_legend"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "legend", "custom", "content", "interactive"]
+    example: |
+      // ✅ Custom legend with click handler
+      const CustomLegend = ({ payload }) => (
+        <ul className="custom-legend">
+          {payload.map((entry, index) => (
+            <li key={index} style={{ color: entry.color }}>
+              <span className="legend-icon" />
+              {entry.value}: {entry.payload?.total || ''}
+            </li>
+          ))}
+        </ul>
+      );
+
+      <Legend content={<CustomLegend />} />
+
+  - id: RECHARTS023
+    title: "Control legend layout with align, verticalAlign, and layout props"
+    description: "Position the legend using verticalAlign ('top', 'middle', 'bottom'), align ('left', 'center', 'right'), and layout ('horizontal', 'vertical'). Default is bottom-center horizontal. Place legends where they don't overlap chart content."
+    category: "recharts_legend"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "legend", "position", "layout", "alignment"]
+    example: |
+      // ✅ Top-right legend
+      <Legend verticalAlign="top" align="right" layout="vertical" />
+
+      // ✅ Bottom-center (default)
+      <Legend verticalAlign="bottom" align="center" />
+
+      // ✅ Left sidebar legend
+      <Legend
+        layout="vertical"
+        verticalAlign="middle"
+        align="left"
+        wrapperStyle={{ paddingRight: 20 }}
+      />
+
+  - id: RECHARTS024
+    title: "Implement legend click handlers for series toggle"
+    description: "Add onClick handler to Legend for interactive series toggle. Track hidden series in state and conditionally render or hide series. This pattern lets users focus on specific data series in complex charts."
+    category: "recharts_legend"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "legend", "onClick", "toggle", "interactive"]
+    example: |
+      // ✅ Toggle series visibility via legend
+      const [hiddenSeries, setHiddenSeries] = useState(new Set());
+
+      const handleLegendClick = (entry) => {
+        setHiddenSeries(prev => {
+          const next = new Set(prev);
+          next.has(entry.dataKey) ? next.delete(entry.dataKey) : next.add(entry.dataKey);
+          return next;
+        });
+      };
+
+      <LineChart data={data}>
+        <Legend onClick={handleLegendClick} />
+        {!hiddenSeries.has('sales') && (
+          <Line dataKey="sales" stroke="#8884d8" />
+        )}
+        {!hiddenSeries.has('profit') && (
+          <Line dataKey="profit" stroke="#82ca9d" />
+        )}
+      </LineChart>
+
+  - id: RECHARTS025
+    title: "Use iconType and iconSize for legend symbol customization"
+    description: "Customize legend symbols using iconType ('line', 'square', 'rect', 'circle', 'cross', 'diamond', 'star', 'triangle', 'wye') and iconSize. Match icon types to series visual representation for consistency."
+    category: "recharts_legend"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "legend", "icon", "symbol", "customization"]
+    example: |
+      // ✅ Custom icon type and size
+      <Legend iconType="circle" iconSize={12} />
+
+      // ✅ Different icons per series
+      <Line dataKey="sales" legendType="circle" />
+      <Bar dataKey="profit" legendType="square" />
+
+  # ============================================================================
+  # ANIMATION (RECHARTS026-RECHARTS030)
+  # ============================================================================
+
+  - id: RECHARTS026
+    title: "Leverage built-in animation with isAnimationActive"
+    description: "Recharts animates series by default. Control animation with isAnimationActive (true/false), animationDuration (ms), animationEasing ('ease', 'ease-in', 'ease-out', 'ease-in-out', 'linear'), and animationBegin (delay ms). Disable for performance with large datasets."
+    category: "recharts_animation"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "animation", "performance", "duration", "easing"]
+    example: |
+      // ✅ Custom animation timing
+      <Line
+        dataKey="value"
+        isAnimationActive={true}
+        animationDuration={1500}
+        animationEasing="ease-in-out"
+        animationBegin={200}
+      />
+
+      // ✅ Disable animation for performance
+      <Line dataKey="value" isAnimationActive={false} />
+
+      // ✅ Different timing per series
+      <Line dataKey="series1" animationDuration={1000} animationBegin={0} />
+      <Line dataKey="series2" animationDuration={1000} animationBegin={500} />
+
+  - id: RECHARTS027
+    title: "Disable animation for large datasets to improve performance"
+    description: "For datasets with hundreds or thousands of points, disable animation with isAnimationActive={false}. Animation with many SVG elements causes jank and increased CPU usage. Consider this threshold around 100+ data points."
+    category: "recharts_animation"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "animation", "performance", "large-data", "disable"]
+    example: |
+      // ✅ Conditionally disable animation for large datasets
+      const shouldAnimate = data.length < 100;
+
+      <LineChart data={data}>
+        <Line
+          dataKey="value"
+          isAnimationActive={shouldAnimate}
+          dot={data.length < 50}
+        />
+      </LineChart>
+
+      // ✅ Always disable for real-time data
+      <LineChart data={realtimeData}>
+        <Line dataKey="value" isAnimationActive={false} />
+      </LineChart>
+
+  - id: RECHARTS028
+    title: "Use animationId to trigger re-animation on data changes"
+    description: "Set animationId prop on the chart container to a value that changes when data updates. This triggers the entry animation again. Useful for dashboard filters or data source switches where visual transition feedback is desired."
+    category: "recharts_animation"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "animation", "animationId", "re-animate", "transition"]
+    example: |
+      // ✅ Re-animate on filter change
+      const [filter, setFilter] = useState('all');
+      const filteredData = useMemo(() => filterData(data, filter), [data, filter]);
+
+      <LineChart data={filteredData} key={filter}>
+        <Line dataKey="value" animationDuration={800} />
+      </LineChart>
+
+      // Alternative: use key prop on chart to force remount and re-animate
+
+  - id: RECHARTS029
+    title: "Use onAnimationStart and onAnimationEnd callbacks"
+    description: "Series components support onAnimationStart and onAnimationEnd callbacks. Use them to coordinate UI state with chart animation (e.g., showing loading spinners, enabling interaction after animation)."
+    category: "recharts_animation"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "animation", "callback", "lifecycle", "coordination"]
+    example: |
+      // ✅ Track animation state
+      const [animating, setAnimating] = useState(true);
+
+      <Line
+        dataKey="value"
+        onAnimationStart={() => setAnimating(true)}
+        onAnimationEnd={() => setAnimating(false)}
+      />
+      {animating && <LoadingOverlay />}
+
+  - id: RECHARTS030
+    title: "Choose appropriate animation easing for data context"
+    description: "Select animation easing based on context: 'ease-out' for initial loads (fast start, gentle settle), 'ease-in-out' for data transitions, 'linear' for continuous updates. The easing affects perceived smoothness and professionalism."
+    category: "recharts_animation"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "animation", "easing", "ux", "perception"]
+    example: |
+      // ✅ Initial load - ease-out (settle in)
+      <Line dataKey="value" animationEasing="ease-out" animationDuration={1200} />
+
+      // ✅ Data transition - ease-in-out (smooth)
+      <Bar dataKey="count" animationEasing="ease-in-out" animationDuration={800} />
+
+      // ✅ Real-time updates - linear (continuous)
+      <Area dataKey="metric" animationEasing="linear" animationDuration={300} />
+
+  # ============================================================================
+  # STYLING (RECHARTS031-RECHARTS035)
+  # ============================================================================
+
+  - id: RECHARTS031
+    title: "Use consistent color palettes across related charts"
+    description: "Define a color palette constant and reuse it across all charts in your application. This ensures visual consistency and accessibility. Use colorblind-friendly palettes. Recharts does not provide a built-in palette - you must manage colors explicitly."
+    category: "recharts_styling"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "colors", "palette", "consistency", "design"]
+    example: |
+      // ✅ Shared color palette
+      const CHART_COLORS = {
+        primary: '#8884d8',
+        secondary: '#82ca9d',
+        tertiary: '#ffc658',
+        quaternary: '#ff7300',
+        quinary: '#0088FE',
+      };
+
+      // Use across charts
+      <Line dataKey="sales" stroke={CHART_COLORS.primary} />
+      <Bar dataKey="profit" fill={CHART_COLORS.secondary} />
+
+      // ✅ Array palette for dynamic series
+      const PALETTE = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088FE'];
+      series.map((s, i) => <Line key={s} dataKey={s} stroke={PALETTE[i % PALETTE.length]} />)
+
+  - id: RECHARTS032
+    title: "Control dot, activeDot, and stroke styling on Line and Area"
+    description: "Customize data point markers with dot (default) and activeDot (on hover). Set dot={false} to hide markers, or pass an object or component for custom shapes. Control stroke width, dash array, and opacity for line styling."
+    category: "recharts_styling"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "dot", "activeDot", "stroke", "line-styling"]
+    example: |
+      // ✅ Custom dot and active dot
+      <Line
+        dataKey="value"
+        stroke="#8884d8"
+        strokeWidth={2}
+        dot={{ r: 4, fill: '#8884d8' }}
+        activeDot={{ r: 8, stroke: '#fff', strokeWidth: 2 }}
+      />
+
+      // ✅ Hide dots for dense data
+      <Line dataKey="value" dot={false} strokeWidth={2} />
+
+      // ✅ Dashed line
+      <Line dataKey="forecast" strokeDasharray="5 5" stroke="#999" />
+
+      // ✅ Custom dot component
+      const CustomDot = (props) => {
+        const { cx, cy, value } = props;
+        return value > 100
+          ? <circle cx={cx} cy={cy} r={6} fill="red" />
+          : <circle cx={cx} cy={cy} r={4} fill="#8884d8" />;
+      };
+      <Line dataKey="value" dot={<CustomDot />} />
+
+  - id: RECHARTS033
+    title: "Use fill and fillOpacity for Area chart gradients"
+    description: "Create gradient fills for Area charts using SVG linearGradient or radialGradient in a defs block. Reference the gradient id in the fill prop. Use fillOpacity to control transparency of the filled area."
+    category: "recharts_styling"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "gradient", "fill", "area", "svg"]
+    example: |
+      // ✅ Gradient area fill
+      <AreaChart data={data}>
+        <defs>
+          <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+            <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          dataKey="value"
+          stroke="#8884d8"
+          fillOpacity={1}
+          fill="url(#colorValue)"
+        />
+      </AreaChart>
+
+      // ✅ Simple semi-transparent fill
+      <Area dataKey="value" fill="#8884d8" fillOpacity={0.3} stroke="#8884d8" />
+
+  - id: RECHARTS034
+    title: "Use shape prop for custom Bar and Scatter rendering"
+    description: "Pass a custom React component to the shape prop on Bar or Scatter for non-standard rendering. The component receives x, y, width, height, and payload props. Use for rounded bars, custom scatter symbols, or conditional shapes."
+    category: "recharts_styling"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "shape", "custom", "bar", "scatter", "rendering"]
+    example: |
+      // ✅ Rounded bars
+      const RoundedBar = (props) => {
+        const { x, y, width, height, fill } = props;
+        const radius = 8;
+        return (
+          <rect x={x} y={y} width={width} height={height}
+                rx={radius} ry={radius} fill={fill} />
+        );
+      };
+
+      <Bar dataKey="value" shape={<RoundedBar />} />
+
+      // ✅ Custom scatter symbol
+      const StarSymbol = (props) => {
+        const { cx, cy, fill } = props;
+        return <polygon points={...} fill={fill} />;
+      };
+
+      <Scatter dataKey="value" shape={<StarSymbol />} />
+
+  - id: RECHARTS035
+    title: "Apply consistent label styling with Label and LabelList"
+    description: "Use Label component on axes for axis titles, and LabelList on series for data point labels. Control position ('top', 'bottom', 'left', 'right', 'center', 'inside', 'outside'), font styling, and formatting."
+    category: "recharts_styling"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "label", "labelList", "annotation", "text"]
+    example: |
+      // ✅ Axis labels
+      <XAxis dataKey="month">
+        <Label value="Month" position="insideBottom" offset={-5} />
+      </XAxis>
+      <YAxis>
+        <Label value="Revenue ($)" angle={-90} position="insideLeft" />
+      </YAxis>
+
+      // ✅ Data point labels
+      <Bar dataKey="value" fill="#8884d8">
+        <LabelList dataKey="value" position="top" />
+      </Bar>
+
+      // ✅ Formatted labels
+      <LabelList
+        dataKey="value"
+        position="top"
+        formatter={(v) => `$${v}`}
+        style={{ fontSize: 12, fill: '#666' }}
+      />
+
+  # ============================================================================
+  # PERFORMANCE (RECHARTS036-RECHARTS040)
+  # ============================================================================
+
+  - id: RECHARTS036
+    title: "Memoize data transformations with useMemo"
+    description: "Recharts re-renders when data reference changes. Use useMemo to memoize data arrays and prevent unnecessary re-renders. This is critical for computed or filtered datasets that are derived from props or state."
+    category: "recharts_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "performance", "useMemo", "memoization", "re-render"]
+    example: |
+      // ✅ Memoized data
+      const chartData = useMemo(() =>
+        rawData.map(item => ({
+          name: item.label,
+          value: item.amount / 100,
+        })),
+        [rawData]
+      );
+
+      <LineChart data={chartData}>
+        <Line dataKey="value" />
+      </LineChart>
+
+      // ❌ Inline transformation - new array every render
+      <LineChart data={rawData.map(d => ({ ...d, value: d.amount / 100 }))}>
+        <Line dataKey="value" />
+      </LineChart>
+
+  - id: RECHARTS037
+    title: "Hide dots and reduce SVG elements for large datasets"
+    description: "Each dot, label, and grid line is an SVG element. For large datasets (100+ points), set dot={false} on Line/Area, remove CartesianGrid or reduce stroke opacity, and avoid LabelList. This dramatically reduces DOM nodes and improves performance."
+    category: "recharts_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "performance", "svg", "dom", "large-dataset"]
+    example: |
+      // ✅ Optimized for large datasets
+      <LineChart data={largeData}>
+        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} />
+        <XAxis dataKey="time" tickCount={10} />
+        <YAxis />
+        <Line
+          dataKey="value"
+          dot={false}
+          strokeWidth={1.5}
+          isAnimationActive={false}
+        />
+      </LineChart>
+
+      // ❌ Too many SVG elements
+      <LineChart data={thousandPoints}>
+        <CartesianGrid />
+        <Line dataKey="value" dot={{ r: 5 }} />
+        <Line dataKey="value">
+          <LabelList dataKey="value" />
+        </Line>
+      </LineChart>
+
+  - id: RECHARTS038
+    title: "Use React.memo for chart wrapper components"
+    description: "Wrap chart components in React.memo to prevent re-renders when parent state changes don't affect the chart. Combine with useMemo for data and useCallback for event handlers for maximum performance."
+    category: "recharts_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "performance", "memo", "react", "optimization"]
+    example: |
+      // ✅ Memoized chart component
+      const SalesChart = React.memo(({ data, onPointClick }) => (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={data}>
+            <XAxis dataKey="month" />
+            <YAxis />
+            <Tooltip />
+            <Line dataKey="sales" onClick={onPointClick} />
+          </LineChart>
+        </ResponsiveContainer>
+      ));
+
+      // Parent component
+      const Dashboard = () => {
+        const data = useMemo(() => processData(rawData), [rawData]);
+        const handleClick = useCallback((e) => { ... }, []);
+
+        return <SalesChart data={data} onPointClick={handleClick} />;
+      };
+
+  - id: RECHARTS039
+    title: "Limit tick count on axes for dense data"
+    description: "Use tickCount on XAxis/YAxis to limit the number of ticks displayed. For time-series data with many points, showing every tick creates overlap and poor readability. Let Recharts auto-calculate optimal tick positions."
+    category: "recharts_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "performance", "ticks", "axis", "readability"]
+    example: |
+      // ✅ Limited ticks for readability
+      <XAxis dataKey="date" tickCount={7} />
+      <YAxis tickCount={5} />
+
+      // ✅ Custom tick selection
+      <XAxis
+        dataKey="timestamp"
+        ticks={[startTime, midTime, endTime]}
+        tickFormatter={(ts) => formatDate(ts)}
+      />
+
+      // ❌ All ticks shown - overlap on dense data
+      <XAxis dataKey="date" interval={0} />
+
+  - id: RECHARTS040
+    title: "Debounce resize events with ResponsiveContainer"
+    description: "ResponsiveContainer listens to window resize events. For dashboards with many charts, the default debounce may cause performance issues. Use the debounce prop to control resize update frequency."
+    category: "recharts_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "performance", "resize", "debounce", "responsive"]
+    example: |
+      // ✅ Debounced resize (300ms)
+      <ResponsiveContainer width="100%" height={300} debounce={300}>
+        <LineChart data={data}>...</LineChart>
+      </ResponsiveContainer>
+
+      // ✅ For dashboards with many charts
+      <ResponsiveContainer debounce={500}>
+        <BarChart data={data}>...</BarChart>
+      </ResponsiveContainer>
+
+  # ============================================================================
+  # ADVANCED (RECHARTS041-RECHARTS045)
+  # ============================================================================
+
+  - id: RECHARTS041
+    title: "Use ReferenceLine and ReferenceArea for data annotation"
+    description: "Add ReferenceLine for threshold markers, averages, or targets. Use ReferenceArea to highlight ranges (e.g., danger zones, seasonal periods). ReferenceDot marks individual special points. These add context without modifying chart data."
+    category: "recharts_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "reference", "annotation", "threshold", "highlight"]
+    example: |
+      // ✅ Threshold line
+      <LineChart data={data}>
+        <ReferenceLine y={100} stroke="red" strokeDasharray="3 3" label="Target" />
+        <Line dataKey="actual" />
+      </LineChart>
+
+      // ✅ Highlighted region
+      <ReferenceLine y={average} stroke="#666" label="Avg" />
+      <ReferenceArea y1={80} y2={120} fill="#82ca9d" fillOpacity={0.2} label="Normal" />
+
+      // ✅ Special data point
+      <ReferenceDot x="Mar" y={9800} r={8} fill="red" stroke="none" />
+
+  - id: RECHARTS042
+    title: "Use Brush component for large dataset navigation"
+    description: "Add Brush component to enable range selection and zoom on large datasets. Users can drag to select a time range or scroll through data. Useful for time-series with months or years of data points."
+    category: "recharts_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "brush", "zoom", "navigation", "range-selection"]
+    example: |
+      // ✅ Brush for time-series navigation
+      <LineChart data={yearlyData}>
+        <XAxis dataKey="date" />
+        <YAxis />
+        <Line dataKey="value" />
+        <Brush
+          dataKey="date"
+          height={30}
+          stroke="#8884d8"
+          startIndex={yearlyData.length - 30}
+          endIndex={yearlyData.length - 1}
+        />
+      </LineChart>
+
+      // ✅ Brush with mini chart preview
+      <Brush height={40}>
+        <AreaChart data={yearlyData}>
+          <Area dataKey="value" fill="#8884d8" fillOpacity={0.2} />
+        </AreaChart>
+      </Brush>
+
+  - id: RECHARTS043
+    title: "Handle chart events for interactive dashboards"
+    description: "Recharts supports onClick, onMouseEnter, onMouseLeave, onMouseMove on chart containers and individual series. Use these for drill-down navigation, cross-filtering dashboards, or detail panels."
+    category: "recharts_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "events", "click", "interactive", "dashboard"]
+    example: |
+      // ✅ Click handler on chart
+      <BarChart data={data} onClick={(state) => {
+        if (state?.activePayload) {
+          const clicked = state.activePayload[0].payload;
+          navigateToDetail(clicked.id);
+        }
+      }}>
+        <Bar dataKey="value" />
+      </BarChart>
+
+      // ✅ Per-bar click handler
+      <Bar dataKey="value" onClick={(data, index) => {
+        setSelectedBar(data);
+      }} />
+
+      // ✅ Hover effects
+      <Scatter
+        dataKey="value"
+        onMouseEnter={(data) => setHovered(data)}
+        onMouseLeave={() => setHovered(null)}
+      />
+
+  - id: RECHARTS044
+    title: "Use customized shapes and active shapes for Pie charts"
+    description: "Customize Pie chart rendering with activeShape for hover effects and shape for default rendering. The renderActiveShape pattern with Sector is the standard approach for interactive pie charts with detailed labels."
+    category: "recharts_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "pie", "activeShape", "sector", "interactive"]
+    example: |
+      // ✅ Active shape with detailed label
+      const renderActiveShape = (props) => {
+        const { cx, cy, midAngle, innerRadius, outerRadius,
+                startAngle, endAngle, fill, payload, percent, value } = props;
+        return (
+          <g>
+            <Sector
+              cx={cx} cy={cy}
+              innerRadius={innerRadius}
+              outerRadius={outerRadius + 10}
+              startAngle={startAngle}
+              endAngle={endAngle}
+              fill={fill}
+            />
+            <text x={cx} y={cy} textAnchor="middle" fill="#333">
+              {payload.name}
+            </text>
+            <text x={cx} y={cy + 20} textAnchor="middle" fill="#999">
+              {`${(percent * 100).toFixed(1)}%`}
+            </text>
+          </g>
+        );
+      };
+
+      <PieChart>
+        <Pie
+          data={data}
+          dataKey="value"
+          activeIndex={activeIndex}
+          activeShape={renderActiveShape}
+          onMouseEnter={(_, index) => setActiveIndex(index)}
+        />
+      </PieChart>
+
+  - id: RECHARTS045
+    title: "Synchronize multiple charts with syncId"
+    description: "Use the syncId prop on multiple chart containers to synchronize their tooltips and brush selections. All charts with the same syncId will show tooltips for the same data point when hovering any of them."
+    category: "recharts_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags:
+      ["recharts", "syncId", "synchronize", "multiple-charts", "correlation"]
+    example: |
+      // ✅ Synchronized charts
+      <div>
+        <LineChart syncId="dashboard" data={data}>
+          <XAxis dataKey="date" />
+          <YAxis />
+          <Tooltip />
+          <Line dataKey="revenue" />
+        </LineChart>
+
+        <BarChart syncId="dashboard" data={data}>
+          <XAxis dataKey="date" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="orders" />
+        </BarChart>
+      </div>
+
+      {/* Hovering one chart shows tooltip on both */}
+
+  # ============================================================================
+  # ECOSYSTEM (RECHARTS046-RECHARTS050)
+  # ============================================================================
+
+  - id: RECHARTS046
+    title: "Import components individually for tree-shaking"
+    description: "Import Recharts components individually from 'recharts' for optimal tree-shaking. Only the components you import will be included in the bundle. Avoid importing the entire module when you only need specific charts."
+    category: "recharts_ecosystem"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "imports", "tree-shaking", "bundle-size", "optimization"]
+    example: |
+      // ✅ Named imports (tree-shakeable)
+      import { LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
+
+      // ✅ Deep imports for smaller bundles (if supported)
+      import { LineChart } from 'recharts/es6/chart/LineChart';
+      import { Line } from 'recharts/es6/cartesian/Line';
+
+      // ❌ Namespace import (may include everything)
+      import * as Recharts from 'recharts';
+      <Recharts.LineChart>...</Recharts.LineChart>
+
+  - id: RECHARTS047
+    title: "Use recharts-to-png for chart export functionality"
+    description: "Use the recharts-to-png library to export Recharts charts as PNG images. It captures the SVG rendering and converts it to a downloadable image. Useful for report generation and sharing."
+    category: "recharts_ecosystem"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "export", "png", "image", "download"]
+    example: |
+      // ✅ Export chart as PNG
+      import { useCurrentPng } from 'recharts-to-png';
+      import FileSaver from 'file-saver';
+
+      const MyChart = () => {
+        const [getPng, { ref }] = useCurrentPng();
+
+        const handleExport = useCallback(async () => {
+          const png = await getPng();
+          if (png) FileSaver.saveAs(png, 'chart.png');
+        }, [getPng]);
+
+        return (
+          <>
+            <LineChart ref={ref} data={data}>
+              <Line dataKey="value" />
+            </LineChart>
+            <button onClick={handleExport}>Export PNG</button>
+          </>
+        );
+      };
+
+  - id: RECHARTS048
+    title: "Integrate with TypeScript using proper type annotations"
+    description: "Use Recharts' built-in TypeScript types for type safety. Import types for custom components and props. Key types include CategoricalChartState, TooltipProps, LegendProps, and component-specific prop types."
+    category: "recharts_ecosystem"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts", "recharts-typescript"]
+    tags: ["recharts", "typescript", "types", "type-safety", "generics"]
+    example: |
+      // ✅ Typed custom tooltip
+      import { TooltipProps } from 'recharts';
+      import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
+
+      const CustomTooltip: React.FC<TooltipProps<ValueType, NameType>> = ({
+        active, payload, label,
+      }) => {
+        if (active && payload?.length) {
+          return <div>{label}: {payload[0].value}</div>;
+        }
+        return null;
+      };
+
+      // ✅ Typed data interface
+      interface ChartData {
+        name: string;
+        value: number;
+        category: string;
+      }
+
+      const data: ChartData[] = [...];
+      <LineChart data={data}>
+        <Line dataKey="value" />
+      </LineChart>
+
+  - id: RECHARTS049
+    title: "Use D3 utilities for advanced data transformations"
+    description: "Recharts is built on D3, and you can leverage D3 utilities alongside Recharts. Use d3-scale for custom scales, d3-shape for custom curve definitions, d3-format for number formatting, and d3-time-format for date formatting."
+    category: "recharts_ecosystem"
+    severity: "info"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "d3", "utilities", "scale", "format"]
+    example: |
+      // ✅ D3 format for axis ticks
+      import { format } from 'd3-format';
+
+      const formatCurrency = format('$,.0f');
+      <YAxis tickFormatter={formatCurrency} />
+
+      // ✅ D3 time format
+      import { timeFormat } from 'd3-time-format';
+
+      const formatDate = timeFormat('%b %d');
+      <XAxis dataKey="date" tickFormatter={formatDate} />
+
+      // ✅ D3 scale for custom domain
+      import { scaleLog } from 'd3-scale';
+
+      <YAxis scale="log" domain={[1, 'auto']} />
+
+  - id: RECHARTS050
+    title: "Handle SSR and lazy loading for Next.js and framework integration"
+    description: "Recharts uses browser APIs (SVG, DOM measurements). For SSR frameworks like Next.js, use dynamic imports with ssr: false or lazy loading. This prevents 'window is not defined' errors during server rendering."
+    category: "recharts_ecosystem"
+    severity: "warning"
+    applicability:
+      frameworks: ["recharts"]
+    tags: ["recharts", "ssr", "nextjs", "lazy-loading", "dynamic-import"]
+    example: |
+      // ✅ Next.js dynamic import
+      import dynamic from 'next/dynamic';
+
+      const Chart = dynamic(() => import('../components/SalesChart'), {
+        ssr: false,
+        loading: () => <div>Loading chart...</div>,
+      });
+
+      // ✅ React.lazy
+      const Chart = React.lazy(() => import('./SalesChart'));
+
+      <Suspense fallback={<div>Loading...</div>}>
+        <Chart data={data} />
+      </Suspense>
+
+      // ❌ Direct import in SSR page
+      import { LineChart } from 'recharts';  // Breaks during SSR

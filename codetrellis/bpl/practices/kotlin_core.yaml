@@ -1,0 +1,949 @@
+# Kotlin Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.21 - Kotlin Language Support
+# Practice IDs: KT001-KT050
+# Category: kotlin
+# Frameworks: kotlin, ktor, spring, compose, koin, dagger, hilt, exposed,
+#             kotlinx_serialization, kotlinx_coroutines, arrow, kmm, room
+
+practices:
+  # ── Core Kotlin ──────────────────────────────────────────────────
+
+  - id: KT001
+    title: "Prefer data classes for value types"
+    description: "Use data classes for types that primarily hold data. They auto-generate equals(), hashCode(), toString(), copy(), and componentN() functions. Avoid using regular classes for simple DTOs."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "data-class", "immutability"]
+    example: |
+      // Good
+      data class User(val id: Long, val name: String, val email: String)
+      // Bad: regular class for pure data
+      class User(val id: Long, val name: String, val email: String)
+
+  - id: KT002
+    title: "Use sealed classes/interfaces for restricted hierarchies"
+    description: "Use sealed types when the set of subclasses is known at compile time. The compiler can verify exhaustiveness in when expressions. Prefer sealed interfaces (Kotlin 1.5+) when no shared state is needed."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "sealed", "type-safety"]
+    example: |
+      sealed interface Result<out T> {
+          data class Success<T>(val value: T) : Result<T>
+          data class Error(val exception: Throwable) : Result<Nothing>
+          data object Loading : Result<Nothing>
+      }
+      // Exhaustive when
+      fun <T> handle(result: Result<T>) = when (result) {
+          is Result.Success -> println(result.value)
+          is Result.Error -> println(result.exception)
+          Result.Loading -> println("Loading...")
+      }
+
+  - id: KT003
+    title: "Prefer val over var — favor immutability"
+    description: "Use val (read-only) by default; only use var when mutation is genuinely required. Immutable references prevent accidental reassignment and make code easier to reason about in concurrent contexts."
+    category: "best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "immutability", "val"]
+    example: |
+      // Good
+      val name = "Alice"
+      val items = listOf(1, 2, 3)
+      // Bad
+      var name = "Alice"  // Never reassigned
+
+  - id: KT004
+    title: "Use immutable collections by default"
+    description: "Prefer List, Set, Map (immutable) over MutableList, MutableSet, MutableMap. Use buildList, buildSet, buildMap (Kotlin 1.6+) for builder-pattern construction. Only use mutable collections when mutation is required."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "collections", "immutability"]
+    example: |
+      // Good
+      val users = listOf(user1, user2)
+      val lookup = buildMap {
+          put("admin", adminUser)
+          put("guest", guestUser)
+      }
+      // Bad
+      val users = mutableListOf(user1, user2)  // Never mutated
+
+  - id: KT005
+    title: "Use scope functions appropriately"
+    description: "Use let for null-safe chaining, run for object configuration with result, with for calling multiple methods on an object, apply for object initialization, also for side effects. Avoid nesting more than 2 scope functions."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "scope-functions", "idioms"]
+    example: |
+      // let: null-safe transformation
+      val length = name?.let { it.trim().length }
+      // apply: object configuration
+      val paint = Paint().apply {
+          color = Color.RED
+          style = Paint.Style.FILL
+      }
+      // also: side effects
+      val user = createUser().also { logger.info("Created: ${it.id}") }
+
+  - id: KT006
+    title: "Use value classes for type-safe wrappers (Kotlin 1.5+)"
+    description: "Use @JvmInline value class to create zero-cost type-safe wrappers around primitive types. This provides compile-time type safety without runtime overhead. Ideal for IDs, emails, amounts."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "value-class", "type-safety"]
+    example: |
+      @JvmInline
+      value class UserId(val value: Long)
+      @JvmInline
+      value class Email(val value: String) {
+          init { require(value.contains("@")) { "Invalid email" } }
+      }
+      fun findUser(id: UserId): User  // Can't accidentally pass raw Long
+
+  - id: KT007
+    title: "Prefer extension functions over utility classes"
+    description: "Use extension functions instead of static utility methods. This creates a more natural, discoverable API. Place extensions in the same package as the class they extend or in a dedicated extensions file."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "extensions", "api-design"]
+    example: |
+      // Good: extension function
+      fun String.toSlug(): String = lowercase().replace(" ", "-")
+      "Hello World".toSlug() // "hello-world"
+      // Bad: utility class
+      object StringUtils {
+          fun toSlug(s: String): String = s.lowercase().replace(" ", "-")
+      }
+
+  - id: KT008
+    title: "Use Kotlin's null safety — avoid !! operator"
+    description: "Leverage Kotlin's null safety system. Use safe calls (?.), Elvis operator (?:), let, and smart casts. Avoid the not-null assertion (!!) as it defeats the purpose of null safety and can cause NPE."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "null-safety", "safety"]
+    example: |
+      // Good: safe call + Elvis
+      val length = name?.length ?: 0
+      // Good: smart cast
+      if (user != null) { println(user.name) }
+      // Bad: not-null assertion
+      val length = name!!.length  // NPE risk
+
+  - id: KT009
+    title: "Use when expression exhaustively"
+    description: "Use when with sealed types and enums as expressions (not statements) to get compile-time exhaustiveness checking. The compiler ensures all cases are handled when used as an expression."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "when", "exhaustiveness"]
+    example: |
+      enum class Direction { NORTH, SOUTH, EAST, WEST }
+      fun describe(dir: Direction): String = when (dir) {
+          Direction.NORTH -> "Up"
+          Direction.SOUTH -> "Down"
+          Direction.EAST -> "Right"
+          Direction.WEST -> "Left"
+          // No else needed - exhaustive!
+      }
+
+  - id: KT010
+    title: "Use object declarations for singletons"
+    description: "Use object instead of manual singleton patterns. Object declarations are thread-safe and lazily initialized. Use companion object for factory methods and constants."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "object", "singleton"]
+    example: |
+      // Singleton
+      object AppConfig {
+          val apiUrl = System.getenv("API_URL") ?: "http://localhost:8080"
+      }
+      // Companion object for factory
+      class User private constructor(val name: String) {
+          companion object {
+              fun create(name: String): User = User(name.trim())
+          }
+      }
+
+  # ── Coroutines & Async ──────────────────────────────────────────
+
+  - id: KT011
+    title: "Use structured concurrency with coroutineScope"
+    description: "Always launch coroutines within a structured scope (coroutineScope, supervisorScope, viewModelScope, lifecycleScope). Never use GlobalScope in production — it creates unmanaged coroutines that can leak."
+    category: "best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["kotlin", "kotlinx_coroutines"]
+    tags: ["kotlin", "coroutines", "concurrency"]
+    example: |
+      // Good: structured concurrency
+      suspend fun fetchData() = coroutineScope {
+          val users = async { api.getUsers() }
+          val posts = async { api.getPosts() }
+          Pair(users.await(), posts.await())
+      }
+      // Bad: unstructured
+      GlobalScope.launch { api.getUsers() }
+
+  - id: KT012
+    title: "Use appropriate dispatchers for coroutines"
+    description: "Use Dispatchers.IO for I/O operations, Dispatchers.Default for CPU-intensive work, Dispatchers.Main for UI updates. Use withContext to switch dispatchers within a coroutine."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "kotlinx_coroutines"]
+    tags: ["kotlin", "coroutines", "dispatchers"]
+    example: |
+      suspend fun processFile(path: String): Result = withContext(Dispatchers.IO) {
+          val data = File(path).readText()
+          withContext(Dispatchers.Default) {
+              parseAndTransform(data)
+          }
+      }
+
+  - id: KT013
+    title: "Use Flow for reactive streams — prefer over channels"
+    description: "Use Flow for cold reactive streams. Use StateFlow for observable state and SharedFlow for events. Prefer Flow over Channel for most use cases. Use callbackFlow for converting callbacks to Flow."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "kotlinx_coroutines"]
+    tags: ["kotlin", "flow", "reactive"]
+    example: |
+      // Cold flow
+      fun fetchItems(): Flow<Item> = flow {
+          items.forEach { emit(it) }
+      }
+      // StateFlow for state
+      private val _uiState = MutableStateFlow(UiState.Loading)
+      val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+  - id: KT014
+    title: "Handle coroutine cancellation properly"
+    description: "Coroutines are cooperative — check isActive in long computations, use ensureActive(), and handle CancellationException correctly. Never swallow CancellationException — always rethrow it."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["kotlin", "kotlinx_coroutines"]
+    tags: ["kotlin", "coroutines", "cancellation"]
+    example: |
+      // Good: cooperative cancellation
+      suspend fun processItems(items: List<Item>) {
+          for (item in items) {
+              ensureActive()  // Check for cancellation
+              process(item)
+          }
+      }
+      // Good: rethrow CancellationException
+      try { doWork() }
+      catch (e: CancellationException) { throw e }
+      catch (e: Exception) { handleError(e) }
+
+  - id: KT015
+    title: "Use supervisorScope for independent child failures"
+    description: "Use supervisorScope when child coroutines should fail independently without cancelling siblings. Use coroutineScope when all children should be cancelled if one fails."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "kotlinx_coroutines"]
+    tags: ["kotlin", "coroutines", "supervision"]
+    example: |
+      // Children fail independently
+      suspend fun loadDashboard() = supervisorScope {
+          val news = async { loadNews() }    // failure won't cancel weather
+          val weather = async { loadWeather() }
+          DashboardData(
+              news = runCatching { news.await() }.getOrDefault(emptyList()),
+              weather = runCatching { weather.await() }.getOrNull()
+          )
+      }
+
+  # ── Ktor ────────────────────────────────────────────────────────
+
+  - id: KT016
+    title: "Structure Ktor routes with feature modules"
+    description: "Organize Ktor routing using Application extension functions per feature. Install plugins in the main module. Use route nesting for path grouping."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "ktor"]
+    tags: ["kotlin", "ktor", "routing"]
+    example: |
+      // Feature module
+      fun Application.configureUserRoutes() {
+          routing {
+              route("/api/users") {
+                  get { call.respond(userService.findAll()) }
+                  post {
+                      val request = call.receive<CreateUserRequest>()
+                      call.respond(HttpStatusCode.Created, userService.create(request))
+                  }
+              }
+          }
+      }
+
+  - id: KT017
+    title: "Use Ktor plugins for cross-cutting concerns"
+    description: "Use Ktor's plugin system for authentication, content negotiation, CORS, status pages, and logging. Create custom plugins for reusable middleware logic."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "ktor"]
+    tags: ["kotlin", "ktor", "plugins"]
+    example: |
+      fun Application.configurePlugins() {
+          install(ContentNegotiation) { json() }
+          install(StatusPages) {
+              exception<NotFoundException> { call, cause ->
+                  call.respond(HttpStatusCode.NotFound, cause.message ?: "Not found")
+              }
+          }
+          install(Authentication) {
+              jwt("auth") { /* config */ }
+          }
+      }
+
+  - id: KT018
+    title: "Use Ktor's type-safe routing (resources plugin)"
+    description: "Use @Resource annotated classes with Ktor's Resources plugin (1.6+) for type-safe route definitions. This eliminates string-based routing errors and enables compile-time route verification."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "ktor"]
+    tags: ["kotlin", "ktor", "type-safe-routing"]
+    example: |
+      @Resource("/users")
+      class Users {
+          @Resource("{id}")
+          class Id(val parent: Users = Users(), val id: Long)
+      }
+      routing {
+          get<Users> { call.respond(service.findAll()) }
+          get<Users.Id> { params -> call.respond(service.findById(params.id)) }
+      }
+
+  # ── Spring Boot (Kotlin) ────────────────────────────────────────
+
+  - id: KT019
+    title: "Use constructor injection with Kotlin — no @Autowired needed"
+    description: "Kotlin classes with a single constructor don't need @Autowired. Spring automatically uses the primary constructor for DI. Use data class or val parameters for immutable injection."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "spring"]
+    tags: ["kotlin", "spring", "dependency-injection"]
+    example: |
+      // Good: implicit constructor injection
+      @Service
+      class UserService(
+          private val userRepository: UserRepository,
+          private val emailService: EmailService,
+      )
+      // No @Autowired annotation needed
+
+  - id: KT020
+    title: "Use Spring WebFlux with coroutines for reactive APIs"
+    description: "Combine Spring WebFlux with Kotlin coroutines for non-blocking APIs. Use suspend functions in controllers and Flow for reactive return types instead of Mono/Flux."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "spring"]
+    tags: ["kotlin", "spring", "webflux", "coroutines"]
+    example: |
+      @RestController
+      @RequestMapping("/api/users")
+      class UserController(private val service: UserService) {
+          @GetMapping
+          suspend fun findAll(): Flow<UserDTO> = service.findAll()
+          @GetMapping("/{id}")
+          suspend fun findById(@PathVariable id: Long): UserDTO =
+              service.findById(id) ?: throw ResponseStatusException(HttpStatusCode.NOT_FOUND)
+      }
+
+  # ── Jetpack Compose ────────────────────────────────────────────
+
+  - id: KT021
+    title: "Keep Composable functions small and focused"
+    description: "Each @Composable function should represent a single UI concept. Extract sub-components into separate composables. Pass data down and events up (unidirectional data flow)."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "compose"]
+    tags: ["kotlin", "compose", "ui"]
+    example: |
+      @Composable
+      fun UserCard(user: User, onEdit: (User) -> Unit) {
+          Card {
+              UserAvatar(user.avatarUrl)
+              UserInfo(user.name, user.email)
+              EditButton(onClick = { onEdit(user) })
+          }
+      }
+
+  - id: KT022
+    title: "Use remember and derivedStateOf to avoid unnecessary recomposition"
+    description: "Use remember to cache expensive computations. Use derivedStateOf for state derived from other state values. Use key parameter to invalidate cached values when dependencies change."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "compose"]
+    tags: ["kotlin", "compose", "performance"]
+    example: |
+      @Composable
+      fun FilteredList(items: List<Item>, query: String) {
+          val filtered = remember(items, query) {
+              items.filter { it.name.contains(query, ignoreCase = true) }
+          }
+          val hasResults by remember { derivedStateOf { filtered.isNotEmpty() } }
+          LazyColumn { items(filtered) { ItemRow(it) } }
+      }
+
+  - id: KT023
+    title: "Use Compose state hoisting pattern"
+    description: "Hoist state to the lowest common ancestor. Stateful composables should be wrappers around stateless composables. Pass state as parameters and events as lambdas."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "compose"]
+    tags: ["kotlin", "compose", "state"]
+    example: |
+      // Stateless: reusable and testable
+      @Composable
+      fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
+          TextField(value = query, onValueChange = onQueryChange)
+      }
+      // Stateful: wrapper
+      @Composable
+      fun SearchBarStateful() {
+          var query by remember { mutableStateOf("") }
+          SearchBar(query = query, onQueryChange = { query = it })
+      }
+
+  # ── Dependency Injection ────────────────────────────────────────
+
+  - id: KT024
+    title: "Use Koin modules for dependency organization"
+    description: "Organize Koin dependencies into feature-specific modules. Use single for singletons, factory for new instances, viewModel for ViewModels. Declare module boundaries clearly."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "koin"]
+    tags: ["kotlin", "koin", "dependency-injection"]
+    example: |
+      val networkModule = module {
+          single { HttpClient(CIO) { install(ContentNegotiation) { json() } } }
+          single { ApiService(get()) }
+      }
+      val featureModule = module {
+          factory { UserRepository(get()) }
+          viewModel { UserViewModel(get()) }
+      }
+
+  - id: KT025
+    title: "Use Hilt with @HiltViewModel for Android ViewModels"
+    description: "Use @HiltViewModel with @Inject constructor for Android ViewModels. Hilt automatically provides the ViewModel factory. Use SavedStateHandle for process death handling."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "hilt"]
+    tags: ["kotlin", "hilt", "android", "viewmodel"]
+    example: |
+      @HiltViewModel
+      class UserViewModel @Inject constructor(
+          private val repository: UserRepository,
+          private val savedStateHandle: SavedStateHandle,
+      ) : ViewModel() {
+          val userId = savedStateHandle.get<Long>("userId")
+          val user = repository.findById(userId).stateIn(viewModelScope)
+      }
+
+  # ── Serialization & Data ────────────────────────────────────────
+
+  - id: KT026
+    title: "Use kotlinx.serialization for type-safe serialization"
+    description: "Prefer kotlinx.serialization over Gson/Moshi for Kotlin-first serialization. It supports sealed classes, value classes, default values, and multiplatform. Use @Serializable on data classes."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "kotlinx_serialization"]
+    tags: ["kotlin", "serialization", "json"]
+    example: |
+      @Serializable
+      data class ApiResponse<T>(
+          val data: T,
+          val message: String = "",
+          @SerialName("error_code")
+          val errorCode: Int? = null,
+      )
+
+  - id: KT027
+    title: "Use Exposed DSL for type-safe SQL queries"
+    description: "Use JetBrains Exposed for type-safe SQL queries in Kotlin. Prefer the DSL style for queries and DAO style for CRUD. Use transactions for all database operations."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "exposed"]
+    tags: ["kotlin", "exposed", "database"]
+    example: |
+      object Users : Table() {
+          val id = integer("id").autoIncrement()
+          val name = varchar("name", 255)
+          val email = varchar("email", 255).uniqueIndex()
+          override val primaryKey = PrimaryKey(id)
+      }
+      // Type-safe query
+      transaction {
+          Users.select { Users.email eq email }
+              .map { row -> User(row[Users.id], row[Users.name]) }
+      }
+
+  - id: KT028
+    title: "Use Room with Kotlin coroutines for Android persistence"
+    description: "Use Room's coroutine support with suspend functions and Flow return types. Define DAOs with suspend functions for one-shot queries and Flow for observable queries."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "room"]
+    tags: ["kotlin", "room", "android", "database"]
+    example: |
+      @Dao
+      interface UserDao {
+          @Query("SELECT * FROM users")
+          fun observeAll(): Flow<List<UserEntity>>
+          @Query("SELECT * FROM users WHERE id = :id")
+          suspend fun findById(id: Long): UserEntity?
+          @Insert(onConflict = OnConflictStrategy.REPLACE)
+          suspend fun upsert(user: UserEntity)
+      }
+
+  # ── Error Handling ──────────────────────────────────────────────
+
+  - id: KT029
+    title: "Use Result type for operations that can fail"
+    description: "Use Kotlin's Result<T> or a custom sealed Result type for operations that can fail. Prefer Result over exceptions for expected failures. Use runCatching for wrapping."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "error-handling", "result"]
+    example: |
+      suspend fun fetchUser(id: Long): Result<User> = runCatching {
+          api.getUser(id)
+      }
+      // Usage
+      fetchUser(id)
+          .onSuccess { user -> showUser(user) }
+          .onFailure { error -> showError(error) }
+          .getOrDefault(User.GUEST)
+
+  - id: KT030
+    title: "Use require/check/error for preconditions"
+    description: "Use require() for argument validation, check() for state validation, and error() for unreachable code. These provide clear, idiomatic validation with meaningful error messages."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "preconditions", "validation"]
+    example: |
+      fun transfer(amount: BigDecimal, from: Account, to: Account) {
+          require(amount > BigDecimal.ZERO) { "Amount must be positive: $amount" }
+          check(from.balance >= amount) { "Insufficient balance: ${from.balance}" }
+          // ...
+      }
+
+  # ── Testing ─────────────────────────────────────────────────────
+
+  - id: KT031
+    title: "Use MockK for Kotlin-idiomatic mocking"
+    description: "Prefer MockK over Mockito for Kotlin projects. MockK supports coroutines, extension functions, companion objects, and top-level functions natively."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "mockk"]
+    tags: ["kotlin", "testing", "mockk"]
+    example: |
+      @Test
+      fun `should fetch user by id`() = runTest {
+          val repo = mockk<UserRepository>()
+          coEvery { repo.findById(1L) } returns User(1, "Alice")
+          val service = UserService(repo)
+          val user = service.getUser(1L)
+          assertEquals("Alice", user.name)
+          coVerify(exactly = 1) { repo.findById(1L) }
+      }
+
+  - id: KT032
+    title: "Use Kotest for expressive test specifications"
+    description: "Consider Kotest for data-driven tests, property-based testing, and BDD-style specifications. Use its built-in matchers for expressive assertions."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "kotest"]
+    tags: ["kotlin", "testing", "kotest"]
+    example: |
+      class UserServiceTest : FunSpec({
+          test("should validate email format") {
+              val validator = EmailValidator()
+              validator.isValid("user@example.com") shouldBe true
+              validator.isValid("invalid") shouldBe false
+          }
+          context("user creation") {
+              test("should require non-blank name") {
+                  shouldThrow<IllegalArgumentException> {
+                      User.create(name = "", email = "test@test.com")
+                  }
+              }
+          }
+      })
+
+  - id: KT033
+    title: "Use runTest for testing coroutines"
+    description: "Use kotlinx.coroutines.test.runTest for testing suspend functions. It handles virtual time, uncaught exceptions, and structured concurrency. Use TestDispatcher for controlling execution."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "kotlinx_coroutines"]
+    tags: ["kotlin", "testing", "coroutines"]
+    example: |
+      @Test
+      fun `should emit loading then data`() = runTest {
+          val viewModel = UserViewModel(FakeRepository())
+          viewModel.uiState.test {
+              assertEquals(UiState.Loading, awaitItem())
+              assertEquals(UiState.Success(users), awaitItem())
+              cancelAndIgnoreRemainingEvents()
+          }
+      }
+
+  # ── Multiplatform ──────────────────────────────────────────────
+
+  - id: KT034
+    title: "Use expect/actual for platform-specific implementations"
+    description: "Define expect declarations in commonMain and provide actual implementations in platform source sets. Keep expect interfaces minimal — move complex logic to common code."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "kmm"]
+    tags: ["kotlin", "multiplatform", "expect-actual"]
+    example: |
+      // commonMain
+      expect class PlatformLogger() {
+          fun log(message: String)
+      }
+      // androidMain
+      actual class PlatformLogger {
+          actual fun log(message: String) = Log.d("App", message)
+      }
+      // iosMain
+      actual class PlatformLogger {
+          actual fun log(message: String) = NSLog(message)
+      }
+
+  - id: KT035
+    title: "Share business logic in commonMain"
+    description: "Maximize shared code in commonMain. Only platform-specific code (UI, platform APIs) should be in platform source sets. Use dependency injection to provide platform implementations."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "kmm"]
+    tags: ["kotlin", "multiplatform", "shared-code"]
+    example: |
+      // commonMain - shared business logic
+      class UserRepository(private val api: UserApi, private val db: UserDatabase) {
+          suspend fun getUser(id: Long): User =
+              db.findById(id) ?: api.fetchUser(id).also { db.save(it) }
+      }
+
+  # ── DSL & API Design ───────────────────────────────────────────
+
+  - id: KT036
+    title: "Use DSL builders with @DslMarker"
+    description: "Use @DslMarker to restrict DSL scope and prevent accidental access to outer receivers. Create type-safe builders using lambda with receiver pattern."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "dsl", "api-design"]
+    example: |
+      @DslMarker
+      annotation class HtmlDsl
+      @HtmlDsl
+      class HtmlBuilder {
+          private val children = mutableListOf<String>()
+          fun body(init: BodyBuilder.() -> Unit) {
+              children += BodyBuilder().apply(init).build()
+          }
+          fun build(): String = children.joinToString("\n")
+      }
+      fun html(init: HtmlBuilder.() -> Unit): String = HtmlBuilder().apply(init).build()
+
+  - id: KT037
+    title: "Use operator overloading judiciously"
+    description: "Overload operators only when their meaning is intuitive and well-established. Good: plus for mathematical types, get/set for collections. Bad: plus for string concatenation of unrelated types."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "operators", "api-design"]
+    example: |
+      data class Vec2(val x: Double, val y: Double) {
+          operator fun plus(other: Vec2) = Vec2(x + other.x, y + other.y)
+          operator fun times(scalar: Double) = Vec2(x * scalar, y * scalar)
+          operator fun unaryMinus() = Vec2(-x, -y)
+      }
+
+  # ── Delegation ──────────────────────────────────────────────────
+
+  - id: KT038
+    title: "Use property delegation for cross-cutting concerns"
+    description: "Use by lazy for lazy initialization, by Delegates.observable for property change notification, by map for dynamic properties. Create custom delegates for reusable patterns."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "delegation", "patterns"]
+    example: |
+      // Lazy initialization
+      val heavyResource by lazy { HeavyResource.create() }
+      // Observable property
+      var name: String by Delegates.observable("") { _, old, new ->
+          logger.info("Name changed: $old -> $new")
+      }
+      // Custom delegate
+      class Preference<T>(private val key: String, private val default: T) {
+          operator fun getValue(thisRef: Any?, property: KProperty<*>): T = prefs.get(key, default)
+          operator fun setValue(thisRef: Any?, property: KProperty<*>, value: T) { prefs.put(key, value) }
+      }
+
+  - id: KT039
+    title: "Use class delegation to favor composition"
+    description: "Use by keyword for interface delegation to compose behavior from multiple implementations. This is Kotlin's native support for the delegation pattern, avoiding boilerplate forwarding methods."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "delegation", "composition"]
+    example: |
+      interface Logger { fun log(msg: String) }
+      interface Metrics { fun record(name: String, value: Double) }
+      class ConsoleLogger : Logger { override fun log(msg: String) = println(msg) }
+      class InMemoryMetrics : Metrics { override fun record(name: String, value: Double) { /* ... */ } }
+      // Compose via delegation
+      class Service(
+          logger: Logger = ConsoleLogger(),
+          metrics: Metrics = InMemoryMetrics()
+      ) : Logger by logger, Metrics by metrics
+
+  # ── Performance ─────────────────────────────────────────────────
+
+  - id: KT040
+    title: "Use sequences for large collection pipelines"
+    description: "Use asSequence() for chained collection operations on large datasets. Sequences evaluate lazily, avoiding intermediate collection allocations. Use toList() to materialize when needed."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "sequences", "performance"]
+    example: |
+      // Good: lazy evaluation
+      val result = largeList.asSequence()
+          .filter { it.isActive }
+          .map { it.transform() }
+          .take(10)
+          .toList()
+      // Bad: creates intermediate lists
+      val result = largeList
+          .filter { it.isActive }
+          .map { it.transform() }
+          .take(10)
+
+  - id: KT041
+    title: "Use inline functions for lambdas to avoid allocation"
+    description: "Mark higher-order functions as inline when the lambda is small and called in a tight loop. Inline functions eliminate lambda object allocation. Use noinline/crossinline when needed."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "inline", "performance"]
+    example: |
+      inline fun <T> measureTime(block: () -> T): Pair<T, Long> {
+          val start = System.nanoTime()
+          val result = block()
+          return result to (System.nanoTime() - start)
+      }
+
+  # ── Contracts & Advanced ────────────────────────────────────────
+
+  - id: KT042
+    title: "Use contracts for smart cast guarantees"
+    description: "Use Kotlin contracts (kotlin.contracts) to help the compiler understand code flow. Contracts can declare that a function returns implies a condition, or that a lambda is called exactly once."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "contracts", "compiler"]
+    example: |
+      @OptIn(ExperimentalContracts::class)
+      fun requireNotEmpty(value: String): String {
+          contract { returns() implies (value.isNotEmpty()) }
+          if (value.isEmpty()) throw IllegalArgumentException("Must not be empty")
+          return value
+      }
+
+  - id: KT043
+    title: "Use type aliases for complex generic types"
+    description: "Use typealias to create meaningful names for complex generic types. This improves readability without creating new types. Useful for callback signatures and collection types."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "type-alias", "readability"]
+    example: |
+      typealias EventHandler<T> = (T) -> Unit
+      typealias UserMap = Map<UserId, User>
+      typealias Predicate<T> = (T) -> Boolean
+      typealias JsonObject = Map<String, Any?>
+      fun onUserChange(handler: EventHandler<User>) { /* ... */ }
+
+  - id: KT044
+    title: "Use context receivers for implicit context (Kotlin 1.6.20+)"
+    description: "Use context receivers to implicitly pass cross-cutting context (logging, transactions, coroutine scope) without cluttering function signatures. Use sparingly — they are experimental."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "context-receivers", "experimental"]
+    example: |
+      context(LoggingContext, TransactionContext)
+      fun createUser(name: String, email: String): User {
+          log("Creating user: $name")
+          return transaction {
+              UserEntity.new { this.name = name; this.email = email }
+          }
+      }
+
+  # ── Arrow / Functional ─────────────────────────────────────────
+
+  - id: KT045
+    title: "Use Arrow's Either for typed error handling"
+    description: "Use Arrow's Either<Error, Success> for functional error handling. Combine with suspend and Raise for typed error boundaries. Prefer Either over Result for domain errors."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin", "arrow"]
+    tags: ["kotlin", "arrow", "functional"]
+    example: |
+      sealed interface UserError {
+          data class NotFound(val id: Long) : UserError
+          data class ValidationError(val msg: String) : UserError
+      }
+      suspend fun findUser(id: Long): Either<UserError, User> = either {
+          val entity = repo.findById(id) ?: raise(UserError.NotFound(id))
+          entity.toDomain()
+      }
+
+  # ── Android Specific ───────────────────────────────────────────
+
+  - id: KT046
+    title: "Collect flows safely in Android with repeatOnLifecycle"
+    description: "Use repeatOnLifecycle or flowWithLifecycle to collect flows in Android. This ensures collection stops when the lifecycle is below the target state, preventing wasted resources."
+    category: "best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["kotlin", "kotlinx_coroutines"]
+    tags: ["kotlin", "android", "lifecycle", "flow"]
+    example: |
+      override fun onCreate(savedInstanceState: Bundle?) {
+          super.onCreate(savedInstanceState)
+          lifecycleScope.launch {
+              repeatOnLifecycle(Lifecycle.State.STARTED) {
+                  viewModel.uiState.collect { state ->
+                      updateUi(state)
+                  }
+              }
+          }
+      }
+
+  - id: KT047
+    title: "Use Kotlin-specific Android Extensions"
+    description: "Use Kotlin-specific features in Android: apply for view configuration, let for null-safe operations, also for logging, extension functions for common View operations."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "android", "extensions"]
+    example: |
+      fun View.show() { visibility = View.VISIBLE }
+      fun View.hide() { visibility = View.GONE }
+      fun Fragment.toast(msg: String) =
+          Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+
+  # ── Code Organization ──────────────────────────────────────────
+
+  - id: KT048
+    title: "Use Kotlin file-level functions for utilities"
+    description: "Use top-level functions instead of utility classes with static methods. Group related top-level functions in well-named files. Use internal visibility for module-level utilities."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "organization", "top-level"]
+    example: |
+      // StringUtils.kt
+      fun String.toSlug(): String = lowercase().replace(Regex("[^a-z0-9]+"), "-")
+      fun String.truncate(maxLength: Int): String =
+          if (length <= maxLength) this else take(maxLength - 3) + "..."
+      internal fun String.normalize(): String = trim().lowercase()
+
+  - id: KT049
+    title: "Use destructuring declarations for clarity"
+    description: "Use destructuring for data classes, Pairs, Maps, and function parameters. It makes code more readable when working with composite values."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "destructuring", "readability"]
+    example: |
+      // Data class destructuring
+      val (name, email) = user
+      // Map iteration
+      for ((key, value) in config) { println("$key = $value") }
+      // Lambda parameter
+      users.forEach { (id, name, _) -> println("$id: $name") }
+
+  - id: KT050
+    title: "Use Kotlin's string templates and multiline strings"
+    description: "Use string templates ($variable, ${expression}) instead of concatenation. Use triple-quoted strings (raw strings) for multiline text, SQL queries, and JSON templates. Use trimIndent() or trimMargin()."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["kotlin"]
+    tags: ["kotlin", "strings", "templates"]
+    example: |
+      // String template
+      val greeting = "Hello, ${user.name}! You have ${messages.size} messages."
+      // Multiline with trimIndent
+      val query = """
+          SELECT u.name, u.email
+          FROM users u
+          WHERE u.active = true
+          ORDER BY u.name
+      """.trimIndent()

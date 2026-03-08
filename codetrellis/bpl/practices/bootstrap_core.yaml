@@ -1,0 +1,926 @@
+# Bootstrap Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.40 - Bootstrap Framework Support
+# Practice IDs: BOOT001-BOOT050
+# Coverage: Components, Grid, Theme, Utilities, Plugins, Forms,
+#           Responsive, Accessibility, Performance, Migration
+# Versions: Bootstrap v3.x, v4.x, v5.x, v5.3+
+
+practices:
+  # ============================================================================
+  # BOOTSTRAP COMPONENTS (BOOT001-BOOT005)
+  # ============================================================================
+
+  - id: BOOT001
+    title: "Use semantic Bootstrap component structure"
+    description: "Use correct Bootstrap CSS class hierarchies for components. Each component has a required parent-child class structure (e.g., .card > .card-body, .modal > .modal-dialog > .modal-content)."
+    category: "bootstrap_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "components", "structure"]
+    example: |
+      <!-- Good: correct card structure -->
+      <div class="card">
+        <div class="card-header">Header</div>
+        <div class="card-body">
+          <h5 class="card-title">Title</h5>
+          <p class="card-text">Content</p>
+        </div>
+        <div class="card-footer">Footer</div>
+      </div>
+
+  - id: BOOT002
+    title: "Use data-bs-* attributes for component initialization"
+    description: "In Bootstrap 5, use data-bs-* attributes instead of data-* attributes for JS-powered components. This avoids conflicts with other libraries."
+    category: "bootstrap_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "data-attributes", "v5"]
+    example: |
+      <!-- Bootstrap 5: use data-bs-* -->
+      <button data-bs-toggle="modal" data-bs-target="#myModal">
+        Open Modal
+      </button>
+
+      <!-- Bootstrap 4 (legacy): data-* -->
+      <button data-toggle="modal" data-target="#myModal">
+        Open Modal
+      </button>
+
+  - id: BOOT003
+    title: "Use Bootstrap 5 vanilla JS API over jQuery"
+    description: "Bootstrap 5 dropped jQuery dependency. Use the vanilla JavaScript constructor API (new bootstrap.Modal(), new bootstrap.Tooltip()) instead of jQuery plugins."
+    category: "bootstrap_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "javascript", "v5", "jquery"]
+    example: |
+      // Bootstrap 5: vanilla JS
+      const modal = new bootstrap.Modal('#myModal');
+      modal.show();
+
+      // Avoid in v5: jQuery
+      // $('#myModal').modal('show');
+
+  - id: BOOT004
+    title: "Include Popper.js for positioning components"
+    description: "Bootstrap dropdowns, tooltips, and popovers require Popper.js. Use bootstrap.bundle.js (includes Popper) or import @popperjs/core separately."
+    category: "bootstrap_components"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "popper", "dependencies"]
+    example: |
+      <!-- Option 1: Bundle (includes Popper) -->
+      <script src="bootstrap.bundle.min.js"></script>
+
+      <!-- Option 2: Separate -->
+      <script src="@popperjs/core"></script>
+      <script src="bootstrap.min.js"></script>
+
+  - id: BOOT005
+    title: "Use React-Bootstrap or reactstrap components in React"
+    description: "In React applications, use react-bootstrap or reactstrap instead of raw HTML classes. These provide proper React components with state management and no jQuery dependency."
+    category: "bootstrap_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap", "react-bootstrap", "reactstrap", "react"]
+    tags: ["bootstrap", "react", "components"]
+    example: |
+      // Good: React-Bootstrap
+      import { Modal, Button } from 'react-bootstrap';
+
+      function MyModal({ show, onHide }) {
+        return (
+          <Modal show={show} onHide={onHide}>
+            <Modal.Header closeButton>
+              <Modal.Title>Title</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>Content</Modal.Body>
+            <Modal.Footer>
+              <Button onClick={onHide}>Close</Button>
+            </Modal.Footer>
+          </Modal>
+        );
+      }
+
+  # ============================================================================
+  # BOOTSTRAP GRID (BOOT006-BOOT010)
+  # ============================================================================
+
+  - id: BOOT006
+    title: "Use the 12-column grid system correctly"
+    description: "Bootstrap's grid uses a 12-column system. Columns in a row should sum to 12 (or less for auto-spacing). Always wrap columns in a .row, and rows in a .container."
+    category: "bootstrap_grid"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "grid", "layout"]
+    example: |
+      <div class="container">
+        <div class="row">
+          <div class="col-md-8">Main content</div>
+          <div class="col-md-4">Sidebar</div>
+        </div>
+      </div>
+
+  - id: BOOT007
+    title: "Use responsive breakpoint classes"
+    description: "Use breakpoint-specific column classes (col-sm-*, col-md-*, col-lg-*, col-xl-*, col-xxl-*) for responsive layouts instead of fixed-width columns."
+    category: "bootstrap_grid"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "responsive", "breakpoints"]
+    example: |
+      <div class="row">
+        <!-- Full width on mobile, half on tablet, third on desktop -->
+        <div class="col-12 col-md-6 col-lg-4">
+          Card content
+        </div>
+      </div>
+
+  - id: BOOT008
+    title: "Use container variants appropriately"
+    description: "Use .container for fixed-width centered layout, .container-fluid for full-width, or responsive containers (.container-sm, .container-md, etc.) for breakpoint-specific max-widths."
+    category: "bootstrap_grid"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "container", "layout"]
+    example: |
+      <!-- Fixed-width centered -->
+      <div class="container">...</div>
+
+      <!-- Full-width -->
+      <div class="container-fluid">...</div>
+
+      <!-- Responsive container: fluid until lg breakpoint -->
+      <div class="container-lg">...</div>
+
+  - id: BOOT009
+    title: "Use gutters for column spacing"
+    description: "Use gutter utility classes (g-*, gx-*, gy-*) to control horizontal and vertical spacing between columns instead of custom margins or padding."
+    category: "bootstrap_grid"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "gutters", "spacing"]
+    example: |
+      <!-- Horizontal and vertical gutters -->
+      <div class="row g-3">
+        <div class="col-md-4"><div class="card">...</div></div>
+        <div class="col-md-4"><div class="card">...</div></div>
+        <div class="col-md-4"><div class="card">...</div></div>
+      </div>
+
+      <!-- No gutters -->
+      <div class="row g-0">...</div>
+
+  - id: BOOT010
+    title: "Use row-cols for equal-width column grids"
+    description: "Use .row-cols-* classes to quickly set the number of equal-width columns per row, instead of specifying col-* on each column."
+    category: "bootstrap_grid"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "grid", "row-cols"]
+    example: |
+      <!-- 3 equal columns per row, 2 on mobile -->
+      <div class="row row-cols-2 row-cols-md-3 g-4">
+        <div class="col"><div class="card">Card 1</div></div>
+        <div class="col"><div class="card">Card 2</div></div>
+        <div class="col"><div class="card">Card 3</div></div>
+        <div class="col"><div class="card">Card 4</div></div>
+      </div>
+
+  # ============================================================================
+  # BOOTSTRAP THEME (BOOT011-BOOT015)
+  # ============================================================================
+
+  - id: BOOT011
+    title: "Customize Bootstrap via SCSS variables"
+    description: "Override Bootstrap's default SCSS variables before importing Bootstrap's source files. This is the recommended way to customize colors, breakpoints, spacing, and more."
+    category: "bootstrap_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "scss", "theming", "customization"]
+    example: |
+      // custom.scss
+      // Override variables BEFORE importing Bootstrap
+      $primary: #0d6efd;
+      $body-bg: #f8f9fa;
+      $font-family-sans-serif: 'Inter', system-ui, sans-serif;
+      $border-radius: 0.5rem;
+
+      // Import Bootstrap source
+      @import "~bootstrap/scss/bootstrap";
+
+  - id: BOOT012
+    title: "Use CSS custom properties for runtime theming"
+    description: "Bootstrap 5 exposes CSS custom properties (--bs-*) for runtime customization. Override these in your CSS for dynamic theming without recompiling SCSS."
+    category: "bootstrap_theme"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "css-variables", "theming"]
+    example: |
+      :root {
+        --bs-primary: #0d6efd;
+        --bs-primary-rgb: 13, 110, 253;
+        --bs-body-font-family: 'Inter', sans-serif;
+        --bs-body-bg: #f8f9fa;
+      }
+
+  - id: BOOT013
+    title: "Use Bootstrap 5.3 color modes for dark mode"
+    description: "Use the data-bs-theme attribute for color mode switching in Bootstrap 5.3+. This provides built-in dark mode support without custom CSS."
+    category: "bootstrap_theme"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "dark-mode", "color-modes", "v5.3"]
+    example: |
+      <!-- Set color mode on html element -->
+      <html data-bs-theme="dark">
+
+      <!-- Or per-component -->
+      <div data-bs-theme="dark" class="card">
+        <div class="card-body">Dark card</div>
+      </div>
+
+      <!-- JS toggle -->
+      <script>
+        document.documentElement.setAttribute('data-bs-theme',
+          document.documentElement.getAttribute('data-bs-theme') === 'dark'
+            ? 'light' : 'dark'
+        );
+      </script>
+
+  - id: BOOT014
+    title: "Use Bootswatch themes correctly"
+    description: "When using Bootswatch themes, import the theme CSS after Bootstrap's core. Ensure the Bootswatch version matches your Bootstrap version."
+    category: "bootstrap_theme"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap", "bootswatch"]
+    tags: ["bootstrap", "bootswatch", "theming"]
+    example: |
+      <!-- Bootswatch via CDN -->
+      <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootswatch@5/dist/darkly/bootstrap.min.css">
+
+      <!-- Or via npm -->
+      // import 'bootswatch/dist/darkly/bootstrap.min.css';
+
+  - id: BOOT015
+    title: "Follow SCSS variable naming conventions"
+    description: "When creating custom SCSS variables for Bootstrap customization, follow Bootstrap's naming convention ($component-property-state) for consistency."
+    category: "bootstrap_theme"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "scss", "conventions"]
+    example: |
+      // Follow Bootstrap's naming pattern
+      $btn-primary-bg: #0d6efd;
+      $btn-primary-border: #0d6efd;
+      $card-border-radius: 0.5rem;
+      $navbar-dark-color: rgba(255, 255, 255, 0.85);
+
+  # ============================================================================
+  # BOOTSTRAP UTILITIES (BOOT016-BOOT020)
+  # ============================================================================
+
+  - id: BOOT016
+    title: "Use utility classes for common styling"
+    description: "Use Bootstrap's utility classes (m-*, p-*, d-*, text-*, bg-*) for common styling needs instead of writing custom CSS. This keeps your codebase consistent and reduces CSS bloat."
+    category: "bootstrap_utilities"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "utilities", "css"]
+    example: |
+      <!-- Good: utility classes -->
+      <div class="d-flex justify-content-between align-items-center p-3 mb-4 bg-light rounded">
+        <h5 class="mb-0">Title</h5>
+        <span class="badge bg-primary">New</span>
+      </div>
+
+  - id: BOOT017
+    title: "Use responsive utility classes"
+    description: "Append breakpoint suffixes to utility classes for responsive behavior (e.g., d-none d-md-block, text-center text-lg-start)."
+    category: "bootstrap_utilities"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "utilities", "responsive"]
+    example: |
+      <!-- Hidden on mobile, visible from md up -->
+      <div class="d-none d-md-block">Desktop only</div>
+
+      <!-- Different text alignment per breakpoint -->
+      <p class="text-center text-lg-start">Responsive text</p>
+
+      <!-- Different spacing per breakpoint -->
+      <div class="p-2 p-md-4 p-lg-5">Responsive padding</div>
+
+  - id: BOOT018
+    title: "Use the Utility API for custom utilities"
+    description: "In Bootstrap 5, use the Utility API in SCSS to generate custom utility classes or modify existing ones, instead of writing custom CSS rules."
+    category: "bootstrap_utilities"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "utility-api", "scss", "v5"]
+    example: |
+      // _utilities.scss
+      $utilities: map-merge(
+        $utilities,
+        (
+          "cursor": (
+            property: cursor,
+            class: cursor,
+            values: auto pointer grab,
+          ),
+          "opacity": map-merge(
+            map-get($utilities, "opacity"),
+            (responsive: true),
+          ),
+        )
+      );
+
+  - id: BOOT019
+    title: "Combine utility classes judiciously"
+    description: "While utility classes are powerful, excessive chaining makes markup hard to read. Extract commonly reused combinations into custom CSS classes or components."
+    category: "bootstrap_utilities"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "utilities", "maintainability"]
+    example: |
+      <!-- If you use this pattern repeatedly, extract it -->
+      <!-- Before: excessive utilities -->
+      <div class="d-flex justify-content-between align-items-center p-3 mb-3 bg-white border rounded shadow-sm">
+
+      <!-- After: custom class combining utilities -->
+      <div class="content-card">
+
+      /* CSS */
+      .content-card {
+        @extend .d-flex, .justify-content-between, .align-items-center;
+        @extend .p-3, .mb-3, .bg-white, .border, .rounded, .shadow-sm;
+      }
+
+  - id: BOOT020
+    title: "Use spacing utilities consistently"
+    description: "Use Bootstrap's spacing scale (0-5 or custom) consistently. The default scale maps 1=0.25rem, 2=0.5rem, 3=1rem, 4=1.5rem, 5=3rem."
+    category: "bootstrap_utilities"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "spacing", "consistency"]
+    example: |
+      <!-- Consistent spacing scale -->
+      <div class="mt-3 mb-3 p-4">     <!-- 1rem top/bottom margin, 1.5rem padding -->
+      <div class="mx-auto" style="max-width: 600px">  <!-- Center with auto margins -->
+      <div class="gap-3">             <!-- 1rem gap in flex/grid -->
+
+  # ============================================================================
+  # BOOTSTRAP PLUGINS (BOOT021-BOOT025)
+  # ============================================================================
+
+  - id: BOOT021
+    title: "Dispose Bootstrap JS instances when unmounting"
+    description: "When dynamically creating Bootstrap JS components, call .dispose() when the element is removed from the DOM to prevent memory leaks."
+    category: "bootstrap_plugins"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "javascript", "memory-leaks"]
+    example: |
+      // Create
+      const tooltip = new bootstrap.Tooltip(element, options);
+
+      // Cleanup when done
+      tooltip.dispose();
+
+      // In React with useEffect
+      useEffect(() => {
+        const tooltip = new bootstrap.Tooltip(ref.current);
+        return () => tooltip.dispose();
+      }, []);
+
+  - id: BOOT022
+    title: "Use Bootstrap events for component lifecycle"
+    description: "Listen to Bootstrap's component events (show.bs.modal, shown.bs.modal, hide.bs.modal, etc.) for proper lifecycle management instead of polling or timeouts."
+    category: "bootstrap_plugins"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "events", "lifecycle"]
+    example: |
+      const modal = document.getElementById('myModal');
+      modal.addEventListener('shown.bs.modal', () => {
+        document.getElementById('focusInput').focus();
+      });
+      modal.addEventListener('hidden.bs.modal', () => {
+        // Cleanup after modal closes
+      });
+
+  - id: BOOT023
+    title: "Initialize tooltips and popovers explicitly"
+    description: "Tooltips and popovers are opt-in for performance. Initialize them explicitly via JavaScript, not just data attributes."
+    category: "bootstrap_plugins"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "tooltip", "popover", "initialization"]
+    example: |
+      // Initialize all tooltips on page
+      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+      const tooltipList = [...tooltipTriggerList].map(
+        el => new bootstrap.Tooltip(el)
+      );
+
+  - id: BOOT024
+    title: "Use getInstance() to access existing component instances"
+    description: "Use the static getInstance() or getOrCreateInstance() methods to access Bootstrap JS component instances instead of creating duplicates."
+    category: "bootstrap_plugins"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "javascript", "instances"]
+    example: |
+      // Get existing instance
+      const modal = bootstrap.Modal.getInstance('#myModal');
+      if (modal) {
+        modal.hide();
+      }
+
+      // Or get/create
+      const tooltip = bootstrap.Tooltip.getOrCreateInstance(element);
+
+  - id: BOOT025
+    title: "Pass options object to JS constructors"
+    description: "Configure Bootstrap JS components via the options object in the constructor, not by setting data attributes individually in JS."
+    category: "bootstrap_plugins"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "javascript", "configuration"]
+    example: |
+      // Good: options object
+      const toast = new bootstrap.Toast(element, {
+        autohide: true,
+        delay: 5000,
+        animation: true,
+      });
+
+  # ============================================================================
+  # BOOTSTRAP FORMS (BOOT026-BOOT030)
+  # ============================================================================
+
+  - id: BOOT026
+    title: "Use form-control and form-label classes"
+    description: "Apply .form-control to inputs and .form-label to labels for consistent Bootstrap form styling. Use .form-select for select elements."
+    category: "bootstrap_forms"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "forms", "inputs"]
+    example: |
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" placeholder="name@example.com">
+        <div class="form-text">We'll never share your email.</div>
+      </div>
+
+  - id: BOOT027
+    title: "Use Bootstrap validation classes"
+    description: "Use .is-valid and .is-invalid classes with .valid-feedback and .invalid-feedback for form validation display. Add .was-validated to the form for HTML5 validation."
+    category: "bootstrap_forms"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "forms", "validation"]
+    example: |
+      <form class="needs-validation" novalidate>
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input type="text" class="form-control" required>
+          <div class="valid-feedback">Looks good!</div>
+          <div class="invalid-feedback">Please provide a name.</div>
+        </div>
+      </form>
+
+  - id: BOOT028
+    title: "Use floating labels for modern form design"
+    description: "Use .form-floating wrapper with placeholder-driven floating labels for a modern, compact form design in Bootstrap 5."
+    category: "bootstrap_forms"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "forms", "floating-labels", "v5"]
+    example: |
+      <div class="form-floating mb-3">
+        <input type="email" class="form-control" id="floatingInput"
+               placeholder="name@example.com">
+        <label for="floatingInput">Email address</label>
+      </div>
+
+  - id: BOOT029
+    title: "Use input groups for composite inputs"
+    description: "Use .input-group to combine inputs with text, buttons, or other elements. Ensure proper structure with .input-group-text for addons."
+    category: "bootstrap_forms"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "forms", "input-groups"]
+    example: |
+      <div class="input-group mb-3">
+        <span class="input-group-text">$</span>
+        <input type="number" class="form-control" placeholder="Amount">
+        <span class="input-group-text">.00</span>
+      </div>
+
+  - id: BOOT030
+    title: "Use form-check for checkboxes and radios"
+    description: "Use .form-check wrapper with .form-check-input and .form-check-label for styled checkboxes, radios, and switches."
+    category: "bootstrap_forms"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "forms", "checkboxes", "radios"]
+    example: |
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="darkMode">
+        <label class="form-check-label" for="darkMode">Dark mode</label>
+      </div>
+
+  # ============================================================================
+  # BOOTSTRAP RESPONSIVE (BOOT031-BOOT035)
+  # ============================================================================
+
+  - id: BOOT031
+    title: "Design mobile-first with Bootstrap"
+    description: "Bootstrap is mobile-first. Write styles for the smallest screen first, then use responsive classes to override for larger screens (col-12 base, then col-md-6)."
+    category: "bootstrap_responsive"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "mobile-first", "responsive"]
+    example: |
+      <!-- Mobile-first: full width by default, half on md+ -->
+      <div class="col-12 col-md-6 col-lg-4">
+        Content
+      </div>
+
+  - id: BOOT032
+    title: "Include viewport meta tag"
+    description: "Always include the viewport meta tag for proper responsive behavior on mobile devices."
+    category: "bootstrap_responsive"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "viewport", "meta"]
+    example: |
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  - id: BOOT033
+    title: "Use responsive images and tables"
+    description: "Use .img-fluid for responsive images and .table-responsive wrapper for responsive tables that scroll horizontally on small screens."
+    category: "bootstrap_responsive"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "responsive", "images", "tables"]
+    example: |
+      <img src="hero.jpg" class="img-fluid" alt="Hero image">
+
+      <div class="table-responsive">
+        <table class="table">...</table>
+      </div>
+
+  - id: BOOT034
+    title: "Use responsive display utilities for show/hide"
+    description: "Use responsive display utilities (d-none, d-md-block) to show/hide elements at different breakpoints instead of custom media queries."
+    category: "bootstrap_responsive"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "responsive", "display"]
+    example: |
+      <!-- Mobile navigation -->
+      <nav class="d-block d-md-none">Mobile Nav</nav>
+
+      <!-- Desktop navigation -->
+      <nav class="d-none d-md-block">Desktop Nav</nav>
+
+  - id: BOOT035
+    title: "Test across all Bootstrap breakpoints"
+    description: "Test your layout at all Bootstrap breakpoints: xs (<576px), sm (≥576px), md (≥768px), lg (≥992px), xl (≥1200px), xxl (≥1400px)."
+    category: "bootstrap_responsive"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "testing", "breakpoints"]
+    example: |
+      // Bootstrap 5 breakpoints
+      // xs: <576px (default, no infix)
+      // sm: ≥576px
+      // md: ≥768px
+      // lg: ≥992px
+      // xl: ≥1200px
+      // xxl: ≥1400px
+
+  # ============================================================================
+  # BOOTSTRAP ACCESSIBILITY (BOOT036-BOOT040)
+  # ============================================================================
+
+  - id: BOOT036
+    title: "Use proper ARIA attributes with Bootstrap components"
+    description: "Bootstrap components include built-in ARIA attributes. Ensure you don't remove them and add any additional required ARIA attributes (aria-label, aria-expanded, etc.)."
+    category: "bootstrap_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "accessibility", "aria"]
+    example: |
+      <!-- Dropdown with proper ARIA -->
+      <div class="dropdown">
+        <button class="btn btn-primary dropdown-toggle"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
+          Options
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="dropdownButton">
+          <li><a class="dropdown-item" href="#">Action</a></li>
+        </ul>
+      </div>
+
+  - id: BOOT037
+    title: "Use visually-hidden class for screen readers"
+    description: "Use .visually-hidden (v5) or .sr-only (v4) to provide text content for screen readers that is not visible on screen."
+    category: "bootstrap_accessibility"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "accessibility", "screen-reader"]
+    example: |
+      <button class="btn btn-primary">
+        <i class="bi bi-plus"></i>
+        <span class="visually-hidden">Add new item</span>
+      </button>
+
+      <!-- Skip navigation link -->
+      <a class="visually-hidden-focusable" href="#main">
+        Skip to main content
+      </a>
+
+  - id: BOOT038
+    title: "Ensure sufficient color contrast"
+    description: "When customizing Bootstrap colors, ensure text-background combinations meet WCAG AA contrast requirements (4.5:1 for normal text, 3:1 for large text)."
+    category: "bootstrap_accessibility"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "accessibility", "contrast", "colors"]
+    example: |
+      // Ensure custom colors have sufficient contrast
+      $primary: #0d6efd;    // 4.5:1 contrast on white
+      $success: #198754;    // 4.5:1 contrast on white
+
+      // Use Bootstrap's color contrast function
+      .custom-badge {
+        background-color: $primary;
+        color: color-contrast($primary);
+      }
+
+  - id: BOOT039
+    title: "Use semantic HTML with Bootstrap classes"
+    description: "Use appropriate semantic HTML elements (nav, main, aside, header, footer) with Bootstrap classes instead of generic divs."
+    category: "bootstrap_accessibility"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "accessibility", "semantic-html"]
+    example: |
+      <!-- Good: semantic elements -->
+      <nav class="navbar navbar-expand-lg">...</nav>
+      <main class="container mt-4">...</main>
+      <aside class="col-md-3">Sidebar</aside>
+      <footer class="bg-dark text-light py-4">...</footer>
+
+  - id: BOOT040
+    title: "Add role attributes to custom interactive components"
+    description: "When building custom interactive components with Bootstrap classes, add appropriate ARIA roles (role='alert', role='dialog', role='navigation') to ensure accessibility."
+    category: "bootstrap_accessibility"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "accessibility", "roles"]
+    example: |
+      <div class="alert alert-warning" role="alert">
+        Warning message
+      </div>
+
+      <div class="progress" role="progressbar"
+           aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar" style="width: 75%">75%</div>
+      </div>
+
+  # ============================================================================
+  # BOOTSTRAP PERFORMANCE (BOOT041-BOOT045)
+  # ============================================================================
+
+  - id: BOOT041
+    title: "Import only needed Bootstrap SCSS modules"
+    description: "Import only the Bootstrap SCSS modules you need instead of the entire framework. This significantly reduces CSS bundle size."
+    category: "bootstrap_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "performance", "scss", "bundle-size"]
+    example: |
+      // Import only what you need
+      @import "~bootstrap/scss/functions";
+      @import "~bootstrap/scss/variables";
+      @import "~bootstrap/scss/mixins";
+      @import "~bootstrap/scss/root";
+      @import "~bootstrap/scss/reboot";
+      @import "~bootstrap/scss/grid";
+      @import "~bootstrap/scss/utilities";
+      @import "~bootstrap/scss/buttons";
+      @import "~bootstrap/scss/card";
+      @import "~bootstrap/scss/modal";
+      @import "~bootstrap/scss/utilities/api";
+
+  - id: BOOT042
+    title: "Import individual JS plugins instead of full bundle"
+    description: "Import individual Bootstrap JS plugins (import { Modal } from 'bootstrap') instead of the full bootstrap.js bundle to enable tree-shaking."
+    category: "bootstrap_performance"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "performance", "tree-shaking", "javascript"]
+    example: |
+      // Good: individual imports (tree-shakeable)
+      import { Modal } from 'bootstrap';
+      import { Tooltip } from 'bootstrap';
+
+      // Avoid: full bundle import
+      // import 'bootstrap';
+      // import 'bootstrap/dist/js/bootstrap.bundle';
+
+  - id: BOOT043
+    title: "Use PurgeCSS with Bootstrap"
+    description: "Use PurgeCSS (or Tailwind's built-in purge) to remove unused Bootstrap CSS classes from production builds, reducing CSS bundle size by 80-90%."
+    category: "bootstrap_performance"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "performance", "purgecss", "optimization"]
+    example: |
+      // postcss.config.js
+      module.exports = {
+        plugins: [
+          require('@fullhuman/postcss-purgecss')({
+            content: ['./src/**/*.html', './src/**/*.jsx'],
+            safelist: [/^modal/, /^tooltip/, /^popover/, /^bs-/],
+          }),
+        ],
+      };
+
+  - id: BOOT044
+    title: "Lazy-load Bootstrap JS components"
+    description: "Dynamically import Bootstrap JS components only when needed (e.g., modal on button click) to reduce initial bundle size."
+    category: "bootstrap_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "performance", "lazy-loading"]
+    example: |
+      // Lazy load modal only when needed
+      async function showModal() {
+        const { Modal } = await import('bootstrap');
+        const modal = new Modal('#myModal');
+        modal.show();
+      }
+
+  - id: BOOT045
+    title: "Use CDN with SRI for production deployments"
+    description: "When using Bootstrap from CDN, always include Subresource Integrity (SRI) hashes. Consider self-hosting for better control and performance."
+    category: "bootstrap_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "cdn", "security", "sri"]
+    example: |
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+            integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YcnS49..."
+            crossorigin="anonymous">
+
+  # ============================================================================
+  # BOOTSTRAP MIGRATION (BOOT046-BOOT050)
+  # ============================================================================
+
+  - id: BOOT046
+    title: "Migrate from v4 to v5: Drop jQuery dependency"
+    description: "Bootstrap 5 no longer requires jQuery. Replace jQuery plugin calls ($().modal()) with vanilla JS constructors (new bootstrap.Modal()). Remove jQuery if no other libraries need it."
+    category: "bootstrap_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "migration", "v4-to-v5", "jquery"]
+    example: |
+      // v4 (jQuery)
+      $('#myModal').modal('show');
+      $('[data-toggle="tooltip"]').tooltip();
+
+      // v5 (vanilla JS)
+      const modal = new bootstrap.Modal('#myModal');
+      modal.show();
+      new bootstrap.Tooltip('[data-bs-toggle="tooltip"]');
+
+  - id: BOOT047
+    title: "Migrate data attributes from data-* to data-bs-*"
+    description: "Bootstrap 5 prefixes all data attributes with bs- (data-toggle becomes data-bs-toggle, data-target becomes data-bs-target) to avoid conflicts."
+    category: "bootstrap_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "migration", "v4-to-v5", "data-attributes"]
+    example: |
+      <!-- v4 -->
+      <button data-toggle="modal" data-target="#myModal">Open</button>
+
+      <!-- v5 -->
+      <button data-bs-toggle="modal" data-bs-target="#myModal">Open</button>
+
+  - id: BOOT048
+    title: "Migrate from v4 to v5: Update renamed classes"
+    description: "Several classes were renamed in Bootstrap 5: .sr-only → .visually-hidden, .badge-pill → .rounded-pill, .float-left → .float-start, .mr-* → .me-*, .ml-* → .ms-*, etc."
+    category: "bootstrap_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "migration", "v4-to-v5", "classes"]
+    example: |
+      <!-- v4 → v5 class renames -->
+      .sr-only          → .visually-hidden
+      .float-left/right → .float-start/end
+      .ml-*/mr-*        → .ms-*/me-*
+      .pl-*/pr-*        → .ps-*/pe-*
+      .text-left/right  → .text-start/end
+      .badge-pill        → .rounded-pill
+      .close             → .btn-close
+      .no-gutters        → .g-0
+      .font-weight-*     → .fw-*
+      .font-italic       → .fst-italic
+
+  - id: BOOT049
+    title: "Migrate from v3 to v4: Replace panels/wells with cards"
+    description: "Bootstrap 4 replaced panels, wells, and thumbnails with the unified card component. Migrate .panel, .panel-body, .well to .card, .card-body."
+    category: "bootstrap_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "migration", "v3-to-v4", "cards"]
+    example: |
+      <!-- v3 panel -->
+      <div class="panel panel-default">
+        <div class="panel-heading">Title</div>
+        <div class="panel-body">Content</div>
+      </div>
+
+      <!-- v4+ card -->
+      <div class="card">
+        <div class="card-header">Title</div>
+        <div class="card-body">Content</div>
+      </div>
+
+  - id: BOOT050
+    title: "Use RTL support in Bootstrap 5"
+    description: "Bootstrap 5 includes built-in RTL support. Use the dir='rtl' attribute and import bootstrap.rtl.css for right-to-left languages."
+    category: "bootstrap_migration"
+    severity: "medium"
+    applicability:
+      frameworks: ["bootstrap"]
+    tags: ["bootstrap", "rtl", "internationalization", "v5"]
+    example: |
+      <!-- Enable RTL -->
+      <html dir="rtl" lang="ar">
+      <head>
+        <link rel="stylesheet"
+          href="bootstrap.rtl.min.css">
+      </head>
+
+      <!-- Logical properties: start/end instead of left/right -->
+      <div class="ms-3 text-end float-start">
+        RTL content
+      </div>

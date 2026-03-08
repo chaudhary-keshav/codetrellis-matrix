@@ -1,0 +1,631 @@
+# ============================================================================
+# Python 3.12 Version-Specific Practices
+# ============================================================================
+# Practices for features introduced in Python 3.12 (Released: October 2023)
+# Key Features: Type Parameter Syntax, F-String Improvements, Per-Interpreter GIL
+# ============================================================================
+
+metadata:
+  id: 'python_3_12'
+  version: '1.0.0'
+  name: 'Python 3.12 Specific Practices'
+  description: 'Best practices for Python 3.12+ features'
+  python_version: '3.12+'
+  category: 'language_version'
+  tags: ['python', '3.12', 'type-params', 'generics', 'f-strings']
+  updated: '2025-01-20'
+
+practices:
+  # ==========================================================================
+  # Type Parameter Syntax (PEP 695)
+  # ==========================================================================
+  - id: 'PY312-001'
+    title: 'Use new type parameter syntax for generics'
+    level: 'intermediate'
+    category: 'type_safety'
+    tags: ['typing', 'generics', 'type-parameters', 'clean-syntax']
+    applicability:
+      min_python: '3.12'
+    content:
+      description: |
+        Use the new type parameter syntax [T] instead of TypeVar for cleaner
+        generic class and function definitions. This is more readable and
+        consistent with other languages.
+      good_examples:
+        - |
+          # Good: New type parameter syntax (3.12+)
+          def first[T](items: list[T]) -> T | None:
+              """Return first item or None if empty."""
+              return items[0] if items else None
+
+          class Stack[T]:
+              """A generic stack implementation."""
+              def __init__(self) -> None:
+                  self._items: list[T] = []
+
+              def push(self, item: T) -> None:
+                  self._items.append(item)
+
+              def pop(self) -> T:
+                  return self._items.pop()
+
+          # Usage
+          stack: Stack[int] = Stack()
+          stack.push(42)
+        - |
+          # Good: Multiple type parameters
+          def zip_maps[K, V1, V2](
+              d1: dict[K, V1],
+              d2: dict[K, V2]
+          ) -> dict[K, tuple[V1, V2]]:
+              """Combine two dicts with same keys."""
+              return {k: (d1[k], d2[k]) for k in d1.keys() & d2.keys()}
+      bad_examples:
+        - |
+          # Outdated: TypeVar (pre-3.12)
+          from typing import TypeVar, Generic
+
+          T = TypeVar("T")
+
+          def first(items: list[T]) -> T | None:
+              return items[0] if items else None
+
+          class Stack(Generic[T]):
+              def __init__(self) -> None:
+                  self._items: list[T] = []
+    references:
+      - 'https://peps.python.org/pep-0695/'
+
+  - id: 'PY312-002'
+    title: 'Use bounded type parameters'
+    level: 'advanced'
+    category: 'type_safety'
+    tags: ['typing', 'generics', 'bounds', 'constraints']
+    applicability:
+      min_python: '3.12'
+    content:
+      description: |
+        Use bounded type parameters with the new syntax for type constraints.
+        The colon syntax is cleaner than TypeVar's bound parameter.
+      good_examples:
+        - |
+          # Good: Bounded type parameter (3.12+)
+          from collections.abc import Comparable
+
+          def max_value[T: Comparable](a: T, b: T) -> T:
+              """Return the larger of two comparable values."""
+              return a if a > b else b
+
+          # Bound to a specific class
+          class Animal:
+              def speak(self) -> str: ...
+
+          def make_speak[T: Animal](animal: T) -> str:
+              return animal.speak()
+        - |
+          # Good: Multiple constraints with union
+          from collections.abc import Sized, Iterable
+
+          def process[T: (Sized, Iterable)](items: T) -> int:
+              """Process any sized iterable."""
+              return len(items)
+      bad_examples:
+        - |
+          # Outdated: TypeVar with bound (pre-3.12)
+          from typing import TypeVar
+
+          T = TypeVar("T", bound=Comparable)
+
+          def max_value(a: T, b: T) -> T:
+              return a if a > b else b
+
+  - id: 'PY312-003'
+    title: 'Use type statement for type aliases'
+    level: 'intermediate'
+    category: 'type_safety'
+    tags: ['typing', 'type-alias', 'type-statement']
+    applicability:
+      min_python: '3.12'
+    content:
+      description: |
+        Use the new 'type' statement for defining type aliases. This is
+        clearer than TypeAlias and supports forward references naturally.
+      good_examples:
+        - |
+          # Good: type statement (3.12+)
+          type Point = tuple[float, float]
+          type Vector = list[float]
+          type UserId = int
+
+          # Generic type aliases
+          type ListOf[T] = list[T]
+          type Pair[T, U] = tuple[T, U]
+          type Callback[T] = Callable[[T], None]
+
+          # Recursive types (no quotes needed!)
+          type Json = str | int | float | bool | None | list[Json] | dict[str, Json]
+
+          # Usage
+          def parse_json(text: str) -> Json:
+              import json
+              return json.loads(text)
+        - |
+          # Good: Complex generic aliases
+          type Handler[Request, Response] = Callable[[Request], Awaitable[Response]]
+          type Middleware[R, S] = Callable[[Handler[R, S]], Handler[R, S]]
+
+          # Tree structure
+          type Tree[T] = T | list[Tree[T]]
+      bad_examples:
+        - |
+          # Outdated: TypeAlias (pre-3.12)
+          from typing import TypeAlias
+
+          Point: TypeAlias = tuple[float, float]
+
+          # Recursive needs quotes
+          Json: TypeAlias = str | int | float | bool | None | list["Json"] | dict[str, "Json"]
+    references:
+      - 'https://peps.python.org/pep-0695/'
+
+  # ==========================================================================
+  # F-String Improvements (PEP 701)
+  # ==========================================================================
+  - id: 'PY312-004'
+    title: 'Use f-strings with any expressions'
+    level: 'beginner'
+    category: 'code_style'
+    tags: ['f-strings', 'string-formatting', 'expressions']
+    applicability:
+      min_python: '3.12'
+    content:
+      description: |
+        Python 3.12 removes limitations on f-string expressions. You can now
+        use any valid Python expression, including quotes, backslashes, and
+        nested f-strings without escaping.
+      good_examples:
+        - |
+          # Good: Nested f-strings (3.12+)
+          names = ["Alice", "Bob", "Charlie"]
+          message = f"Users: {", ".join(f"'{name}'" for name in names)}"
+          # Output: Users: 'Alice', 'Bob', 'Charlie'
+
+          # Quotes inside f-strings
+          data = {"key": "value"}
+          text = f"The answer is {data["key"]}"
+          # Output: The answer is value
+
+          # Multi-line f-string expressions
+          result = f"""
+          Summary:
+          {
+              "\n".join(
+                  f"- {item['name']}: {item['value']}"
+                  for item in items
+              )
+          }
+          """
+        - |
+          # Good: Comments in f-string expressions
+          value = f"{
+              calculate_total()  # Get the total
+          :.2f}"
+
+          # Complex comprehensions
+          report = f"""
+          {[
+              f"{user.name}: {user.score}"
+              for user in users
+              if user.active
+          ]}
+          """
+      bad_examples:
+        - |
+          # Unnecessary workarounds (pre-3.12)
+          names = ["Alice", "Bob", "Charlie"]
+          # Had to use different quotes or variables
+          q = "'"
+          message = f"Users: {', '.join(f'{q}{name}{q}' for name in names)}"
+    references:
+      - 'https://peps.python.org/pep-0701/'
+
+  # ==========================================================================
+  # Override Decorator (PEP 698)
+  # ==========================================================================
+  - id: 'PY312-005'
+    title: 'Use @override for explicit overriding'
+    level: 'intermediate'
+    category: 'type_safety'
+    tags: ['typing', 'override', 'inheritance', 'safety']
+    applicability:
+      min_python: '3.12'
+    content:
+      description: |
+        Use the @override decorator to explicitly mark methods that override
+        base class methods. Type checkers will error if the method doesn't
+        actually override anything, catching typos and refactoring bugs.
+      good_examples:
+        - |
+          # Good: Explicit @override (3.12+)
+          from typing import override
+
+          class Animal:
+              def speak(self) -> str:
+                  return "..."
+
+              def move(self) -> str:
+                  return "moving"
+
+          class Dog(Animal):
+              @override
+              def speak(self) -> str:
+                  return "Woof!"
+
+              @override
+              def move(self) -> str:
+                  return "running"
+
+              # Type error! 'speek' doesn't override anything
+              @override
+              def speek(self) -> str:  # Typo caught by type checker!
+                  return "Woof!"
+        - |
+          # Good: Override with Protocol
+          from typing import Protocol, override
+
+          class Repository(Protocol):
+              def get(self, id: int) -> dict: ...
+              def save(self, entity: dict) -> None: ...
+
+          class UserRepository:
+              @override  # Ensures method matches Protocol
+              def get(self, id: int) -> dict:
+                  return self._db.find(id)
+
+              @override
+              def save(self, entity: dict) -> None:
+                  self._db.insert(entity)
+      bad_examples:
+        - |
+          # Dangerous: Silent misspelling (pre-3.12)
+          class Dog(Animal):
+              def speek(self) -> str:  # Typo! Creates new method instead
+                  return "Woof!"
+
+              # dog.speak() still returns "..." from Animal
+    references:
+      - 'https://peps.python.org/pep-0698/'
+
+  # ==========================================================================
+  # Improved Error Messages
+  # ==========================================================================
+  - id: 'PY312-006'
+    title: 'Leverage enhanced error suggestions'
+    level: 'beginner'
+    category: 'debugging'
+    tags: ['debugging', 'error-messages', 'suggestions']
+    applicability:
+      min_python: '3.12'
+    content:
+      description: |
+        Python 3.12 provides even more helpful error messages with better
+        suggestions for common mistakes, especially for imports and nameerrors.
+      good_examples:
+        - |
+          # Python 3.12 improved error messages:
+          #
+          # 1. Import suggestions
+          # >>> from collections import Mapping
+          # ImportError: cannot import name 'Mapping' from 'collections'
+          # Hint: 'Mapping' has been moved to 'collections.abc'
+          #
+          # 2. NameError with more context
+          # >>> sys.exit()
+          # NameError: name 'sys' is not defined. Did you forget to import 'sys'?
+          #
+          # 3. Module attribute suggestions
+          # >>> import math
+          # >>> math.squareroot(4)
+          # AttributeError: module 'math' has no attribute 'squareroot'. Did you mean: 'sqrt'?
+          #
+          # 4. String method suggestions
+          # >>> "hello".uper()
+          # AttributeError: 'str' object has no attribute 'uper'. Did you mean: 'upper'?
+
+  # ==========================================================================
+  # Per-Interpreter GIL (PEP 684)
+  # ==========================================================================
+  - id: 'PY312-007'
+    title: 'Understand per-interpreter GIL for parallelism'
+    level: 'expert'
+    category: 'concurrency'
+    tags: ['gil', 'parallelism', 'subinterpreters', 'performance']
+    applicability:
+      min_python: '3.12'
+      contexts: ['high-performance', 'parallelism']
+    content:
+      description: |
+        Python 3.12 introduces per-interpreter GIL, allowing true parallelism
+        between subinterpreters. This is foundation for future no-GIL Python.
+        Currently experimental but enables new parallelism patterns.
+      good_examples:
+        - |
+          # Understanding per-interpreter GIL (3.12+):
+          #
+          # 1. Each interpreter has its own GIL
+          # 2. Subinterpreters can run truly parallel
+          # 3. Cannot share Python objects between interpreters
+          # 4. Useful for CPU-bound parallelism
+          #
+          # Basic concept (full API still evolving):
+          import _interpreters  # Low-level API
+
+          # Create new interpreter
+          interp_id = _interpreters.create()
+
+          # Run code in separate interpreter (parallel!)
+          _interpreters.run_string(interp_id, """
+          import math
+          result = sum(math.factorial(i) for i in range(1000))
+          """)
+
+          # Note: Full high-level API expected in 3.13+
+
+  # ==========================================================================
+  # Buffer Protocol (PEP 688)
+  # ==========================================================================
+  - id: 'PY312-008'
+    title: 'Use Buffer protocol for zero-copy operations'
+    level: 'expert'
+    category: 'performance'
+    tags: ['buffer', 'zero-copy', 'memory', 'performance']
+    applicability:
+      min_python: '3.12'
+      contexts: ['performance', 'data-processing']
+    content:
+      description: |
+        Python 3.12 adds collections.abc.Buffer for type-safe buffer protocol
+        support. Use this for zero-copy data operations with bytes-like objects.
+      good_examples:
+        - |
+          # Good: Type-safe buffer protocol (3.12+)
+          from collections.abc import Buffer
+
+          def process_data(data: Buffer) -> int:
+              """Process any buffer-supporting object."""
+              view = memoryview(data)
+              return sum(view)
+
+          # Works with any buffer type
+          process_data(b"hello")           # bytes
+          process_data(bytearray(b"hello"))  # bytearray
+          process_data(memoryview(b"hello"))  # memoryview
+
+          import array
+          process_data(array.array('b', [1, 2, 3]))  # array
+        - |
+          # Good: Zero-copy file reading
+          from collections.abc import Buffer
+
+          def hash_file(f: Buffer) -> str:
+              """Hash file contents without copying."""
+              import hashlib
+              h = hashlib.sha256()
+              h.update(f)
+              return h.hexdigest()
+    references:
+      - 'https://peps.python.org/pep-0688/'
+
+  # ==========================================================================
+  # Pathlib Walk (PEP 706)
+  # ==========================================================================
+  - id: 'PY312-009'
+    title: 'Use Path.walk() for directory traversal'
+    level: 'beginner'
+    category: 'best_practices'
+    tags: ['pathlib', 'filesystem', 'directory', 'walk']
+    applicability:
+      min_python: '3.12'
+    content:
+      description: |
+        Use Path.walk() for directory traversal instead of os.walk().
+        This provides Path objects throughout, making code cleaner and safer.
+      good_examples:
+        - |
+          # Good: Path.walk() (3.12+)
+          from pathlib import Path
+
+          def find_python_files(root: Path) -> list[Path]:
+              """Find all Python files in directory tree."""
+              python_files = []
+              for dirpath, dirnames, filenames in root.walk():
+                  # dirpath is Path, filenames are strings
+                  python_files.extend(
+                      dirpath / name
+                      for name in filenames
+                      if name.endswith('.py')
+                  )
+
+                  # Skip hidden directories
+                  dirnames[:] = [d for d in dirnames if not d.startswith('.')]
+
+              return python_files
+        - |
+          # Good: Calculate directory sizes
+          from pathlib import Path
+
+          def dir_size(path: Path) -> int:
+              """Calculate total size of directory."""
+              total = 0
+              for dirpath, _, filenames in path.walk():
+                  for name in filenames:
+                      total += (dirpath / name).stat().st_size
+              return total
+      bad_examples:
+        - |
+          # Outdated: os.walk with Path conversion (pre-3.12)
+          import os
+          from pathlib import Path
+
+          def find_python_files(root: Path) -> list[Path]:
+              python_files = []
+              for dirpath, _, filenames in os.walk(root):
+                  # Have to convert dirpath back to Path
+                  dirpath = Path(dirpath)
+                  python_files.extend(
+                      dirpath / name
+                      for name in filenames
+                      if name.endswith('.py')
+                  )
+              return python_files
+    references:
+      - 'https://peps.python.org/pep-0706/'
+
+  # ==========================================================================
+  # TypedDict Improvements
+  # ==========================================================================
+  - id: 'PY312-010'
+    title: 'Use TypedDict with generics'
+    level: 'advanced'
+    category: 'type_safety'
+    tags: ['typing', 'typeddict', 'generics']
+    applicability:
+      min_python: '3.12'
+    content:
+      description: |
+        Python 3.12 allows TypedDict to be generic, enabling reusable
+        typed dictionary patterns with type parameters.
+      good_examples:
+        - |
+          # Good: Generic TypedDict (3.12+)
+          from typing import TypedDict
+
+          class Response[T](TypedDict):
+              status: int
+              data: T
+              error: str | None
+
+          # Specific response types
+          type UserResponse = Response[User]
+          type OrderResponse = Response[Order]
+          type ListResponse[T] = Response[list[T]]
+
+          def fetch_user(id: int) -> Response[User]:
+              return {"status": 200, "data": user, "error": None}
+        - |
+          # Good: Nested generic TypedDict
+          class Page[T](TypedDict):
+              items: list[T]
+              total: int
+              page: int
+              per_page: int
+
+          class ApiResponse[T](TypedDict):
+              success: bool
+              result: Page[T]
+
+          def list_users(page: int) -> ApiResponse[User]:
+              ...
+      bad_examples:
+        - |
+          # Limitation: Couldn't use generics with TypedDict (pre-3.12)
+          # Had to create separate TypedDict for each type
+          class UserResponse(TypedDict):
+              status: int
+              data: User
+              error: str | None
+
+          class OrderResponse(TypedDict):
+              status: int
+              data: Order
+              error: str | None
+
+  # ==========================================================================
+  # Slices in Subscripts
+  # ==========================================================================
+  - id: 'PY312-011'
+    title: 'Use complex slices in type subscripts'
+    level: 'advanced'
+    category: 'type_safety'
+    tags: ['typing', 'slices', 'subscript']
+    applicability:
+      min_python: '3.12'
+    content:
+      description: |
+        Python 3.12 allows more complex slice-like syntax in subscript
+        expressions, useful for type annotations and custom indexing.
+      good_examples:
+        - |
+          # Good: Slice-like type hints for numpy-style arrays
+          # This is primarily useful for library authors implementing
+          # __class_getitem__ with complex slice handling
+
+          from typing import Any
+
+          class Array:
+              def __class_getitem__(cls, key: Any) -> type:
+                  # Can now handle slice-like items
+                  # Array[int, 3:5, :10]
+                  return cls
+
+          # In type annotations
+          arr: Array[int, 3:5, :10]  # Valid in 3.12+
+
+  # ==========================================================================
+  # Sys Monitoring (PEP 669)
+  # ==========================================================================
+  - id: 'PY312-012'
+    title: 'Use sys.monitoring for low-overhead profiling'
+    level: 'expert'
+    category: 'debugging'
+    tags: ['monitoring', 'profiling', 'debugging', 'performance']
+    applicability:
+      min_python: '3.12'
+    content:
+      description: |
+        Use sys.monitoring for low-overhead monitoring and profiling.
+        This replaces sys.settrace with much lower performance impact.
+      good_examples:
+        - |
+          # Good: Low-overhead function monitoring (3.12+)
+          import sys
+
+          # Define monitoring callback
+          def on_call(code, instruction_offset):
+              print(f"Called: {code.co_qualname}")
+
+          # Register callback
+          tool_id = sys.monitoring.PROFILER_ID
+          sys.monitoring.register_callback(
+              tool_id,
+              sys.monitoring.events.CALL,
+              on_call
+          )
+
+          # Enable monitoring
+          sys.monitoring.set_events(
+              tool_id,
+              sys.monitoring.events.CALL
+          )
+
+          # Run code (with monitoring)
+          my_function()
+
+          # Disable when done
+          sys.monitoring.set_events(tool_id, 0)
+        - |
+          # Good: Coverage-like line monitoring
+          import sys
+
+          executed_lines = set()
+
+          def on_line(code, line_number):
+              executed_lines.add((code.co_filename, line_number))
+
+          sys.monitoring.register_callback(
+              sys.monitoring.COVERAGE_ID,
+              sys.monitoring.events.LINE,
+              on_line
+          )
+    references:
+      - 'https://peps.python.org/pep-0669/'

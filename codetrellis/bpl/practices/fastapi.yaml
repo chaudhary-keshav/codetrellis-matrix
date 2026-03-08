@@ -1,0 +1,564 @@
+# FastAPI Best Practices
+# Framework-specific practices for FastAPI applications
+# Requires: fastapi, pydantic
+
+practices:
+  # ============================================================================
+  # REQUEST/RESPONSE PRACTICES
+  # ============================================================================
+
+  - id: FAST001
+    title: 'Use Pydantic Models for Request/Response'
+    category: fastapi
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - fastapi
+      has_dependencies:
+        - pydantic
+    content:
+      description: |
+        Always use Pydantic models for request bodies and response schemas.
+        This provides automatic validation, serialization, and documentation.
+      rationale: |
+        Pydantic models provide type safety, automatic validation,
+        OpenAPI documentation, and clear API contracts.
+      good_examples:
+        - |
+          from pydantic import BaseModel, Field, EmailStr
+
+          class UserCreate(BaseModel):
+              name: str = Field(..., min_length=1, max_length=100)
+              email: EmailStr
+              age: int = Field(..., ge=0, le=150)
+
+          class UserResponse(BaseModel):
+              id: int
+              name: str
+              email: EmailStr
+
+              class Config:
+                  from_attributes = True
+
+          @app.post("/users", response_model=UserResponse, status_code=201)
+          async def create_user(user: UserCreate) -> UserResponse:
+              db_user = await db.create_user(**user.model_dump())
+              return UserResponse.model_validate(db_user)
+      bad_examples:
+        - |
+          @app.post("/users")
+          async def create_user(request: Request):
+              data = await request.json()  # No validation!
+              name = data.get("name")
+              email = data.get("email")
+              return {"id": 1, "name": name}
+      references:
+        - 'https://fastapi.tiangolo.com/tutorial/response-model/'
+      tags:
+        - pydantic
+        - validation
+        - api-design
+
+  - id: FAST002
+    title: 'Use Dependency Injection for Shared Resources'
+    category: fastapi
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - fastapi
+    content:
+      description: |
+        Use FastAPI's dependency injection system for database connections,
+        authentication, configuration, and other shared resources.
+      rationale: |
+        Dependency injection promotes loose coupling, testability, and
+        consistent resource management across endpoints.
+      good_examples:
+        - |
+          from fastapi import Depends
+          from typing import Annotated
+
+          async def get_db() -> AsyncGenerator[AsyncSession, None]:
+              async with async_session() as session:
+                  yield session
+
+          async def get_current_user(
+              token: Annotated[str, Depends(oauth2_scheme)],
+              db: Annotated[AsyncSession, Depends(get_db)]
+          ) -> User:
+              user = await authenticate_user(token, db)
+              if not user:
+                  raise HTTPException(401, "Invalid credentials")
+              return user
+
+          @app.get("/profile")
+          async def get_profile(
+              user: Annotated[User, Depends(get_current_user)]
+          ) -> UserResponse:
+              return UserResponse.model_validate(user)
+      bad_examples:
+        - |
+          db = create_engine(DATABASE_URL)  # Global state!
+
+          @app.get("/profile")
+          async def get_profile(token: str):
+              user = db.query(User).filter_by(token=token).first()
+              return user
+      references:
+        - 'https://fastapi.tiangolo.com/tutorial/dependencies/'
+      tags:
+        - dependency-injection
+        - testing
+        - architecture
+
+  - id: FAST003
+    title: 'Use Annotated Type Hints (Pydantic v2)'
+    category: fastapi
+    level: intermediate
+    priority: high
+    python_version:
+      min_version: '3.9'
+    applicability:
+      frameworks:
+        - fastapi
+      has_dependencies:
+        - pydantic
+    content:
+      description: |
+        Use Annotated type hints with Depends for cleaner dependency declaration.
+        This is the recommended pattern in FastAPI and Pydantic v2.
+      rationale: |
+        Annotated syntax separates type information from FastAPI-specific
+        metadata, improving readability and reusability.
+      good_examples:
+        - |
+          from typing import Annotated
+          from fastapi import Depends, Query
+
+          # Define reusable types
+          CurrentUser = Annotated[User, Depends(get_current_user)]
+          DBSession = Annotated[AsyncSession, Depends(get_db)]
+          PageSize = Annotated[int, Query(ge=1, le=100)]
+
+          @app.get("/items")
+          async def list_items(
+              user: CurrentUser,
+              db: DBSession,
+              limit: PageSize = 10
+          ) -> list[ItemResponse]:
+              return await db.query(Item).filter_by(user_id=user.id).limit(limit)
+      bad_examples:
+        - |
+          @app.get("/items")
+          async def list_items(
+              user: User = Depends(get_current_user),  # Old style
+              db: AsyncSession = Depends(get_db),
+              limit: int = Query(default=10, ge=1, le=100)
+          ):
+              pass
+      references:
+        - 'https://fastapi.tiangolo.com/python-types/#type-hints-with-metadata-annotations'
+      tags:
+        - annotated
+        - pydantic-v2
+        - type-hints
+
+  # ============================================================================
+  # ERROR HANDLING PRACTICES
+  # ============================================================================
+
+  - id: FAST010
+    title: 'Use HTTPException with Proper Status Codes'
+    category: fastapi
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - fastapi
+    content:
+      description: |
+        Use HTTPException with appropriate HTTP status codes and meaningful
+        error messages. Create custom exception handlers for domain errors.
+      rationale: |
+        Proper HTTP status codes enable clients to handle errors correctly
+        and improve API usability.
+      good_examples:
+        - |
+          from fastapi import HTTPException, status
+
+          @app.get("/users/{user_id}")
+          async def get_user(user_id: int, db: DBSession) -> UserResponse:
+              user = await db.get(User, user_id)
+              if not user:
+                  raise HTTPException(
+                      status_code=status.HTTP_404_NOT_FOUND,
+                      detail=f"User {user_id} not found"
+                  )
+              return UserResponse.model_validate(user)
+
+          # Custom exception handler
+          class UserNotFoundError(Exception):
+              def __init__(self, user_id: int):
+                  self.user_id = user_id
+
+          @app.exception_handler(UserNotFoundError)
+          async def user_not_found_handler(request: Request, exc: UserNotFoundError):
+              return JSONResponse(
+                  status_code=404,
+                  content={"detail": f"User {exc.user_id} not found"}
+              )
+      bad_examples:
+        - |
+          @app.get("/users/{user_id}")
+          async def get_user(user_id: int):
+              user = db.get(User, user_id)
+              if not user:
+                  return {"error": "not found"}  # Returns 200!
+              return user
+      references:
+        - 'https://fastapi.tiangolo.com/tutorial/handling-errors/'
+      tags:
+        - error-handling
+        - http-status
+        - api-design
+
+  - id: FAST011
+    title: 'Use Background Tasks for Non-Critical Operations'
+    category: fastapi
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - fastapi
+    content:
+      description: |
+        Use BackgroundTasks for operations that don't need to complete
+        before responding, like sending emails or logging.
+      rationale: |
+        Background tasks improve response times by deferring non-essential
+        work while keeping the code in the same process.
+      good_examples:
+        - |
+          from fastapi import BackgroundTasks
+
+          async def send_welcome_email(email: str, name: str) -> None:
+              await email_service.send(
+                  to=email,
+                  subject="Welcome!",
+                  body=f"Hello {name}, welcome to our service!"
+              )
+
+          @app.post("/users", status_code=201)
+          async def create_user(
+              user: UserCreate,
+              background_tasks: BackgroundTasks,
+              db: DBSession
+          ) -> UserResponse:
+              db_user = await db.create_user(**user.model_dump())
+
+              # Send email in background - doesn't block response
+              background_tasks.add_task(
+                  send_welcome_email,
+                  user.email,
+                  user.name
+              )
+
+              return UserResponse.model_validate(db_user)
+      bad_examples:
+        - |
+          @app.post("/users")
+          async def create_user(user: UserCreate):
+              db_user = await db.create_user(**user.model_dump())
+              await send_welcome_email(user.email)  # Blocks response!
+              return db_user
+      references:
+        - 'https://fastapi.tiangolo.com/tutorial/background-tasks/'
+      tags:
+        - background-tasks
+        - performance
+        - async
+
+  # ============================================================================
+  # ASYNC PRACTICES
+  # ============================================================================
+
+  - id: FAST020
+    title: 'Use Async Database Operations'
+    category: fastapi
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - fastapi
+    content:
+      description: |
+        Use async database drivers and ORMs with FastAPI to avoid blocking
+        the event loop and maximize concurrency.
+      rationale: |
+        Synchronous database operations block the event loop, limiting
+        FastAPI's ability to handle concurrent requests.
+      good_examples:
+        - |
+          from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+          from sqlalchemy.orm import sessionmaker
+
+          engine = create_async_engine("postgresql+asyncpg://...")
+          async_session = sessionmaker(engine, class_=AsyncSession)
+
+          async def get_db() -> AsyncGenerator[AsyncSession, None]:
+              async with async_session() as session:
+                  yield session
+
+          @app.get("/users/{user_id}")
+          async def get_user(user_id: int, db: DBSession) -> UserResponse:
+              result = await db.execute(
+                  select(User).where(User.id == user_id)
+              )
+              user = result.scalar_one_or_none()
+              return UserResponse.model_validate(user)
+      bad_examples:
+        - |
+          # Sync engine blocks the event loop!
+          engine = create_engine("postgresql://...")
+
+          @app.get("/users/{user_id}")
+          async def get_user(user_id: int):  # async but blocking!
+              with Session(engine) as session:
+                  return session.get(User, user_id)
+      references:
+        - 'https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html'
+      tags:
+        - async
+        - database
+        - sqlalchemy
+
+  - id: FAST021
+    title: 'Run Sync Code in Thread Pool'
+    category: fastapi
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - fastapi
+    content:
+      description: |
+        When you must call synchronous/blocking code, run it in a thread pool
+        to avoid blocking the event loop.
+      rationale: |
+        Some libraries don't have async versions. Running them in a thread
+        pool keeps the event loop responsive.
+      good_examples:
+        - |
+          import asyncio
+          from concurrent.futures import ThreadPoolExecutor
+
+          executor = ThreadPoolExecutor(max_workers=4)
+
+          def cpu_intensive_task(data: bytes) -> dict:
+              # Heavy computation that can't be made async
+              return process_data(data)
+
+          @app.post("/process")
+          async def process_file(file: UploadFile) -> dict:
+              data = await file.read()
+
+              # Run blocking code in thread pool
+              loop = asyncio.get_event_loop()
+              result = await loop.run_in_executor(
+                  executor,
+                  cpu_intensive_task,
+                  data
+              )
+
+              return result
+      bad_examples:
+        - |
+          @app.post("/process")
+          async def process_file(file: UploadFile):
+              data = await file.read()
+              return cpu_intensive_task(data)  # Blocks event loop!
+      references:
+        - 'https://fastapi.tiangolo.com/async/#very-technical-details'
+      tags:
+        - async
+        - threading
+        - performance
+
+  # ============================================================================
+  # SECURITY PRACTICES
+  # ============================================================================
+
+  - id: FAST030
+    title: 'Implement Proper Authentication'
+    category: fastapi
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - fastapi
+    content:
+      description: |
+        Use FastAPI's security utilities for authentication. Implement
+        OAuth2 with JWT tokens or API keys properly.
+      rationale: |
+        Proper authentication protects user data and prevents unauthorized
+        access to your API.
+      good_examples:
+        - |
+          from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+          from jose import JWTError, jwt
+
+          oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+          async def get_current_user(
+              token: Annotated[str, Depends(oauth2_scheme)],
+              db: DBSession
+          ) -> User:
+              credentials_exception = HTTPException(
+                  status_code=status.HTTP_401_UNAUTHORIZED,
+                  detail="Could not validate credentials",
+                  headers={"WWW-Authenticate": "Bearer"},
+              )
+              try:
+                  payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                  user_id: int = payload.get("sub")
+                  if user_id is None:
+                      raise credentials_exception
+              except JWTError:
+                  raise credentials_exception
+
+              user = await db.get(User, user_id)
+              if user is None:
+                  raise credentials_exception
+              return user
+      bad_examples:
+        - |
+          @app.get("/users/{user_id}")
+          async def get_user(user_id: int, api_key: str = Header()):
+              if api_key != "secret123":  # Hardcoded secret!
+                  raise HTTPException(401)
+              return await db.get(User, user_id)
+      references:
+        - 'https://fastapi.tiangolo.com/tutorial/security/'
+      tags:
+        - security
+        - authentication
+        - oauth2
+
+  - id: FAST031
+    title: 'Configure CORS Properly'
+    category: fastapi
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - fastapi
+    content:
+      description: |
+        Configure CORS middleware with specific allowed origins rather than
+        allowing all origins in production.
+      rationale: |
+        Overly permissive CORS settings can expose your API to cross-site
+        request forgery attacks.
+      good_examples:
+        - |
+          from fastapi.middleware.cors import CORSMiddleware
+
+          # Define allowed origins based on environment
+          ALLOWED_ORIGINS = [
+              "https://myapp.com",
+              "https://admin.myapp.com",
+          ]
+
+          if settings.environment == "development":
+              ALLOWED_ORIGINS.append("http://localhost:3000")
+
+          app.add_middleware(
+              CORSMiddleware,
+              allow_origins=ALLOWED_ORIGINS,
+              allow_credentials=True,
+              allow_methods=["GET", "POST", "PUT", "DELETE"],
+              allow_headers=["Authorization", "Content-Type"],
+          )
+      bad_examples:
+        - |
+          app.add_middleware(
+              CORSMiddleware,
+              allow_origins=["*"],  # Allows ANY origin!
+              allow_credentials=True,
+              allow_methods=["*"],
+              allow_headers=["*"],
+          )
+      references:
+        - 'https://fastapi.tiangolo.com/tutorial/cors/'
+      tags:
+        - security
+        - cors
+        - middleware
+
+  # ============================================================================
+  # TESTING PRACTICES
+  # ============================================================================
+
+  - id: FAST040
+    title: 'Use TestClient for Endpoint Testing'
+    category: fastapi
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - fastapi
+    content:
+      description: |
+        Use FastAPI's TestClient for integration testing endpoints.
+        Override dependencies for isolation.
+      rationale: |
+        TestClient provides a simple way to test endpoints without running
+        a server, and dependency overrides enable proper mocking.
+      good_examples:
+        - |
+          import pytest
+          from fastapi.testclient import TestClient
+          from unittest.mock import AsyncMock
+
+          @pytest.fixture
+          def client():
+              # Override database dependency
+              async def override_get_db():
+                  yield mock_db_session
+
+              app.dependency_overrides[get_db] = override_get_db
+
+              with TestClient(app) as client:
+                  yield client
+
+              app.dependency_overrides.clear()
+
+          def test_create_user(client):
+              response = client.post(
+                  "/users",
+                  json={"name": "Test", "email": "test@example.com"}
+              )
+              assert response.status_code == 201
+              data = response.json()
+              assert data["name"] == "Test"
+
+          def test_get_user_not_found(client):
+              response = client.get("/users/99999")
+              assert response.status_code == 404
+      bad_examples:
+        - |
+          def test_create_user():
+              # Testing against real database!
+              response = requests.post(
+                  "http://localhost:8000/users",
+                  json={"name": "Test"}
+              )
+      references:
+        - 'https://fastapi.tiangolo.com/tutorial/testing/'
+      tags:
+        - testing
+        - pytest
+        - mocking

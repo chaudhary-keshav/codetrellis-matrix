@@ -1,0 +1,860 @@
+# Valtio Proxy-based State Management Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.56 - Valtio Framework Support
+# Practice IDs: VALTIO001-VALTIO050
+# Coverage: Proxy Creation, Snapshots, Subscriptions, Actions, TypeScript,
+#           Performance, Testing, SSR, Patterns, Migration
+# Versions: Valtio v1.x-v2.x (proxy, useSnapshot, subscribe, snapshot,
+#           ref, subscribeKey, devtools, proxyMap, proxySet, useProxy)
+
+practices:
+  # ============================================================================
+  # VALTIO PROXY CREATION (VALTIO001-VALTIO008) - Proxy setup best practices
+  # ============================================================================
+
+  - id: VALTIO001
+    title: "Use proxy() to create mutable state objects"
+    description: "Use proxy() from 'valtio' to create mutable proxy state. In Valtio v2, import from 'valtio/vanilla' for non-React environments. Proxy state is mutable — you can directly assign values."
+    category: "valtio_proxy"
+    severity: "critical"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "proxy", "state", "mutable"]
+    example: |
+      // ✅ Create proxy state
+      import { proxy } from 'valtio';
+      const state = proxy({ count: 0, text: 'hello' });
+
+      // ✅ Valtio v2 vanilla
+      import { proxy } from 'valtio/vanilla';
+      const state = proxy({ count: 0 });
+
+  - id: VALTIO002
+    title: "Define proxy state at module level for global state"
+    description: "Define proxy state at module level (outside components) for global/shared state. This ensures a single source of truth and avoids re-creation on every render."
+    category: "valtio_proxy"
+    severity: "critical"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "proxy", "module-level", "global"]
+    example: |
+      // ✅ Module-level proxy
+      const state = proxy({ count: 0, users: [] });
+      export { state };
+
+      // ❌ Inside component (re-created on every render)
+      function Counter() {
+        const state = proxy({ count: 0 }); // Wrong!
+      }
+
+  - id: VALTIO003
+    title: "Use ref() for non-proxy values inside proxy state"
+    description: "Use ref() to hold values that should not be tracked (DOM elements, class instances, large static data). Without ref(), Valtio wraps nested objects as proxies."
+    category: "valtio_proxy"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "ref", "non-proxy", "dom"]
+    example: |
+      import { proxy, ref } from 'valtio';
+
+      // ✅ Use ref for non-trackable values
+      const state = proxy({
+        domRef: ref(document.createElement('div')),
+        wsConnection: ref(new WebSocket('ws://...')),
+        staticConfig: ref({ apiUrl: '/api', timeout: 5000 }),
+      });
+
+  - id: VALTIO004
+    title: "Use computed getters for derived state"
+    description: "Use JavaScript getter syntax (get propName()) inside proxy objects for computed/derived values. Avoid proxyWithComputed (deprecated) — use native getters instead."
+    category: "valtio_proxy"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "computed", "getter", "derived"]
+    example: |
+      const state = proxy({
+        firstName: 'John',
+        lastName: 'Doe',
+        get fullName() { return `${this.firstName} ${this.lastName}`; },
+        todos: [],
+        get completedCount() { return this.todos.filter(t => t.done).length; },
+      });
+
+  - id: VALTIO005
+    title: "Use proxyMap() and proxySet() for Map/Set collections"
+    description: "Use proxyMap() and proxySet() instead of native Map/Set inside proxy state. Native Map/Set are not trackable by Valtio's proxy mechanism."
+    category: "valtio_proxy"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "proxyMap", "proxySet", "collection"]
+    example: |
+      import { proxyMap, proxySet } from 'valtio/utils';
+
+      const state = proxy({
+        users: proxyMap<string, User>(),
+        tags: proxySet<string>(),
+      });
+
+      // ✅ Usage
+      state.users.set('id1', { name: 'Alice' });
+      state.tags.add('typescript');
+
+  - id: VALTIO006
+    title: "Keep proxy state shape flat when possible"
+    description: "Prefer flat state shapes over deeply nested objects. Deep nesting makes subscriptions less granular and harder to debug. If nesting is needed, consider separate proxies."
+    category: "valtio_proxy"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "state-shape", "flat", "normalization"]
+    example: |
+      // ✅ Flat state
+      const userState = proxy({ name: '', email: '' });
+      const uiState = proxy({ isOpen: false, activeTab: 'home' });
+
+      // ❌ Deeply nested
+      const state = proxy({
+        user: { profile: { settings: { theme: { primary: '#000' } } } }
+      });
+
+  - id: VALTIO007
+    title: "Export proxy state and action functions separately"
+    description: "Export the proxy state object and action functions as named exports. This enables tree-shaking and clear import paths."
+    category: "valtio_proxy"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "exports", "actions", "tree-shaking"]
+    example: |
+      // store.ts
+      export const state = proxy({ count: 0, items: [] });
+      export const increment = () => { state.count++; };
+      export const addItem = (item) => { state.items.push(item); };
+
+  - id: VALTIO008
+    title: "Avoid using proxy() with class instances directly"
+    description: "Valtio proxy works best with plain objects. Class instances may lose prototype methods. Use ref() for class instances, or extract plain data from classes."
+    category: "valtio_proxy"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "proxy", "class", "prototype"]
+    example: |
+      // ❌ Class instance in proxy may lose methods
+      const state = proxy({ ws: new WebSocket('ws://...') });
+
+      // ✅ Use ref() for class instances
+      const state = proxy({ ws: ref(new WebSocket('ws://...')) });
+
+  # ============================================================================
+  # VALTIO SNAPSHOTS (VALTIO009-VALTIO016) - useSnapshot/snapshot best practices
+  # ============================================================================
+
+  - id: VALTIO009
+    title: "Use useSnapshot() in React components for reactive rendering"
+    description: "Always use useSnapshot() in React components to read proxy state. Direct proxy access in render does not trigger re-renders. useSnapshot() creates an immutable snapshot that auto-tracks accessed properties."
+    category: "valtio_snapshot"
+    severity: "critical"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "useSnapshot", "react", "render"]
+    example: |
+      import { useSnapshot } from 'valtio';
+
+      function Counter() {
+        const snap = useSnapshot(state);
+        return <div>{snap.count}</div>; // Re-renders only when count changes
+      }
+
+  - id: VALTIO010
+    title: "Destructure useSnapshot for granular re-renders"
+    description: "Destructure the snapshot to access only the fields you need. Valtio's proxy-based tracking only triggers re-renders for accessed properties."
+    category: "valtio_snapshot"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "useSnapshot", "destructure", "performance"]
+    example: |
+      // ✅ Only re-renders when count changes
+      function Counter() {
+        const { count } = useSnapshot(state);
+        return <div>{count}</div>;
+      }
+
+      // ⚠️ Re-renders on any state change (accesses whole snapshot)
+      function Counter() {
+        const snap = useSnapshot(state);
+        console.log(snap); // Accessing whole object
+        return <div>{snap.count}</div>;
+      }
+
+  - id: VALTIO011
+    title: "Use snapshot() for vanilla (non-React) immutable reads"
+    description: "Use snapshot() from 'valtio/vanilla' to get an immutable copy of proxy state outside React. Useful for logging, serialization, or comparison."
+    category: "valtio_snapshot"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "snapshot", "vanilla", "immutable"]
+    example: |
+      import { snapshot } from 'valtio';
+
+      const currentState = snapshot(state);
+      console.log(currentState); // Immutable, safe to serialize
+      localStorage.setItem('state', JSON.stringify(currentState));
+
+  - id: VALTIO012
+    title: "Never mutate snapshot values"
+    description: "Snapshots returned by useSnapshot() and snapshot() are frozen (immutable). Always mutate the proxy state directly, not the snapshot. TypeScript will show errors if you try to mutate snapshots."
+    category: "valtio_snapshot"
+    severity: "critical"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "snapshot", "immutable", "mutation"]
+    example: |
+      const snap = useSnapshot(state);
+      // ❌ Cannot mutate snapshot
+      // snap.count = 5; // TypeError: Cannot assign to read only property
+
+      // ✅ Mutate proxy directly
+      state.count = 5;
+
+  - id: VALTIO013
+    title: "Use useSnapshot with { sync: true } for synchronous updates when needed"
+    description: "By default useSnapshot batches re-renders asynchronously. Use { sync: true } when you need immediate synchronous re-renders (e.g., text input onChange)."
+    category: "valtio_snapshot"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "useSnapshot", "sync", "input"]
+    example: |
+      // ✅ Sync for text inputs
+      function TextInput() {
+        const snap = useSnapshot(state, { sync: true });
+        return <input value={snap.text} onChange={e => { state.text = e.target.value; }} />;
+      }
+
+  - id: VALTIO014
+    title: "Pass snapshot objects to child components, not proxy state"
+    description: "When passing state to child components, pass the snapshot (from useSnapshot) not the proxy. This ensures children get immutable data and proper React rendering."
+    category: "valtio_snapshot"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "snapshot", "props", "children"]
+    example: |
+      // ✅ Pass snapshot to child
+      function Parent() {
+        const snap = useSnapshot(state);
+        return <Child user={snap.user} />;
+      }
+
+      // ❌ Passing proxy to child (triggers unnecessary re-renders)
+      function Parent() {
+        return <Child user={state.user} />;
+      }
+
+  - id: VALTIO015
+    title: "Avoid spreading snapshots in component renders"
+    description: "Avoid spreading the entire snapshot object as it accesses all properties, causing re-renders on any change. Access only specific fields."
+    category: "valtio_snapshot"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "snapshot", "spread", "performance"]
+    example: |
+      // ❌ Spreading accesses all fields
+      function Profile() {
+        const snap = useSnapshot(state);
+        return <UserCard {...snap} />;
+      }
+
+      // ✅ Access specific fields
+      function Profile() {
+        const { name, email } = useSnapshot(state);
+        return <UserCard name={name} email={email} />;
+      }
+
+  - id: VALTIO016
+    title: "Use useProxy() as a convenience for small components (experimental)"
+    description: "useProxy() from 'valtio/utils' provides a simpler API that returns a writable proxy + readonly snapshot in one call. Be aware it is an experimental/convenience API."
+    category: "valtio_snapshot"
+    severity: "low"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "useProxy", "experimental", "convenience"]
+    example: |
+      import { useProxy } from 'valtio/utils';
+
+      function Counter() {
+        const [snap, state] = useProxy(globalState);
+        return <button onClick={() => state.count++}>{snap.count}</button>;
+      }
+
+  # ============================================================================
+  # VALTIO SUBSCRIPTIONS (VALTIO017-VALTIO023) - subscribe/subscribeKey patterns
+  # ============================================================================
+
+  - id: VALTIO017
+    title: "Use subscribe() with cleanup in useEffect"
+    description: "When using subscribe() in React components, always call it inside useEffect and return the unsubscribe function for cleanup."
+    category: "valtio_subscription"
+    severity: "critical"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "subscribe", "useEffect", "cleanup"]
+    example: |
+      useEffect(() => {
+        const unsub = subscribe(state, () => {
+          console.log('state changed:', snapshot(state));
+        });
+        return unsub; // Cleanup on unmount
+      }, []);
+
+  - id: VALTIO018
+    title: "Use subscribeKey() for primitive value subscriptions"
+    description: "Use subscribeKey() to subscribe to changes of a specific primitive key. This is more efficient than subscribe() when you only care about one field."
+    category: "valtio_subscription"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "subscribeKey", "primitive", "efficient"]
+    example: |
+      import { subscribeKey } from 'valtio/utils';
+
+      // ✅ Only fires when 'count' changes
+      const unsub = subscribeKey(state, 'count', (v) => {
+        console.log('count is now', v);
+      });
+
+  - id: VALTIO019
+    title: "Subscribe to nested objects for granular notifications"
+    description: "Pass a nested proxy object to subscribe() to only be notified of changes within that subtree."
+    category: "valtio_subscription"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "subscribe", "nested", "granular"]
+    example: |
+      const state = proxy({ user: { name: '', settings: { theme: 'dark' } } });
+
+      // ✅ Only notified when user.settings changes
+      subscribe(state.user.settings, () => {
+        console.log('settings changed');
+      });
+
+  - id: VALTIO020
+    title: "Prefer useSnapshot over subscribe in React components"
+    description: "In React components, prefer useSnapshot() for reactive rendering over subscribe(). Reserve subscribe() for side effects (logging, analytics, persistence) not rendering."
+    category: "valtio_subscription"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "subscribe", "useSnapshot", "react"]
+    example: |
+      // ✅ useSnapshot for rendering
+      function Counter() {
+        const { count } = useSnapshot(state);
+        return <div>{count}</div>;
+      }
+
+      // ✅ subscribe for side effects
+      subscribe(state, () => {
+        analytics.track('state_change', snapshot(state));
+      });
+
+  - id: VALTIO021
+    title: "Avoid watch() — it is deprecated in v2.3.0+"
+    description: "The watch() utility is deprecated in Valtio v2.3.0+. Use subscribe() or the valtio-reactive package instead."
+    category: "valtio_subscription"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "watch", "deprecated", "migration"]
+    example: |
+      // ❌ Deprecated
+      import { watch } from 'valtio/utils';
+      watch((get) => { console.log(get(state).count); });
+
+      // ✅ Use subscribe instead
+      subscribe(state, () => { console.log(snapshot(state).count); });
+
+  - id: VALTIO022
+    title: "Store unsubscribe functions for cleanup"
+    description: "Always store the return value of subscribe/subscribeKey for cleanup. Failing to unsubscribe causes memory leaks."
+    category: "valtio_subscription"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "subscribe", "unsubscribe", "memory-leak"]
+    example: |
+      const unsub = subscribe(state, () => { /* ... */ });
+      // Later: unsub();
+
+  - id: VALTIO023
+    title: "Use notifyInSync for synchronous subscription callbacks"
+    description: "Pass true as the third argument to subscribe() for synchronous notification. Default is asynchronous (batched). Use sync for time-critical operations."
+    category: "valtio_subscription"
+    severity: "low"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "subscribe", "sync", "notifyInSync"]
+    example: |
+      // Synchronous notification
+      subscribe(state, () => {
+        console.log('immediate:', snapshot(state));
+      }, true); // notifyInSync = true
+
+  # ============================================================================
+  # VALTIO ACTIONS (VALTIO024-VALTIO030) - Mutation and action patterns
+  # ============================================================================
+
+  - id: VALTIO024
+    title: "Mutate proxy state directly — that's the Valtio way"
+    description: "Unlike Redux/Zustand, Valtio embraces direct mutation. Simply assign values to proxy state. No reducers, no set(), no immutable updates needed."
+    category: "valtio_action"
+    severity: "critical"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "mutation", "direct", "mutable"]
+    example: |
+      // ✅ Direct mutation
+      state.count++;
+      state.user.name = 'Alice';
+      state.items.push(newItem);
+      state.items.splice(index, 1);
+
+  - id: VALTIO025
+    title: "Extract mutation logic into named action functions"
+    description: "For reusable and testable mutations, extract them into named functions. This improves code organization and enables action-based devtools tracking."
+    category: "valtio_action"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "actions", "functions", "organization"]
+    example: |
+      // actions.ts
+      export const addTodo = (text: string) => {
+        state.todos.push({ id: Date.now(), text, done: false });
+      };
+      export const toggleTodo = (id: number) => {
+        const todo = state.todos.find(t => t.id === id);
+        if (todo) todo.done = !todo.done;
+      };
+
+  - id: VALTIO026
+    title: "Use async functions for async actions"
+    description: "Async actions are straightforward in Valtio — just use async functions that mutate proxy state. No thunks or middleware needed."
+    category: "valtio_action"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "async", "actions", "fetch"]
+    example: |
+      export const fetchUsers = async () => {
+        state.loading = true;
+        try {
+          const res = await fetch('/api/users');
+          state.users = await res.json();
+        } catch (e) {
+          state.error = e.message;
+        } finally {
+          state.loading = false;
+        }
+      };
+
+  - id: VALTIO027
+    title: "Use devtools() for Redux DevTools integration"
+    description: "Connect proxy state to Redux DevTools for time-travel debugging. Import devtools from 'valtio/utils' (v1) or 'valtio/vanilla/utils' (v2)."
+    category: "valtio_action"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "devtools", "debugging", "redux-devtools"]
+    example: |
+      import { devtools } from 'valtio/utils';
+
+      const state = proxy({ count: 0 });
+      devtools(state, { name: 'counter', enabled: true });
+
+  - id: VALTIO028
+    title: "Avoid mutations inside render functions"
+    description: "Never mutate proxy state during React render. Mutations should happen in event handlers, effects, or action functions."
+    category: "valtio_action"
+    severity: "critical"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "mutation", "render", "side-effect"]
+    example: |
+      // ❌ Mutation during render
+      function Counter() {
+        state.renderCount++; // Side effect during render!
+        return <div>{useSnapshot(state).count}</div>;
+      }
+
+      // ✅ Mutation in event handler
+      function Counter() {
+        const snap = useSnapshot(state);
+        return <button onClick={() => state.count++}>{snap.count}</button>;
+      }
+
+  - id: VALTIO029
+    title: "Use array methods for array state mutations"
+    description: "Valtio supports all JavaScript array mutation methods directly (push, pop, splice, sort, etc). No need for immutable array updates."
+    category: "valtio_action"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "array", "mutation", "push", "splice"]
+    example: |
+      // ✅ Direct array mutations
+      state.items.push(newItem);
+      state.items.splice(index, 1);
+      state.items.sort((a, b) => a.name.localeCompare(b.name));
+      state.items[0] = updatedItem;
+
+  - id: VALTIO030
+    title: "Use delete operator to remove proxy properties"
+    description: "Use the delete operator to remove properties from proxy state. This triggers subscriptions correctly."
+    category: "valtio_action"
+    severity: "low"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "delete", "remove", "property"]
+    example: |
+      delete state.temporaryField;
+      delete state.user.avatar;
+
+  # ============================================================================
+  # VALTIO TYPESCRIPT (VALTIO031-VALTIO035) - Type safety best practices
+  # ============================================================================
+
+  - id: VALTIO031
+    title: "Type proxy state with explicit interfaces"
+    description: "Define TypeScript interfaces for proxy state shape. Use generics with proxy<T>() for compile-time type checking."
+    category: "valtio_typescript"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "typescript", "types", "interface"]
+    example: |
+      interface AppState {
+        count: number;
+        user: User | null;
+        items: Item[];
+      }
+      const state = proxy<AppState>({ count: 0, user: null, items: [] });
+
+  - id: VALTIO032
+    title: "Use Snapshot<T> type for snapshot parameters"
+    description: "Use the Snapshot<T> type from 'valtio' for function parameters that accept snapshot values. This ensures type safety with readonly properties."
+    category: "valtio_typescript"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "typescript", "Snapshot", "readonly"]
+    example: |
+      import type { Snapshot } from 'valtio';
+
+      function renderUser(user: Snapshot<typeof state.user>) {
+        // user properties are readonly
+      }
+
+  - id: VALTIO033
+    title: "Use 'as const' for enum-like state values"
+    description: "Use 'as const' assertions for string literal state values to get precise TypeScript types."
+    category: "valtio_typescript"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "typescript", "const", "literal"]
+    example: |
+      const state = proxy({
+        status: 'idle' as 'idle' | 'loading' | 'success' | 'error',
+        theme: 'light' as const,
+      });
+
+  - id: VALTIO034
+    title: "Type action functions with explicit parameter types"
+    description: "Add explicit parameter and return types to action functions for better IDE support and type checking."
+    category: "valtio_typescript"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "typescript", "actions", "parameters"]
+    example: |
+      export const addItem = (item: Item): void => {
+        state.items.push(item);
+      };
+      export const fetchData = async (): Promise<void> => {
+        state.data = await api.getData();
+      };
+
+  - id: VALTIO035
+    title: "Use generic types for proxyMap and proxySet"
+    description: "Provide generic type parameters to proxyMap<K, V>() and proxySet<T>() for type-safe collection operations."
+    category: "valtio_typescript"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "typescript", "proxyMap", "proxySet", "generics"]
+    example: |
+      const users = proxyMap<string, User>();
+      const selectedIds = proxySet<number>();
+
+  # ============================================================================
+  # VALTIO PERFORMANCE (VALTIO036-VALTIO040) - Performance optimization
+  # ============================================================================
+
+  - id: VALTIO036
+    title: "Split state into multiple proxies for independent updates"
+    description: "Separate unrelated state into different proxy objects. This prevents unnecessary re-renders when unrelated state changes."
+    category: "valtio_performance"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "performance", "split", "proxy"]
+    example: |
+      // ✅ Separate proxies for independent state
+      const authState = proxy({ user: null, token: '' });
+      const uiState = proxy({ sidebarOpen: false, theme: 'light' });
+
+  - id: VALTIO037
+    title: "Avoid accessing entire snapshot in lists"
+    description: "In list components, access only the specific properties needed from each item. This prevents all list items from re-rendering when any item changes."
+    category: "valtio_performance"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "performance", "list", "granular"]
+    example: |
+      // ✅ Only re-renders when specific item.name changes
+      function TodoItem({ index }) {
+        const snap = useSnapshot(state);
+        return <div>{snap.todos[index].text}</div>;
+      }
+
+  - id: VALTIO038
+    title: "Memoize derived computations outside proxy"
+    description: "For expensive derivations, consider useMemo or external memoization rather than computed getters, which run on every snapshot creation."
+    category: "valtio_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "performance", "memo", "derived"]
+    example: |
+      function Stats() {
+        const snap = useSnapshot(state);
+        const expensiveResult = useMemo(
+          () => computeExpensive(snap.items),
+          [snap.items]
+        );
+        return <div>{expensiveResult}</div>;
+      }
+
+  - id: VALTIO039
+    title: "Use React.memo for child components receiving snapshot data"
+    description: "Wrap child components with React.memo when they receive snapshot data as props. Valtio snapshots use structural sharing, so React.memo is effective."
+    category: "valtio_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "performance", "memo", "structural-sharing"]
+    example: |
+      const UserCard = React.memo(function UserCard({ user }) {
+        return <div>{user.name}</div>;
+      });
+
+  - id: VALTIO040
+    title: "Batch multiple mutations for single notification"
+    description: "Valtio batches synchronous mutations automatically. Multiple synchronous mutations within the same tick trigger only one notification."
+    category: "valtio_performance"
+    severity: "low"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "performance", "batch", "mutation"]
+    example: |
+      // ✅ These are automatically batched (one notification)
+      const updateUser = (name, email) => {
+        state.user.name = name;
+        state.user.email = email;
+      };
+
+  # ============================================================================
+  # VALTIO TESTING (VALTIO041-VALTIO043) - Testing best practices
+  # ============================================================================
+
+  - id: VALTIO041
+    title: "Reset proxy state between tests"
+    description: "Reset proxy state to initial values between tests to avoid test pollution. Create a factory function or use Object.assign."
+    category: "valtio_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "testing", "reset", "isolation"]
+    example: |
+      const initialState = { count: 0, items: [] };
+      const state = proxy({ ...initialState });
+
+      afterEach(() => {
+        Object.assign(state, { ...initialState });
+      });
+
+  - id: VALTIO042
+    title: "Test actions by mutating proxy and checking snapshot"
+    description: "Test Valtio actions by calling action functions and verifying state via snapshot(). No need for store mocking."
+    category: "valtio_testing"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "testing", "snapshot", "actions"]
+    example: |
+      test('increment increases count', () => {
+        increment();
+        expect(snapshot(state).count).toBe(1);
+      });
+
+  - id: VALTIO043
+    title: "Use waitFor for async state changes in component tests"
+    description: "When testing components with useSnapshot, use waitFor to wait for async state updates to propagate to the component."
+    category: "valtio_testing"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio", "react"]
+    tags: ["valtio", "testing", "waitFor", "async"]
+    example: |
+      test('shows updated count', async () => {
+        render(<Counter />);
+        act(() => { state.count = 42; });
+        await waitFor(() => {
+          expect(screen.getByText('42')).toBeInTheDocument();
+        });
+      });
+
+  # ============================================================================
+  # VALTIO SSR (VALTIO044-VALTIO046) - Server-side rendering patterns
+  # ============================================================================
+
+  - id: VALTIO044
+    title: "Create proxy state per-request in SSR"
+    description: "In SSR (Next.js, Remix), create proxy state per-request to avoid sharing state between users. Use factory functions or context."
+    category: "valtio_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["valtio", "next"]
+    tags: ["valtio", "ssr", "next", "per-request"]
+    example: |
+      // ✅ Factory per request
+      export const createAppState = () => proxy({ user: null, data: [] });
+
+      // In server component or getServerSideProps:
+      const state = createAppState();
+
+  - id: VALTIO045
+    title: "Hydrate client proxy state from server data"
+    description: "When hydrating proxy state on the client from server-rendered data, use Object.assign or create a new proxy from the serialized snapshot."
+    category: "valtio_ssr"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio", "next"]
+    tags: ["valtio", "ssr", "hydration", "serialization"]
+    example: |
+      // Server: serialize state
+      const serverData = snapshot(state);
+
+      // Client: hydrate
+      const state = proxy(window.__INITIAL_STATE__ || { count: 0 });
+
+  - id: VALTIO046
+    title: "Mark Valtio files with 'use client' in Next.js App Router"
+    description: "In Next.js App Router, components using useSnapshot must be client components. Add 'use client' directive."
+    category: "valtio_ssr"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio", "next"]
+    tags: ["valtio", "next", "app-router", "use-client"]
+    example: |
+      'use client';
+      import { useSnapshot } from 'valtio';
+      import { state } from './store';
+
+      export function Counter() {
+        const snap = useSnapshot(state);
+        return <button onClick={() => state.count++}>{snap.count}</button>;
+      }
+
+  # ============================================================================
+  # VALTIO PATTERNS (VALTIO047-VALTIO049) - Advanced patterns
+  # ============================================================================
+
+  - id: VALTIO047
+    title: "Compose multiple proxy stores with a root proxy"
+    description: "For large applications, compose multiple proxy states by combining them into a root proxy or importing individually."
+    category: "valtio_patterns"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "patterns", "composition", "modular"]
+    example: |
+      // auth.ts
+      export const authState = proxy({ user: null });
+      // ui.ts
+      export const uiState = proxy({ theme: 'light' });
+      // root.ts (optional composition)
+      export const rootState = proxy({ auth: authState, ui: uiState });
+
+  - id: VALTIO048
+    title: "Use derive-valtio for cross-proxy derived state"
+    description: "For derived state that depends on multiple proxies, use the derive-valtio package (successor to deprecated derive/underive in valtio/utils)."
+    category: "valtio_patterns"
+    severity: "medium"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "derive", "derived-state", "cross-proxy"]
+    example: |
+      import { derive } from 'derive-valtio';
+
+      const state = proxy({ count: 0, multiplier: 2 });
+      const derived = derive({
+        doubled: (get) => get(state).count * get(state).multiplier,
+      });
+
+  - id: VALTIO049
+    title: "Use getVersion() for optimistic UI checks"
+    description: "Use getVersion() from 'valtio/vanilla' to get the current version number of a proxy. Useful for optimistic updates and conflict detection."
+    category: "valtio_patterns"
+    severity: "low"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "getVersion", "optimistic", "version"]
+    example: |
+      import { getVersion } from 'valtio/vanilla';
+
+      const v1 = getVersion(state);
+      state.count++;
+      const v2 = getVersion(state); // v2 > v1
+
+  # ============================================================================
+  # VALTIO MIGRATION (VALTIO050) - Migration guidance
+  # ============================================================================
+
+  - id: VALTIO050
+    title: "Migrate from Valtio v1 to v2 import paths"
+    description: "When migrating to Valtio v2, update import paths: use 'valtio/vanilla' for non-React APIs, 'valtio/react' for React-specific APIs, and replace deprecated utils (derive → derive-valtio, watch → valtio-reactive)."
+    category: "valtio_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["valtio"]
+    tags: ["valtio", "migration", "v2", "import-paths"]
+    example: |
+      // v1 imports
+      import { proxy, subscribe, snapshot } from 'valtio';
+      import { derive, watch } from 'valtio/utils';
+
+      // v2 imports
+      import { proxy, subscribe, snapshot } from 'valtio/vanilla';
+      import { useSnapshot } from 'valtio'; // or 'valtio/react'
+      import { derive } from 'derive-valtio';
+      // watch() → use subscribe() or valtio-reactive

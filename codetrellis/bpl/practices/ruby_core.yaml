@@ -1,0 +1,490 @@
+# Ruby Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.23 - Ruby Language Support
+# Practice IDs: RB001-RB050
+# Category: ruby
+# Frameworks: ruby
+
+practices:
+  - id: RB001
+    title: "Use frozen_string_literal: true magic comment"
+    description: "Add '# frozen_string_literal: true' at the top of every Ruby file to prevent unintentional string mutation and improve performance through string deduplication."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "performance", "frozen-string"]
+    example: |
+      # frozen_string_literal: true
+      class User
+        def name
+          "default" # This string is frozen and shared
+        end
+      end
+
+  - id: RB002
+    title: "Prefer symbols over strings for hash keys"
+    description: "Use symbols (:key) instead of strings ('key') for hash keys. Symbols are immutable, have better memory characteristics, and are idiomatic Ruby."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "style", "symbols"]
+
+  - id: RB003
+    title: "Use keyword arguments for methods with 3+ parameters"
+    description: "Use keyword arguments instead of positional arguments when a method accepts 3 or more parameters. This improves readability and prevents argument ordering bugs."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "api-design", "keyword-args"]
+    example: |
+      # Good: clear intent
+      def create_user(name:, email:, role: :member)
+      # Avoid: unclear positional args
+      def create_user(name, email, role = :member)
+
+  - id: RB004
+    title: "Raise specific exceptions, never bare RuntimeError"
+    description: "Define custom exception classes inheriting from StandardError. Never raise bare RuntimeError or generic Exception. Use rescue with specific exception types."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "error-handling", "exceptions"]
+    example: |
+      class UserNotFoundError < StandardError; end
+      raise UserNotFoundError, "User #{id} not found"
+
+  - id: RB005
+    title: "Never rescue Exception — rescue StandardError instead"
+    description: "Rescuing Exception catches SignalException, SystemExit, and NoMemoryError which prevents proper shutdown. Always rescue StandardError or more specific subclasses."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "error-handling", "rescue"]
+
+  - id: RB006
+    title: "Use attr_reader/writer/accessor instead of manual getters/setters"
+    description: "Use Ruby's attr_* macros for simple attribute access. Only write manual getters/setters when you need custom logic like validation or transformation."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "style", "attr"]
+
+  - id: RB007
+    title: "Prefer composition over inheritance"
+    description: "Use modules (mixins) and delegation instead of deep class hierarchies. Limit inheritance depth to 2-3 levels. Use include/extend for shared behavior."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "architecture", "composition"]
+
+  - id: RB008
+    title: "Keep modules small and focused — Single Responsibility"
+    description: "Each module/concern should encapsulate one coherent set of behavior. If a module provides more than 5-6 methods or has unrelated methods, split it."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "architecture", "srp"]
+
+  - id: RB009
+    title: "Use Enumerable methods instead of manual loops"
+    description: "Prefer map, select, reject, reduce, each_with_object over manual loops with push/append. Use .sum, .count, .min_by, .max_by, .flat_map, .group_by for clarity."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "style", "enumerable"]
+
+  - id: RB010
+    title: "Use guard clauses for early returns"
+    description: "Use guard clauses (return/raise unless/if) at the top of methods to handle edge cases early, reducing nesting and improving readability."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "style", "guard-clause"]
+    example: |
+      # Good
+      def process(order)
+        return unless order.valid?
+        return if order.processed?
+        # main logic here
+      end
+
+  - id: RB011
+    title: "Use Struct or Data.define for value objects"
+    description: "Use Struct.new(keyword_init: true) or Data.define (Ruby 3.2+) for immutable value objects instead of full classes. Data.define creates frozen instances by default."
+    category: "type_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "struct", "value-object", "data"]
+
+  - id: RB012
+    title: "Use method_missing sparingly with respond_to_missing?"
+    description: "When overriding method_missing, always override respond_to_missing? to maintain Ruby's method introspection contract. Prefer define_method for dynamic methods when possible."
+    category: "metaprogramming"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "metaprogramming", "method-missing"]
+
+  - id: RB013
+    title: "Avoid monkey-patching core classes"
+    description: "Never reopen String, Array, Hash, or other core classes in production code. Use Refinements (using/refine) for scoped modifications, or create wrapper classes."
+    category: "metaprogramming"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "metaprogramming", "monkey-patch"]
+
+  - id: RB014
+    title: "Use Bundler for dependency management"
+    description: "Always use a Gemfile with Bundler for managing dependencies. Pin gem versions with pessimistic constraint (~>) to allow patch updates while preventing breaking changes."
+    category: "dependencies"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "bundler", "dependencies"]
+
+  - id: RB015
+    title: "Prefer .freeze on constant values"
+    description: "Call .freeze on constant arrays, hashes, and strings to prevent accidental mutation. Use CONSTANT = [1, 2, 3].freeze."
+    category: "safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "safety", "freeze"]
+
+  - id: RB016
+    title: "Use pattern matching for complex conditionals (3.0+)"
+    description: "Use Ruby 3.0+ pattern matching (case/in) for complex conditional logic, especially when destructuring hashes, arrays, or nested structures."
+    category: "modern_ruby"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "pattern-matching", "ruby-3"]
+
+  - id: RB017
+    title: "Use Ractor for CPU-bound parallelism (3.0+)"
+    description: "Use Ractor (Ruby 3.0+) for true parallel execution of CPU-bound tasks. Ractors have isolated memory and communicate through message passing."
+    category: "concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "concurrency", "ractor"]
+
+  - id: RB018
+    title: "Prefer Fiber and Fiber::SchedulerInterface for I/O concurrency"
+    description: "Use Fiber-based concurrency (async gem, Falcon) for I/O-bound parallelism instead of threads. This avoids GVL contention and is safer."
+    category: "concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "concurrency", "fiber"]
+
+  - id: RB019
+    title: "Add YARD documentation for public API methods"
+    description: "Document public methods with YARD tags: @param, @return, @raise, @example. This enables documentation generation and IDE support."
+    category: "documentation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "documentation", "yard"]
+
+  - id: RB020
+    title: "Use Sorbet or RBS for type annotations in critical code"
+    description: "Add type signatures using Sorbet (sig { params(...).returns(...) }) or RBS files for public APIs, service interfaces, and data models."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "type-safety", "sorbet", "rbs"]
+
+  # ── Rails-specific practices ──
+
+  - id: RB021
+    title: "Use strong parameters in controllers"
+    description: "Always use params.require(:model).permit(:attr1, :attr2) in Rails controllers. Never pass params directly to model methods."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "security", "strong-params"]
+
+  - id: RB022
+    title: "Keep controllers thin — extract to service objects"
+    description: "Controllers should only handle request/response. Extract business logic to service objects, form objects, or interactors. A controller action should be under 10 lines."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "architecture", "service-object"]
+
+  - id: RB023
+    title: "Use scopes and class methods for query composition"
+    description: "Define named scopes for reusable query conditions. Compose scopes with chaining: User.active.recent.with_orders. Avoid raw SQL in models."
+    category: "database"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "activerecord", "scopes"]
+
+  - id: RB024
+    title: "Add database indexes for foreign keys and frequently queried columns"
+    description: "Always add indexes on foreign key columns, columns used in WHERE/ORDER BY clauses, and polymorphic type+id pairs. Use composite indexes for multi-column queries."
+    category: "database"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "database", "indexes"]
+
+  - id: RB025
+    title: "Use concerns for shared model/controller behavior"
+    description: "Extract shared behavior into concerns (ActiveSupport::Concern). Use included and class_methods blocks. Keep concerns focused on one responsibility."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "concerns"]
+
+  - id: RB026
+    title: "Avoid N+1 queries — use includes/eager_load/preload"
+    description: "Use .includes(:association) for eager loading to prevent N+1 queries. Use Bullet gem in development to detect N+1 issues. Prefer includes over joins when you need the associated records."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "performance", "n-plus-one"]
+
+  - id: RB027
+    title: "Use background jobs for long-running tasks"
+    description: "Use Sidekiq/ActiveJob for sending emails, processing uploads, API calls, reports, and any task that takes more than 100ms. Keep jobs idempotent and retryable."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "sidekiq", "background-jobs"]
+
+  - id: RB028
+    title: "Use database transactions for multi-step operations"
+    description: "Wrap related database operations in ActiveRecord::Base.transaction blocks. Use after_commit callbacks for side effects that should only happen after successful commit."
+    category: "database"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "transactions"]
+
+  - id: RB029
+    title: "Validate at the model level, not just in the controller"
+    description: "Define validations (validates :field, presence: true) in ActiveRecord models. Controller-level validations are insufficient — model validations protect all code paths."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "validations"]
+
+  - id: RB030
+    title: "Use serializers or presenters for API responses"
+    description: "Use ActiveModel::Serializer, Blueprinter, Alba, or jbuilder for API response formatting. Never render raw model attributes — control exactly what is exposed."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "api", "serializer"]
+
+  - id: RB031
+    title: "Encrypt sensitive data at rest"
+    description: "Use Rails 7+ encrypted attributes (encrypts :ssn) or attr_encrypted gem for sensitive data. Never store passwords, tokens, or PII in plaintext."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "security", "encryption"]
+
+  - id: RB032
+    title: "Use Rails credentials or ENV for secrets"
+    description: "Store secrets in Rails credentials (config/credentials.yml.enc) or environment variables. Never commit secrets, API keys, or tokens to version control."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "security", "credentials"]
+
+  - id: RB033
+    title: "Use enum for status fields with explicit database values"
+    description: "Define enums with explicit integer or string values: enum status: { draft: 0, published: 1 }. This prevents ordering issues when new values are added."
+    category: "database"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "enum"]
+
+  - id: RB034
+    title: "Avoid callbacks for business logic — use service objects"
+    description: "Use callbacks (before_save, after_create) only for data normalization. Extract business logic side effects to service objects to keep models predictable."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "callbacks"]
+
+  - id: RB035
+    title: "Use content_security_policy in Rails for XSS prevention"
+    description: "Configure Content Security Policy headers in config/initializers/content_security_policy.rb. Use nonce-based script inclusion instead of unsafe-inline."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "security", "csp"]
+
+  # ── Testing practices ──
+
+  - id: RB036
+    title: "Write tests for all public methods — RSpec or Minitest"
+    description: "Every public method should have corresponding tests. Use RSpec describe/context/it blocks or Minitest test methods. Aim for 80%+ code coverage on business logic."
+    category: "testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "testing", "rspec", "minitest"]
+
+  - id: RB037
+    title: "Use factories (FactoryBot) instead of fixtures"
+    description: "Use FactoryBot for test data creation. Factories are more flexible, explicit, and maintainable than YAML fixtures. Use traits for variations."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "testing", "factory-bot"]
+
+  - id: RB038
+    title: "Mock external services in tests"
+    description: "Use WebMock/VCR for HTTP mocking, instance_double for dependency mocking. Never make real HTTP/API calls in unit tests. Use allow/expect for method stubs."
+    category: "testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "testing", "mocking"]
+
+  # ── Performance practices ──
+
+  - id: RB039
+    title: "Use caching for expensive operations"
+    description: "Use Rails.cache (Redis/Memcached), fragment caching, HTTP caching, and Russian doll caching. Cache database query results and computed values."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "performance", "caching"]
+
+  - id: RB040
+    title: "Use select/pluck instead of loading full records"
+    description: "Use .pluck(:id, :name) for simple value extraction and .select(:id, :name) when you need model instances but not all columns. Reduces memory usage."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "performance", "query"]
+
+  - id: RB041
+    title: "Use find_each for batch processing large datasets"
+    description: "Use .find_each(batch_size: 1000) instead of .all.each for processing large collections. This loads records in batches to avoid memory issues."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "performance", "batch"]
+
+  # ── Ruby 3.x modern features ──
+
+  - id: RB042
+    title: "Use endless methods for simple one-liners (3.0+)"
+    description: "Use endless method definitions (def method_name = expression) for simple single-expression methods. Keep them truly single-expression."
+    category: "modern_ruby"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "modern", "ruby-3"]
+
+  - id: RB043
+    title: "Use hash shorthand syntax (3.1+)"
+    description: "Use shorthand hash syntax: {x:, y:} instead of {x: x, y: y} when variable names match hash keys. Reduces visual noise."
+    category: "modern_ruby"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "modern", "ruby-3"]
+
+  - id: RB044
+    title: "Use Data.define for immutable value objects (3.2+)"
+    description: "Prefer Data.define(:name, :email) over Struct.new for value objects. Data instances are frozen by default, providing better immutability guarantees."
+    category: "modern_ruby"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "modern", "data", "ruby-3"]
+
+  # ── Security practices ──
+
+  - id: RB045
+    title: "Sanitize user input in views — prevent XSS"
+    description: "Rails auto-escapes in ERB, but be cautious with raw/html_safe. Sanitize user content with Rails::Html::Sanitizer. Never interpolate user input into JavaScript."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "security", "xss"]
+
+  - id: RB046
+    title: "Use parameterized queries — prevent SQL injection"
+    description: "Never interpolate user input into SQL strings. Use parameterized queries: where('name = ?', params[:name]) or where(name: params[:name])."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "security", "sql-injection"]
+
+  - id: RB047
+    title: "Rate limit API endpoints"
+    description: "Use rack-attack or Rails rate limiting for API endpoints. Protect against brute force attacks, DDoS, and abuse. Rate limit login, registration, and password reset."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "security", "rate-limiting"]
+
+  # ── Architecture practices ──
+
+  - id: RB048
+    title: "Follow Rails conventions — Convention over Configuration"
+    description: "Follow Rails naming conventions: pluralized table names, singular model names, RESTful routes, standard directory structure. Override only when there's a strong reason."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby", "rails"]
+    tags: ["ruby", "rails", "conventions"]
+
+  - id: RB049
+    title: "Use dependency injection for testability"
+    description: "Pass dependencies as constructor or method arguments instead of hardcoding class references. Use dry-auto_inject or manual DI for service objects."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "architecture", "di", "testing"]
+
+  - id: RB050
+    title: "Keep Gemfile organized and documented"
+    description: "Group gems by purpose (web, database, testing, development). Add comments for non-obvious gems. Review and remove unused gems regularly. Use bundle-audit for security."
+    category: "dependencies"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ruby"]
+    tags: ["ruby", "dependencies", "gemfile"]

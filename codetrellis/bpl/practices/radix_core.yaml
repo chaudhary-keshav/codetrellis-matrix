@@ -1,0 +1,1265 @@
+# Radix UI Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.41 - Radix UI Framework Support
+# Practice IDs: RADIX001-RADIX050
+# Coverage: Components, Primitives, Theme, Styling, Composition,
+#           Accessibility, Performance, Animation, Forms, Migration
+# Versions: Radix Primitives v0.x-v1.x, Radix Themes v1.x-v4.x
+
+practices:
+  # ============================================================================
+  # RADIX COMPONENTS (RADIX001-RADIX005)
+  # ============================================================================
+
+  - id: RADIX001
+    title: "Use compound component pattern with Root/Trigger/Content"
+    description: "Radix primitives use a compound component pattern. Always compose components with Root, Trigger, Content, and other sub-components rather than passing everything as props. This provides maximum flexibility and accessibility."
+    category: "radix_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "compound-components", "composition"]
+    example: |
+      import * as Dialog from '@radix-ui/react-dialog';
+
+      // ✅ Correct: compound component pattern
+      <Dialog.Root>
+        <Dialog.Trigger>Open</Dialog.Trigger>
+        <Dialog.Portal>
+          <Dialog.Overlay />
+          <Dialog.Content>
+            <Dialog.Title>Title</Dialog.Title>
+            <Dialog.Description>Description</Dialog.Description>
+            <Dialog.Close>Close</Dialog.Close>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+  - id: RADIX002
+    title: "Import primitives as namespaced imports"
+    description: "Import Radix primitives using namespace imports (import * as X) to keep sub-components scoped and avoid naming conflicts. This is the recommended pattern for all Radix primitive packages."
+    category: "radix_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "imports", "namespace"]
+    example: |
+      // ✅ Correct: namespace import
+      import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger />
+        <DropdownMenu.Content>
+          <DropdownMenu.Item />
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+
+      // ❌ Avoid: destructured imports (naming conflicts)
+      import { Root, Trigger, Content } from '@radix-ui/react-dropdown-menu';
+
+  - id: RADIX003
+    title: "Install each primitive as a separate package"
+    description: "Each Radix primitive is published as its own npm package (@radix-ui/react-*). Install only the primitives you need to minimize bundle size. There is no monolithic @radix-ui/react package."
+    category: "radix_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "installation", "packages"]
+    example: |
+      # ✅ Install individual primitives
+      npm install @radix-ui/react-dialog
+      npm install @radix-ui/react-dropdown-menu
+      npm install @radix-ui/react-tooltip
+
+      # ❌ No monolithic package exists
+      # npm install @radix-ui/react  ← does not exist
+
+  - id: RADIX004
+    title: "Use sub-components for overlay patterns"
+    description: "Overlay primitives (Dialog, Popover, Tooltip, etc.) require Portal and Overlay sub-components for proper rendering. Always include Portal for DOM portaling and Overlay for backdrop."
+    category: "radix_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "overlay", "portal"]
+    example: |
+      import * as Popover from '@radix-ui/react-popover';
+
+      <Popover.Root>
+        <Popover.Trigger>Click me</Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content sideOffset={5}>
+            <Popover.Arrow />
+            Content here
+            <Popover.Close>×</Popover.Close>
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+
+  - id: RADIX005
+    title: "Use data attributes for state-based styling"
+    description: "Radix primitives expose data-state, data-side, data-align, and other data attributes. Use CSS attribute selectors instead of className toggling for state-based styling."
+    category: "radix_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "data-attributes", "styling"]
+    example: |
+      /* ✅ Use data attributes for state styling */
+      .AccordionContent[data-state='open'] {
+        animation: slideDown 300ms ease-out;
+      }
+      .AccordionContent[data-state='closed'] {
+        animation: slideUp 300ms ease-out;
+      }
+
+      .TooltipContent[data-side='top'] {
+        animation-name: slideUp;
+      }
+      .TooltipContent[data-side='bottom'] {
+        animation-name: slideDown;
+      }
+
+  # ============================================================================
+  # RADIX PRIMITIVES (RADIX006-RADIX010)
+  # ============================================================================
+
+  - id: RADIX006
+    title: "Use asChild for custom element composition"
+    description: "The asChild prop merges Radix primitive behavior onto your custom element instead of rendering an extra DOM node. Use it to compose primitives with your design system components."
+    category: "radix_primitives"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "asChild", "composition"]
+    example: |
+      import * as Dialog from '@radix-ui/react-dialog';
+      import { Button } from './Button';
+
+      // ✅ asChild merges Dialog.Trigger onto Button
+      <Dialog.Trigger asChild>
+        <Button variant="primary">Open Dialog</Button>
+      </Dialog.Trigger>
+
+      // Without asChild: renders <button><Button/></button> (nested)
+      // With asChild: renders only <Button/> with trigger behavior
+
+  - id: RADIX007
+    title: "Use Slot for polymorphic component patterns"
+    description: "Use @radix-ui/react-slot's Slot component to create your own polymorphic asChild-like components. Slot merges its props and ref onto its immediate child."
+    category: "radix_primitives"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "slot", "polymorphic"]
+    example: |
+      import { Slot } from '@radix-ui/react-slot';
+      import { forwardRef } from 'react';
+
+      const Button = forwardRef(({ asChild, ...props }, ref) => {
+        const Comp = asChild ? Slot : 'button';
+        return <Comp ref={ref} {...props} />;
+      });
+
+      // Usage: renders as <a> instead of <button>
+      <Button asChild>
+        <a href="/home">Home</a>
+      </Button>
+
+  - id: RADIX008
+    title: "Use forceMount for exit animations"
+    description: "When using CSS or JS animations on Radix overlay content, use forceMount to keep the element in the DOM during exit animations. Combine with Presence for proper mount/unmount control."
+    category: "radix_primitives"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "forceMount", "animation"]
+    example: |
+      import * as Dialog from '@radix-ui/react-dialog';
+
+      // ✅ forceMount keeps content in DOM for exit animation
+      <Dialog.Portal forceMount>
+        <Dialog.Overlay forceMount className="DialogOverlay" />
+        <Dialog.Content forceMount className="DialogContent">
+          Content with exit animation
+        </Dialog.Content>
+      </Dialog.Portal>
+
+  - id: RADIX009
+    title: "Use VisuallyHidden for accessible labels"
+    description: "Use @radix-ui/react-visually-hidden to provide screen-reader-only text for components that need accessible labels but should not show visible text."
+    category: "radix_primitives"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "visually-hidden", "accessibility"]
+    example: |
+      import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+      import * as Dialog from '@radix-ui/react-dialog';
+
+      <Dialog.Content>
+        <Dialog.Title>
+          <VisuallyHidden.Root>Edit profile</VisuallyHidden.Root>
+        </Dialog.Title>
+        {/* Form content without visible title */}
+      </Dialog.Content>
+
+  - id: RADIX010
+    title: "Use DirectionProvider for RTL support"
+    description: "Wrap your app with DirectionProvider from @radix-ui/react-direction to support right-to-left layouts. All Radix primitives will automatically adjust their behavior."
+    category: "radix_primitives"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "rtl", "i18n"]
+    example: |
+      import { DirectionProvider } from '@radix-ui/react-direction';
+
+      function App() {
+        return (
+          <DirectionProvider dir="rtl">
+            <YourApp />
+          </DirectionProvider>
+        );
+      }
+
+  # ============================================================================
+  # RADIX THEME (RADIX011-RADIX015)
+  # ============================================================================
+
+  - id: RADIX011
+    title: "Wrap app with Theme provider for Radix Themes"
+    description: "When using @radix-ui/themes, wrap your application root with the Theme component. Import the themes CSS file and configure appearance, accent color, and other theme props."
+    category: "radix_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-themes", "react"]
+    tags: ["radix", "themes", "provider"]
+    example: |
+      import { Theme } from '@radix-ui/themes';
+      import '@radix-ui/themes/styles.css';
+
+      function App() {
+        return (
+          <Theme
+            appearance="light"
+            accentColor="blue"
+            grayColor="slate"
+            radius="medium"
+            scaling="100%"
+          >
+            <YourApp />
+          </Theme>
+        );
+      }
+
+  - id: RADIX012
+    title: "Use nested Theme for section-level theming"
+    description: "Use nested Theme components to apply different theme settings to sections of your app. Each nested Theme inherits parent settings but can override appearance, accent color, radius, etc."
+    category: "radix_theme"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-themes", "react"]
+    tags: ["radix", "themes", "nested"]
+    example: |
+      import { Theme } from '@radix-ui/themes';
+
+      <Theme appearance="light" accentColor="blue">
+        <main>
+          <Theme accentColor="red" asChild>
+            <section>
+              {/* This section uses red accent */}
+            </section>
+          </Theme>
+        </main>
+      </Theme>
+
+  - id: RADIX013
+    title: "Use Radix Colors for consistent color scales"
+    description: "Use @radix-ui/colors for a comprehensive color system with 28 scales, each with 12 steps designed for specific UI purposes (backgrounds, borders, text, etc.)."
+    category: "radix_theme"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "colors", "design-system"]
+    example: |
+      import { blue, blueDark, blueA } from '@radix-ui/colors';
+
+      // Each scale has 12 steps for specific purposes:
+      // 1-2: App/subtle backgrounds
+      // 3-5: Component backgrounds (normal, hover, active)
+      // 6-8: Borders (subtle, normal, strong)
+      // 9-10: Solid colors (normal, hover)
+      // 11-12: Text (low-contrast, high-contrast)
+
+  - id: RADIX014
+    title: "Use ThemePanel for interactive theme configuration"
+    description: "During development, add ThemePanel from @radix-ui/themes to interactively configure theme settings. Remove it before production deployment."
+    category: "radix_theme"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-themes", "react"]
+    tags: ["radix", "themes", "development"]
+    example: |
+      import { Theme, ThemePanel } from '@radix-ui/themes';
+
+      function App() {
+        return (
+          <Theme>
+            <YourApp />
+            {process.env.NODE_ENV === 'development' && <ThemePanel />}
+          </Theme>
+        );
+      }
+
+  - id: RADIX015
+    title: "Support dark mode with appearance prop"
+    description: "Use the appearance prop on Theme to control light/dark mode. Use 'inherit' to follow system preference, or implement a toggle with 'light'/'dark' values."
+    category: "radix_theme"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-themes", "react"]
+    tags: ["radix", "themes", "dark-mode"]
+    example: |
+      import { Theme } from '@radix-ui/themes';
+      import { useState } from 'react';
+
+      function App() {
+        const [appearance, setAppearance] = useState('inherit');
+        return (
+          <Theme appearance={appearance}>
+            <button onClick={() =>
+              setAppearance(a => a === 'light' ? 'dark' : 'light')
+            }>
+              Toggle theme
+            </button>
+            <YourApp />
+          </Theme>
+        );
+      }
+
+  # ============================================================================
+  # RADIX STYLING (RADIX016-RADIX020)
+  # ============================================================================
+
+  - id: RADIX016
+    title: "Use CSS attribute selectors for Radix data attributes"
+    description: "Style Radix primitives using CSS attribute selectors targeting data-state, data-side, data-align, and other data attributes exposed by primitives."
+    category: "radix_styling"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "css", "data-attributes"]
+    example: |
+      /* Accordion animation based on data-state */
+      .AccordionContent[data-state='open'] {
+        animation: slideDown 300ms cubic-bezier(0.87, 0, 0.13, 1);
+      }
+      .AccordionContent[data-state='closed'] {
+        animation: slideUp 300ms cubic-bezier(0.87, 0, 0.13, 1);
+      }
+
+      /* Tooltip positioning based on data-side */
+      .TooltipContent[data-side='top'] { animation-name: slideDown; }
+      .TooltipContent[data-side='right'] { animation-name: slideLeft; }
+      .TooltipContent[data-side='bottom'] { animation-name: slideUp; }
+      .TooltipContent[data-side='left'] { animation-name: slideRight; }
+
+  - id: RADIX017
+    title: "Use Stitches or vanilla-extract for type-safe styling"
+    description: "Radix UI pairs well with Stitches (co-created by the Radix team), vanilla-extract, or CSS Modules for type-safe, scoped styling. Avoid global CSS when possible."
+    category: "radix_styling"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "stitches", "vanilla-extract"]
+    example: |
+      import { styled } from '@stitches/react';
+      import * as Dialog from '@radix-ui/react-dialog';
+
+      const StyledOverlay = styled(Dialog.Overlay, {
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        position: 'fixed',
+        inset: 0,
+      });
+
+      const StyledContent = styled(Dialog.Content, {
+        backgroundColor: 'white',
+        borderRadius: 6,
+        padding: 25,
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      });
+
+  - id: RADIX018
+    title: "Use Tailwind with data attribute variants"
+    description: "When using Tailwind CSS with Radix, use the data-* variant plugin or arbitrary variants to style based on Radix data attributes."
+    category: "radix_styling"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react", "tailwind"]
+    tags: ["radix", "tailwind", "data-variants"]
+    example: |
+      // tailwind.config.js - enable data attribute variants
+      module.exports = {
+        plugins: [require('tailwindcss-radix')],
+      }
+
+      // Component usage with Tailwind data variants
+      <Accordion.Content
+        className="data-[state=open]:animate-slideDown
+                   data-[state=closed]:animate-slideUp
+                   overflow-hidden"
+      />
+
+      // Or use arbitrary variants
+      <Select.Content
+        className="[&[data-side=top]]:animate-slideDown
+                   [&[data-side=bottom]]:animate-slideUp"
+      />
+
+  - id: RADIX019
+    title: "Use CSS custom properties for theming"
+    description: "Leverage CSS custom properties (variables) for theming Radix components. Define properties at :root and override them in .dark or nested themes."
+    category: "radix_styling"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "css-variables", "theming"]
+    example: |
+      :root {
+        --radix-dialog-overlay-bg: rgba(0, 0, 0, 0.5);
+        --radix-tooltip-bg: #1a1a1a;
+        --radix-tooltip-color: #ffffff;
+        --radix-focus-ring: 0 0 0 2px var(--accent-color);
+      }
+
+      .dark {
+        --radix-dialog-overlay-bg: rgba(0, 0, 0, 0.75);
+        --radix-tooltip-bg: #333333;
+      }
+
+      .DialogOverlay {
+        background-color: var(--radix-dialog-overlay-bg);
+      }
+
+  - id: RADIX020
+    title: "Style disabled state with data-disabled attribute"
+    description: "Use the data-disabled attribute exposed by Radix form primitives to style disabled states, rather than the HTML disabled attribute selector."
+    category: "radix_styling"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "disabled", "styling"]
+    example: |
+      /* ✅ Use data-disabled for Radix components */
+      .Checkbox[data-disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .Slider[data-disabled] .SliderThumb {
+        background-color: var(--gray-6);
+      }
+
+  # ============================================================================
+  # RADIX COMPOSITION (RADIX021-RADIX025)
+  # ============================================================================
+
+  - id: RADIX021
+    title: "Use controlled components for complex state management"
+    description: "Use controlled patterns (open/onOpenChange, value/onValueChange) when you need to manage state externally. Use uncontrolled patterns (defaultOpen, defaultValue) for simpler cases."
+    category: "radix_composition"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "controlled", "state"]
+    example: |
+      import * as Dialog from '@radix-ui/react-dialog';
+      import { useState } from 'react';
+
+      // ✅ Controlled: manage open state externally
+      function ControlledDialog() {
+        const [open, setOpen] = useState(false);
+        return (
+          <Dialog.Root open={open} onOpenChange={setOpen}>
+            <Dialog.Trigger>Open</Dialog.Trigger>
+            <Dialog.Content>
+              <button onClick={() => setOpen(false)}>
+                Custom close
+              </button>
+            </Dialog.Content>
+          </Dialog.Root>
+        );
+      }
+
+      // ✅ Uncontrolled: Radix manages state internally
+      <Dialog.Root defaultOpen={false}>
+        <Dialog.Trigger>Open</Dialog.Trigger>
+        <Dialog.Content>...</Dialog.Content>
+      </Dialog.Root>
+
+  - id: RADIX022
+    title: "Use Portal for overlay components"
+    description: "Always wrap overlay content in a Portal component to render it outside the DOM hierarchy. This prevents z-index and overflow issues."
+    category: "radix_composition"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "portal", "overlay"]
+    example: |
+      import * as Tooltip from '@radix-ui/react-tooltip';
+
+      <Tooltip.Provider>
+        <Tooltip.Root>
+          <Tooltip.Trigger>Hover me</Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content sideOffset={5}>
+              Tooltip content
+              <Tooltip.Arrow />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </Tooltip.Provider>
+
+  - id: RADIX023
+    title: "Use Tooltip.Provider at app root"
+    description: "Wrap your application with Tooltip.Provider to share delay configuration across all tooltips. Set delayDuration and skipDelayDuration at the provider level."
+    category: "radix_composition"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "tooltip", "provider"]
+    example: |
+      import * as Tooltip from '@radix-ui/react-tooltip';
+
+      // ✅ Set at app root
+      <Tooltip.Provider delayDuration={400} skipDelayDuration={300}>
+        <App />
+      </Tooltip.Provider>
+
+  - id: RADIX024
+    title: "Compose multiple primitives for complex UIs"
+    description: "Radix primitives are designed to compose together. Combine Dialog with Form, DropdownMenu with AlertDialog, or Tabs with other content primitives."
+    category: "radix_composition"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "composition", "complex-ui"]
+    example: |
+      import * as AlertDialog from '@radix-ui/react-alert-dialog';
+      import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+
+      // Compose dropdown with alert dialog for destructive actions
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger>Actions</DropdownMenu.Trigger>
+        <DropdownMenu.Content>
+          <DropdownMenu.Item>Edit</DropdownMenu.Item>
+          <AlertDialog.Root>
+            <AlertDialog.Trigger asChild>
+              <DropdownMenu.Item onSelect={e => e.preventDefault()}>
+                Delete
+              </DropdownMenu.Item>
+            </AlertDialog.Trigger>
+            <AlertDialog.Portal>
+              <AlertDialog.Content>
+                <AlertDialog.Title>Are you sure?</AlertDialog.Title>
+                <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+                <AlertDialog.Action>Delete</AlertDialog.Action>
+              </AlertDialog.Content>
+            </AlertDialog.Portal>
+          </AlertDialog.Root>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+
+  - id: RADIX025
+    title: "Use forwardRef when wrapping Radix primitives"
+    description: "When creating wrapper components around Radix primitives, always use React.forwardRef to pass refs through. Radix relies on refs for focus management and positioning."
+    category: "radix_composition"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "forwardRef", "wrapper"]
+    example: |
+      import * as Select from '@radix-ui/react-select';
+      import { forwardRef } from 'react';
+
+      const SelectItem = forwardRef(({ children, ...props }, ref) => (
+        <Select.Item ref={ref} {...props}>
+          <Select.ItemText>{children}</Select.ItemText>
+          <Select.ItemIndicator>✓</Select.ItemIndicator>
+        </Select.Item>
+      ));
+
+  # ============================================================================
+  # RADIX ACCESSIBILITY (RADIX026-RADIX030)
+  # ============================================================================
+
+  - id: RADIX026
+    title: "Always provide Dialog.Title and Dialog.Description"
+    description: "Radix Dialog requires Title and Description for ARIA compliance. If you don't want visible text, wrap it in VisuallyHidden. Omitting these triggers console warnings."
+    category: "radix_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "accessibility", "aria"]
+    example: |
+      import * as Dialog from '@radix-ui/react-dialog';
+      import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+
+      <Dialog.Content>
+        {/* Visible title */}
+        <Dialog.Title>Edit Profile</Dialog.Title>
+
+        {/* Hidden description for screen readers */}
+        <VisuallyHidden.Root asChild>
+          <Dialog.Description>
+            Make changes to your profile here.
+          </Dialog.Description>
+        </VisuallyHidden.Root>
+
+        {/* Form content */}
+      </Dialog.Content>
+
+  - id: RADIX027
+    title: "Use Label primitive for form controls"
+    description: "Use @radix-ui/react-label instead of raw <label> elements. It provides proper htmlFor association and click-to-focus behavior for Radix form primitives."
+    category: "radix_accessibility"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "label", "forms"]
+    example: |
+      import * as Label from '@radix-ui/react-label';
+      import * as Checkbox from '@radix-ui/react-checkbox';
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Checkbox.Root id="terms">
+          <Checkbox.Indicator>✓</Checkbox.Indicator>
+        </Checkbox.Root>
+        <Label.Root htmlFor="terms">
+          Accept terms and conditions
+        </Label.Root>
+      </div>
+
+  - id: RADIX028
+    title: "Keyboard navigation is built-in — don't override it"
+    description: "Radix primitives include comprehensive keyboard navigation (arrow keys, Home/End, typeahead, Escape). Don't add custom keyboard handlers that conflict with built-in behavior."
+    category: "radix_accessibility"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "keyboard", "navigation"]
+    example: |
+      // ✅ Built-in keyboard navigation (no custom handlers needed):
+      // - DropdownMenu: Arrow keys, Enter/Space to select, Escape to close
+      // - Tabs: Arrow keys to switch, Home/End for first/last
+      // - Accordion: Arrow keys, Home/End, Enter/Space to toggle
+      // - Select: Arrow keys, typeahead search, Enter to select
+      // - NavigationMenu: Arrow keys, Home/End, Escape
+
+      // ❌ Don't add conflicting keyboard handlers
+      <DropdownMenu.Item
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') { /* conflicts with built-in */ }
+        }}
+      />
+
+  - id: RADIX029
+    title: "Use FocusScope for complex focus management"
+    description: "Use @radix-ui/react-focus-scope to trap focus within a component or manage focus restoration. This is useful for custom modal-like components."
+    category: "radix_accessibility"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "focus", "trap"]
+    example: |
+      import * as FocusScope from '@radix-ui/react-focus-scope';
+
+      <FocusScope.Root
+        trapped
+        onMountAutoFocus={(e) => e.preventDefault()}
+        onUnmountAutoFocus={(e) => e.preventDefault()}
+      >
+        <input placeholder="First field (focused on mount)" />
+        <input placeholder="Second field" />
+        <button>Action</button>
+      </FocusScope.Root>
+
+  - id: RADIX030
+    title: "Use aria-label for icon-only triggers"
+    description: "When using icon-only buttons as triggers for Radix primitives, always provide aria-label for screen reader accessibility."
+    category: "radix_accessibility"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "aria-label", "icons"]
+    example: |
+      import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+      import { DotsHorizontalIcon } from '@radix-ui/react-icons';
+
+      <DropdownMenu.Trigger aria-label="More options">
+        <DotsHorizontalIcon />
+      </DropdownMenu.Trigger>
+
+  # ============================================================================
+  # RADIX PERFORMANCE (RADIX031-RADIX035)
+  # ============================================================================
+
+  - id: RADIX031
+    title: "Lazy load heavy overlay components"
+    description: "Use React.lazy and Suspense to code-split heavy Radix overlay components (Dialog, Sheet, etc.) that are not needed on initial render."
+    category: "radix_performance"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "code-splitting", "lazy"]
+    example: |
+      import { lazy, Suspense, useState } from 'react';
+      import * as Dialog from '@radix-ui/react-dialog';
+
+      const HeavyDialogContent = lazy(() =>
+        import('./HeavyDialogContent')
+      );
+
+      function MyDialog() {
+        const [open, setOpen] = useState(false);
+        return (
+          <Dialog.Root open={open} onOpenChange={setOpen}>
+            <Dialog.Trigger>Open</Dialog.Trigger>
+            <Dialog.Portal>
+              <Dialog.Overlay />
+              <Dialog.Content>
+                <Suspense fallback={<div>Loading...</div>}>
+                  <HeavyDialogContent />
+                </Suspense>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
+        );
+      }
+
+  - id: RADIX032
+    title: "Use portal container to optimize rendering"
+    description: "Specify a container prop on Portal to render overlay content into a specific DOM node instead of document.body. This can improve performance in complex layouts."
+    category: "radix_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "portal", "container"]
+    example: |
+      import * as Dialog from '@radix-ui/react-dialog';
+      import { useRef } from 'react';
+
+      function App() {
+        const containerRef = useRef(null);
+        return (
+          <div>
+            <div ref={containerRef} id="portal-container" />
+            <Dialog.Root>
+              <Dialog.Trigger>Open</Dialog.Trigger>
+              <Dialog.Portal container={containerRef.current}>
+                <Dialog.Content>Portal into specific container</Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+          </div>
+        );
+      }
+
+  - id: RADIX033
+    title: "Avoid unnecessary re-renders with controlled state"
+    description: "When using controlled Radix components, memoize callback handlers and avoid creating new object references on every render to prevent unnecessary re-renders."
+    category: "radix_performance"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "memoization", "performance"]
+    example: |
+      import * as Select from '@radix-ui/react-select';
+      import { useState, useCallback } from 'react';
+
+      function MySelect() {
+        const [value, setValue] = useState('');
+
+        // ✅ Memoize the handler
+        const handleValueChange = useCallback((newValue) => {
+          setValue(newValue);
+        }, []);
+
+        return (
+          <Select.Root value={value} onValueChange={handleValueChange}>
+            <Select.Trigger>
+              <Select.Value placeholder="Select..." />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="a">Option A</Select.Item>
+              <Select.Item value="b">Option B</Select.Item>
+            </Select.Content>
+          </Select.Root>
+        );
+      }
+
+  - id: RADIX034
+    title: "Use ScrollArea for performant scrollable containers"
+    description: "Use @radix-ui/react-scroll-area instead of CSS overflow for custom scrollable containers. It provides cross-browser custom scrollbars with native scroll behavior."
+    category: "radix_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "scroll-area", "scrollbar"]
+    example: |
+      import * as ScrollArea from '@radix-ui/react-scroll-area';
+
+      <ScrollArea.Root className="ScrollAreaRoot">
+        <ScrollArea.Viewport className="ScrollAreaViewport">
+          {/* Long content */}
+        </ScrollArea.Viewport>
+        <ScrollArea.Scrollbar orientation="vertical">
+          <ScrollArea.Thumb />
+        </ScrollArea.Scrollbar>
+        <ScrollArea.Scrollbar orientation="horizontal">
+          <ScrollArea.Thumb />
+        </ScrollArea.Scrollbar>
+        <ScrollArea.Corner />
+      </ScrollArea.Root>
+
+  - id: RADIX035
+    title: "Tree-shake unused primitives"
+    description: "Each Radix primitive is a separate package. Only install and import the primitives you use. Unused packages are not included in the bundle."
+    category: "radix_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "tree-shaking", "bundle"]
+    example: |
+      // ✅ Only import what you use
+      import * as Dialog from '@radix-ui/react-dialog';
+      import * as Tooltip from '@radix-ui/react-tooltip';
+
+      // ❌ Don't import primitives you don't use
+      // import * as ContextMenu from '@radix-ui/react-context-menu';
+      // import * as Menubar from '@radix-ui/react-menubar';
+
+      // Check bundle: npx source-map-explorer build/static/js/*.js
+
+  # ============================================================================
+  # RADIX ANIMATION (RADIX036-RADIX040)
+  # ============================================================================
+
+  - id: RADIX036
+    title: "Use CSS keyframes with data-state for entry/exit animations"
+    description: "Define CSS @keyframes and apply them based on data-state='open' and data-state='closed' for smooth enter/exit animations."
+    category: "radix_animation"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "animation", "css-keyframes"]
+    example: |
+      @keyframes overlayShow {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes contentShow {
+        from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      }
+
+      .DialogOverlay[data-state='open'] {
+        animation: overlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .DialogContent[data-state='open'] {
+        animation: contentShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+  - id: RADIX037
+    title: "Use framer-motion with forceMount for JS animations"
+    description: "Combine forceMount with framer-motion's AnimatePresence for JavaScript-driven animations. This gives you full control over mount/unmount animations."
+    category: "radix_animation"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react", "framer-motion"]
+    tags: ["radix", "framer-motion", "animation"]
+    example: |
+      import * as Dialog from '@radix-ui/react-dialog';
+      import { AnimatePresence, motion } from 'framer-motion';
+
+      function AnimatedDialog({ open, onOpenChange }) {
+        return (
+          <Dialog.Root open={open} onOpenChange={onOpenChange}>
+            <Dialog.Trigger>Open</Dialog.Trigger>
+            <AnimatePresence>
+              {open && (
+                <Dialog.Portal forceMount>
+                  <Dialog.Overlay forceMount asChild>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    />
+                  </Dialog.Overlay>
+                  <Dialog.Content forceMount asChild>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                    >
+                      Content
+                    </motion.div>
+                  </Dialog.Content>
+                </Dialog.Portal>
+              )}
+            </AnimatePresence>
+          </Dialog.Root>
+        );
+      }
+
+  - id: RADIX038
+    title: "Animate Accordion content with CSS height transition"
+    description: "Use the Radix CSS custom properties --radix-accordion-content-height and --radix-accordion-content-width in CSS animations for smooth height transitions."
+    category: "radix_animation"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "accordion", "height-animation"]
+    example: |
+      @keyframes slideDown {
+        from { height: 0; }
+        to { height: var(--radix-accordion-content-height); }
+      }
+
+      @keyframes slideUp {
+        from { height: var(--radix-accordion-content-height); }
+        to { height: 0; }
+      }
+
+      .AccordionContent[data-state='open'] {
+        animation: slideDown 300ms cubic-bezier(0.87, 0, 0.13, 1);
+      }
+
+      .AccordionContent[data-state='closed'] {
+        animation: slideUp 300ms cubic-bezier(0.87, 0, 0.13, 1);
+      }
+
+  - id: RADIX039
+    title: "Use side-aware animations for positioned content"
+    description: "Use data-side attribute to create directional animations for Tooltip, Popover, and other positioned content. Content slides in from the side it's anchored to."
+    category: "radix_animation"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "animation", "positioning"]
+    example: |
+      @keyframes slideUpAndFade {
+        from { opacity: 0; transform: translateY(2px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes slideDownAndFade {
+        from { opacity: 0; transform: translateY(-2px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .PopoverContent[data-side='top'] {
+        animation-name: slideDownAndFade;
+      }
+      .PopoverContent[data-side='bottom'] {
+        animation-name: slideUpAndFade;
+      }
+
+  - id: RADIX040
+    title: "Use CSS transitions with data-state for simple animations"
+    description: "For simple animations, CSS transitions with data-state selectors are simpler than @keyframes. Use transition on the base class and change values based on data-state."
+    category: "radix_animation"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "animation", "css-transitions"]
+    example: |
+      .CollapsibleContent {
+        overflow: hidden;
+        transition: height 300ms ease;
+      }
+
+      .CollapsibleContent[data-state='closed'] {
+        height: 0;
+      }
+
+      .CollapsibleContent[data-state='open'] {
+        height: var(--radix-collapsible-content-height);
+      }
+
+      .SwitchThumb {
+        transition: transform 100ms;
+        transform: translateX(2px);
+      }
+      .SwitchThumb[data-state='checked'] {
+        transform: translateX(19px);
+      }
+
+  # ============================================================================
+  # RADIX FORMS (RADIX041-RADIX045)
+  # ============================================================================
+
+  - id: RADIX041
+    title: "Use Radix Form primitive for accessible forms"
+    description: "Use @radix-ui/react-form for form validation with built-in accessibility. It provides native-like validation with custom messages and server-side validation support."
+    category: "radix_forms"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "form", "validation"]
+    example: |
+      import * as Form from '@radix-ui/react-form';
+
+      <Form.Root onSubmit={handleSubmit}>
+        <Form.Field name="email">
+          <Form.Label>Email</Form.Label>
+          <Form.Control asChild>
+            <input type="email" required />
+          </Form.Control>
+          <Form.Message match="valueMissing">
+            Please enter your email
+          </Form.Message>
+          <Form.Message match="typeMismatch">
+            Please provide a valid email
+          </Form.Message>
+        </Form.Field>
+        <Form.Submit>Submit</Form.Submit>
+      </Form.Root>
+
+  - id: RADIX042
+    title: "Use Checkbox with proper indicators"
+    description: "Always include Checkbox.Indicator inside Checkbox.Root. Use the data-state attribute for styling checked, unchecked, and indeterminate states."
+    category: "radix_forms"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "checkbox", "indicator"]
+    example: |
+      import * as Checkbox from '@radix-ui/react-checkbox';
+      import { CheckIcon } from '@radix-ui/react-icons';
+
+      <Checkbox.Root defaultChecked id="terms">
+        <Checkbox.Indicator>
+          <CheckIcon />
+        </Checkbox.Indicator>
+      </Checkbox.Root>
+
+      /* CSS for all three states */
+      .CheckboxRoot[data-state='checked'] { background: blue; }
+      .CheckboxRoot[data-state='unchecked'] { background: white; }
+      .CheckboxRoot[data-state='indeterminate'] { background: gray; }
+
+  - id: RADIX043
+    title: "Use RadioGroup for mutually exclusive options"
+    description: "Use RadioGroup.Root with RadioGroup.Item for radio button groups. The value/onValueChange pattern provides controlled behavior."
+    category: "radix_forms"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "radio-group", "forms"]
+    example: |
+      import * as RadioGroup from '@radix-ui/react-radio-group';
+
+      <RadioGroup.Root defaultValue="option1" aria-label="View">
+        <RadioGroup.Item value="option1" id="r1">
+          <RadioGroup.Indicator />
+        </RadioGroup.Item>
+        <label htmlFor="r1">Option 1</label>
+
+        <RadioGroup.Item value="option2" id="r2">
+          <RadioGroup.Indicator />
+        </RadioGroup.Item>
+        <label htmlFor="r2">Option 2</label>
+      </RadioGroup.Root>
+
+  - id: RADIX044
+    title: "Use Select with proper viewport and scroll buttons"
+    description: "Radix Select provides a native-like select experience. Include Viewport for the scrollable area and optional ScrollUpButton/ScrollDownButton."
+    category: "radix_forms"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "select", "viewport"]
+    example: |
+      import * as Select from '@radix-ui/react-select';
+
+      <Select.Root>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a fruit" />
+          <Select.Icon />
+        </Select.Trigger>
+        <Select.Portal>
+          <Select.Content>
+            <Select.ScrollUpButton>↑</Select.ScrollUpButton>
+            <Select.Viewport>
+              <Select.Group>
+                <Select.Label>Fruits</Select.Label>
+                <Select.Item value="apple">
+                  <Select.ItemText>Apple</Select.ItemText>
+                  <Select.ItemIndicator>✓</Select.ItemIndicator>
+                </Select.Item>
+              </Select.Group>
+            </Select.Viewport>
+            <Select.ScrollDownButton>↓</Select.ScrollDownButton>
+          </Select.Content>
+        </Select.Portal>
+      </Select.Root>
+
+  - id: RADIX045
+    title: "Use Slider with proper orientation and step"
+    description: "Configure Slider with min, max, step, and orientation props. Use multiple thumbs for range selection. Style the track and thumb with data attributes."
+    category: "radix_forms"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "slider", "range"]
+    example: |
+      import * as Slider from '@radix-ui/react-slider';
+
+      // Single value slider
+      <Slider.Root defaultValue={[50]} max={100} step={1}>
+        <Slider.Track>
+          <Slider.Range />
+        </Slider.Track>
+        <Slider.Thumb aria-label="Volume" />
+      </Slider.Root>
+
+      // Range slider (two thumbs)
+      <Slider.Root defaultValue={[25, 75]} max={100} step={5}>
+        <Slider.Track>
+          <Slider.Range />
+        </Slider.Track>
+        <Slider.Thumb aria-label="Min price" />
+        <Slider.Thumb aria-label="Max price" />
+      </Slider.Root>
+
+  # ============================================================================
+  # RADIX MIGRATION (RADIX046-RADIX050)
+  # ============================================================================
+
+  - id: RADIX046
+    title: "Migrate from as prop to asChild (v0 to v1)"
+    description: "Radix v1 replaced the polymorphic `as` prop with `asChild` for cleaner component composition. Update all `as={Component}` usages to use the asChild pattern."
+    category: "radix_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "migration", "v0-to-v1"]
+    example: |
+      // ❌ Old v0 pattern (deprecated)
+      <Dialog.Trigger as={CustomButton}>
+        Open
+      </Dialog.Trigger>
+
+      // ✅ New v1 pattern (asChild)
+      <Dialog.Trigger asChild>
+        <CustomButton>Open</CustomButton>
+      </Dialog.Trigger>
+
+  - id: RADIX047
+    title: "Migrate to Radix Themes from custom styling"
+    description: "Consider migrating to @radix-ui/themes for a pre-styled component library built on Radix primitives. It provides layout primitives, typography, and all common UI components with built-in theming."
+    category: "radix_migration"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-ui", "react"]
+    tags: ["radix", "migration", "themes"]
+    example: |
+      // Before: custom-styled primitives
+      import * as DialogPrimitive from '@radix-ui/react-dialog';
+      import { styled } from '@stitches/react';
+
+      const StyledContent = styled(DialogPrimitive.Content, { /* ... */ });
+
+      // After: Radix Themes (pre-styled)
+      import { Dialog, Button } from '@radix-ui/themes';
+
+      <Dialog.Root>
+        <Dialog.Trigger>
+          <Button>Open</Button>
+        </Dialog.Trigger>
+        <Dialog.Content>
+          {/* Pre-styled with theme system */}
+        </Dialog.Content>
+      </Dialog.Root>
+
+  - id: RADIX048
+    title: "Migrate from Stitches to Tailwind or vanilla-extract"
+    description: "Stitches is no longer actively maintained. Consider migrating to Tailwind CSS, vanilla-extract, or CSS Modules for styling Radix components."
+    category: "radix_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["radix-ui", "stitches", "react"]
+    tags: ["radix", "migration", "stitches"]
+    example: |
+      // Before: Stitches (unmaintained)
+      import { styled } from '@stitches/react';
+      import * as Dialog from '@radix-ui/react-dialog';
+
+      const Overlay = styled(Dialog.Overlay, {
+        backgroundColor: 'rgba(0,0,0,0.5)',
+      });
+
+      // After: Tailwind CSS
+      <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+
+      // After: vanilla-extract
+      import { style } from '@vanilla-extract/css';
+      const overlay = style({ backgroundColor: 'rgba(0,0,0,0.5)' });
+      <Dialog.Overlay className={overlay} />
+
+  - id: RADIX049
+    title: "Update to Themes v3+ for layout primitives"
+    description: "Radix Themes v3+ added layout primitives (Box, Flex, Grid, Container, Section). Use these instead of custom styled layout components for consistency."
+    category: "radix_migration"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-themes", "react"]
+    tags: ["radix", "migration", "themes-v3"]
+    example: |
+      import { Box, Flex, Grid, Container, Section } from '@radix-ui/themes';
+
+      // Layout primitives with theme-aware props
+      <Container size="2">
+        <Section size="1">
+          <Flex direction="column" gap="3">
+            <Box p="4">
+              <Grid columns="3" gap="3">
+                {items.map(item => (
+                  <Box key={item.id}>{item.name}</Box>
+                ))}
+              </Grid>
+            </Box>
+          </Flex>
+        </Section>
+      </Container>
+
+  - id: RADIX050
+    title: "Use responsive props in Themes v2+"
+    description: "Radix Themes v2+ supports responsive props as objects with breakpoint keys. Use this for responsive layouts instead of CSS media queries."
+    category: "radix_migration"
+    severity: "medium"
+    applicability:
+      frameworks: ["radix-themes", "react"]
+    tags: ["radix", "responsive", "themes-v2"]
+    example: |
+      import { Flex, Text, Button } from '@radix-ui/themes';
+
+      // Responsive props with breakpoint objects
+      <Flex
+        direction={{ initial: 'column', sm: 'row' }}
+        gap={{ initial: '2', md: '4' }}
+        align={{ initial: 'stretch', sm: 'center' }}
+      >
+        <Text size={{ initial: '2', md: '4' }}>
+          Responsive text
+        </Text>
+        <Button
+          size={{ initial: '1', md: '2' }}
+          variant={{ initial: 'soft', lg: 'solid' }}
+        >
+          Responsive button
+        </Button>
+      </Flex>

@@ -1,0 +1,875 @@
+# SWR Data Fetching Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.58 - SWR Framework Support
+# Practice IDs: SWR001-SWR050
+# Coverage: Hooks, Mutations, Cache, Middleware, SSR/Next.js, TypeScript,
+#           Performance, Testing, Patterns, Migration, Integrations
+# Versions: swr v0.x, v1.x, v2.x (by Vercel)
+# Library: https://swr.vercel.app/
+
+practices:
+  # ============================================================================
+  # SWR HOOKS (SWR001-SWR010) - useSWR hook best practices
+  # ============================================================================
+
+  - id: SWR001
+    title: "Use stable, serializable keys for proper cache identity"
+    description: "SWR uses the key argument as cache identity. Always use stable, serializable keys (strings or arrays). Avoid object references as keys since SWR serializes keys for deduplication. Use array keys for parameterized queries: useSWR(['/api/user', id], fetcher)."
+    category: "swr_hooks"
+    severity: "critical"
+    applicability:
+      frameworks: ["swr", "react"]
+    tags: ["swr", "key", "cache", "identity"]
+    example: |
+      // ✅ Stable string/array keys
+      useSWR('/api/user', fetcher);
+      useSWR(['/api/user', id], ([url, id]) => fetch(`${url}/${id}`));
+
+      // ❌ Unstable object references
+      useSWR({ url: '/api/user', id }, fetcher);
+
+  - id: SWR002
+    title: "Use conditional fetching with null/false/function keys"
+    description: "Pass null, false, or a function that throws as the key to conditionally skip fetching. SWR will not start the request when the key is falsy. Use this for dependent fetching or auth-gated queries."
+    category: "swr_hooks"
+    severity: "critical"
+    applicability:
+      frameworks: ["swr", "react"]
+    tags: ["swr", "conditional", "dependent", "fetching"]
+    example: |
+      // ✅ Conditional fetching
+      const { data } = useSWR(isReady ? '/api/data' : null, fetcher);
+      const { data: user } = useSWR('/api/user', fetcher);
+      const { data: projects } = useSWR(() => '/api/projects?uid=' + user.id, fetcher);
+
+  - id: SWR003
+    title: "Define a global fetcher in SWRConfig to avoid repetition"
+    description: "Instead of passing the fetcher function to every useSWR call, define it once in <SWRConfig> at the app root. This reduces boilerplate and ensures consistent error handling across all SWR hooks."
+    category: "swr_hooks"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "react"]
+    tags: ["swr", "fetcher", "config", "global"]
+    example: |
+      // ✅ Global fetcher
+      <SWRConfig value={{ fetcher: (url) => fetch(url).then(r => r.json()) }}>
+        <App />
+      </SWRConfig>
+
+      // In components - no fetcher needed
+      const { data } = useSWR('/api/user');
+
+  - id: SWR004
+    title: "Use useSWRImmutable for data that never changes"
+    description: "For data that is immutable (e.g., feature flags, static configs), use useSWRImmutable which disables all automatic revalidation (revalidateOnFocus, revalidateOnReconnect, revalidateIfStale are all false)."
+    category: "swr_hooks"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "immutable", "revalidation", "performance"]
+    example: |
+      import useSWRImmutable from 'swr/immutable';
+      const { data } = useSWRImmutable('/api/feature-flags', fetcher);
+
+  - id: SWR005
+    title: "Handle loading and error states explicitly"
+    description: "Always handle isLoading (no data yet, no error), isValidating (fetching in background), and error states from useSWR. Use isLoading for initial loading spinners and isValidating for background refresh indicators."
+    category: "swr_hooks"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "react"]
+    tags: ["swr", "loading", "error", "states"]
+    example: |
+      const { data, error, isLoading, isValidating } = useSWR('/api/user', fetcher);
+      if (isLoading) return <Spinner />;
+      if (error) return <ErrorMessage error={error} />;
+      return <div>{isValidating && <RefreshIndicator />}{data.name}</div>;
+
+  - id: SWR006
+    title: "Use keepPreviousData to avoid layout shifts during key changes (v2)"
+    description: "In SWR v2, enable keepPreviousData to preserve the previous data while fetching new data for a different key. This prevents layout shifts during pagination, tab switching, and search-as-you-type patterns."
+    category: "swr_hooks"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "v2", "keepPreviousData", "ux"]
+    example: |
+      const { data, isValidating } = useSWR(
+        `/api/users?page=${page}`,
+        fetcher,
+        { keepPreviousData: true }
+      );
+
+  - id: SWR007
+    title: "Use fallbackData for instant display with stale-while-revalidate"
+    description: "Provide fallbackData in the SWR config to immediately display data while revalidation happens in the background. Useful for server-rendered pages (SSG/SSR) where initial data is available."
+    category: "swr_hooks"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "fallback", "ssr", "performance"]
+    example: |
+      // Per-hook fallback
+      useSWR('/api/user', fetcher, { fallbackData: serverData });
+
+      // Global fallback via SWRConfig
+      <SWRConfig value={{ fallback: { '/api/user': serverData } }}>
+        <App />
+      </SWRConfig>
+
+  - id: SWR008
+    title: "Use Suspense mode for declarative data loading"
+    description: "Enable suspense: true in SWR config to use React Suspense boundaries for loading states. This simplifies component code by removing manual loading checks. Best with React 18+ concurrent features."
+    category: "swr_hooks"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "react"]
+    tags: ["swr", "suspense", "react18", "loading"]
+    example: |
+      // Enable suspense
+      const { data } = useSWR('/api/user', fetcher, { suspense: true });
+
+      // In parent
+      <Suspense fallback={<Loading />}>
+        <UserProfile />
+      </Suspense>
+
+  - id: SWR009
+    title: "Configure deduplication to prevent redundant requests"
+    description: "SWR automatically deduplicates requests with the same key within the dedupingInterval (default 2s). Adjust this value based on your data freshness needs. Multiple components using the same key will share a single request."
+    category: "swr_hooks"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "deduplication", "performance", "network"]
+    example: |
+      // Both components share one request
+      function Header() { const { data } = useSWR('/api/user', fetcher); }
+      function Sidebar() { const { data } = useSWR('/api/user', fetcher); }
+
+      // Customize deduplication window
+      useSWR('/api/data', fetcher, { dedupingInterval: 5000 });
+
+  - id: SWR010
+    title: "Use refreshInterval for polling and real-time-like data"
+    description: "Set refreshInterval to automatically refetch data at a specified interval. SWR is smart about this - it only polls when the tab is focused. Combine with refreshWhenHidden/refreshWhenOffline for more control."
+    category: "swr_hooks"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "polling", "realtime", "interval"]
+    example: |
+      const { data } = useSWR('/api/prices', fetcher, {
+        refreshInterval: 1000,
+        refreshWhenHidden: false,
+        refreshWhenOffline: false,
+      });
+
+  # ============================================================================
+  # SWR MUTATIONS (SWR011-SWR020) - Mutation and optimistic update best practices
+  # ============================================================================
+
+  - id: SWR011
+    title: "Use useSWRMutation for remote mutations (v2)"
+    description: "In SWR v2, use useSWRMutation from 'swr/mutation' for POST/PUT/DELETE operations. Unlike useSWR, it doesn't automatically start fetching - the trigger function must be called explicitly."
+    category: "swr_mutations"
+    severity: "critical"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "v2", "mutation", "useSWRMutation"]
+    example: |
+      import useSWRMutation from 'swr/mutation';
+      const { trigger, isMutating } = useSWRMutation(
+        '/api/user',
+        (url, { arg }) => fetch(url, { method: 'POST', body: JSON.stringify(arg) })
+      );
+      await trigger({ name: 'John' });
+
+  - id: SWR012
+    title: "Implement optimistic updates with mutate's optimisticData option"
+    description: "Use the optimisticData option in mutate() to immediately update the UI before the remote mutation completes. Combine with rollbackOnError: true to revert on failure. This provides instant feedback."
+    category: "swr_mutations"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "optimistic", "mutate", "ux"]
+    example: |
+      const { trigger } = useSWRMutation('/api/todos', addTodo, {
+        optimisticData: (current) => [...current, newTodo],
+        rollbackOnError: true,
+        populateCache: true,
+        revalidate: false,
+      });
+
+  - id: SWR013
+    title: "Use bound mutate for local cache invalidation"
+    description: "The mutate function returned by useSWR is bound to that key. Use it for targeted cache updates after mutations. Pass updated data directly or call without data to trigger revalidation."
+    category: "swr_mutations"
+    severity: "high"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "mutate", "bound", "cache"]
+    example: |
+      const { data, mutate } = useSWR('/api/user', fetcher);
+
+      // Update cache directly
+      mutate({ ...data, name: 'New Name' }, false);
+
+      // Revalidate (refetch)
+      mutate();
+
+  - id: SWR014
+    title: "Use global mutate for cross-component cache updates"
+    description: "Import mutate from 'swr' for global cache mutations. Use this when you need to update/invalidate cache from outside the component that owns the useSWR hook, or to match multiple keys."
+    category: "swr_mutations"
+    severity: "high"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "mutate", "global", "cross-component"]
+    example: |
+      import { mutate } from 'swr';
+
+      // Revalidate specific key
+      mutate('/api/user');
+
+      // Revalidate matching keys
+      mutate((key) => typeof key === 'string' && key.startsWith('/api/'));
+
+  - id: SWR015
+    title: "Always provide rollbackOnError with optimistic updates"
+    description: "When using optimisticData, always set rollbackOnError: true to automatically revert the cache to the previous state if the mutation fails. This prevents the UI from showing stale optimistic data."
+    category: "swr_mutations"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "rollback", "error", "optimistic"]
+    example: |
+      mutate('/api/todos', updateTodo(newData), {
+        optimisticData: newData,
+        rollbackOnError: true,
+        revalidate: true,
+      });
+
+  - id: SWR016
+    title: "Use populateCache to control cache population after mutation"
+    description: "Set populateCache to control whether mutation response updates the local cache. When false (default), SWR will revalidate instead. When true or a function, the response directly populates the cache."
+    category: "swr_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "v2", "populateCache", "mutation"]
+    example: |
+      const { trigger } = useSWRMutation('/api/user', updateUser, {
+        populateCache: (result, currentData) => ({
+          ...currentData,
+          ...result,
+        }),
+        revalidate: false,
+      });
+
+  - id: SWR017
+    title: "Handle mutation errors and loading states"
+    description: "useSWRMutation provides isMutating for loading state and error for error state. Always handle these for proper UX. Use throwOnError: true if you prefer try/catch over the error return value."
+    category: "swr_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "v2", "mutation", "error-handling"]
+    example: |
+      const { trigger, isMutating, error } = useSWRMutation('/api/user', updateUser);
+      // With throwOnError
+      try {
+        await trigger(data, { throwOnError: true });
+      } catch (e) {
+        // Handle error
+      }
+
+  - id: SWR018
+    title: "Avoid race conditions with mutation deduplication"
+    description: "SWR v2 automatically handles race conditions for useSWRMutation. When multiple mutations are triggered rapidly, only the latest result is used. The onDiscarded callback fires for abandoned requests."
+    category: "swr_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "v2", "race-condition", "deduplication"]
+    example: |
+      useSWRMutation('/api/search', searchFn, {
+        onDiscarded: () => console.log('Previous search result discarded'),
+      });
+
+  - id: SWR019
+    title: "Use preload for eager data fetching (v2)"
+    description: "Import preload from 'swr' to start fetching data before a component mounts. This is ideal for route transitions, hover prefetching, and preloading data in event handlers."
+    category: "swr_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "v2", "preload", "prefetch"]
+    example: |
+      import { preload } from 'swr';
+      const fetcher = (url) => fetch(url).then(r => r.json());
+
+      // Preload on hover
+      <div onMouseEnter={() => preload('/api/user/123', fetcher)}>
+        <Link href="/user/123">User Profile</Link>
+      </div>
+
+  - id: SWR020
+    title: "Combine mutate with revalidation strategy"
+    description: "After a mutation, decide whether to revalidate (refetch from server) or just update the cache. Use revalidate: false with direct cache updates for better performance, or revalidate: true for data consistency."
+    category: "swr_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "mutate", "revalidation", "strategy"]
+    example: |
+      // Strategy 1: Update cache + no revalidation (fast)
+      mutate('/api/user', newData, { revalidate: false });
+
+      // Strategy 2: Update cache + revalidation (consistent)
+      mutate('/api/user', newData, { revalidate: true });
+
+      // Strategy 3: Just revalidate (simple)
+      mutate('/api/user');
+
+  # ============================================================================
+  # SWR CACHE (SWR021-SWR028) - Cache management best practices
+  # ============================================================================
+
+  - id: SWR021
+    title: "Use SWRConfig for global configuration"
+    description: "Wrap your app with <SWRConfig> to provide global defaults for all useSWR hooks. This includes fetcher, error retry, revalidation settings, and fallback data. Nested SWRConfig providers merge with parent configs."
+    category: "swr_cache"
+    severity: "critical"
+    applicability:
+      frameworks: ["swr", "react"]
+    tags: ["swr", "config", "global", "provider"]
+    example: |
+      <SWRConfig value={{
+        fetcher: (url) => fetch(url).then(r => r.json()),
+        errorRetryCount: 3,
+        revalidateOnFocus: true,
+        dedupingInterval: 2000,
+      }}>
+        <App />
+      </SWRConfig>
+
+  - id: SWR022
+    title: "Use fallback prop in SWRConfig for SSR/SSG data"
+    description: "Pass server-rendered data through SWRConfig's fallback prop to hydrate SWR cache. This eliminates loading states on initial render for SSR/SSG pages."
+    category: "swr_cache"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "next", "swr-v1", "swr-v2"]
+    tags: ["swr", "fallback", "ssr", "ssg", "next"]
+    example: |
+      // In Next.js getStaticProps / getServerSideProps
+      export async function getStaticProps() {
+        const data = await fetchUser();
+        return { props: { fallback: { '/api/user': data } } };
+      }
+
+      function App({ fallback }) {
+        return (
+          <SWRConfig value={{ fallback }}>
+            <UserProfile />
+          </SWRConfig>
+        );
+      }
+
+  - id: SWR023
+    title: "Implement a custom cache provider for persistence"
+    description: "Use SWRConfig's provider option to implement custom cache storage (localStorage, IndexedDB). This enables offline support and cache persistence across page reloads."
+    category: "swr_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "cache", "provider", "persistence", "offline"]
+    example: |
+      function localStorageProvider() {
+        const map = new Map(JSON.parse(localStorage.getItem('swr-cache') || '[]'));
+        window.addEventListener('beforeunload', () => {
+          localStorage.setItem('swr-cache', JSON.stringify(Array.from(map.entries())));
+        });
+        return map;
+      }
+
+      <SWRConfig value={{ provider: localStorageProvider }}>
+        <App />
+      </SWRConfig>
+
+  - id: SWR024
+    title: "Use useSWRConfig to access cache and mutate from any component"
+    description: "Import useSWRConfig to access the current SWR configuration, cache, and global mutate function from any component in the tree."
+    category: "swr_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "config", "cache", "access"]
+    example: |
+      import { useSWRConfig } from 'swr';
+      function LogoutButton() {
+        const { cache, mutate } = useSWRConfig();
+        return <button onClick={() => {
+          cache.delete('/api/user');
+          mutate(() => true, undefined, { revalidate: true });
+        }}>Logout</button>;
+      }
+
+  - id: SWR025
+    title: "Scope cache with nested SWRConfig providers"
+    description: "Use nested SWRConfig providers to create isolated cache scopes. This is useful for multi-tenant apps, testing, or components that need different SWR configurations."
+    category: "swr_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "config", "nested", "scope"]
+    example: |
+      <SWRConfig value={{ fetcher: globalFetcher }}>
+        <App />
+        <SWRConfig value={{ provider: () => new Map(), fetcher: testFetcher }}>
+          <IsolatedWidget />
+        </SWRConfig>
+      </SWRConfig>
+
+  - id: SWR026
+    title: "Configure error retry with exponential backoff"
+    description: "SWR retries on error by default with exponential backoff. Customize errorRetryCount and onErrorRetry for fine-grained control. Set errorRetryCount: 0 to disable automatic retries."
+    category: "swr_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "error", "retry", "backoff"]
+    example: |
+      <SWRConfig value={{
+        errorRetryCount: 3,
+        onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
+          if (error.status === 404) return; // Don't retry 404s
+          if (retryCount >= 3) return;
+          setTimeout(() => revalidate({ retryCount }), 2 ** retryCount * 1000);
+        },
+      }}>
+
+  - id: SWR027
+    title: "Disable unnecessary revalidation for performance"
+    description: "Disable automatic revalidation when not needed. Set revalidateOnFocus: false for admin panels, revalidateIfStale: false for rarely-changing data, or use useSWRImmutable for completely static data."
+    category: "swr_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "revalidation", "performance", "config"]
+    example: |
+      // Disable specific revalidation triggers
+      useSWR('/api/config', fetcher, {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        revalidateIfStale: false,
+      });
+
+      // Or use immutable shorthand
+      useSWRImmutable('/api/config', fetcher);
+
+  - id: SWR028
+    title: "Use key matching with mutate for batch invalidation"
+    description: "Global mutate supports a filter function to match multiple keys. Use this for batch cache invalidation after operations that affect multiple resources."
+    category: "swr_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "mutate", "batch", "invalidation"]
+    example: |
+      import { mutate } from 'swr';
+
+      // Invalidate all user-related caches
+      mutate(key => typeof key === 'string' && key.startsWith('/api/users'));
+
+      // Invalidate all caches
+      mutate(() => true, undefined, { revalidate: true });
+
+  # ============================================================================
+  # SWR MIDDLEWARE (SWR029-SWR032) - Middleware best practices
+  # ============================================================================
+
+  - id: SWR029
+    title: "Use middleware for cross-cutting concerns"
+    description: "SWR middleware wraps useSWR hooks to add logging, auth, caching, analytics, or error handling. Middleware receives the useSWRNext function and returns a modified hook. Configure via the use option."
+    category: "swr_middleware"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "middleware", "cross-cutting", "pattern"]
+    example: |
+      function logger(useSWRNext) {
+        return (key, fetcher, config) => {
+          const swr = useSWRNext(key, fetcher, config);
+          useEffect(() => { console.log('SWR:', key, swr.data); }, [swr.data]);
+          return swr;
+        };
+      }
+
+      useSWR('/api/user', fetcher, { use: [logger] });
+
+  - id: SWR030
+    title: "Order middleware carefully - they execute from right to left"
+    description: "SWR middleware in the use array executes from right to left (last to first). Place logging/tracking middleware at the start, and data-transforming middleware at the end."
+    category: "swr_middleware"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "middleware", "order", "composition"]
+    example: |
+      // logger wraps auth wraps transform
+      useSWR('/api/data', fetcher, {
+        use: [logger, auth, transform],
+      });
+
+  - id: SWR031
+    title: "Use middleware for data serialization/transformation"
+    description: "Create middleware to transform SWR response data (e.g., date parsing, normalization) without duplicating logic across components. The middleware can modify the returned data object."
+    category: "swr_middleware"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "middleware", "transform", "serialize"]
+    example: |
+      function serialize(useSWRNext) {
+        return (key, fetcher, config) => {
+          const swr = useSWRNext(key, fetcher, config);
+          return { ...swr, data: swr.data && deserializeDates(swr.data) };
+        };
+      }
+
+  - id: SWR032
+    title: "Compose middleware from SWRConfig and per-hook use options"
+    description: "Middleware defined in SWRConfig is merged with per-hook middleware. Per-hook middleware runs first (inner), SWRConfig middleware runs last (outer). Use this for layered concerns."
+    category: "swr_middleware"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "middleware", "compose", "config"]
+    example: |
+      // Global middleware
+      <SWRConfig value={{ use: [globalLogger] }}>
+        {/* Per-hook middleware composes with global */}
+        useSWR('/api/data', fetcher, { use: [localTransform] })
+      </SWRConfig>
+
+  # ============================================================================
+  # SWR INFINITE/PAGINATION (SWR033-SWR036)
+  # ============================================================================
+
+  - id: SWR033
+    title: "Use useSWRInfinite for pagination and infinite loading"
+    description: "Use useSWRInfinite from 'swr/infinite' for paginated or infinite-scroll data. The getKey function receives the page index and previous page data to compute the next key."
+    category: "swr_infinite"
+    severity: "critical"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "infinite", "pagination", "scroll"]
+    example: |
+      import useSWRInfinite from 'swr/infinite';
+      const getKey = (pageIndex, previousPageData) => {
+        if (previousPageData && !previousPageData.length) return null;
+        return `/api/users?page=${pageIndex}&limit=10`;
+      };
+      const { data, size, setSize, isValidating } = useSWRInfinite(getKey, fetcher);
+
+  - id: SWR034
+    title: "Return null from getKey to stop fetching more pages"
+    description: "In useSWRInfinite, return null from getKey when there are no more pages to load. Check the previousPageData length or a hasMore flag from the API response."
+    category: "swr_infinite"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "swr-v1", "swr-v2"]
+    tags: ["swr", "infinite", "pagination", "sentinel"]
+    example: |
+      const getKey = (pageIndex, previousPageData) => {
+        // No more pages
+        if (previousPageData && previousPageData.length < PAGE_SIZE) return null;
+        return `/api/items?page=${pageIndex}`;
+      };
+
+  - id: SWR035
+    title: "Use parallel option for concurrent page fetching"
+    description: "Enable parallel: true in useSWRInfinite to fetch all pages concurrently during revalidation instead of sequentially. This significantly improves revalidation performance for multi-page data."
+    category: "swr_infinite"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "v2", "infinite", "parallel"]
+    example: |
+      const { data } = useSWRInfinite(getKey, fetcher, {
+        parallel: true,
+        revalidateAll: true,
+      });
+
+  - id: SWR036
+    title: "Flatten infinite data pages for rendering"
+    description: "useSWRInfinite returns data as an array of pages. Flatten it before rendering or use useMemo for performance. Track the total count and hasMore status from page metadata."
+    category: "swr_infinite"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "infinite", "flatten", "render"]
+    example: |
+      const { data, size, setSize } = useSWRInfinite(getKey, fetcher);
+      const items = data ? data.flat() : [];
+      const hasMore = data && data[data.length - 1]?.length === PAGE_SIZE;
+      const loadMore = () => setSize(size + 1);
+
+  # ============================================================================
+  # SWR TYPESCRIPT (SWR037-SWR040) - TypeScript best practices
+  # ============================================================================
+
+  - id: SWR037
+    title: "Type useSWR with generics for type-safe data"
+    description: "Provide type parameters to useSWR for type-safe data and error: useSWR<Data, Error>(key, fetcher). The fetcher return type should match the Data generic for proper inference."
+    category: "swr_typescript"
+    severity: "critical"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "typescript", "generics", "type-safe"]
+    example: |
+      interface User { id: string; name: string; email: string; }
+      const { data, error } = useSWR<User, Error>('/api/user', fetcher);
+      // data is User | undefined, error is Error | undefined
+
+  - id: SWR038
+    title: "Type the fetcher function for end-to-end type safety"
+    description: "Define fetcher functions with proper TypeScript types. The fetcher's return type flows into useSWR's data type. Use generics in fetcher factories for reusable typed fetchers."
+    category: "swr_typescript"
+    severity: "high"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "typescript", "fetcher", "types"]
+    example: |
+      const fetcher = async (url: string): Promise<User> => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Failed to fetch');
+        return res.json();
+      };
+      // Data type is inferred as User
+      const { data } = useSWR('/api/user', fetcher);
+
+  - id: SWR039
+    title: "Use SWRConfiguration type for typed config objects"
+    description: "Import SWRConfiguration from 'swr' to type custom configuration objects and middleware. This ensures all options are valid and properly typed."
+    category: "swr_typescript"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "typescript", "config", "types"]
+    example: |
+      import type { SWRConfiguration } from 'swr';
+      const config: SWRConfiguration<User> = {
+        refreshInterval: 3000,
+        fallbackData: defaultUser,
+        onSuccess: (data) => console.log(data.name),
+      };
+
+  - id: SWR040
+    title: "Type useSWRMutation with proper arg type (v2)"
+    description: "When using useSWRMutation, provide types for data, error, key, and arg: useSWRMutation<Data, Error, Key, Arg>. The Arg type flows into the trigger function parameter."
+    category: "swr_typescript"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "v2", "typescript", "mutation", "types"]
+    example: |
+      interface CreateUserArg { name: string; email: string; }
+      const { trigger } = useSWRMutation<User, Error, string, CreateUserArg>(
+        '/api/users',
+        (url, { arg }) => fetch(url, { method: 'POST', body: JSON.stringify(arg) }).then(r => r.json())
+      );
+      // trigger expects CreateUserArg
+      await trigger({ name: 'John', email: 'john@example.com' });
+
+  # ============================================================================
+  # SWR NEXT.JS / SSR (SWR041-SWR044) - Next.js integration best practices
+  # ============================================================================
+
+  - id: SWR041
+    title: "Pre-render SWR data with Next.js getStaticProps/getServerSideProps"
+    description: "Fetch data on the server in getStaticProps or getServerSideProps, then pass it as SWRConfig fallback. SWR will use the server data immediately and revalidate in the background."
+    category: "swr_nextjs"
+    severity: "critical"
+    applicability:
+      frameworks: ["swr", "next"]
+    tags: ["swr", "next", "ssr", "ssg", "pre-render"]
+    example: |
+      export async function getStaticProps() {
+        const article = await getArticle();
+        return { props: { fallback: { '/api/article': article } } };
+      }
+      export default function Page({ fallback }) {
+        return (
+          <SWRConfig value={{ fallback }}>
+            <Article />
+          </SWRConfig>
+        );
+      }
+
+  - id: SWR042
+    title: "Use SWR with Next.js App Router and Server Components"
+    description: "In Next.js App Router, fetch data in Server Components and pass it to Client Components as fallbackData. Do not use useSWR in Server Components - it's a client-side hook."
+    category: "swr_nextjs"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "next"]
+    tags: ["swr", "next", "app-router", "rsc"]
+    example: |
+      // Server Component (layout.tsx)
+      export default async function Layout({ children }) {
+        const user = await fetchUser();
+        return <SWRProvider fallback={{ '/api/user': user }}>{children}</SWRProvider>;
+      }
+
+      // Client Component
+      'use client';
+      const { data } = useSWR('/api/user', fetcher);
+
+  - id: SWR043
+    title: "Combine SWR with Next.js ISR for optimal freshness"
+    description: "Use Incremental Static Regeneration (ISR) with SWR for the best of both worlds: fast initial loads from static pages, with client-side revalidation for fresh data."
+    category: "swr_nextjs"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "next"]
+    tags: ["swr", "next", "isr", "revalidation"]
+    example: |
+      export async function getStaticProps() {
+        return {
+          props: { fallback: { '/api/data': await fetchData() } },
+          revalidate: 60,  // ISR: regenerate every 60s
+        };
+      }
+      // SWR revalidates on client for even fresher data
+
+  - id: SWR044
+    title: "Handle serialization for Date objects in SSR fallback"
+    description: "When passing server data as SWR fallback in Next.js, ensure Date objects and other non-serializable values are converted. JSON serialization in getStaticProps/getServerSideProps loses Date types."
+    category: "swr_nextjs"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "next"]
+    tags: ["swr", "next", "serialization", "dates"]
+    example: |
+      export async function getStaticProps() {
+        const data = await fetchData();
+        return {
+          props: {
+            fallback: { '/api/data': JSON.parse(JSON.stringify(data)) }
+          }
+        };
+      }
+
+  # ============================================================================
+  # SWR TESTING & PATTERNS (SWR045-SWR050)
+  # ============================================================================
+
+  - id: SWR045
+    title: "Test SWR hooks with isolated cache using SWRConfig provider"
+    description: "In tests, wrap components with <SWRConfig value={{ provider: () => new Map() }}> to create an isolated cache per test. This prevents cache leaks between tests."
+    category: "swr_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "testing", "isolation", "cache"]
+    example: |
+      function renderWithSWR(ui) {
+        return render(
+          <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+            {ui}
+          </SWRConfig>
+        );
+      }
+
+  - id: SWR046
+    title: "Use MSW for mocking SWR fetcher responses in tests"
+    description: "Mock Service Worker (MSW) intercepts network requests at the service worker level, making it ideal for testing SWR hooks without modifying fetcher functions."
+    category: "swr_testing"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "msw"]
+    tags: ["swr", "testing", "msw", "mocking"]
+    example: |
+      import { rest } from 'msw';
+      server.use(
+        rest.get('/api/user', (req, res, ctx) =>
+          res(ctx.json({ name: 'John' }))
+        )
+      );
+
+  - id: SWR047
+    title: "Use useSWRSubscription for real-time data (v2)"
+    description: "useSWRSubscription from 'swr/subscription' connects SWR to real-time data sources (WebSocket, SSE, Firebase). The subscribe callback receives a next function to update data."
+    category: "swr_patterns"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "swr-v2"]
+    tags: ["swr", "v2", "subscription", "realtime", "websocket"]
+    example: |
+      import useSWRSubscription from 'swr/subscription';
+      const { data } = useSWRSubscription('wss://prices', (key, { next }) => {
+        const ws = new WebSocket(key);
+        ws.onmessage = (e) => next(null, JSON.parse(e.data));
+        ws.onerror = (e) => next(e.error);
+        return () => ws.close();
+      });
+
+  - id: SWR048
+    title: "Create custom SWR hooks for reusable data fetching"
+    description: "Wrap useSWR in custom hooks for domain-specific data fetching. This encapsulates keys, fetchers, and configuration, promoting reusability and consistent API usage."
+    category: "swr_patterns"
+    severity: "high"
+    applicability:
+      frameworks: ["swr", "react"]
+    tags: ["swr", "custom-hook", "reusable", "pattern"]
+    example: |
+      function useUser(id: string) {
+        return useSWR<User>(`/api/users/${id}`, fetcher);
+      }
+      function useProjects(userId: string) {
+        const { data: user } = useUser(userId);
+        return useSWR<Project[]>(user ? `/api/projects?uid=${user.id}` : null, fetcher);
+      }
+
+  - id: SWR049
+    title: "Migrate from v0 initialData to v1/v2 fallbackData"
+    description: "When migrating from SWR v0 to v1+, replace initialData with fallbackData. Also use SWRConfig's fallback prop for global initial data instead of per-hook initialData."
+    category: "swr_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["swr"]
+    tags: ["swr", "migration", "v0", "v1", "initialData", "fallbackData"]
+    example: |
+      // ❌ v0 pattern
+      useSWR('/api/user', fetcher, { initialData: serverData });
+
+      // ✅ v1+ pattern
+      useSWR('/api/user', fetcher, { fallbackData: serverData });
+
+      // ✅ v1+ global fallback
+      <SWRConfig value={{ fallback: { '/api/user': serverData } }}>
+
+  - id: SWR050
+    title: "Use error boundaries with SWR's throwOnError (v2)"
+    description: "In SWR v2, set throwOnError: true to propagate errors to React Error Boundaries. This enables declarative error handling at the boundary level instead of per-component."
+    category: "swr_patterns"
+    severity: "medium"
+    applicability:
+      frameworks: ["swr", "swr-v2", "react"]
+    tags: ["swr", "v2", "error-boundary", "throwOnError"]
+    example: |
+      <ErrorBoundary fallback={<Error />}>
+        <Suspense fallback={<Loading />}>
+          <Component />
+        </Suspense>
+      </ErrorBoundary>
+
+      function Component() {
+        const { data } = useSWR('/api/data', fetcher, {
+          suspense: true,
+          throwOnError: true,
+        });
+        return <div>{data.name}</div>;
+      }

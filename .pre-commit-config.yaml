@@ -1,0 +1,93 @@
+# Pre-commit hooks for CodeTrellis project
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe] # Allow custom tags in YAML
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  # Python code formatting
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        language_version: python3.11
+        args: [--line-length=100]
+
+  # Python import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile=black, --line-length=100]
+
+  # Python linting
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: [--max-line-length=100, --ignore=E501, W503]
+        additional_dependencies:
+          - flake8-docstrings
+
+  # Python type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports]
+        additional_dependencies:
+          - types-PyYAML
+          - types-requests
+
+  # BPL Practice YAML Validation (custom local hook)
+  - repo: local
+    hooks:
+      - id: validate-bpl-practices
+        name: Validate BPL Practice YAML Files
+        entry: python scripts/validate_practices.py
+        language: python
+        files: ^codetrellis/bpl/practices/.*\.yaml$
+        pass_filenames: false
+        description: Validates all BPL practice YAML files for schema compliance
+        additional_dependencies:
+          - pyyaml>=6.0
+
+      - id: bpl-tests
+        name: Run BPL Unit Tests
+        entry: python -m pytest tests/unit/test_bpl_*.py -v --tb=short
+        language: python
+        files: ^(codetrellis/bpl/|tests/unit/test_bpl_)
+        pass_filenames: false
+        description: Runs BPL-related unit tests on changes to BPL code
+        stages: [commit]
+        additional_dependencies:
+          - pytest>=7.0
+
+# Configuration
+default_language_version:
+  python: python3.11
+
+# Files to exclude from all hooks
+exclude: |
+  (?x)^(
+    .venv/|
+    __pycache__/|
+    \.git/|
+    \.pytest_cache/|
+    \.mypy_cache/|
+    codetrellis\.egg-info/|
+    lsp/.*\.d\.ts$|
+    node_modules/
+  )$

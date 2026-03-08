@@ -1,0 +1,898 @@
+# R Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.26 - R Language Support
+# Practice IDs: R001-R050
+# Category: r
+# Frameworks: rlang
+
+practices:
+  - id: R001
+    title: "Use explicit function return values with return()"
+    description: "While R returns the last expression by default, use explicit return() for clarity in complex functions with multiple exit points. For simple one-liner functions, implicit return is acceptable."
+    category: "style"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "functions", "return"]
+    example: |
+      # Clear for complex logic
+      process_data <- function(x) {
+        if (is.null(x)) return(NULL)
+        if (length(x) == 0) return(data.frame())
+        transform(x)
+      }
+
+  - id: R002
+    title: "Use R6 classes for complex OOP with encapsulation"
+    description: "Prefer R6 classes when you need mutable state, private fields, active bindings, and inheritance. R6 provides reference semantics and true encapsulation, unlike S3/S4."
+    category: "type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "R6", "oop", "encapsulation"]
+    example: |
+      DatabasePool <- R6::R6Class("DatabasePool",
+        private = list(
+          connections = NULL,
+          max_size = 10
+        ),
+        public = list(
+          initialize = function(max_size = 10) {
+            private$max_size <- max_size
+            private$connections <- list()
+          },
+          get_connection = function() { ... }
+        )
+      )
+
+  - id: R003
+    title: "Use S3 classes for simple polymorphism"
+    description: "Use S3 classes for lightweight polymorphism when full OOP is overkill. Define a constructor function, use structure() or class<-, and implement generic.class methods."
+    category: "type_safety"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "S3", "polymorphism"]
+    example: |
+      new_currency <- function(amount, code = "USD") {
+        structure(
+          list(amount = amount, code = code),
+          class = "currency"
+        )
+      }
+      print.currency <- function(x, ...) {
+        cat(sprintf("%s %.2f\n", x$code, x$amount))
+      }
+
+  - id: R004
+    title: "Use the native pipe |> for chaining (R 4.1+)"
+    description: "Prefer the native pipe |> over magrittr's %>% in new code. The native pipe is faster, has no dependencies, and is part of base R. Use the placeholder _ for complex piping (R 4.2+)."
+    category: "style"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "pipe", "tidyverse", "R4"]
+    example: |
+      # Native pipe (R 4.1+)
+      mtcars |>
+        subset(cyl == 4) |>
+        transform(kpl = mpg * 0.425) |>
+        head()
+      # With placeholder (R 4.2+)
+      mtcars |> lm(mpg ~ wt, data = _)
+
+  - id: R005
+    title: "Use tidyverse verbs for data manipulation"
+    description: "Use dplyr verbs (filter, mutate, select, group_by, summarize) for readable data transformation. Prefer across() for column-wise operations and pick() in Shiny."
+    category: "style"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "tidyverse", "dplyr", "data-manipulation"]
+    example: |
+      result <- data |>
+        filter(status == "active") |>
+        mutate(across(where(is.numeric), scale)) |>
+        group_by(region) |>
+        summarize(
+          mean_sales = mean(sales, na.rm = TRUE),
+          n = n()
+        )
+
+  - id: R006
+    title: "Use roxygen2 for function documentation"
+    description: "Document all exported functions with roxygen2 tags: @param, @return, @export, @examples, @family. Run devtools::document() to generate NAMESPACE and Rd files."
+    category: "documentation"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "roxygen2", "documentation"]
+    example: |
+      #' Calculate the body mass index
+      #'
+      #' @param weight Weight in kilograms
+      #' @param height Height in meters
+      #' @return A numeric BMI value
+      #' @export
+      #' @examples
+      #' calculate_bmi(70, 1.75)
+      calculate_bmi <- function(weight, height) {
+        weight / height^2
+      }
+
+  - id: R007
+    title: "Use tryCatch/withCallingHandlers for error handling"
+    description: "Use tryCatch() for recovering from errors and withCallingHandlers() for logging/modifying conditions without unwinding the call stack. Use rlang::abort/warn/inform for structured conditions."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "error-handling", "tryCatch", "conditions"]
+    example: |
+      safe_read <- function(path) {
+        tryCatch(
+          readr::read_csv(path),
+          error = function(e) {
+            rlang::warn(paste("Failed to read:", path))
+            NULL
+          }
+        )
+      }
+
+  - id: R008
+    title: "Use testthat for unit testing"
+    description: "Write tests with testthat's test_that() and expect_*() functions. Organize tests in tests/testthat/ with test-*.R naming. Use snapshot tests for complex output validation."
+    category: "testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "testthat", "testing"]
+    example: |
+      test_that("calculate_bmi returns correct values", {
+        expect_equal(calculate_bmi(70, 1.75), 70 / 1.75^2)
+        expect_error(calculate_bmi("a", 1.75))
+        expect_true(is.numeric(calculate_bmi(80, 1.80)))
+      })
+
+  - id: R009
+    title: "Use renv for reproducible environments"
+    description: "Use renv to create reproducible R environments. Call renv::init() to start, renv::snapshot() to capture dependencies, and renv::restore() to recreate. Commit renv.lock to version control."
+    category: "devops"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "renv", "reproducibility", "dependencies"]
+    example: |
+      # Initialize renv in project
+      renv::init()
+      # After installing packages
+      renv::snapshot()
+      # On a new machine
+      renv::restore()
+
+  - id: R010
+    title: "Avoid using <<- for global assignment"
+    description: "Never use <<- to modify variables in parent environments. It creates hidden side effects and makes code unpredictable. Use function return values, R6 classes, or environments explicitly."
+    category: "style"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "scoping", "global-assignment", "side-effects"]
+    example: |
+      # Bad: hidden side effect
+      counter <- 0
+      increment <- function() counter <<- counter + 1
+      # Good: use R6 or explicit environment
+      Counter <- R6::R6Class("Counter",
+        public = list(
+          value = 0,
+          increment = function() self$value <- self$value + 1
+        )
+      )
+
+  - id: R011
+    title: "Use vectorized operations instead of loops"
+    description: "R is optimized for vectorized operations. Use vapply/sapply/lapply, purrr::map*, or vectorized functions instead of for loops. Reserve loops for operations with side effects."
+    category: "performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "vectorization", "performance"]
+    example: |
+      # Bad: slow loop
+      result <- numeric(length(x))
+      for (i in seq_along(x)) result[i] <- sqrt(x[i])
+      # Good: vectorized
+      result <- sqrt(x)
+      # Good: apply family
+      result <- vapply(x, complex_fn, numeric(1))
+
+  - id: R012
+    title: "Use DBI for database access with parameterized queries"
+    description: "Use the DBI package for database access. Always use parameterized queries with dbGetQuery()/dbSendQuery() to prevent SQL injection. Use pool for connection pooling in production."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "DBI", "database", "sql-injection"]
+    example: |
+      con <- DBI::dbConnect(RPostgres::Postgres(), dbname = "mydb")
+      # Parameterized query (safe)
+      result <- DBI::dbGetQuery(con, "SELECT * FROM users WHERE id = $1", params = list(user_id))
+      # Always disconnect
+      on.exit(DBI::dbDisconnect(con))
+
+  - id: R013
+    title: "Use on.exit() for cleanup"
+    description: "Use on.exit() to guarantee cleanup code runs when a function exits, whether normally or due to an error. Always set add = TRUE when registering multiple cleanup actions."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "on.exit", "cleanup", "resource-management"]
+    example: |
+      write_safely <- function(data, path) {
+        tmp <- tempfile()
+        on.exit(unlink(tmp), add = TRUE)
+        writeLines(data, tmp)
+        file.copy(tmp, path, overwrite = TRUE)
+      }
+
+  - id: R014
+    title: "Use lambda syntax \\(x) for concise anonymous functions (R 4.1+)"
+    description: "Use the \\(x) lambda syntax instead of function(x) for short anonymous functions. It's more concise and aligns with modern R style."
+    category: "style"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "lambda", "R4.1", "anonymous-functions"]
+    example: |
+      # R 4.1+ lambda syntax
+      purrr::map_dbl(x, \(val) val^2 + 1)
+      # Instead of
+      purrr::map_dbl(x, function(val) val^2 + 1)
+
+  - id: R015
+    title: "Use data.table for large dataset performance"
+    description: "Use data.table for datasets with millions of rows. Its modify-in-place semantics, optimized grouping, and GForce vectorization provide 10-100x speedups over data.frame/tibble."
+    category: "performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "data.table", "performance", "big-data"]
+    example: |
+      library(data.table)
+      dt <- fread("large_file.csv")
+      # Fast aggregation
+      result <- dt[status == "active",
+                   .(mean_val = mean(value), count = .N),
+                   by = .(region, year)]
+
+  - id: R016
+    title: "Use ggplot2 grammar of graphics for visualization"
+    description: "Build plots using ggplot2's layered grammar: data + aesthetics + geometries + statistics + coordinates + facets + themes. Use theme_minimal() or custom themes for consistency."
+    category: "style"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "ggplot2", "visualization"]
+    example: |
+      ggplot(data, aes(x = date, y = value, color = group)) +
+        geom_line(linewidth = 1) +
+        geom_point(size = 2) +
+        facet_wrap(~region) +
+        labs(title = "Trend", x = "Date", y = "Value") +
+        theme_minimal()
+
+  - id: R017
+    title: "Use purrr for functional programming"
+    description: "Use purrr::map, walk, reduce, accumulate for functional iteration. Use safely(), possibly(), insistently() for error handling. Prefer map_*() typed variants over sapply()."
+    category: "style"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "purrr", "functional-programming"]
+    example: |
+      # Typed map variants
+      names <- map_chr(users, "name")
+      ages <- map_int(users, "age")
+      # Safe execution
+      safe_log <- safely(log)
+      results <- map(x, safe_log)
+      # Reduce
+      total <- reduce(values, `+`)
+
+  - id: R018
+    title: "Use Shiny modules for modular applications"
+    description: "Break Shiny apps into modules with moduleServer(). Each module has its own namespace (NS), UI function, and server function. This enables reuse and testing."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "shiny", "modules", "architecture"]
+    example: |
+      # Module UI
+      filterUI <- function(id) {
+        ns <- NS(id)
+        tagList(selectInput(ns("var"), "Variable", choices = NULL))
+      }
+      # Module Server
+      filterServer <- function(id, data) {
+        moduleServer(id, function(input, output, session) {
+          reactive(data()[data()[[input$var]] > 0, ])
+        })
+      }
+
+  - id: R019
+    title: "Use reactive expressions for efficient Shiny computation"
+    description: "Use reactive() for computed values that depend on inputs. Use reactiveValues() for mutable state. Use observeEvent() for side effects. Avoid placing computation in render* functions."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "shiny", "reactive", "performance"]
+    example: |
+      server <- function(input, output, session) {
+        # Cached computation
+        filtered_data <- reactive({
+          data |> filter(year >= input$start_year)
+        })
+        # Render uses cached reactive
+        output$plot <- renderPlot(ggplot(filtered_data(), ...))
+        output$table <- renderTable(filtered_data())
+      }
+
+  - id: R020
+    title: "Use Plumber for REST APIs with proper decorators"
+    description: "Define REST endpoints with Plumber decorators: #* @get, @post, @put, @delete. Use @param for documentation, @serializer for output format, and @filter for middleware."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "plumber", "api", "rest"]
+    example: |
+      #* Get user by ID
+      #* @param id User identifier
+      #* @get /api/users/<id:int>
+      #* @serializer json
+      function(id) {
+        user <- get_user(id)
+        if (is.null(user)) stop("User not found", call. = FALSE)
+        user
+      }
+
+  - id: R021
+    title: "Use arrow for Parquet and large file I/O"
+    description: "Use the arrow package for reading/writing Parquet, Feather, and CSV files. It supports lazy evaluation with open_dataset(), partitioned datasets, and interoperability with dplyr."
+    category: "performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "arrow", "parquet", "big-data"]
+    example: |
+      library(arrow)
+      # Lazy dataset operations
+      ds <- open_dataset("data/partitioned/")
+      result <- ds |>
+        filter(year >= 2020) |>
+        select(id, value, region) |>
+        collect()
+      write_parquet(result, "output.parquet")
+
+  - id: R022
+    title: "Use environment-based configuration"
+    description: "Use Sys.getenv() for secrets and environment-specific config. Use config::get() for structured YAML config. Never hardcode credentials, API keys, or connection strings."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "configuration", "security", "environment"]
+    example: |
+      # Using config package with config.yml
+      db_config <- config::get("database")
+      # Environment variables for secrets
+      api_key <- Sys.getenv("API_KEY", unset = NA)
+      if (is.na(api_key)) stop("API_KEY env var not set")
+
+  - id: R023
+    title: "Use targets for reproducible analysis pipelines"
+    description: "Use the targets package to define reproducible analysis pipelines. Each target is cached and only re-run when its code or upstream dependencies change."
+    category: "architecture"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "targets", "pipeline", "reproducibility"]
+    example: |
+      # _targets.R
+      library(targets)
+      tar_option_set(packages = c("dplyr", "ggplot2"))
+      list(
+        tar_target(raw_data, read_csv("data.csv")),
+        tar_target(clean, clean_data(raw_data)),
+        tar_target(model, fit_model(clean)),
+        tar_target(report, render_report(model))
+      )
+
+  - id: R024
+    title: "Type-check inputs with stopifnot or checkmate"
+    description: "Validate function arguments early with stopifnot(), match.arg(), or the checkmate package. Provide clear error messages. Check types, lengths, and ranges."
+    category: "type_safety"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "validation", "type-checking", "defensive"]
+    example: |
+      process <- function(x, method = c("mean", "median", "sum")) {
+        method <- match.arg(method)
+        stopifnot(
+          is.numeric(x),
+          length(x) > 0,
+          !any(is.na(x))
+        )
+        switch(method,
+          mean = mean(x),
+          median = median(x),
+          sum = sum(x)
+        )
+      }
+
+  - id: R025
+    title: "Use withr for temporary state changes"
+    description: "Use withr functions (with_dir, with_envvar, with_options, with_par) instead of manual save/restore patterns. They guarantee cleanup even if errors occur."
+    category: "style"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "withr", "cleanup", "temporary-state"]
+    example: |
+      # Temporary working directory
+      withr::with_dir("subdir", {
+        source("script.R")
+      })
+      # Temporary options
+      withr::with_options(
+        list(warn = 2),
+        potentially_warning_code()
+      )
+
+  - id: R026
+    title: "Use cli for user-facing messages"
+    description: "Use the cli package for formatted user messages instead of cat/message. It provides consistent styling, progress bars, and semantic markup ({.var}, {.fn}, {.path})."
+    category: "style"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "cli", "user-interface", "messages"]
+    example: |
+      cli::cli_alert_success("Processed {.val {n}} records from {.path {file}}")
+      cli::cli_progress_bar("Processing", total = length(files))
+      cli::cli_abort("Column {.var {col}} not found in {.fn filter}")
+
+  - id: R027
+    title: "Use Rcpp for performance-critical code"
+    description: "When R vectorization is insufficient, use Rcpp for C++ integration. Mark exported functions with // [[Rcpp::export]]. Use RcppArmadillo or RcppEigen for linear algebra."
+    category: "performance"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "Rcpp", "C++", "performance"]
+    example: |
+      // [[Rcpp::export]]
+      NumericVector fast_cummax(NumericVector x) {
+        int n = x.size();
+        NumericVector out(n);
+        out[0] = x[0];
+        for (int i = 1; i < n; i++) {
+          out[i] = std::max(out[i-1], x[i]);
+        }
+        return out;
+      }
+
+  - id: R028
+    title: "Use S4 classes for formal method dispatch"
+    description: "Use S4 classes when you need formal method dispatch on multiple arguments, validity checking, and slot-based access. Common in Bioconductor and formal statistical modeling."
+    category: "type_safety"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "S4", "formal-methods", "multiple-dispatch"]
+    example: |
+      setClass("TimeSeries",
+        representation(
+          values = "numeric",
+          timestamps = "POSIXct",
+          frequency = "character"
+        ),
+        validity = function(object) {
+          if (length(object@values) != length(object@timestamps))
+            "values and timestamps must have same length"
+          else TRUE
+        }
+      )
+      setGeneric("resample", function(x, freq) standardGeneric("resample"))
+      setMethod("resample", "TimeSeries", function(x, freq) { ... })
+
+  - id: R029
+    title: "Use tidymodels for machine learning workflows"
+    description: "Use the tidymodels ecosystem (recipes, parsnip, workflows, tune, rsample) for structured ML pipelines. It provides consistent interfaces across model types and proper train/test splitting."
+    category: "architecture"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "tidymodels", "machine-learning", "recipes"]
+    example: |
+      library(tidymodels)
+      split <- initial_split(data, prop = 0.8)
+      recipe <- recipe(target ~ ., data = training(split)) |>
+        step_normalize(all_numeric_predictors()) |>
+        step_dummy(all_nominal_predictors())
+      model <- rand_forest(trees = 500) |> set_engine("ranger")
+      wf <- workflow() |> add_recipe(recipe) |> add_model(model)
+      fit <- wf |> fit(training(split))
+
+  - id: R030
+    title: "Use proper package structure with devtools"
+    description: "Structure R packages with R/, man/, tests/, vignettes/, DESCRIPTION, NAMESPACE. Use devtools::load_all(), devtools::check(), and usethis:: helpers for scaffolding."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "packages", "devtools", "usethis"]
+    example: |
+      # Package scaffolding
+      usethis::create_package("mypackage")
+      usethis::use_r("core_functions")
+      usethis::use_test("core_functions")
+      usethis::use_pipe()  # Add pipe operator
+      usethis::use_package("dplyr")  # Add dependency
+      devtools::check()  # Run R CMD check
+
+  - id: R031
+    title: "Never use T/F as abbreviations for TRUE/FALSE"
+    description: "Always use TRUE and FALSE, never T and F. T and F are regular variables that can be reassigned, while TRUE and FALSE are reserved words that cannot be overwritten."
+    category: "style"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "style", "logical", "TRUE-FALSE"]
+    example: |
+      # Bad: T and F can be reassigned
+      T <- FALSE  # This works! Now T == FALSE
+      # Good: always use full names
+      is_valid <- TRUE
+      has_error <- FALSE
+
+  - id: R032
+    title: "Use tidyr for data reshaping"
+    description: "Use pivot_longer/pivot_wider instead of deprecated gather/spread. Use nest/unnest for list-columns. Use separate_wider_*/unite for string column manipulation."
+    category: "style"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "tidyr", "reshaping", "pivot"]
+    example: |
+      # Wide to long
+      long <- data |>
+        pivot_longer(cols = starts_with("q"),
+                     names_to = "quarter",
+                     values_to = "revenue")
+      # Long to wide
+      wide <- long |>
+        pivot_wider(names_from = quarter, values_from = revenue)
+
+  - id: R033
+    title: "Use future for parallel/async computation"
+    description: "Use the future package for portable parallel and asynchronous code. Use plan(multisession) for parallel, plan(sequential) for debugging. Use furrr::future_map for parallel purrr."
+    category: "performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "future", "parallel", "async"]
+    example: |
+      library(future)
+      plan(multisession, workers = 4)
+      # Parallel map with furrr
+      library(furrr)
+      results <- future_map(files, read_and_process, .progress = TRUE)
+      plan(sequential)  # Reset
+
+  - id: R034
+    title: "Use consistent naming conventions"
+    description: "Use snake_case for functions and variables (tidyverse style). Use PascalCase for R6/S4 class names. Use SCREAMING_SNAKE_CASE for constants. Be consistent within a project."
+    category: "style"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "naming", "conventions", "style"]
+    example: |
+      # snake_case for functions/variables
+      calculate_mean <- function(input_values) { ... }
+      # PascalCase for classes
+      DataProcessor <- R6::R6Class("DataProcessor", ...)
+      # SCREAMING_SNAKE_CASE for constants
+      MAX_RETRY_COUNT <- 5
+
+  - id: R035
+    title: "Use rlang for tidy evaluation and metaprogramming"
+    description: "Use rlang's tidy evaluation tools ({{ }}, .data, .env, enquo, !!) when writing functions that wrap tidyverse verbs. This enables non-standard evaluation in a controlled way."
+    category: "style"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "rlang", "nse", "tidy-evaluation"]
+    example: |
+      # Embrace {{ }} for function arguments
+      grouped_mean <- function(data, group_var, value_var) {
+        data |>
+          group_by({{ group_var }}) |>
+          summarize(mean_val = mean({{ value_var }}, na.rm = TRUE))
+      }
+      # Usage
+      grouped_mean(mtcars, cyl, mpg)
+
+  - id: R036
+    title: "Use sf/terra for geospatial analysis"
+    description: "Use sf for vector geospatial data (points, lines, polygons) with tidy integration. Use terra for raster data. Both integrate with ggplot2 via geom_sf()."
+    category: "architecture"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "sf", "terra", "geospatial"]
+    example: |
+      library(sf)
+      boundaries <- st_read("regions.geojson")
+      points <- st_as_sf(data, coords = c("lon", "lat"), crs = 4326)
+      joined <- st_join(points, boundaries)
+      ggplot(joined) + geom_sf(aes(fill = region))
+
+  - id: R037
+    title: "Use profvis for performance profiling"
+    description: "Use profvis to identify bottlenecks before optimizing. Focus on the slowest operations first. Use bench::mark() for microbenchmarking alternatives."
+    category: "performance"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "profiling", "performance", "profvis"]
+    example: |
+      library(profvis)
+      profvis({
+        data <- read_csv("large.csv")
+        result <- data |> group_by(region) |> summarize(total = sum(value))
+      })
+      # Microbenchmark alternatives
+      bench::mark(
+        base = mean(x),
+        dt = data.table(x = x)[, mean(x)]
+      )
+
+  - id: R038
+    title: "Use golem for production Shiny applications"
+    description: "Use the golem framework for production-grade Shiny apps. It provides package structure, module scaffolding, deployment helpers, and testing infrastructure."
+    category: "architecture"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "golem", "shiny", "production"]
+    example: |
+      # Create golem app
+      golem::create_golem("myapp")
+      # Add modules
+      golem::add_module("dashboard")
+      golem::add_module("settings")
+      # Add external resources
+      golem::add_css_file("custom")
+      # Deploy
+      golem::add_dockerfile()
+
+  - id: R039
+    title: "Use dbplyr for database-backed dplyr operations"
+    description: "Use dbplyr to write dplyr code that generates SQL queries. Use show_query() to inspect generated SQL. Call collect() only when you need the data in R."
+    category: "performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "dbplyr", "database", "lazy-evaluation"]
+    example: |
+      con <- DBI::dbConnect(RPostgres::Postgres(), dbname = "analytics")
+      result <- tbl(con, "orders") |>
+        filter(status == "completed") |>
+        group_by(customer_id) |>
+        summarize(total = sum(amount, na.rm = TRUE)) |>
+        arrange(desc(total)) |>
+        head(100) |>
+        collect()  # Only pulls 100 rows
+
+  - id: R040
+    title: "Use memoise for caching expensive computations"
+    description: "Use memoise::memoise() to cache function results. Set cache expiration with cache_filesystem() or cache_memory(). Clear cache when underlying data changes."
+    category: "performance"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "memoise", "caching", "performance"]
+    example: |
+      library(memoise)
+      fetch_data <- memoise::memoise(
+        function(endpoint) {
+          httr2::request(endpoint) |>
+            httr2::req_perform() |>
+            httr2::resp_body_json()
+        },
+        cache = cache_filesystem(".cache", max_age = 3600)
+      )
+
+  - id: R041
+    title: "Use quarto/rmarkdown for reproducible reports"
+    description: "Use Quarto (.qmd) or R Markdown (.Rmd) for literate programming. Combine code, narrative, and output in a single document. Use parameterized reports for automation."
+    category: "documentation"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "quarto", "rmarkdown", "reproducible-research"]
+    example: |
+      ---
+      title: "Monthly Report"
+      params:
+        month: "2024-01"
+      format: html
+      ---
+      ```{r}
+      data <- fetch_monthly_data(params$month)
+      summary(data)
+      ```
+
+  - id: R042
+    title: "Use httr2 for HTTP requests"
+    description: "Use httr2 (not httr) for HTTP requests. It provides a pipe-friendly API, automatic retries, rate limiting, OAuth2 flows, and response parsing."
+    category: "style"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "httr2", "http", "api-client"]
+    example: |
+      resp <- httr2::request("https://api.example.com/data") |>
+        httr2::req_headers(Authorization = paste("Bearer", token)) |>
+        httr2::req_retry(max_tries = 3) |>
+        httr2::req_throttle(rate = 10 / 60) |>
+        httr2::req_perform()
+      data <- httr2::resp_body_json(resp)
+
+  - id: R043
+    title: "Handle missing values explicitly"
+    description: "Always handle NA values explicitly. Use na.rm = TRUE in aggregations, complete.cases() or tidyr::drop_na() for filtering, and is.na()/replace_na() for transformations."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "NA", "missing-values", "data-quality"]
+    example: |
+      # Explicit NA handling
+      data |>
+        mutate(value = replace_na(value, 0)) |>
+        filter(!is.na(category)) |>
+        summarize(mean_val = mean(value, na.rm = TRUE))
+
+  - id: R044
+    title: "Use lintr and styler for code consistency"
+    description: "Use lintr for static analysis and styler for automatic code formatting. Configure .lintr for project-specific rules. Run in CI/CD pipeline."
+    category: "style"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "lintr", "styler", "linting", "formatting"]
+    example: |
+      # Lint a file
+      lintr::lint("R/core.R")
+      # Style a file
+      styler::style_file("R/core.R")
+      # Style entire package
+      styler::style_pkg()
+
+  - id: R045
+    title: "Use sparklyr for distributed data processing"
+    description: "Use sparklyr to process data too large for a single machine. Connect to Spark clusters, use dplyr verbs on Spark DataFrames, and leverage Spark ML."
+    category: "architecture"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "sparklyr", "spark", "distributed"]
+    example: |
+      library(sparklyr)
+      sc <- spark_connect(master = "yarn")
+      spark_data <- spark_read_parquet(sc, "events", "hdfs:///data/events/")
+      result <- spark_data |>
+        filter(year >= 2023) |>
+        group_by(category) |>
+        summarize(total = sum(amount)) |>
+        collect()
+      spark_disconnect(sc)
+
+  - id: R046
+    title: "Use .onLoad/.onAttach for package initialization"
+    description: "Use .onLoad() for package-level initialization (setting options, registering S3 methods). Use .onAttach() only for startup messages. Never use .onLoad for side effects that affect the global environment."
+    category: "architecture"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "packages", "lifecycle", "initialization"]
+    example: |
+      .onLoad <- function(libname, pkgname) {
+        op <- options()
+        op.mypackage <- list(
+          mypackage.verbose = FALSE,
+          mypackage.cache_dir = tempdir()
+        )
+        toset <- !(names(op.mypackage) %in% names(op))
+        if (any(toset)) options(op.mypackage[toset])
+      }
+      .onAttach <- function(libname, pkgname) {
+        packageStartupMessage("mypackage v", packageVersion(pkgname))
+      }
+
+  - id: R047
+    title: "Use vctrs for custom vector types"
+    description: "Use the vctrs package to create custom vector types that work with the tidyverse. Define new_*(), validate_*(), and vec_ptype2/vec_cast methods for type coercion."
+    category: "type_safety"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "vctrs", "custom-types", "tidyverse"]
+    example: |
+      new_percent <- function(x = double()) {
+        vctrs::vec_assert(x, ptype = double())
+        vctrs::new_vctr(x, class = "percent")
+      }
+      format.percent <- function(x, ...) {
+        paste0(formatC(vctrs::vec_data(x) * 100, format = "f", digits = 1), "%")
+      }
+
+  - id: R048
+    title: "Use box for modular R scripts"
+    description: "Use box::use() for explicit module imports in scripts and Shiny apps (especially with Rhino). It provides Python-like imports without polluting the global namespace."
+    category: "architecture"
+    severity: "info"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "box", "modules", "imports", "rhino"]
+    example: |
+      # Explicit imports with box
+      box::use(
+        dplyr[filter, mutate, summarize],
+        ggplot2[ggplot, aes, geom_point],
+        ./helpers[clean_data, validate_input]
+      )
+
+  - id: R049
+    title: "Use pool for database connection pooling in Shiny"
+    description: "Use the pool package for connection pooling in Shiny apps. It manages connection lifecycle, handles reconnection, and prevents connection leaks."
+    category: "performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "pool", "database", "shiny", "connection-pooling"]
+    example: |
+      library(pool)
+      pool <- dbPool(
+        RPostgres::Postgres(),
+        dbname = "mydb",
+        minSize = 1, maxSize = 5,
+        idleTimeout = 60000
+      )
+      onStop(function() poolClose(pool))
+      # Use pool like a DBI connection
+      dbGetQuery(pool, "SELECT * FROM users WHERE id = $1", params = list(1))
+
+  - id: R050
+    title: "Use logger for structured logging"
+    description: "Use the logger package for structured, leveled logging. Configure log levels (TRACE, DEBUG, INFO, WARN, ERROR, FATAL), formatters, and appenders for production apps."
+    category: "devops"
+    severity: "warning"
+    applicability:
+      frameworks: ["rlang"]
+    tags: ["r", "logging", "logger", "production"]
+    example: |
+      library(logger)
+      log_threshold(INFO)
+      log_appender(appender_file("app.log"))
+      log_info("Processing {n} records from {source}")
+      log_warn("Slow query: {elapsed}s for {query_name}")
+      log_error("Failed to connect: {conditionMessage(e)}")

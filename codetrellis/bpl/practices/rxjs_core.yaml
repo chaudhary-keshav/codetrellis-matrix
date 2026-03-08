@@ -1,0 +1,713 @@
+# ─── RxJS Reactive Programming Best Practices (v4.78) ─────────────────────
+# 50 practices covering operators, observables, subjects, schedulers,
+# patterns, error handling, performance, testing, multicasting, and migration.
+# Category mapping: RXJS_OPERATORS, RXJS_OBSERVABLES, RXJS_SUBJECTS,
+# RXJS_SCHEDULERS, RXJS_PATTERNS, RXJS_ERROR_HANDLING, RXJS_PERFORMANCE,
+# RXJS_TESTING, RXJS_MULTICASTING, RXJS_MIGRATION
+# Framework: rxjs (RxJS v5-v7)
+
+practices:
+  # ── RXJS_OPERATORS (5 practices) ────────────────────────────────────────
+  - id: RXJS001
+    title: Use pipeable operators instead of prototype chaining
+    description: >
+      Always use source$.pipe(map(...), filter(...)) instead of the
+      deprecated source$.map(...).filter(...) pattern. Pipeable operators
+      enable tree-shaking and were standardized in RxJS 5.5+.
+    category: rxjs_operators
+    level: beginner
+    priority: critical
+    frameworks: ["rxjs"]
+    tags: ["operators", "pipe", "tree-shaking"]
+    references:
+      - "https://rxjs.dev/guide/v6/pipeable-operators"
+
+  - id: RXJS002
+    title: Use map for transformations, not tap with side effects
+    description: >
+      Use map() to transform emitted values. Reserve tap() strictly for
+      side effects (logging, debugging) that don't modify the stream.
+      Don't use tap() to mutate values — it should be transparent.
+    category: rxjs_operators
+    level: beginner
+    frameworks: ["rxjs"]
+    tags: ["operators", "map", "tap", "transformation"]
+    references:
+      - "https://rxjs.dev/api/operators/map"
+
+  - id: RXJS003
+    title: Use switchMap for request cancellation patterns
+    description: >
+      Use switchMap when only the latest inner observable matters (search
+      autocomplete, route changes). It cancels previous inner subscriptions.
+      Use mergeMap when all inner observables should complete, concatMap
+      when order matters, and exhaustMap to ignore new emissions.
+    category: rxjs_operators
+    level: intermediate
+    priority: critical
+    frameworks: ["rxjs"]
+    tags: ["operators", "switchMap", "cancellation", "higher-order"]
+    references:
+      - "https://rxjs.dev/api/operators/switchMap"
+
+  - id: RXJS004
+    title: Use distinctUntilChanged to prevent redundant emissions
+    description: >
+      Add distinctUntilChanged() after map() to prevent downstream
+      operators from processing unchanged values. Pass a custom comparator
+      for object equality: distinctUntilChanged((a, b) => a.id === b.id).
+    category: rxjs_operators
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["operators", "distinctUntilChanged", "optimization", "equality"]
+    references:
+      - "https://rxjs.dev/api/operators/distinctUntilChanged"
+
+  - id: RXJS005
+    title: Use combineLatest/withLatestFrom for combining streams
+    description: >
+      Use combineLatest when you need the latest value from all sources
+      on any emission. Use withLatestFrom when you need the latest from
+      secondary sources only when the primary emits. Use forkJoin when
+      you need final values from all sources.
+    category: rxjs_operators
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["operators", "combineLatest", "withLatestFrom", "forkJoin"]
+    references:
+      - "https://rxjs.dev/api/index/function/combineLatest"
+
+  # ── RXJS_OBSERVABLES (5 practices) ──────────────────────────────────────
+  - id: RXJS006
+    title: Prefer creation operators over new Observable()
+    description: >
+      Use of(), from(), interval(), timer(), fromEvent() instead of
+      manually constructing new Observable(subscriber => {...}).
+      Creation operators handle edge cases and are more readable.
+    category: rxjs_observables
+    level: beginner
+    priority: high
+    frameworks: ["rxjs"]
+    tags: ["observables", "creation", "of", "from"]
+    references:
+      - "https://rxjs.dev/guide/observable"
+
+  - id: RXJS007
+    title: Always unsubscribe from long-lived observables
+    description: >
+      Store Subscription references and call .unsubscribe() on component
+      destroy. Use takeUntil(destroy$), take(n), or the AsyncPipe in
+      Angular templates. Unmanaged subscriptions cause memory leaks
+      and unexpected behavior.
+    category: rxjs_observables
+    level: beginner
+    priority: critical
+    frameworks: ["rxjs"]
+    tags: ["observables", "unsubscribe", "memory-leak", "cleanup"]
+    references:
+      - "https://rxjs.dev/guide/subscription"
+
+  - id: RXJS008
+    title: Use firstValueFrom/lastValueFrom instead of .toPromise()
+    description: >
+      .toPromise() is deprecated in RxJS 7. Use firstValueFrom(obs$)
+      to get the first emission as a Promise, or lastValueFrom(obs$)
+      for the final emission. These have clearer semantics for empty
+      observables (throw vs resolve undefined).
+    category: rxjs_observables
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["observables", "promise", "firstValueFrom", "async-await"]
+    references:
+      - "https://rxjs.dev/api/index/function/firstValueFrom"
+
+  - id: RXJS009
+    title: Use defer() for lazy observable creation
+    description: >
+      Wrap observable creation in defer(() => ...) when the observable
+      should be created at subscription time, not at declaration time.
+      Essential for observables that depend on current state or make
+      HTTP requests that should be fresh per subscriber.
+    category: rxjs_observables
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["observables", "defer", "lazy", "fresh"]
+    references:
+      - "https://rxjs.dev/api/index/function/defer"
+
+  - id: RXJS010
+    title: Use EMPTY and NEVER constants for control flow
+    description: >
+      Use EMPTY for an observable that completes immediately (useful in
+      switchMap fallbacks). Use NEVER for an observable that never emits
+      or completes (useful in testing). Avoid creating new Observable
+      with empty subscriber functions.
+    category: rxjs_observables
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["observables", "EMPTY", "NEVER", "constants"]
+    references:
+      - "https://rxjs.dev/api/index/const/EMPTY"
+
+  # ── RXJS_SUBJECTS (5 practices) ─────────────────────────────────────────
+  - id: RXJS011
+    title: Expose Subjects as Observables through .asObservable()
+    description: >
+      Don't expose raw Subject references to consumers. Use
+      private _data$ = new Subject() with public data$ = this._data$.asObservable().
+      This prevents external code from calling .next() and breaking
+      encapsulation.
+    category: rxjs_subjects
+    level: beginner
+    priority: critical
+    frameworks: ["rxjs"]
+    tags: ["subjects", "encapsulation", "asObservable", "API"]
+    references:
+      - "https://rxjs.dev/guide/subject"
+
+  - id: RXJS012
+    title: Use BehaviorSubject when initial/current value is needed
+    description: >
+      BehaviorSubject requires an initial value and emits the current
+      value to new subscribers immediately. Use it for state that always
+      has a value (user session, config). Use ReplaySubject(1) when
+      initial value is unknown but late subscribers need the last emission.
+    category: rxjs_subjects
+    level: beginner
+    frameworks: ["rxjs"]
+    tags: ["subjects", "BehaviorSubject", "initial-value", "state"]
+    references:
+      - "https://rxjs.dev/api/index/class/BehaviorSubject"
+
+  - id: RXJS013
+    title: Use AsyncSubject for single-value completion patterns
+    description: >
+      AsyncSubject emits only the last value before completion. Use it
+      for request/response patterns where only the final result matters.
+      Subscribers that arrive after completion still receive the value.
+    category: rxjs_subjects
+    level: advanced
+    frameworks: ["rxjs"]
+    tags: ["subjects", "AsyncSubject", "completion", "single-value"]
+    references:
+      - "https://rxjs.dev/api/index/class/AsyncSubject"
+
+  - id: RXJS014
+    title: Complete Subjects when they're no longer needed
+    description: >
+      Call subject.complete() when the source is done emitting. This
+      triggers completion handlers, releases resources, and prevents
+      further emissions. Uncompleted Subjects can cause memory leaks
+      in long-lived services.
+    category: rxjs_subjects
+    level: intermediate
+    priority: critical
+    frameworks: ["rxjs"]
+    tags: ["subjects", "complete", "cleanup", "lifecycle"]
+    references:
+      - "https://rxjs.dev/guide/subject"
+
+  - id: RXJS015
+    title: Avoid using Subject as a general-purpose event bus
+    description: >
+      Don't create a single Subject that emits different event types
+      with type discrimination. Use separate typed Subjects or a proper
+      state management library (NgRx, Redux). Subject-as-event-bus
+      becomes untyped and untraceable at scale.
+    category: rxjs_subjects
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["subjects", "anti-pattern", "event-bus", "architecture"]
+    references:
+      - "https://rxjs.dev/guide/subject"
+
+  # ── RXJS_SCHEDULERS (5 practices) ───────────────────────────────────────
+  - id: RXJS016
+    title: Use observeOn/subscribeOn for explicit scheduling
+    description: >
+      Use observeOn(asyncScheduler) to control which scheduler processes
+      emissions. Use subscribeOn() to control subscription timing.
+      Default synchronous behavior is usually correct — only add schedulers
+      when you need specific async timing.
+    category: rxjs_schedulers
+    level: advanced
+    frameworks: ["rxjs"]
+    tags: ["schedulers", "observeOn", "subscribeOn", "async"]
+    references:
+      - "https://rxjs.dev/guide/scheduler"
+
+  - id: RXJS017
+    title: Use asyncScheduler for macrotask scheduling
+    description: >
+      asyncScheduler uses setTimeout internally for macrotask-level
+      async. Use it when you need to yield to the event loop between
+      emissions. For animation frames, use animationFrameScheduler.
+    category: rxjs_schedulers
+    level: advanced
+    frameworks: ["rxjs"]
+    tags: ["schedulers", "asyncScheduler", "macrotask", "setTimeout"]
+    references:
+      - "https://rxjs.dev/api/index/const/asyncScheduler"
+
+  - id: RXJS018
+    title: Use animationFrameScheduler for visual updates
+    description: >
+      Schedule visual DOM updates with animationFrameScheduler to sync
+      with browser repaint cycles. Combine with interval(0, animationFrameScheduler)
+      for frame-by-frame animations that respect vsync.
+    category: rxjs_schedulers
+    level: advanced
+    frameworks: ["rxjs"]
+    tags: ["schedulers", "animationFrame", "visual", "rendering"]
+    references:
+      - "https://rxjs.dev/api/index/const/animationFrameScheduler"
+
+  - id: RXJS019
+    title: Use TestScheduler for deterministic time-based testing
+    description: >
+      TestScheduler provides virtual time control for testing
+      time-dependent operators (debounceTime, delay, interval).
+      Use run() helper with marble diagrams for readable, deterministic
+      tests without real timers.
+    category: rxjs_schedulers
+    level: advanced
+    frameworks: ["rxjs"]
+    tags: ["schedulers", "TestScheduler", "testing", "virtual-time"]
+    references:
+      - "https://rxjs.dev/guide/testing/marble-testing"
+
+  - id: RXJS020
+    title: Avoid queueScheduler unless you understand re-entrancy
+    description: >
+      queueScheduler serializes recursive/re-entrant scheduling but
+      adds complexity. It's rarely needed in application code.
+      Prefer asyncScheduler for async needs and default synchronous
+      execution for most operators.
+    category: rxjs_schedulers
+    level: expert
+    frameworks: ["rxjs"]
+    tags: ["schedulers", "queueScheduler", "re-entrancy", "advanced"]
+    references:
+      - "https://rxjs.dev/api/index/const/queueScheduler"
+
+  # ── RXJS_PATTERNS (5 practices) ─────────────────────────────────────────
+  - id: RXJS021
+    title: Use the takeUntil pattern for automatic unsubscription
+    description: >
+      Create a destroy$ Subject, pipe takeUntil(this.destroy$) on all
+      subscriptions, and call destroy$.next() + destroy$.complete()
+      on component destroy. This is the standard Angular pattern and
+      works in any framework.
+    category: rxjs_patterns
+    level: beginner
+    frameworks: ["rxjs"]
+    tags: ["patterns", "takeUntil", "unsubscribe", "destroy"]
+    references:
+      - "https://rxjs.dev/api/operators/takeUntil"
+
+  - id: RXJS022
+    title: Use scan for state accumulation over time
+    description: >
+      scan(accumulator, seed) works like Array.reduce() but emits
+      each intermediate value. Use it for accumulating state from
+      event streams (counters, running totals, state machines)
+      without external mutable state.
+    category: rxjs_patterns
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["patterns", "scan", "accumulator", "state"]
+    references:
+      - "https://rxjs.dev/api/operators/scan"
+
+  - id: RXJS023
+    title: Use retry/retryWhen for resilient HTTP requests
+    description: >
+      Add retry(3) or retry({ count: 3, delay: 1000 }) after HTTP
+      observables for automatic retry on failure. Use retryWhen for
+      custom strategies like exponential backoff. Always set a max
+      retry count to prevent infinite loops.
+    category: rxjs_patterns
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["patterns", "retry", "resilience", "HTTP"]
+    references:
+      - "https://rxjs.dev/api/operators/retry"
+
+  - id: RXJS024
+    title: Use debounceTime for user input throttling
+    description: >
+      Pipe debounceTime(300) on input/search streams to wait for
+      pauses in typing before triggering API calls. This prevents
+      excessive requests. Use throttleTime for rate-limiting
+      continuous events like scroll/resize.
+    category: rxjs_patterns
+    level: beginner
+    frameworks: ["rxjs"]
+    tags: ["patterns", "debounceTime", "throttle", "input"]
+    references:
+      - "https://rxjs.dev/api/operators/debounceTime"
+
+  - id: RXJS025
+    title: Use exhaustMap for preventing duplicate submissions
+    description: >
+      Use exhaustMap on form submit button clicks to ignore new clicks
+      while the current request is in flight. Unlike switchMap (which
+      cancels), exhaustMap silently drops new emissions until the inner
+      observable completes.
+    category: rxjs_patterns
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["patterns", "exhaustMap", "submission", "duplicate"]
+    references:
+      - "https://rxjs.dev/api/operators/exhaustMap"
+
+  # ── RXJS_ERROR_HANDLING (5 practices) ───────────────────────────────────
+  - id: RXJS026
+    title: Use catchError to handle errors without killing the stream
+    description: >
+      catchError receives the error and returns a replacement observable.
+      Use it inside switchMap/mergeMap to handle inner observable errors
+      without terminating the outer stream. Return EMPTY to swallow
+      errors or of(fallbackValue) for defaults.
+    category: rxjs_error_handling
+    level: beginner
+    priority: critical
+    frameworks: ["rxjs"]
+    tags: ["error-handling", "catchError", "recovery", "fallback"]
+    references:
+      - "https://rxjs.dev/api/operators/catchError"
+
+  - id: RXJS027
+    title: Place catchError at the right position in the pipe
+    description: >
+      catchError placement matters. Inside switchMap, it catches inner
+      errors and keeps the outer alive. At the end of the pipe, it
+      catches any error but terminates the subscription. Always consider
+      which stream level should handle which errors.
+    category: rxjs_error_handling
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["error-handling", "catchError", "placement", "scope"]
+    references:
+      - "https://rxjs.dev/api/operators/catchError"
+
+  - id: RXJS028
+    title: Use throwError for typed error propagation
+    description: >
+      Use throwError(() => new CustomError('message')) to create
+      error observables. Always use the factory function form (not
+      throwError(new Error())) to defer error creation until subscription.
+    category: rxjs_error_handling
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["error-handling", "throwError", "typed", "factory"]
+    references:
+      - "https://rxjs.dev/api/index/function/throwError"
+
+  - id: RXJS029
+    title: Use finalize for cleanup regardless of completion or error
+    description: >
+      finalize(() => cleanup()) runs when the observable completes,
+      errors, or is unsubscribed. Use it for loading spinners, resource
+      cleanup, or analytics that should happen regardless of outcome.
+    category: rxjs_error_handling
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["error-handling", "finalize", "cleanup", "always"]
+    references:
+      - "https://rxjs.dev/api/operators/finalize"
+
+  - id: RXJS030
+    title: Don't swallow errors silently in catchError
+    description: >
+      Always log or report errors in catchError before returning a
+      fallback. Silent error swallowing (catchError(() => EMPTY))
+      makes debugging impossible. At minimum, tap into an error
+      reporting service before returning the fallback observable.
+    category: rxjs_error_handling
+    level: beginner
+    frameworks: ["rxjs"]
+    tags: ["error-handling", "logging", "silent", "anti-pattern"]
+    references:
+      - "https://rxjs.dev/api/operators/catchError"
+
+  # ── RXJS_PERFORMANCE (5 practices) ──────────────────────────────────────
+  - id: RXJS031
+    title: Use shareReplay for caching HTTP responses
+    description: >
+      Pipe shareReplay({ bufferSize: 1, refCount: true }) on HTTP
+      observables to cache the response and share it with multiple
+      subscribers. Always set refCount: true to allow cleanup when
+      all subscribers unsubscribe.
+    category: rxjs_performance
+    level: intermediate
+    priority: critical
+    frameworks: ["rxjs"]
+    tags: ["performance", "shareReplay", "caching", "HTTP"]
+    references:
+      - "https://rxjs.dev/api/operators/shareReplay"
+
+  - id: RXJS032
+    title: Use share() to multicast hot observables
+    description: >
+      share() makes a cold observable hot by multicasting emissions
+      to all current subscribers. Use it to prevent duplicate side
+      effects (API calls, DOM reads) when multiple parts of the
+      app subscribe to the same source.
+    category: rxjs_performance
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["performance", "share", "multicast", "hot"]
+    references:
+      - "https://rxjs.dev/api/operators/share"
+
+  - id: RXJS033
+    title: Avoid creating observables inside subscribe callbacks
+    description: >
+      Nesting subscribe() inside subscribe() creates callback hell
+      and loses the benefits of the reactive pipeline. Use higher-order
+      operators (switchMap, mergeMap, concatMap) to compose observables
+      instead of nesting.
+    category: rxjs_performance
+    level: beginner
+    frameworks: ["rxjs"]
+    tags: ["performance", "anti-pattern", "nesting", "subscribe"]
+    references:
+      - "https://rxjs.dev/guide/observable"
+
+  - id: RXJS034
+    title: Use auditTime for scroll/resize event throttling
+    description: >
+      For high-frequency DOM events (scroll, resize, mousemove),
+      use auditTime(16) (~60fps) or throttleTime(100) to limit
+      processing. This prevents jank from over-processing events
+      that fire hundreds of times per second.
+    category: rxjs_performance
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["performance", "auditTime", "throttle", "DOM-events"]
+    references:
+      - "https://rxjs.dev/api/operators/auditTime"
+
+  - id: RXJS035
+    title: Use bufferTime/bufferCount for batching emissions
+    description: >
+      Use bufferTime(500) to collect emissions into arrays emitted
+      every 500ms. Use bufferCount(10) to batch every 10 emissions.
+      Useful for batching WebSocket messages, analytics events,
+      or database writes.
+    category: rxjs_performance
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["performance", "buffer", "batching", "aggregation"]
+    references:
+      - "https://rxjs.dev/api/operators/bufferTime"
+
+  # ── RXJS_TESTING (5 practices) ──────────────────────────────────────────
+  - id: RXJS036
+    title: Use marble diagrams for readable observable tests
+    description: >
+      Use RxJS marble syntax: '-a-b-c|' for emissions, '#' for error,
+      '|' for completion, '-' for time frame. The TestScheduler.run()
+      helper makes marble testing straightforward and deterministic.
+    category: rxjs_testing
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["testing", "marble", "syntax", "diagrams"]
+    references:
+      - "https://rxjs.dev/guide/testing/marble-testing"
+
+  - id: RXJS037
+    title: Use cold() and hot() helpers in marble tests
+    description: >
+      cold('-a-b|') creates a cold observable subscribed at test start.
+      hot('-a-^-b-c|') creates a hot observable where ^ marks subscription
+      point. Use cold for pure data streams and hot for shared/stateful
+      streams.
+    category: rxjs_testing
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["testing", "cold", "hot", "helpers"]
+    references:
+      - "https://rxjs.dev/guide/testing/marble-testing"
+
+  - id: RXJS038
+    title: Test error scenarios with '#' in marble strings
+    description: >
+      Use '--#' for observables that error after 2 frames.
+      Pass the error object as the third argument to cold/hot:
+      cold('--#', {}, new Error('fail')). Always test error paths
+      alongside success paths for robust stream behavior.
+    category: rxjs_testing
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["testing", "error", "marble", "scenarios"]
+    references:
+      - "https://rxjs.dev/guide/testing/marble-testing"
+
+  - id: RXJS039
+    title: Use expectObservable and expectSubscriptions together
+    description: >
+      expectObservable checks emitted values and completion.
+      expectSubscriptions verifies when sources were subscribed and
+      unsubscribed. Together they ensure operators have correct
+      subscription lifecycle behavior.
+    category: rxjs_testing
+    level: advanced
+    frameworks: ["rxjs"]
+    tags: ["testing", "expectObservable", "expectSubscriptions"]
+    references:
+      - "https://rxjs.dev/guide/testing/marble-testing"
+
+  - id: RXJS040
+    title: Mock time-dependent operators with TestScheduler
+    description: >
+      Never use real timers (setTimeout, setInterval) in tests with
+      time-dependent operators. TestScheduler virtualizes time so
+      debounceTime(5000) tests run instantly. Use flush() to advance
+      all virtual time.
+    category: rxjs_testing
+    level: advanced
+    frameworks: ["rxjs"]
+    tags: ["testing", "TestScheduler", "time", "virtual"]
+    references:
+      - "https://rxjs.dev/guide/testing/marble-testing"
+
+  # ── RXJS_MULTICASTING (5 practices) ─────────────────────────────────────
+  - id: RXJS041
+    title: Understand cold vs hot observables
+    description: >
+      Cold observables create a new producer per subscriber (like HTTP
+      requests). Hot observables share a single producer (like mouse events).
+      Use share/shareReplay to make cold observables hot when multiple
+      subscribers need the same data.
+    category: rxjs_multicasting
+    level: beginner
+    frameworks: ["rxjs"]
+    tags: ["multicasting", "cold", "hot", "fundamentals"]
+    references:
+      - "https://rxjs.dev/guide/observable"
+
+  - id: RXJS042
+    title: Use connectable() for manual multicast control
+    description: >
+      connectable(source$) creates a connectable observable that starts
+      emitting only when connect() is called. Use it when you need all
+      subscribers to be ready before emissions begin.
+    category: rxjs_multicasting
+    level: advanced
+    frameworks: ["rxjs"]
+    tags: ["multicasting", "connectable", "manual", "control"]
+    references:
+      - "https://rxjs.dev/api/index/function/connectable"
+
+  - id: RXJS043
+    title: Set refCount on shareReplay to prevent memory leaks
+    description: >
+      shareReplay without refCount keeps the source subscribed forever
+      even after all subscribers unsubscribe. Always use
+      shareReplay({ bufferSize: 1, refCount: true }) to allow the
+      shared subscription to be cleaned up.
+    category: rxjs_multicasting
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["multicasting", "shareReplay", "refCount", "memory-leak"]
+    references:
+      - "https://rxjs.dev/api/operators/shareReplay"
+
+  - id: RXJS044
+    title: Use publish/multicast only in legacy codebases
+    description: >
+      publish(), multicast(), and refCount() as separate operators are
+      deprecated in RxJS 7. Use share({ connector: () => new ReplaySubject() })
+      or shareReplay() which combine these into a single operator.
+    category: rxjs_multicasting
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["multicasting", "deprecated", "publish", "migration"]
+    references:
+      - "https://rxjs.dev/deprecations/multicasting"
+
+  - id: RXJS045
+    title: Use share with resetOnError/resetOnComplete for resilient multicasting
+    description: >
+      share({ resetOnError: true, resetOnComplete: false, resetOnRefCountZero: true })
+      configures how the shared source resets. resetOnError re-subscribes to
+      the source on errors. This enables resilient shared streams that
+      automatically recover.
+    category: rxjs_multicasting
+    level: advanced
+    frameworks: ["rxjs"]
+    tags: ["multicasting", "share", "reset", "resilience"]
+    references:
+      - "https://rxjs.dev/api/operators/share"
+
+  # ── RXJS_MIGRATION (5 practices) ────────────────────────────────────────
+  - id: RXJS046
+    title: Replace deep imports with top-level rxjs imports
+    description: >
+      Migrate from 'rxjs/Observable', 'rxjs/operators/map' (v5 style)
+      to import { Observable, map } from 'rxjs' (v7 style). RxJS 7
+      is fully tree-shakable from the top-level entry point.
+    category: rxjs_migration
+    level: beginner
+    frameworks: ["rxjs"]
+    tags: ["migration", "imports", "v7", "tree-shaking"]
+    references:
+      - "https://rxjs.dev/guide/v6/migration"
+
+  - id: RXJS047
+    title: Replace deprecated ResultSelector in higher-order operators
+    description: >
+      mergeMap(fn, resultSelector) is deprecated. Use
+      mergeMap(fn).pipe(map(resultSelector)) instead. This applies
+      to all higher-order mapping operators (switchMap, concatMap,
+      exhaustMap).
+    category: rxjs_migration
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["migration", "resultSelector", "deprecated", "v7"]
+    references:
+      - "https://rxjs.dev/deprecations/resultSelector"
+
+  - id: RXJS048
+    title: Replace .toPromise() with firstValueFrom/lastValueFrom
+    description: >
+      .toPromise() is deprecated in RxJS 7. Use firstValueFrom(obs$)
+      for the first emission, lastValueFrom(obs$) for the last.
+      firstValueFrom rejects on empty observable (clearer semantics
+      than toPromise which resolved undefined).
+    category: rxjs_migration
+    level: beginner
+    frameworks: ["rxjs"]
+    tags: ["migration", "toPromise", "firstValueFrom", "v7"]
+    references:
+      - "https://rxjs.dev/deprecations/to-promise"
+
+  - id: RXJS049
+    title: Replace deprecated multicast operators with share config
+    description: >
+      Replace publish().refCount() with share(). Replace
+      publishReplay(1).refCount() with shareReplay(1). Replace
+      publishBehavior(init).refCount() with
+      share({ connector: () => new BehaviorSubject(init) }).
+    category: rxjs_migration
+    level: intermediate
+    frameworks: ["rxjs"]
+    tags: ["migration", "multicast", "share", "v7"]
+    references:
+      - "https://rxjs.dev/deprecations/multicasting"
+
+  - id: RXJS050
+    title: Use rxjs-compat only as a temporary migration bridge
+    description: >
+      rxjs-compat provides v5 API compatibility for v6/v7. Use it
+      only as a transitional aid during migration. Set a deadline to
+      remove it — the compat layer adds bundle size and prevents
+      tree-shaking optimizations.
+    category: rxjs_migration
+    level: beginner
+    frameworks: ["rxjs"]
+    tags: ["migration", "compat", "bridge", "temporary"]
+    references:
+      - "https://www.npmjs.com/package/rxjs-compat"

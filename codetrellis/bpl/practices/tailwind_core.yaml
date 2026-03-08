@@ -1,0 +1,622 @@
+# Tailwind CSS Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.35 - Tailwind CSS Language Support
+# Practice IDs: TW001-TW050
+# Coverage: Utility-First Architecture, Configuration, Responsive Design,
+#           Dark Mode, Components, Theme, Plugins, Performance, v4 Migration
+# Versions: Tailwind CSS v1.x, v2.x, v3.x, v4.x
+
+practices:
+  # ============================================================================
+  # TAILWIND ARCHITECTURE (TW001-TW008)
+  # ============================================================================
+
+  - id: TW001
+    title: "Follow utility-first architecture"
+    description: "Prefer utility classes directly in markup over custom CSS. Extract reusable components via @apply only when a clear abstraction emerges. Utility-first keeps styling co-located with structure."
+    category: "tailwind_architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "architecture", "utility-first"]
+    example: |
+      <!-- Good: utility-first -->
+      <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+        Submit
+      </button>
+
+      <!-- Avoid: premature abstraction -->
+      <button class="btn-primary">Submit</button>
+
+  - id: TW002
+    title: "Use @apply sparingly for truly reusable patterns"
+    description: "Reserve @apply for highly reused patterns (e.g., 5+ places) where component extraction isn't possible. Overuse of @apply negates utility-first benefits."
+    category: "tailwind_architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "apply", "architecture"]
+    example: |
+      /* Good: reusable base with @apply */
+      @layer components {
+        .btn { @apply px-4 py-2 rounded-lg font-medium transition-colors; }
+        .btn-primary { @apply btn bg-blue-600 text-white hover:bg-blue-700; }
+      }
+
+  - id: TW003
+    title: "Use @layer for style organization"
+    description: "Organize custom styles with @layer base, @layer components, and @layer utilities to maintain correct specificity ordering and avoid cascade conflicts."
+    category: "tailwind_architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "layers", "organization"]
+    example: |
+      @tailwind base;
+      @tailwind components;
+      @tailwind utilities;
+
+      @layer base {
+        h1 { @apply text-2xl font-bold; }
+      }
+      @layer components {
+        .card { @apply rounded-lg shadow-md p-6; }
+      }
+
+  - id: TW004
+    title: "Keep class lists readable with consistent ordering"
+    description: "Order utility classes consistently: layout → sizing → spacing → typography → visual → interactive. Use Prettier plugin or ESLint to enforce ordering automatically."
+    category: "tailwind_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "readability", "ordering"]
+
+  - id: TW005
+    title: "Use component extraction for complex repeated patterns"
+    description: "Extract complex utility combinations into framework components (React, Vue, Svelte) rather than @apply. Component extraction preserves utility-first benefits and adds logic capabilities."
+    category: "tailwind_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "components", "extraction"]
+
+  - id: TW006
+    title: "Avoid arbitrary values when design tokens exist"
+    description: "Prefer Tailwind's design token system (spacing, colors, etc.) over arbitrary values like w-[137px] or text-[#1a2b3c]. Arbitrary values break design consistency."
+    category: "tailwind_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "design-tokens", "arbitrary"]
+    example: |
+      <!-- Good: use design tokens -->
+      <div class="w-64 text-blue-600 p-4">...</div>
+
+      <!-- Avoid: arbitrary magic numbers -->
+      <div class="w-[256px] text-[#2563eb] p-[16px]">...</div>
+
+  - id: TW007
+    title: "Use tailwind-merge for dynamic class composition"
+    description: "When dynamically composing classes in JS frameworks, use tailwind-merge (twMerge) to properly resolve conflicting utilities. Direct string concatenation can produce conflicting classes."
+    category: "tailwind_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "tailwind-merge", "dynamic-classes"]
+    example: |
+      import { twMerge } from 'tailwind-merge';
+      const className = twMerge('px-4 py-2 bg-blue-500', props.className);
+
+  - id: TW008
+    title: "Use class-variance-authority (CVA) for variant patterns"
+    description: "For components with multiple visual variants, use CVA or tailwind-variants to define type-safe variant APIs. This replaces ad-hoc conditional class logic."
+    category: "tailwind_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "cva", "variants"]
+
+  # ============================================================================
+  # TAILWIND CONFIGURATION (TW009-TW016)
+  # ============================================================================
+
+  - id: TW009
+    title: "Configure content paths exhaustively"
+    description: "Ensure all files using Tailwind classes are listed in the content configuration. Missing paths result in purged classes in production builds."
+    category: "tailwind_configuration"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "configuration", "content"]
+    example: |
+      // tailwind.config.js (v3)
+      module.exports = {
+        content: [
+          './src/**/*.{js,ts,jsx,tsx,html,vue,svelte}',
+          './components/**/*.{js,ts,jsx,tsx}',
+        ],
+      }
+
+  - id: TW010
+    title: "Extend theme rather than overriding defaults"
+    description: "Use theme.extend to add custom values without losing Tailwind defaults. Direct theme overrides remove all default values for that property."
+    category: "tailwind_configuration"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "theme", "configuration"]
+    example: |
+      module.exports = {
+        theme: {
+          extend: {  // preserves defaults
+            colors: { brand: '#1a2b3c' },
+            spacing: { '18': '4.5rem' },
+          },
+        },
+      }
+
+  - id: TW011
+    title: "Define brand colors as design tokens"
+    description: "Define brand and semantic colors in the Tailwind theme configuration rather than using arbitrary values. This ensures consistency and easy updates across the project."
+    category: "tailwind_theme"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "colors", "design-tokens"]
+
+  - id: TW012
+    title: "Use semantic color naming"
+    description: "Name colors by purpose (primary, danger, success) rather than visual appearance (blue, red, green). Semantic naming makes theme changes and dark mode implementation easier."
+    category: "tailwind_theme"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "colors", "naming"]
+    example: |
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#3b82f6', dark: '#1d4ed8' },
+            danger: { DEFAULT: '#ef4444', dark: '#b91c1c' },
+          },
+        },
+      }
+
+  - id: TW013
+    title: "Use presets for shared configuration"
+    description: "Extract shared Tailwind configuration into presets for multi-project or design system consistency. Presets can define colors, fonts, plugins, and variants."
+    category: "tailwind_configuration"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "presets", "configuration"]
+
+  - id: TW014
+    title: "Configure custom screens for project-specific breakpoints"
+    description: "Define custom screen breakpoints when the default 640/768/1024/1280/1536px system doesn't match your design requirements. Use min-width (mobile-first) approach."
+    category: "tailwind_responsive"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "responsive", "breakpoints"]
+
+  - id: TW015
+    title: "Use prefix for component libraries"
+    description: "When building a Tailwind-based component library, use the prefix option to avoid class collisions with consumer projects."
+    category: "tailwind_configuration"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "prefix", "library"]
+
+  - id: TW016
+    title: "Configure important strategy for legacy integration"
+    description: "Use the important selector strategy (important: '#app') instead of important: true when integrating Tailwind with existing CSS. This scopes specificity boosting."
+    category: "tailwind_configuration"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "important", "migration"]
+
+  # ============================================================================
+  # TAILWIND RESPONSIVE DESIGN (TW017-TW022)
+  # ============================================================================
+
+  - id: TW017
+    title: "Design mobile-first with min-width breakpoints"
+    description: "Start with mobile styles as the base and add responsive modifiers (sm:, md:, lg:, xl:) for larger screens. Tailwind's responsive utilities are min-width by default."
+    category: "tailwind_responsive"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "responsive", "mobile-first"]
+    example: |
+      <!-- Mobile-first: stack → grid on larger screens -->
+      <div class="flex flex-col md:flex-row md:gap-4 lg:gap-8">
+        <div class="w-full md:w-1/3">Sidebar</div>
+        <div class="w-full md:w-2/3">Content</div>
+      </div>
+
+  - id: TW018
+    title: "Use container queries for component-level responsiveness"
+    description: "Use @container queries (v3.3+) for components that should adapt based on their container size, not viewport. Install @tailwindcss/container-queries or use v4 built-in support."
+    category: "tailwind_responsive"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "container-queries", "responsive"]
+
+  - id: TW019
+    title: "Avoid unnecessary max-width breakpoint overrides"
+    description: "Prefer mobile-first min-width approach over max-width breakpoints. Max-width (max-sm:, max-md:) should only be used for edge cases where subtractive styling is clearer."
+    category: "tailwind_responsive"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "responsive", "breakpoints"]
+
+  - id: TW020
+    title: "Group responsive variants logically"
+    description: "When applying multiple responsive variants, group related utilities at each breakpoint for readability rather than interleaving breakpoint modifiers."
+    category: "tailwind_responsive"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "responsive", "readability"]
+
+  - id: TW021
+    title: "Use responsive typography scale"
+    description: "Use responsive text sizing (text-sm md:text-base lg:text-lg) or the clamp()-based fluid typography approach for natural text scaling across viewports."
+    category: "tailwind_responsive"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "typography", "responsive"]
+
+  - id: TW022
+    title: "Test all breakpoints during development"
+    description: "Use Tailwind's screen indicator plugin or browser dev tools to verify layouts at all configured breakpoints, including between breakpoint transitions."
+    category: "tailwind_responsive"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "responsive", "testing"]
+
+  # ============================================================================
+  # TAILWIND DARK MODE (TW023-TW027)
+  # ============================================================================
+
+  - id: TW023
+    title: "Implement dark mode with the class strategy"
+    description: "Use darkMode: 'class' for programmatic dark mode control via a toggle. This is preferred over 'media' for user preference persistence and override capabilities."
+    category: "tailwind_dark_mode"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "dark-mode", "configuration"]
+    example: |
+      // tailwind.config.js
+      module.exports = { darkMode: 'class' }
+
+      // Usage
+      <div class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+  - id: TW024
+    title: "Define dark mode colors in theme configuration"
+    description: "Define dark mode color variants in the theme rather than hardcoding dark: utilities everywhere. Use CSS custom properties or theme colors for maintainable dark mode."
+    category: "tailwind_dark_mode"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "dark-mode", "theme"]
+
+  - id: TW025
+    title: "Use semantic color tokens for dark mode"
+    description: "Use CSS custom properties mapped to Tailwind theme tokens for automatic dark mode switching. This eliminates the need for dark: prefixes on every element."
+    category: "tailwind_dark_mode"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "dark-mode", "tokens"]
+    example: |
+      @layer base {
+        :root {
+          --color-background: theme('colors.white');
+          --color-text: theme('colors.gray.900');
+        }
+        .dark {
+          --color-background: theme('colors.gray.900');
+          --color-text: theme('colors.gray.100');
+        }
+      }
+
+  - id: TW026
+    title: "Respect system preference with optional override"
+    description: "Default to the user's OS prefers-color-scheme preference, but allow manual override via a toggle that persists in localStorage."
+    category: "tailwind_dark_mode"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "dark-mode", "accessibility"]
+
+  - id: TW027
+    title: "Audit dark mode contrast ratios"
+    description: "Verify that dark mode color combinations meet WCAG AA contrast ratios (4.5:1 for normal text, 3:1 for large text). Dark backgrounds with low-contrast text are a common oversight."
+    category: "tailwind_dark_mode"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "dark-mode", "accessibility", "contrast"]
+
+  # ============================================================================
+  # TAILWIND COMPONENTS (TW028-TW032)
+  # ============================================================================
+
+  - id: TW028
+    title: "Build components in @layer components"
+    description: "Place all component-level abstractions (cards, buttons, forms) inside @layer components to maintain correct specificity ordering with base and utility layers."
+    category: "tailwind_components"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "components", "layers"]
+
+  - id: TW029
+    title: "Compose utilities in component templates"
+    description: "Prefer composing utilities in framework component templates (React, Vue, Svelte) over CSS @apply extraction. Template-based composition supports dynamic logic natively."
+    category: "tailwind_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "components", "composition"]
+
+  - id: TW030
+    title: "Use slots and composition over prop-heavy components"
+    description: "Design Tailwind components with slot/children patterns for layout flexibility rather than adding many styling props. Let consumers compose utilities directly."
+    category: "tailwind_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "components", "patterns"]
+
+  - id: TW031
+    title: "Document component variants explicitly"
+    description: "Document all visual variants (size, color, state) of Tailwind components using Storybook, a living style guide, or JSDoc/TSDoc variant types."
+    category: "tailwind_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "components", "documentation"]
+
+  - id: TW032
+    title: "Test component styling with visual regression tests"
+    description: "Use visual regression testing (Chromatic, Percy, Playwright screenshots) to prevent unintended style changes in Tailwind components."
+    category: "tailwind_components"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "testing", "visual-regression"]
+
+  # ============================================================================
+  # TAILWIND PLUGINS (TW033-TW037)
+  # ============================================================================
+
+  - id: TW033
+    title: "Use official plugins before community alternatives"
+    description: "Prefer @tailwindcss/typography, @tailwindcss/forms, @tailwindcss/aspect-ratio, and @tailwindcss/container-queries over community alternatives for better compatibility."
+    category: "tailwind_plugins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "plugins", "official"]
+
+  - id: TW034
+    title: "Build custom plugins with the plugin API"
+    description: "Use Tailwind's plugin() API to add project-specific utilities, components, variants, and base styles. Custom plugins are reusable and configurable."
+    category: "tailwind_plugins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "plugins", "custom"]
+    example: |
+      const plugin = require('tailwindcss/plugin')
+      module.exports = plugin(function({ addUtilities, matchUtilities, theme }) {
+        addUtilities({
+          '.content-auto': { 'content-visibility': 'auto' },
+        })
+      })
+
+  - id: TW035
+    title: "Use plugin.withOptions for configurable plugins"
+    description: "When creating plugins that accept configuration, use plugin.withOptions() to provide a clean API with default option merging."
+    category: "tailwind_plugins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "plugins", "api"]
+
+  - id: TW036
+    title: "Document custom plugin utilities and variants"
+    description: "Document all utilities, components, and variants added by custom plugins. Include example usage and any configuration options."
+    category: "tailwind_plugins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "plugins", "documentation"]
+
+  - id: TW037
+    title: "Test custom plugins in isolation"
+    description: "Write unit tests for custom Tailwind plugins to verify generated CSS output. Test with different configurations and theme values."
+    category: "tailwind_plugins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "plugins", "testing"]
+
+  # ============================================================================
+  # TAILWIND PERFORMANCE (TW038-TW042)
+  # ============================================================================
+
+  - id: TW038
+    title: "Avoid dynamic class construction with string concatenation"
+    description: "Never construct Tailwind class names dynamically with string interpolation. Tailwind's purge scanner uses static analysis and cannot detect dynamically built classes."
+    category: "tailwind_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "performance", "purge"]
+    example: |
+      // BAD: dynamically constructed (will be purged)
+      <div class={`bg-${color}-500`}>
+
+      // GOOD: use safelist or full class names
+      const colorMap = {
+        red: 'bg-red-500',
+        blue: 'bg-blue-500',
+      }
+      <div class={colorMap[color]}>
+
+  - id: TW039
+    title: "Use safelist for dynamic class patterns"
+    description: "When dynamic classes are unavoidable, add safelist patterns to the Tailwind config to prevent them from being purged. Use regex patterns for efficient safelisting."
+    category: "tailwind_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "safelist", "purge"]
+
+  - id: TW040
+    title: "Enable JIT mode (v2.x) or ensure v3+ usage"
+    description: "In Tailwind v2, enable JIT mode for dramatically faster builds and smaller CSS output. In v3+, JIT is the default engine. Avoid AOT compilation in v2."
+    category: "tailwind_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "jit", "performance"]
+
+  - id: TW041
+    title: "Minimize @apply usage in performance-critical paths"
+    description: "@apply generates duplicate CSS when used in multiple files. Prefer component extraction or utility composition for frequently used patterns."
+    category: "tailwind_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "apply", "performance"]
+
+  - id: TW042
+    title: "Use content-visibility for long pages"
+    description: "Apply content-visibility: auto to off-screen sections for rendering performance. Combine with contain-intrinsic-size for layout stability."
+    category: "tailwind_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind"]
+    tags: ["tailwind", "performance", "rendering"]
+
+  # ============================================================================
+  # TAILWIND V4 MIGRATION (TW043-TW050)
+  # ============================================================================
+
+  - id: TW043
+    title: "Adopt CSS-first configuration in v4"
+    description: "In Tailwind v4, replace tailwind.config.js with CSS-based configuration using @import 'tailwindcss', @theme, and @source directives. This is the recommended v4 approach."
+    category: "tailwind_v4"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind", "tailwind_v4"]
+    tags: ["tailwind", "v4", "migration"]
+    example: |
+      /* v4 CSS-first config */
+      @import "tailwindcss";
+      @theme {
+        --color-primary: #3b82f6;
+        --font-display: "Inter", sans-serif;
+      }
+      @source "../components/**/*.tsx";
+
+  - id: TW044
+    title: "Use @theme for design token definition in v4"
+    description: "In v4, define design tokens (colors, spacing, fonts) using @theme blocks in CSS instead of theme.extend in JS config. @theme tokens generate CSS custom properties."
+    category: "tailwind_v4"
+    severity: "critical"
+    applicability:
+      frameworks: ["tailwind", "tailwind_v4"]
+    tags: ["tailwind", "v4", "theme", "tokens"]
+
+  - id: TW045
+    title: "Use @utility for custom utility definitions in v4"
+    description: "In v4, define custom utilities with @utility instead of addUtilities in plugins. @utility supports responsive and state variants automatically."
+    category: "tailwind_v4"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind", "tailwind_v4"]
+    tags: ["tailwind", "v4", "utilities"]
+    example: |
+      @utility content-auto {
+        content-visibility: auto;
+      }
+      @utility tab-* {
+        tab-size: --value(--tab-size-*);
+      }
+
+  - id: TW046
+    title: "Use @variant for custom variant definitions in v4"
+    description: "In v4, define custom variants with @variant in CSS instead of addVariant in plugins. This keeps all customization in CSS."
+    category: "tailwind_v4"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind", "tailwind_v4"]
+    tags: ["tailwind", "v4", "variants"]
+    example: |
+      @variant hocus (&:hover, &:focus);
+      @variant theme-dark (@media (prefers-color-scheme: dark));
+
+  - id: TW047
+    title: "Use @source for explicit content detection in v4"
+    description: "In v4, use @source directives to specify which files Tailwind should scan for class usage. This replaces the content array from v3 config."
+    category: "tailwind_v4"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind", "tailwind_v4"]
+    tags: ["tailwind", "v4", "source"]
+
+  - id: TW048
+    title: "Migrate plugins to @plugin directive in v4"
+    description: "In v4, use @plugin directive in CSS to load plugins instead of the plugins array in JS config. This maintains the CSS-first paradigm."
+    category: "tailwind_v4"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind", "tailwind_v4"]
+    tags: ["tailwind", "v4", "plugins"]
+
+  - id: TW049
+    title: "Use native CSS nesting in v4"
+    description: "Tailwind v4 supports native CSS nesting without preprocessors. Use & parent selector for nested rules instead of SCSS/Less nesting syntax."
+    category: "tailwind_v4"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind", "tailwind_v4"]
+    tags: ["tailwind", "v4", "nesting"]
+    example: |
+      .card {
+        @apply rounded-lg shadow-md;
+        & .card-header {
+          @apply px-4 py-2 border-b;
+        }
+        &:hover {
+          @apply shadow-lg;
+        }
+      }
+
+  - id: TW050
+    title: "Use light-dark() for automatic color scheme support in v4"
+    description: "In v4, use the CSS light-dark() function with color-scheme for automatic dark mode without class toggling. This leverages native browser capabilities."
+    category: "tailwind_v4"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tailwind", "tailwind_v4"]
+    tags: ["tailwind", "v4", "dark-mode", "light-dark"]
+    example: |
+      @theme {
+        --color-surface: light-dark(#ffffff, #1a1a2e);
+        --color-text: light-dark(#1a1a2e, #e0e0e0);
+      }

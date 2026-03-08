@@ -1,0 +1,701 @@
+# PostCSS Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.46 - PostCSS Language Support
+# Practice IDs: PCSS001-PCSS050
+# Coverage: Plugins, Config, Transforms, Syntax, API,
+#           Architecture, Performance, Best Practices, Tooling, Migration
+# Versions: PostCSS 1.x through 8.5+
+
+practices:
+  # ============================================================================
+  # POSTCSS PLUGINS (PCSS001-PCSS010)
+  # ============================================================================
+
+  - id: PCSS001
+    title: "Use postcss-preset-env for future CSS features"
+    description: "Use postcss-preset-env instead of individual feature plugins. It bundles 30+ plugins and configures stage-based feature polyfilling automatically."
+    category: "postcss_plugins"
+    severity: "critical"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "plugins", "preset-env", "future-css"]
+    example: |
+      // Good: single preset-env plugin
+      module.exports = {
+        plugins: [
+          ['postcss-preset-env', { stage: 2, features: { 'nesting-rules': true } }]
+        ]
+      };
+      // Bad: many individual feature plugins
+      module.exports = {
+        plugins: [
+          require('postcss-nesting'),
+          require('postcss-custom-media'),
+          require('postcss-custom-selectors'),
+        ]
+      };
+
+  - id: PCSS002
+    title: "Always include autoprefixer in your plugin chain"
+    description: "autoprefixer adds vendor prefixes based on Can I Use data. It should be one of the last plugins in the chain, after transforms but before minification."
+    category: "postcss_plugins"
+    severity: "critical"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "plugins", "autoprefixer", "vendor-prefixes"]
+    example: |
+      // Good: autoprefixer near end of chain
+      plugins: [
+        postcssImport(),
+        postcssPresetEnv(),
+        autoprefixer(),
+        cssnano(),
+      ]
+
+  - id: PCSS003
+    title: "Use cssnano for production CSS minification"
+    description: "cssnano optimizes CSS output by removing whitespace, merging rules, and applying safe optimizations. Configure preset for appropriate optimization level."
+    category: "postcss_plugins"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "plugins", "cssnano", "minification", "optimization"]
+    example: |
+      // Good: cssnano with preset
+      plugins: [
+        cssnano({ preset: ['default', { discardComments: { removeAll: true } }] })
+      ]
+
+  - id: PCSS004
+    title: "Use postcss-import for inlining @import statements"
+    description: "postcss-import resolves and inlines @import rules, enabling modular CSS. It must be the first plugin in the chain."
+    category: "postcss_plugins"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "plugins", "import", "modules"]
+    example: |
+      // Good: postcss-import first in chain
+      plugins: [
+        postcssImport(),
+        postcssPresetEnv(),
+        autoprefixer(),
+      ]
+
+  - id: PCSS005
+    title: "Order plugins correctly in the processing chain"
+    description: "Plugin order matters: imports first, then transforms, then autoprefixer, then minification last. Incorrect order leads to missing prefixes or broken transforms."
+    category: "postcss_plugins"
+    severity: "critical"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "plugins", "order", "chain"]
+    example: |
+      // Good: correct order
+      plugins: [
+        postcssImport(),        // 1. Resolve imports
+        postcssNesting(),       // 2. Transform CSS
+        postcssPresetEnv(),     // 3. Polyfill features
+        autoprefixer(),         // 4. Add prefixes
+        cssnano(),              // 5. Minify (production)
+      ]
+
+  - id: PCSS006
+    title: "Pin plugin versions for reproducible builds"
+    description: "Pin exact versions of PostCSS plugins in package.json. Minor version bumps in plugins like autoprefixer can change output CSS."
+    category: "postcss_plugins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "plugins", "versioning", "reproducibility"]
+
+  - id: PCSS007
+    title: "Use postcss-modules for CSS scoping"
+    description: "Use postcss-modules to generate locally-scoped class names. This prevents naming collisions without requiring a framework-specific solution."
+    category: "postcss_plugins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "plugins", "modules", "scoping"]
+    example: |
+      // postcss.config.js
+      plugins: [
+        require('postcss-modules')({
+          generateScopedName: '[name]__[local]___[hash:base64:5]',
+        })
+      ]
+
+  - id: PCSS008
+    title: "Use postcss-url for asset URL handling"
+    description: "Use postcss-url to rebase, inline, or copy assets referenced in CSS url() declarations. Handles font files, images, and other assets."
+    category: "postcss_plugins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "plugins", "url", "assets"]
+
+  - id: PCSS009
+    title: "Avoid deprecated or unmaintained plugins"
+    description: "Check plugin maintenance status before adoption. Prefer plugins from postcss-plugins org or major maintainers. Avoid plugins not updated for PostCSS 8."
+    category: "postcss_plugins"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "plugins", "maintenance", "deprecated"]
+
+  - id: PCSS010
+    title: "Configure plugin options explicitly rather than relying on defaults"
+    description: "Pass explicit options to plugins instead of relying on defaults. This documents intent and prevents breakage when defaults change across versions."
+    category: "postcss_plugins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "plugins", "configuration", "explicit"]
+
+  # ============================================================================
+  # POSTCSS CONFIG (PCSS011-PCSS017)
+  # ============================================================================
+
+  - id: PCSS011
+    title: "Use postcss.config.js for configuration"
+    description: "Use a dedicated postcss.config.js file instead of inline config in webpack/vite. This enables sharing config across build tools and editors."
+    category: "postcss_config"
+    severity: "critical"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "config", "file", "standalone"]
+    example: |
+      // postcss.config.js (recommended)
+      module.exports = {
+        plugins: {
+          'postcss-import': {},
+          'autoprefixer': {},
+        }
+      };
+
+  - id: PCSS012
+    title: "Use environment-aware configuration for dev vs prod"
+    description: "Conditionally include plugins based on NODE_ENV. Only enable cssnano and heavy optimizations in production."
+    category: "postcss_config"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "config", "environment", "production"]
+    example: |
+      module.exports = (ctx) => ({
+        plugins: {
+          'postcss-import': {},
+          'autoprefixer': {},
+          ...(ctx.env === 'production' ? { cssnano: {} } : {}),
+        }
+      });
+
+  - id: PCSS013
+    title: "Enable source maps for development debugging"
+    description: "Enable inline source maps during development for accurate CSS debugging in browser DevTools. Disable in production for performance."
+    category: "postcss_config"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "config", "sourcemaps", "debugging"]
+    example: |
+      // Development
+      module.exports = {
+        map: { inline: true },
+        plugins: [...]
+      };
+      // Production
+      module.exports = {
+        map: false,
+        plugins: [...]
+      };
+
+  - id: PCSS014
+    title: "Use ESM config format for modern projects"
+    description: "Use postcss.config.mjs or ESM syntax in postcss.config.js for projects using ES modules. Aligns with modern JavaScript module standards."
+    category: "postcss_config"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "config", "esm", "modules"]
+    example: |
+      // postcss.config.mjs
+      import postcssImport from 'postcss-import';
+      import autoprefixer from 'autoprefixer';
+      export default {
+        plugins: [postcssImport(), autoprefixer()]
+      };
+
+  - id: PCSS015
+    title: "Specify browserslist target for autoprefixer and preset-env"
+    description: "Define a .browserslistrc file or browserslist field in package.json. Both autoprefixer and postcss-preset-env use this to determine which features to polyfill."
+    category: "postcss_config"
+    severity: "critical"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "config", "browserslist", "targets"]
+    example: |
+      // .browserslistrc
+      > 0.5%
+      last 2 versions
+      not dead
+      not ie 11
+
+  - id: PCSS016
+    title: "Use TypeScript config for type-safe PostCSS configuration"
+    description: "Use postcss.config.ts with the postcss-load-config TypeScript support for type-checked configuration. Catches config errors at build time."
+    category: "postcss_config"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "config", "typescript", "type-safety"]
+
+  - id: PCSS017
+    title: "Keep config DRY using function-style configuration"
+    description: "Use the function form of postcss.config.js to access context (env, file, options) and build config dynamically based on the file being processed."
+    category: "postcss_config"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "config", "function", "dynamic"]
+
+  # ============================================================================
+  # POSTCSS TRANSFORMS (PCSS018-PCSS025)
+  # ============================================================================
+
+  - id: PCSS018
+    title: "Use CSS nesting syntax with postcss-nesting"
+    description: "Use standard CSS nesting (W3C spec) via postcss-nesting rather than Sass-style nesting. The & selector is required for non-element selectors."
+    category: "postcss_transforms"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "transforms", "nesting", "css-spec"]
+    example: |
+      /* Standard CSS nesting (postcss-nesting) */
+      .parent {
+        color: red;
+        & .child {
+          color: blue;
+        }
+        &:hover {
+          color: green;
+        }
+      }
+
+  - id: PCSS019
+    title: "Use @custom-media for reusable media query breakpoints"
+    description: "Define breakpoints as @custom-media queries for consistency. Use postcss-custom-media to process them for browser compatibility."
+    category: "postcss_transforms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "transforms", "custom-media", "breakpoints"]
+    example: |
+      @custom-media --viewport-sm (width >= 576px);
+      @custom-media --viewport-md (width >= 768px);
+      @media (--viewport-sm) {
+        .container { max-width: 540px; }
+      }
+
+  - id: PCSS020
+    title: "Use @custom-selector for reusable selector patterns"
+    description: "Define reusable selector patterns with @custom-selector. Use postcss-custom-selectors to compile them for browser support."
+    category: "postcss_transforms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "transforms", "custom-selector", "reusable"]
+    example: |
+      @custom-selector :--heading h1, h2, h3, h4, h5, h6;
+      :--heading { font-weight: bold; }
+
+  - id: PCSS021
+    title: "Use cascade layers (@layer) for specificity management"
+    description: "Organize CSS with @layer to control cascade order without specificity hacks. PostCSS can polyfill @layer for older browsers."
+    category: "postcss_transforms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "transforms", "layers", "cascade", "specificity"]
+    example: |
+      @layer base, components, utilities;
+      @layer base { body { margin: 0; } }
+      @layer components { .btn { padding: 8px 16px; } }
+      @layer utilities { .mt-4 { margin-top: 1rem; } }
+
+  - id: PCSS022
+    title: "Use modern color functions with fallbacks"
+    description: "Use oklch(), oklab(), color-mix() for perceptually uniform colors. postcss-preset-env provides fallbacks for unsupported browsers."
+    category: "postcss_transforms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "transforms", "colors", "oklch", "color-mix"]
+    example: |
+      .element {
+        color: oklch(50% 0.3 270);
+        background: color-mix(in oklch, #3498db, #e74c3c 30%);
+      }
+
+  - id: PCSS023
+    title: "Use logical properties for internationalization"
+    description: "Use logical properties (margin-inline, padding-block) instead of directional ones (margin-left, padding-top). PostCSS can generate fallbacks."
+    category: "postcss_transforms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "transforms", "logical-properties", "i18n", "rtl"]
+    example: |
+      .element {
+        margin-inline: auto;
+        padding-block: 1rem;
+        border-inline-start: 2px solid;
+      }
+
+  - id: PCSS024
+    title: "Use container queries for component-level responsive design"
+    description: "Use @container queries for responsive components that adapt to their container, not the viewport. postcss-preset-env or postcss-container-queries provides polyfills."
+    category: "postcss_transforms"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "transforms", "container-queries", "responsive"]
+    example: |
+      .card-container { container-type: inline-size; }
+      @container (min-width: 400px) {
+        .card { display: flex; }
+      }
+
+  - id: PCSS025
+    title: "Set appropriate stage in postcss-preset-env"
+    description: "Set the stage option (0-4) in postcss-preset-env to control which future CSS features are polyfilled. Stage 2+ features are recommended for production."
+    category: "postcss_transforms"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "transforms", "preset-env", "stage", "stability"]
+    example: |
+      ['postcss-preset-env', {
+        stage: 2,
+        features: {
+          'nesting-rules': true,
+          'custom-media-queries': true,
+        }
+      }]
+
+  # ============================================================================
+  # POSTCSS SYNTAX (PCSS026-PCSS030)
+  # ============================================================================
+
+  - id: PCSS026
+    title: "Use postcss-scss for linting SCSS without compilation"
+    description: "Use postcss-scss syntax to parse SCSS files for linting with stylelint. This avoids needing the Sass compiler for linting purposes."
+    category: "postcss_syntax"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "syntax", "scss", "linting"]
+    example: |
+      // postcss.config.js
+      module.exports = {
+        syntax: 'postcss-scss',
+        plugins: [...]
+      };
+
+  - id: PCSS027
+    title: "Use postcss-html for linting CSS embedded in HTML/Vue/Svelte"
+    description: "Use postcss-html to parse CSS within <style> tags in HTML, Vue SFC, and Svelte components. Required for stylelint to lint embedded CSS."
+    category: "postcss_syntax"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "syntax", "html", "vue", "svelte"]
+
+  - id: PCSS028
+    title: "Use postcss-safe-parser for fault-tolerant parsing"
+    description: "Use postcss-safe-parser when processing potentially malformed CSS (user input, legacy files). It recovers from syntax errors instead of throwing."
+    category: "postcss_syntax"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "syntax", "safe-parser", "fault-tolerant"]
+
+  - id: PCSS029
+    title: "Specify syntax/parser/stringifier explicitly in config"
+    description: "When using custom syntaxes, specify them explicitly in the config rather than relying on auto-detection. This ensures consistent behavior across environments."
+    category: "postcss_syntax"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "syntax", "explicit", "config"]
+    example: |
+      module.exports = {
+        parser: 'postcss-scss',
+        plugins: [...]
+      };
+
+  - id: PCSS030
+    title: "Use SugarSS for concise indent-based syntax"
+    description: "Consider SugarSS for small projects that benefit from indent-based CSS syntax (like Stylus/Sass indented). Set syntax: 'sugarss' in config."
+    category: "postcss_syntax"
+    severity: "optional"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "syntax", "sugarss", "indent-based"]
+
+  # ============================================================================
+  # POSTCSS API (PCSS031-PCSS037)
+  # ============================================================================
+
+  - id: PCSS031
+    title: "Use v8 plugin API with postcssPlugin property"
+    description: "Define plugins using the v8 API pattern with postcssPlugin property. The deprecated postcss.plugin() factory was removed in PostCSS 8."
+    category: "postcss_api"
+    severity: "critical"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "api", "plugin", "v8", "modern"]
+    example: |
+      // Good: v8 plugin API
+      const plugin = (opts = {}) => ({
+        postcssPlugin: 'my-plugin',
+        Declaration(decl) { /* ... */ },
+        Rule(rule) { /* ... */ },
+      });
+      plugin.postcss = true;
+      module.exports = plugin;
+
+  - id: PCSS032
+    title: "Use specific visitor hooks instead of generic walk methods"
+    description: "Use Declaration(), Rule(), AtRule() hooks for targeted processing. walk() traverses the entire tree and is slower than targeted visitors."
+    category: "postcss_api"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "api", "visitors", "hooks", "performance"]
+    example: |
+      // Good: targeted hook
+      const plugin = (opts = {}) => ({
+        postcssPlugin: 'my-plugin',
+        Declaration(decl) {
+          if (decl.prop === 'color') { /* ... */ }
+        },
+      });
+      // Avoid: generic walk
+      Once(root) {
+        root.walk(node => { /* checks every node */ });
+      }
+
+  - id: PCSS033
+    title: "Use async processing with .process().then() or await"
+    description: "Use async PostCSS processing to avoid blocking the event loop. PostCSS 8 fully supports async plugins and processing."
+    category: "postcss_api"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "api", "async", "processing"]
+    example: |
+      // Good: async processing
+      const result = await postcss([plugin]).process(css, { from: 'input.css' });
+      console.log(result.css);
+
+  - id: PCSS034
+    title: "Always specify from option in .process() for accurate source maps"
+    description: "Always pass { from: 'filepath' } to .process() for accurate source maps and error messages. Omitting it results in '<no source>' warnings."
+    category: "postcss_api"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "api", "process", "from", "sourcemaps"]
+    example: |
+      // Good: from specified
+      postcss(plugins).process(css, { from: 'src/app.css', to: 'dist/app.css' });
+      // Bad: from omitted
+      postcss(plugins).process(css);
+
+  - id: PCSS035
+    title: "Use result.warnings() to check for plugin warnings"
+    description: "Always check result.warnings() after processing. Plugins report deprecation notices and potential issues via warnings."
+    category: "postcss_api"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "api", "warnings", "diagnostics"]
+    example: |
+      const result = await postcss(plugins).process(css, opts);
+      result.warnings().forEach(warn => {
+        console.warn(warn.toString());
+      });
+
+  - id: PCSS036
+    title: "Use Once/OnceExit hooks for document-level processing"
+    description: "Use Once() for setup and OnceExit() for cleanup in v8 plugins. These run once per processing, unlike node-level hooks."
+    category: "postcss_api"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "api", "hooks", "once", "lifecycle"]
+
+  - id: PCSS037
+    title: "Use result.messages for plugin-to-plugin communication"
+    description: "Use result.messages to pass metadata between plugins. Define message types like 'dependency' to signal file dependencies."
+    category: "postcss_api"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "api", "messages", "inter-plugin"]
+
+  # ============================================================================
+  # POSTCSS ARCHITECTURE (PCSS038-PCSS042)
+  # ============================================================================
+
+  - id: PCSS038
+    title: "Separate PostCSS config from build tool config"
+    description: "Keep PostCSS configuration in a standalone postcss.config.js rather than embedding it in webpack/vite config. Enables tool-agnostic CSS processing."
+    category: "postcss_architecture"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "architecture", "separation", "config"]
+
+  - id: PCSS039
+    title: "Use PostCSS as a CSS-only transformation layer"
+    description: "Use PostCSS for CSS transformations only. Do not mix JavaScript logic into PostCSS plugins. Keep plugin logic focused and single-purpose."
+    category: "postcss_architecture"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags:
+      ["postcss", "architecture", "separation-of-concerns", "single-purpose"]
+
+  - id: PCSS040
+    title: "Create custom plugins for project-specific CSS transformations"
+    description: "Write custom PostCSS plugins for project-specific transformations instead of complex build scripts. Plugins are testable and composable."
+    category: "postcss_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "architecture", "custom-plugins", "maintainability"]
+
+  - id: PCSS041
+    title: "Use @layer for architectural CSS organization"
+    description: "Structure CSS architecture using @layer declarations: base, tokens, components, utilities. This provides clear cascade control and separation."
+    category: "postcss_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "architecture", "layers", "organization"]
+
+  - id: PCSS042
+    title: "Use PostCSS with Tailwind CSS for utility-first architecture"
+    description: "When using Tailwind CSS, configure it as a PostCSS plugin. This enables @apply directives, custom utilities, and Tailwind's JIT mode."
+    category: "postcss_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "architecture", "tailwind", "utility-first"]
+
+  # ============================================================================
+  # POSTCSS PERFORMANCE (PCSS043-PCSS045)
+  # ============================================================================
+
+  - id: PCSS043
+    title: "Minimize plugin count for faster builds"
+    description: "Each plugin adds processing time. Consolidate functionality with preset-env and remove redundant plugins. Audit plugin chain regularly."
+    category: "postcss_performance"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "performance", "build-speed", "optimization"]
+
+  - id: PCSS044
+    title: "Use targeted node visitors over generic walk traversals"
+    description: "In custom plugins, use Declaration/Rule/AtRule visitors instead of walk(). Targeted visitors skip irrelevant nodes, improving performance."
+    category: "postcss_performance"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "performance", "visitors", "traversal"]
+
+  - id: PCSS045
+    title: "Cache PostCSS processing results in build pipelines"
+    description: "Enable caching in your build tool's PostCSS integration. Webpack's postcss-loader and Vite both support caching for unchanged files."
+    category: "postcss_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "performance", "caching", "build"]
+
+  # ============================================================================
+  # POSTCSS BEST PRACTICES (PCSS046-PCSS048)
+  # ============================================================================
+
+  - id: PCSS046
+    title: "Use stylelint with PostCSS for CSS linting"
+    description: "Configure stylelint with PostCSS syntax plugins for comprehensive CSS linting. Catches errors, enforces conventions, and ensures consistency."
+    category: "postcss_best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "linting", "stylelint", "quality"]
+
+  - id: PCSS047
+    title: "Write tests for custom PostCSS plugins"
+    description: "Test custom plugins with input/expected output pairs. Use postcss().process() in tests to verify transformations."
+    category: "postcss_best_practices"
+    severity: "important"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "testing", "plugins", "quality"]
+    example: |
+      // Plugin test
+      const postcss = require('postcss');
+      const plugin = require('./my-plugin');
+      test('transforms declarations', async () => {
+        const result = await postcss([plugin]).process(input, { from: undefined });
+        expect(result.css).toBe(expected);
+        expect(result.warnings()).toHaveLength(0);
+      });
+
+  - id: PCSS048
+    title: "Document PostCSS plugin chain and purpose"
+    description: "Document each plugin in the chain with comments explaining why it's included. This helps future maintainers understand the processing pipeline."
+    category: "postcss_best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "documentation", "maintainability"]
+
+  # ============================================================================
+  # POSTCSS TOOLING & MIGRATION (PCSS049-PCSS050)
+  # ============================================================================
+
+  - id: PCSS049
+    title: "Use postcss-cli for standalone CSS processing"
+    description: "Use postcss-cli for projects not using a bundler. It provides a simple CLI interface for processing CSS files with your PostCSS config."
+    category: "postcss_tooling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "tooling", "cli", "standalone"]
+
+  - id: PCSS050
+    title: "Migrate from postcss.plugin() to v8 plugin API"
+    description: "Replace deprecated postcss.plugin() factory calls with the v8 object-based plugin API. Use the postcss-plugin-migration codemod for automated migration."
+    category: "postcss_migration"
+    severity: "critical"
+    applicability:
+      frameworks: ["postcss"]
+    tags: ["postcss", "migration", "v8", "deprecated", "upgrade"]
+    example: |
+      // Before (v7): DEPRECATED
+      module.exports = postcss.plugin('my-plugin', (opts) => {
+        return (root) => { root.walkDecls(decl => { /* ... */ }); };
+      });
+      // After (v8): MODERN
+      const plugin = (opts = {}) => ({
+        postcssPlugin: 'my-plugin',
+        Declaration(decl) { /* ... */ },
+      });
+      plugin.postcss = true;
+      module.exports = plugin;

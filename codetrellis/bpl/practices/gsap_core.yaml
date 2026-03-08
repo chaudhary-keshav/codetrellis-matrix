@@ -1,0 +1,703 @@
+# ─── GSAP Animation Best Practices (v4.77) ────────────────────────────────
+# 50 practices covering animations, timelines, plugins, scroll, performance,
+# context, easing, stagger, integration, and migration.
+# Category mapping: GSAP_ANIMATIONS, GSAP_TIMELINES, GSAP_PLUGINS,
+# GSAP_SCROLL, GSAP_PERFORMANCE, GSAP_CONTEXT, GSAP_EASING,
+# GSAP_STAGGER, GSAP_INTEGRATION, GSAP_MIGRATION
+# Framework: gsap (GSAP v1-v3)
+
+practices:
+  # ── GSAP_ANIMATIONS (5 practices) ───────────────────────────────────────
+  - id: GSAP001
+    title: Use gsap.to() for forward animations
+    description: >
+      Prefer gsap.to() for animating properties from current state to target.
+      It's the most common tween type and automatically reads the element's
+      current computed styles as the starting value.
+    category: gsap_animations
+    level: beginner
+    priority: high
+    frameworks: ["gsap"]
+    tags: ["animation", "tween", "to"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.to()"
+
+  - id: GSAP002
+    title: Use gsap.from() sparingly with correct immediateRender
+    description: >
+      gsap.from() renders immediately by default (immediateRender: true).
+      This can cause flashes if elements are visible before animation runs.
+      Set immediateRender: false when using from() inside timelines or
+      when the element should not jump to the from-state immediately.
+    category: gsap_animations
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["animation", "from", "immediateRender", "flash"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.from()"
+
+  - id: GSAP003
+    title: Avoid animating layout-triggering CSS properties
+    description: >
+      Animate transform (x, y, scaleX, scaleY, rotation) and opacity
+      instead of top, left, width, height, margin. Transforms are GPU-
+      accelerated and don't trigger browser reflows. GSAP provides
+      shorthand transform properties for convenience.
+    category: gsap_animations
+    level: beginner
+    priority: critical
+    frameworks: ["gsap"]
+    tags: ["animation", "performance", "transform", "gpu"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.to()/#transforms"
+
+  - id: GSAP004
+    title: Use the overwrite property to manage conflicting tweens
+    description: >
+      Set overwrite: 'auto' or overwrite: true to prevent multiple tweens
+      from fighting over the same properties on the same element. Default
+      is false in GSAP 3 — always be explicit about overwrite behavior
+      when multiple tweens may target the same element.
+    category: gsap_animations
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["animation", "overwrite", "conflict", "management"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.to()/#overwrite"
+
+  - id: GSAP005
+    title: Always kill tweens and timelines on component unmount
+    description: >
+      Store tween/timeline references and call .kill() or use
+      gsap.context() cleanup to prevent memory leaks and animations
+      running on removed DOM elements. This is critical in SPA
+      frameworks like React, Vue, and Angular.
+    category: gsap_animations
+    level: intermediate
+    priority: critical
+    frameworks: ["gsap"]
+    tags: ["animation", "cleanup", "memory-leak", "unmount"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/Tween/kill()"
+
+  # ── GSAP_TIMELINES (5 practices) ────────────────────────────────────────
+  - id: GSAP006
+    title: Use gsap.timeline() to sequence related animations
+    description: >
+      Group related animations into a timeline instead of using delays
+      on individual tweens. Timelines provide pause/resume/reverse/seek
+      control and make complex sequences maintainable and adjustable.
+    category: gsap_timelines
+    level: beginner
+    priority: high
+    frameworks: ["gsap"]
+    tags: ["timeline", "sequence", "orchestration"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/Timeline/"
+
+  - id: GSAP007
+    title: Use position parameter for precise timeline placement
+    description: >
+      Use the position parameter (3rd arg) in timeline.to/from/fromTo
+      to control timing: '+=0.5' (relative gap), '-=0.2' (overlap),
+      '<' (start of previous), '>' (end of previous), or absolute seconds.
+      Avoid relying solely on sequential placement.
+    category: gsap_timelines
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["timeline", "position", "timing", "overlap"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/Timeline/Position-Parameter/"
+
+  - id: GSAP008
+    title: Use labels for semantic timeline navigation
+    description: >
+      Add labels with tl.addLabel('sectionName') and reference them
+      in position parameters. Labels make timelines self-documenting,
+      enable tl.play('label') navigation, and allow inserting tweens
+      at named points without recalculating offsets.
+    category: gsap_timelines
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["timeline", "labels", "navigation", "semantic"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/Timeline/addLabel()"
+
+  - id: GSAP009
+    title: Set timeline defaults to reduce repetition
+    description: >
+      Pass shared properties via gsap.timeline({ defaults: { duration: 0.5,
+      ease: 'power2.out' } }). All child tweens inherit these defaults,
+      keeping code DRY. Individual tweens can still override defaults.
+    category: gsap_timelines
+    level: beginner
+    frameworks: ["gsap"]
+    tags: ["timeline", "defaults", "DRY", "configuration"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/Timeline/"
+
+  - id: GSAP010
+    title: Use nested timelines for modular animation composition
+    description: >
+      Create sub-timelines as functions that return a gsap.timeline(),
+      then add them to a master timeline. This enables reuse, testing
+      individual sequences, and building complex animations from
+      composable pieces.
+    category: gsap_timelines
+    level: advanced
+    frameworks: ["gsap"]
+    tags: ["timeline", "nesting", "composition", "modular"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/Timeline/"
+
+  # ── GSAP_PLUGINS (5 practices) ──────────────────────────────────────────
+  - id: GSAP011
+    title: Register plugins before using them
+    description: >
+      Always call gsap.registerPlugin(PluginName) before using any GSAP
+      plugin. Registration is idempotent and should happen once at app
+      initialization. Unregistered plugins silently fail.
+    category: gsap_plugins
+    level: beginner
+    priority: critical
+    frameworks: ["gsap"]
+    tags: ["plugins", "registration", "initialization"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.registerPlugin()"
+
+  - id: GSAP012
+    title: Import only the plugins you use for tree-shaking
+    description: >
+      Import specific plugins from 'gsap' or their sub-paths instead of
+      importing the entire GSAP bundle. Use gsap/ScrollTrigger,
+      gsap/Draggable etc. for optimal bundle size with modern bundlers.
+    category: gsap_plugins
+    level: intermediate
+    priority: high
+    frameworks: ["gsap"]
+    tags: ["plugins", "tree-shaking", "bundle-size", "imports"]
+    references:
+      - "https://gsap.com/docs/v3/Installation/"
+
+  - id: GSAP013
+    title: Use gsap.registerEffect() for reusable animation presets
+    description: >
+      Define custom effects with gsap.registerEffect() for animations you
+      repeat across your codebase. Effects can accept targets, parameters
+      and return tweens/timelines for consistent, testable animations.
+    category: gsap_plugins
+    level: advanced
+    frameworks: ["gsap"]
+    tags: ["plugins", "effects", "reusable", "presets"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.registerEffect()"
+
+  - id: GSAP014
+    title: Use gsap.utils for common animation utilities
+    description: >
+      Leverage gsap.utils.toArray(), gsap.utils.wrap(), gsap.utils.mapRange(),
+      gsap.utils.clamp() etc. instead of writing custom helpers. These are
+      optimized and handle edge cases like NodeLists and selectors.
+    category: gsap_plugins
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["plugins", "utilities", "helpers", "toArray"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/UtilityMethods/"
+
+  - id: GSAP015
+    title: Distinguish between free and Club GreenSock plugins
+    description: >
+      Free plugins (ScrollTrigger, Draggable, Flip, Observer, TextPlugin)
+      can be used in any project. Club plugins (MorphSVGPlugin,
+      DrawSVGPlugin, SplitText, ScrollSmoother, GSDevTools) require a
+      GSAP membership. Plan architecture accordingly.
+    category: gsap_plugins
+    level: beginner
+    frameworks: ["gsap"]
+    tags: ["plugins", "club", "licensing", "premium"]
+    references:
+      - "https://gsap.com/pricing/"
+
+  # ── GSAP_SCROLL (5 practices) ───────────────────────────────────────────
+  - id: GSAP016
+    title: Use ScrollTrigger.create() for scroll-driven animations
+    description: >
+      Use ScrollTrigger as a standalone controller or attach it to tweens
+      via the scrollTrigger config object. Define trigger, start, end,
+      and scrub for precise scroll-linked animations.
+    category: gsap_scroll
+    level: beginner
+    priority: high
+    frameworks: ["gsap"]
+    tags: ["scroll", "ScrollTrigger", "scroll-driven"]
+    references:
+      - "https://gsap.com/docs/v3/Plugins/ScrollTrigger/"
+
+  - id: GSAP017
+    title: Set proper start/end values for ScrollTrigger
+    description: >
+      Use descriptive start/end like 'top center', 'bottom top+=100'.
+      The format is 'triggerPosition scrollerPosition'. Use markers: true
+      during development to visually debug trigger positions.
+    category: gsap_scroll
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["scroll", "ScrollTrigger", "start", "end", "markers"]
+    references:
+      - "https://gsap.com/docs/v3/Plugins/ScrollTrigger/"
+
+  - id: GSAP018
+    title: Use ScrollTrigger.batch() for animating many elements
+    description: >
+      ScrollTrigger.batch() efficiently handles enter/leave callbacks
+      for groups of elements that share the same ScrollTrigger config.
+      Much more performant than creating individual ScrollTriggers
+      for large lists of elements.
+    category: gsap_scroll
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["scroll", "batch", "performance", "list"]
+    references:
+      - "https://gsap.com/docs/v3/Plugins/ScrollTrigger/static.batch()"
+
+  - id: GSAP019
+    title: Call ScrollTrigger.refresh() after layout changes
+    description: >
+      After dynamically adding/removing content, loading images, or
+      resizing containers, call ScrollTrigger.refresh() to recalculate
+      trigger positions. Use ScrollTrigger.addEventListener('refresh', fn)
+      to react to refreshes.
+    category: gsap_scroll
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["scroll", "refresh", "dynamic-content", "layout"]
+    references:
+      - "https://gsap.com/docs/v3/Plugins/ScrollTrigger/static.refresh()"
+
+  - id: GSAP020
+    title: Kill ScrollTrigger instances on component unmount
+    description: >
+      ScrollTrigger instances persist and listen to scroll events after
+      creation. Always store references and call .kill() on unmount,
+      or use gsap.context() which automatically reverts all child
+      ScrollTriggers when ctx.revert() is called.
+    category: gsap_scroll
+    level: intermediate
+    priority: critical
+    frameworks: ["gsap"]
+    tags: ["scroll", "cleanup", "kill", "unmount"]
+    references:
+      - "https://gsap.com/docs/v3/Plugins/ScrollTrigger/kill()"
+
+  # ── GSAP_PERFORMANCE (5 practices) ──────────────────────────────────────
+  - id: GSAP021
+    title: Use will-change sparingly and let GSAP handle GPU acceleration
+    description: >
+      GSAP automatically applies hardware acceleration for transform
+      animations. Avoid manually setting will-change on animated elements
+      as it can cause excessive layer promotion and increased memory usage.
+      Use force3D: false only if you encounter rendering artifacts.
+    category: gsap_performance
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["performance", "GPU", "will-change", "force3D"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.to()/#force3D"
+
+  - id: GSAP022
+    title: Use gsap.ticker for custom per-frame logic
+    description: >
+      Add callbacks to gsap.ticker instead of requestAnimationFrame
+      for logic that should sync with GSAP's rendering pipeline.
+      The ticker provides deltaRatio for frame-rate-independent updates
+      and pauses when GSAP is paused globally.
+    category: gsap_performance
+    level: advanced
+    frameworks: ["gsap"]
+    tags: ["performance", "ticker", "frame", "sync"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.ticker/"
+
+  - id: GSAP023
+    title: Minimize the number of active tweens
+    description: >
+      Combine property animations on the same element into a single tween
+      rather than creating separate tweens for each property. Use timelines
+      to consolidate related animations. Each active tween has overhead.
+    category: gsap_performance
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["performance", "optimization", "consolidate"]
+    references:
+      - "https://gsap.com/resources/performance/"
+
+  - id: GSAP024
+    title: Use gsap.quickTo() and gsap.quickSetter() for high-frequency updates
+    description: >
+      For mouse-following, real-time slider, or frequent value updates,
+      use gsap.quickTo() or gsap.quickSetter() which cache the tween
+      setup and avoid creating new tweens on every update. Much more
+      performant than calling gsap.to() repeatedly.
+    category: gsap_performance
+    level: advanced
+    frameworks: ["gsap"]
+    tags: ["performance", "quickTo", "quickSetter", "high-frequency"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.quickTo()"
+
+  - id: GSAP025
+    title: Lazy render tweens for better initial performance
+    description: >
+      GSAP 3 uses lazy rendering by default — recording start/end values
+      is deferred until the first render tick. Don't disable lazy: false
+      unless you need immediate value recording. This batches reads/writes
+      for better performance.
+    category: gsap_performance
+    level: advanced
+    frameworks: ["gsap"]
+    tags: ["performance", "lazy", "rendering", "batching"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.to()/#lazy"
+
+  # ── GSAP_CONTEXT (5 practices) ──────────────────────────────────────────
+  - id: GSAP026
+    title: Use gsap.context() for scoped animation cleanup
+    description: >
+      Wrap all animations in gsap.context(fn, scopeElement) for automatic
+      cleanup. Calling ctx.revert() kills all child tweens, timelines,
+      and ScrollTriggers. Essential for React/Vue/Angular component lifecycles.
+    category: gsap_context
+    level: beginner
+    priority: critical
+    frameworks: ["gsap"]
+    tags: ["context", "cleanup", "scope", "revert"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.context()"
+
+  - id: GSAP027
+    title: Pass scope element to gsap.context() for selector scoping
+    description: >
+      The second argument to gsap.context(fn, element) scopes all
+      selector strings (like '.box') to that element's descendants.
+      This prevents animations from accidentally targeting elements
+      outside the component.
+    category: gsap_context
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["context", "scope", "selector", "isolation"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.context()"
+
+  - id: GSAP028
+    title: Use ctx.add() to register cleanup-eligible animations later
+    description: >
+      For animations created after initial context setup (e.g., event
+      handlers, async), use ctx.add(() => { ... }) so they're tracked
+      for cleanup. Animations created outside ctx.add() won't be reverted.
+    category: gsap_context
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["context", "add", "dynamic", "event-handlers"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.context()"
+
+  - id: GSAP029
+    title: Use useGSAP hook in React instead of useEffect
+    description: >
+      The @gsap/react package provides useGSAP() which wraps gsap.context()
+      with React's lifecycle. It auto-cleans on unmount and re-runs on
+      dependency changes. Prefer it over manual useEffect + gsap.context().
+    category: gsap_context
+    level: beginner
+    priority: high
+    frameworks: ["gsap"]
+    tags: ["context", "react", "useGSAP", "hook"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.context()"
+
+  - id: GSAP030
+    title: Don't nest gsap.context() unnecessarily
+    description: >
+      A single gsap.context() per component is sufficient. Nesting
+      contexts adds complexity without benefit. Use ctx.add() for
+      conditionally created animations instead of creating child contexts.
+    category: gsap_context
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["context", "nesting", "anti-pattern"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.context()"
+
+  # ── GSAP_EASING (5 practices) ───────────────────────────────────────────
+  - id: GSAP031
+    title: Use GSAP's built-in easing functions instead of custom cubic-bezier
+    description: >
+      GSAP provides optimized easing with intuitive names: 'power1.out',
+      'power2.inOut', 'elastic.out', 'bounce.in', 'back.out(1.7)'.
+      These are faster than CSS cubic-bezier and support configuration.
+    category: gsap_easing
+    level: beginner
+    frameworks: ["gsap"]
+    tags: ["easing", "ease", "built-in", "power"]
+    references:
+      - "https://gsap.com/docs/v3/Eases/"
+
+  - id: GSAP032
+    title: Use 'none' ease for linear animations and scrubbed ScrollTrigger
+    description: >
+      For scroll-scrubbed animations, use ease: 'none' (linear) so
+      the animation progress maps 1:1 with scroll position. Easing on
+      scrubbed animations creates unnatural jumps and disconnect between
+      scroll position and animation state.
+    category: gsap_easing
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["easing", "linear", "scrub", "scroll"]
+    references:
+      - "https://gsap.com/docs/v3/Eases/"
+
+  - id: GSAP033
+    title: "Use ease: 'power2.out' as a sensible default"
+    description: >
+      'power2.out' provides a natural deceleration curve that feels
+      polished for most UI animations. Reserve elastic/bounce for
+      intentional playful effects. Avoid 'linear' for UI transitions
+      as it feels mechanical.
+    category: gsap_easing
+    level: beginner
+    frameworks: ["gsap"]
+    tags: ["easing", "default", "power2", "natural"]
+    references:
+      - "https://gsap.com/docs/v3/Eases/"
+
+  - id: GSAP034
+    title: Use CustomEase for brand-specific easing curves
+    description: >
+      CustomEase.create('myEase', 'M0,0 C0.5,0 0.2,1 1,1') lets you
+      define SVG-path-based easing for exact brand motion guidelines.
+      Register once and reference by name throughout the project.
+    category: gsap_easing
+    level: advanced
+    frameworks: ["gsap"]
+    tags: ["easing", "custom", "brand", "SVG-path"]
+    references:
+      - "https://gsap.com/docs/v3/Eases/CustomEase/"
+
+  - id: GSAP035
+    title: Use SteppedEase for frame-by-frame animations
+    description: >
+      SteppedEase.config(12) creates a 12-step discrete animation,
+      perfect for sprite sheet animations, clock ticks, or retro effects.
+      Combine with CSS background-position for sprite animation.
+    category: gsap_easing
+    level: advanced
+    frameworks: ["gsap"]
+    tags: ["easing", "stepped", "sprite", "discrete"]
+    references:
+      - "https://gsap.com/docs/v3/Eases/SteppedEase/"
+
+  # ── GSAP_STAGGER (5 practices) ──────────────────────────────────────────
+  - id: GSAP036
+    title: Use the stagger property for staggered group animations
+    description: >
+      Pass stagger: 0.1 (or stagger config object) to gsap.to() to
+      animate multiple elements with a delay between each. More efficient
+      than creating individual tweens with incrementing delays.
+    category: gsap_stagger
+    level: beginner
+    frameworks: ["gsap"]
+    tags: ["stagger", "group", "delay", "list"]
+    references:
+      - "https://gsap.com/docs/v3/Staggers/"
+
+  - id: GSAP037
+    title: Use stagger.from for directional stagger control
+    description: >
+      The stagger config object supports from: 'start', 'end', 'center',
+      'edges', 'random', or a specific index. This controls which element
+      starts first, enabling center-out, edges-in, or random-order effects.
+    category: gsap_stagger
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["stagger", "from", "direction", "order"]
+    references:
+      - "https://gsap.com/docs/v3/Staggers/"
+
+  - id: GSAP038
+    title: Use stagger.grid for 2D grid-based stagger effects
+    description: >
+      Pass stagger: { grid: [rows, cols], from: 'center', amount: 0.5 }
+      for grid-aware stagger that calculates distance from a point.
+      Set grid: 'auto' to let GSAP detect the grid from element positions.
+    category: gsap_stagger
+    level: advanced
+    frameworks: ["gsap"]
+    tags: ["stagger", "grid", "2D", "matrix"]
+    references:
+      - "https://gsap.com/docs/v3/Staggers/"
+
+  - id: GSAP039
+    title: Use stagger.each vs stagger.amount correctly
+    description: >
+      stagger: { each: 0.1 } sets 0.1s between each element regardless
+      of count. stagger: { amount: 1 } distributes 1s total across all
+      elements. Use 'each' for consistent spacing, 'amount' for
+      fixed total duration.
+    category: gsap_stagger
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["stagger", "each", "amount", "timing"]
+    references:
+      - "https://gsap.com/docs/v3/Staggers/"
+
+  - id: GSAP040
+    title: Use stagger function for fully custom stagger logic
+    description: >
+      Pass a function as stagger value: stagger: (index, target, list) =>
+      index * 0.1 + Math.random() * 0.05. This enables dynamic per-element
+      timing based on position, data attributes, or any custom logic.
+    category: gsap_stagger
+    level: advanced
+    frameworks: ["gsap"]
+    tags: ["stagger", "function", "custom", "dynamic"]
+    references:
+      - "https://gsap.com/docs/v3/Staggers/"
+
+  # ── GSAP_INTEGRATION (5 practices) ──────────────────────────────────────
+  - id: GSAP041
+    title: Use @gsap/react for React integration
+    description: >
+      Install @gsap/react and use the useGSAP() hook which handles
+      gsap.context() creation and cleanup automatically. Pass the
+      component ref as scope and dependencies array for re-runs.
+    category: gsap_integration
+    level: beginner
+    priority: high
+    frameworks: ["gsap"]
+    tags: ["integration", "react", "useGSAP", "hook"]
+    references:
+      - "https://www.npmjs.com/package/@gsap/react"
+
+  - id: GSAP042
+    title: Use gsap.context() in Vue with onMounted/onUnmounted
+    description: >
+      Create gsap.context() in onMounted() with the component's template
+      ref as scope. Call ctx.revert() in onUnmounted(). Use ctx.add()
+      for watchers and event-driven animations created after mount.
+    category: gsap_integration
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["integration", "vue", "lifecycle", "composition-api"]
+    references:
+      - "https://gsap.com/resources/frameworks/"
+
+  - id: GSAP043
+    title: Use gsap.context() in Angular with ngAfterViewInit/ngOnDestroy
+    description: >
+      Initialize gsap.context(fn, this.elementRef.nativeElement) in
+      ngAfterViewInit and revert in ngOnDestroy. Use ViewChild refs
+      instead of selector strings for type-safe element targeting.
+    category: gsap_integration
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["integration", "angular", "lifecycle", "ViewChild"]
+    references:
+      - "https://gsap.com/resources/frameworks/"
+
+  - id: GSAP044
+    title: Use gsap.matchMedia() for responsive animations
+    description: >
+      gsap.matchMedia() creates animations scoped to media query
+      breakpoints. Animations automatically revert and re-create when
+      breakpoints change. Much cleaner than manual matchMedia listeners
+      with tween management.
+    category: gsap_integration
+    level: intermediate
+    priority: high
+    frameworks: ["gsap"]
+    tags: ["integration", "responsive", "matchMedia", "breakpoints"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.matchMedia()"
+
+  - id: GSAP045
+    title: Use TypeScript types from @types/gsap or built-in types
+    description: >
+      GSAP 3.12+ includes built-in TypeScript declarations. Use
+      gsap.core.Tween, gsap.core.Timeline, ScrollTrigger.Vars types
+      for type-safe configuration objects and callback signatures.
+    category: gsap_integration
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["integration", "typescript", "types", "declarations"]
+    references:
+      - "https://gsap.com/docs/v3/Installation/"
+
+  # ── GSAP_MIGRATION (5 practices) ────────────────────────────────────────
+  - id: GSAP046
+    title: Migrate from TweenMax/TweenLite to unified gsap object
+    description: >
+      GSAP 3 unified TweenMax, TweenLite, TimelineMax, TimelineLite into
+      a single 'gsap' object. Replace TweenMax.to() with gsap.to() and
+      new TimelineMax() with gsap.timeline(). All features are available
+      without separate imports.
+    category: gsap_migration
+    level: beginner
+    frameworks: ["gsap"]
+    tags: ["migration", "v3", "unified", "TweenMax"]
+    references:
+      - "https://gsap.com/docs/v3/Installation/Migration/"
+
+  - id: GSAP047
+    title: Replace onComplete chains with timelines
+    description: >
+      Nested onComplete callbacks from GSAP 1/2 patterns should be
+      refactored into timeline sequences. Timelines provide clearer
+      sequencing, easier debugging, and built-in pause/reverse control
+      that callback chains lack.
+    category: gsap_migration
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["migration", "onComplete", "callbacks", "refactor"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/Timeline/"
+
+  - id: GSAP048
+    title: Update ease string format from v2 to v3
+    description: >
+      Replace 'Power2.easeOut' with 'power2.out', 'Elastic.easeInOut'
+      with 'elastic.inOut'. GSAP 3 uses lowercase, dot-separated ease
+      names. The old format still works but the new format is preferred.
+    category: gsap_migration
+    level: beginner
+    frameworks: ["gsap"]
+    tags: ["migration", "easing", "format", "v3"]
+    references:
+      - "https://gsap.com/docs/v3/Eases/"
+
+  - id: GSAP049
+    title: Replace CDN script tags with ESM imports
+    description: >
+      Move from <script src="gsap.min.js"> to import { gsap } from 'gsap'.
+      ESM imports enable tree-shaking, proper dependency management,
+      and TypeScript support. Keep CDN only for quick prototypes.
+    category: gsap_migration
+    level: beginner
+    frameworks: ["gsap"]
+    tags: ["migration", "ESM", "imports", "CDN"]
+    references:
+      - "https://gsap.com/docs/v3/Installation/"
+
+  - id: GSAP050
+    title: Adopt gsap.context() to replace manual cleanup patterns
+    description: >
+      Replace manual arrays of tween references with gsap.context().
+      Instead of storing tweens in an array and looping to kill them,
+      wrap creation in gsap.context() and call ctx.revert() once.
+      Cleaner, less error-prone, and catches dynamically added animations.
+    category: gsap_migration
+    level: intermediate
+    frameworks: ["gsap"]
+    tags: ["migration", "context", "cleanup", "modernization"]
+    references:
+      - "https://gsap.com/docs/v3/GSAP/gsap.context()"

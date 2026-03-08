@@ -1,0 +1,1062 @@
+# TanStack Query Data Fetching Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.57 - TanStack Query Framework Support
+# Practice IDs: TSQUERY001-TSQUERY050
+# Coverage: Queries, Mutations, Cache, SSR/Hydration, TypeScript,
+#           Performance, Testing, Patterns, Migration, Integrations
+# Versions: react-query v1-v3 (legacy), @tanstack/react-query v4-v5
+# Multi-framework: React, Vue, Svelte, Solid, Angular adapters
+
+practices:
+  # ============================================================================
+  # TANSTACK QUERY QUERIES (TSQUERY001-TSQUERY010) - Query hook best practices
+  # ============================================================================
+
+  - id: TSQUERY001
+    title: "Use array query keys for proper cache identity"
+    description: "Always use array-based query keys (e.g., ['todos', { status }]) instead of string keys. Array keys enable automatic cache invalidation by prefix, proper serialization, and are required in TanStack Query v4+."
+    category: "tanstack_query_queries"
+    severity: "critical"
+    applicability:
+      frameworks: ["tanstack-query", "react"]
+    tags: ["tanstack-query", "query-key", "cache", "identity"]
+    example: |
+      // ✅ Array keys with hierarchy
+      useQuery({ queryKey: ['todos', 'list', { status, page }], queryFn: fetchTodos });
+      useQuery({ queryKey: ['todos', 'detail', id], queryFn: () => fetchTodo(id) });
+
+      // ❌ String keys (v3 legacy, not supported in v4+)
+      useQuery('todos', fetchTodos);
+
+  - id: TSQUERY002
+    title: "Use queryOptions helper for type-safe reusable query definitions (v5)"
+    description: "In TanStack Query v5, use the queryOptions() helper to create reusable, type-safe query option objects. This ensures queryKey and queryFn types are linked and enables sharing between useQuery, prefetchQuery, and ensureQueryData."
+    category: "tanstack_query_queries"
+    severity: "critical"
+    applicability:
+      frameworks: ["tanstack-query", "tanstack-query-v5"]
+    tags: ["tanstack-query", "v5", "queryOptions", "type-safe"]
+    example: |
+      // ✅ queryOptions helper (v5)
+      const todosOptions = (filters: TodoFilters) =>
+        queryOptions({
+          queryKey: ['todos', filters],
+          queryFn: () => fetchTodos(filters),
+        });
+
+      // Use in components
+      const { data } = useQuery(todosOptions({ status: 'active' }));
+
+      // Use in prefetch
+      await queryClient.prefetchQuery(todosOptions({ status: 'active' }));
+
+  - id: TSQUERY003
+    title: "Use query key factories for consistent key management"
+    description: "Create a query key factory object that centralizes all query keys for a domain. This prevents typos, enables easy invalidation, and improves maintainability across queries, mutations, and prefetches."
+    category: "tanstack_query_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "query-key", "factory", "pattern"]
+    example: |
+      // ✅ Query key factory
+      export const todoKeys = {
+        all: ['todos'] as const,
+        lists: () => [...todoKeys.all, 'list'] as const,
+        list: (filters: Filters) => [...todoKeys.lists(), filters] as const,
+        details: () => [...todoKeys.all, 'detail'] as const,
+        detail: (id: number) => [...todoKeys.details(), id] as const,
+      };
+
+      // Usage
+      useQuery({ queryKey: todoKeys.detail(id), queryFn: () => fetchTodo(id) });
+      queryClient.invalidateQueries({ queryKey: todoKeys.lists() });
+
+  - id: TSQUERY004
+    title: "Use enabled option for dependent and conditional queries"
+    description: "Use the enabled option to disable a query until its dependencies are available. This prevents unnecessary network requests and handles dependent query chains."
+    category: "tanstack_query_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "enabled", "dependent", "conditional"]
+    example: |
+      // ✅ Dependent query — wait for userId
+      const { data: user } = useQuery({
+        queryKey: ['user', email],
+        queryFn: () => getUserByEmail(email),
+      });
+
+      const { data: projects } = useQuery({
+        queryKey: ['projects', user?.id],
+        queryFn: () => getProjectsByUser(user!.id),
+        enabled: !!user?.id, // Only runs when user.id is available
+      });
+
+  - id: TSQUERY005
+    title: "Use select option for data transformation"
+    description: "Use the select option to transform or pick specific fields from query data. The select function runs on every render but only triggers re-renders when the selected result changes (referential equality)."
+    category: "tanstack_query_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "select", "transform", "memoize"]
+    example: |
+      // ✅ Select specific data
+      const { data: todoCount } = useQuery({
+        queryKey: ['todos'],
+        queryFn: fetchTodos,
+        select: (data) => data.length,
+      });
+
+      // ✅ Transform data shape
+      const { data: todoTitles } = useQuery({
+        queryKey: ['todos'],
+        queryFn: fetchTodos,
+        select: (data) => data.map((t) => t.title),
+      });
+
+  - id: TSQUERY006
+    title: "Use useSuspenseQuery for Suspense integration (v5)"
+    description: "In TanStack Query v5, use useSuspenseQuery instead of the deprecated suspense option. This provides proper Suspense integration with guaranteed data in the success case (no undefined check needed)."
+    category: "tanstack_query_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query", "tanstack-query-v5", "react"]
+    tags: ["tanstack-query", "v5", "suspense", "useSuspenseQuery"]
+    example: |
+      // ✅ v5 — useSuspenseQuery (data is always defined)
+      const { data } = useSuspenseQuery({
+        queryKey: ['todos'],
+        queryFn: fetchTodos,
+      });
+
+      // ❌ v4 — suspense option (deprecated in v5)
+      const { data } = useQuery({
+        queryKey: ['todos'],
+        queryFn: fetchTodos,
+        suspense: true,
+      });
+
+  - id: TSQUERY007
+    title: "Configure staleTime to control refetch behavior"
+    description: "Set staleTime to control how long data is considered fresh. The default is 0 (always stale). Set a reasonable staleTime to reduce unnecessary refetches. Use Infinity for data that rarely changes."
+    category: "tanstack_query_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "staleTime", "performance", "cache"]
+    example: |
+      // ✅ Data fresh for 5 minutes
+      useQuery({
+        queryKey: ['config'],
+        queryFn: fetchConfig,
+        staleTime: 5 * 60 * 1000,
+      });
+
+      // ✅ Global default
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { staleTime: 60 * 1000 } },
+      });
+
+  - id: TSQUERY008
+    title: "Use placeholderData for instant UI with stale data"
+    description: "Use placeholderData to show initial data while the real query loads. In v5, use placeholderData: keepPreviousData to keep previous results during parameter changes (replaces v4 keepPreviousData option)."
+    category: "tanstack_query_queries"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "placeholderData", "keepPreviousData", "ux"]
+    example: |
+      import { keepPreviousData } from '@tanstack/react-query';
+
+      // ✅ v5 — keepPreviousData as placeholderData
+      const { data, isPlaceholderData } = useQuery({
+        queryKey: ['todos', page],
+        queryFn: () => fetchTodos(page),
+        placeholderData: keepPreviousData,
+      });
+
+      // ❌ v4 — deprecated keepPreviousData option
+      useQuery({ queryKey: ['todos', page], queryFn: fn, keepPreviousData: true });
+
+  - id: TSQUERY009
+    title: "Use useInfiniteQuery with getNextPageParam for pagination"
+    description: "Use useInfiniteQuery for infinite scroll / load-more patterns. Always provide getNextPageParam. In v5, initialPageParam is required."
+    category: "tanstack_query_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "infinite", "pagination", "scroll"]
+    example: |
+      // ✅ v5 infinite query (initialPageParam required)
+      const { data, fetchNextPage, hasNextPage } = useInfiniteQuery({
+        queryKey: ['todos'],
+        queryFn: ({ pageParam }) => fetchTodos(pageParam),
+        initialPageParam: 0,
+        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      });
+
+  - id: TSQUERY010
+    title: "Use useQueries for parallel independent queries"
+    description: "Use useQueries to execute multiple independent queries in parallel. In v5, use the combine option to merge results into a single derived value."
+    category: "tanstack_query_queries"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "useQueries", "parallel", "combine"]
+    example: |
+      // ✅ v5 — combine results
+      const { data, pending } = useQueries({
+        queries: ids.map((id) => ({
+          queryKey: ['todo', id],
+          queryFn: () => fetchTodo(id),
+        })),
+        combine: (results) => ({
+          data: results.map((r) => r.data),
+          pending: results.some((r) => r.isPending),
+        }),
+      });
+
+  # ============================================================================
+  # TANSTACK QUERY MUTATIONS (TSQUERY011-TSQUERY018) - Mutation best practices
+  # ============================================================================
+
+  - id: TSQUERY011
+    title: "Use useMutation for server-side data modifications"
+    description: "Use useMutation for POST/PUT/PATCH/DELETE operations. Always provide onSuccess/onError callbacks for user feedback and cache management."
+    category: "tanstack_query_mutations"
+    severity: "critical"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "mutation", "useMutation"]
+    example: |
+      const { mutate, isPending } = useMutation({
+        mutationFn: (newTodo: Todo) => axios.post('/todos', newTodo),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['todos'] });
+        },
+        onError: (error) => {
+          toast.error('Failed to create todo');
+        },
+      });
+
+  - id: TSQUERY012
+    title: "Invalidate related queries after mutation success"
+    description: "After a successful mutation, invalidate affected queries to ensure the UI shows fresh data. Use query key prefixes to invalidate all related queries at once."
+    category: "tanstack_query_mutations"
+    severity: "critical"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "invalidation", "cache", "mutation"]
+    example: |
+      const mutation = useMutation({
+        mutationFn: updateTodo,
+        onSuccess: () => {
+          // ✅ Invalidate all todo queries (lists + details)
+          queryClient.invalidateQueries({ queryKey: ['todos'] });
+        },
+      });
+
+  - id: TSQUERY013
+    title: "Implement optimistic updates with onMutate for instant UI"
+    description: "Use onMutate to optimistically update the cache before the mutation completes. Cancel outgoing queries, snapshot previous data, and rollback in onError if the mutation fails."
+    category: "tanstack_query_mutations"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "optimistic", "onMutate", "rollback"]
+    example: |
+      useMutation({
+        mutationFn: updateTodo,
+        onMutate: async (newTodo) => {
+          await queryClient.cancelQueries({ queryKey: ['todos'] });
+          const previous = queryClient.getQueryData(['todos']);
+          queryClient.setQueryData(['todos'], (old: Todo[]) =>
+            old.map((t) => (t.id === newTodo.id ? { ...t, ...newTodo } : t))
+          );
+          return { previous };
+        },
+        onError: (_err, _newTodo, context) => {
+          queryClient.setQueryData(['todos'], context?.previous);
+        },
+        onSettled: () => {
+          queryClient.invalidateQueries({ queryKey: ['todos'] });
+        },
+      });
+
+  - id: TSQUERY014
+    title: "Use onSettled for cleanup regardless of mutation outcome"
+    description: "Use onSettled callback (fires on both success and error) for operations that must happen regardless, like invalidating queries to ensure cache consistency."
+    category: "tanstack_query_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "onSettled", "cleanup", "mutation"]
+    example: |
+      useMutation({
+        mutationFn: deleteTodo,
+        onSettled: () => {
+          // ✅ Always refetch regardless of success/failure
+          queryClient.invalidateQueries({ queryKey: ['todos'] });
+        },
+      });
+
+  - id: TSQUERY015
+    title: "Use mutateAsync for imperative mutation flows"
+    description: "Use mutateAsync when you need to await the mutation result, e.g., in form submission handlers or multi-step workflows. Use mutate for fire-and-forget patterns."
+    category: "tanstack_query_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "mutateAsync", "await", "imperative"]
+    example: |
+      const mutation = useMutation({ mutationFn: createTodo });
+
+      const handleSubmit = async (data: FormData) => {
+        try {
+          const result = await mutation.mutateAsync(data);
+          router.push(`/todos/${result.id}`);
+        } catch (error) {
+          // Error handling
+        }
+      };
+
+  - id: TSQUERY016
+    title: "Set global mutation callbacks via MutationCache"
+    description: "Use MutationCache to set global onSuccess/onError callbacks for all mutations. This centralizes error handling, toasts, and analytics without repeating in every useMutation call."
+    category: "tanstack_query_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "MutationCache", "global", "error-handling"]
+    example: |
+      const queryClient = new QueryClient({
+        mutationCache: new MutationCache({
+          onError: (error) => {
+            toast.error(`Something went wrong: ${error.message}`);
+          },
+        }),
+      });
+
+  - id: TSQUERY017
+    title: "Avoid mutation side effects in onSuccess when using optimistic updates"
+    description: "When using optimistic updates, the cache is already updated in onMutate. Use onSuccess only for server-confirmed updates (setQueryData with server response), not for redundant cache mutations."
+    category: "tanstack_query_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "optimistic", "onSuccess", "cache"]
+    example: |
+      // ✅ Replace optimistic data with server response
+      useMutation({
+        mutationFn: updateTodo,
+        onSuccess: (serverData) => {
+          queryClient.setQueryData(['todos', serverData.id], serverData);
+        },
+      });
+
+  - id: TSQUERY018
+    title: "Use mutation scope to serialize concurrent mutations"
+    description: "In v5, use the scope option to serialize mutations that modify the same resource. Mutations with the same scope ID run sequentially, preventing race conditions."
+    category: "tanstack_query_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query", "tanstack-query-v5"]
+    tags: ["tanstack-query", "v5", "scope", "serialize"]
+    example: |
+      // ✅ Serialize mutations for the same todo
+      useMutation({
+        mutationFn: updateTodo,
+        scope: { id: `todo-${todoId}` },
+      });
+
+  # ============================================================================
+  # TANSTACK QUERY CACHE (TSQUERY019-TSQUERY026) - Cache management best practices
+  # ============================================================================
+
+  - id: TSQUERY019
+    title: "Create a single QueryClient instance per application"
+    description: "Create one QueryClient instance at the application root level (outside components). Multiple instances lead to split caches and inconsistent data."
+    category: "tanstack_query_cache"
+    severity: "critical"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "QueryClient", "singleton", "setup"]
+    example: |
+      // ✅ Module-level singleton
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: { staleTime: 60 * 1000, gcTime: 5 * 60 * 1000 },
+        },
+      });
+
+      function App() {
+        return (
+          <QueryClientProvider client={queryClient}>
+            <YourApp />
+          </QueryClientProvider>
+        );
+      }
+
+  - id: TSQUERY020
+    title: "Use gcTime (v5) instead of cacheTime (v4) for garbage collection"
+    description: "In v5, cacheTime was renamed to gcTime (garbage collection time). It controls how long inactive query data is kept in memory before being garbage collected. Default is 5 minutes."
+    category: "tanstack_query_cache"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query", "tanstack-query-v5"]
+    tags: ["tanstack-query", "v5", "gcTime", "cacheTime", "migration"]
+    example: |
+      // ✅ v5 — gcTime
+      useQuery({
+        queryKey: ['config'],
+        queryFn: fetchConfig,
+        gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+      });
+
+      // ❌ v4 — cacheTime (renamed in v5)
+      useQuery({ queryKey: ['config'], queryFn: fetchConfig, cacheTime: 300000 });
+
+  - id: TSQUERY021
+    title: "Use invalidateQueries for smart refetching"
+    description: "Use queryClient.invalidateQueries() to mark queries as stale and trigger refetch. Use query key prefixes to invalidate entire query families. Prefer invalidation over manual refetch."
+    category: "tanstack_query_cache"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "invalidate", "refetch", "cache"]
+    example: |
+      // ✅ Invalidate all todo queries
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+
+      // ✅ Invalidate specific query
+      queryClient.invalidateQueries({ queryKey: ['todos', 'detail', id] });
+
+      // ✅ With predicate
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'todos' && query.state.data?.isStale,
+      });
+
+  - id: TSQUERY022
+    title: "Use setQueryData for direct cache updates"
+    description: "Use queryClient.setQueryData() to directly update cached data without refetching. Always use the updater function form for safe updates based on previous data."
+    category: "tanstack_query_cache"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "setQueryData", "cache-update", "direct"]
+    example: |
+      // ✅ Updater function (safe)
+      queryClient.setQueryData(['todos'], (oldData: Todo[] | undefined) =>
+        oldData ? [...oldData, newTodo] : [newTodo]
+      );
+
+      // ✅ Replace with server response
+      queryClient.setQueryData(['todo', id], serverData);
+
+  - id: TSQUERY023
+    title: "Use prefetchQuery to load data before navigation"
+    description: "Use queryClient.prefetchQuery() to load data before a user navigates to a page. This eliminates loading states on route transitions and improves perceived performance."
+    category: "tanstack_query_cache"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "prefetch", "navigation", "performance"]
+    example: |
+      // ✅ Prefetch on hover
+      <Link
+        to="/todos"
+        onMouseEnter={() => {
+          queryClient.prefetchQuery({
+            queryKey: ['todos'],
+            queryFn: fetchTodos,
+          });
+        }}
+      >
+        Todos
+      </Link>
+
+  - id: TSQUERY024
+    title: "Use ensureQueryData to read-or-fetch cache data"
+    description: "Use queryClient.ensureQueryData() to get data from cache if available, or fetch it if not. Unlike prefetchQuery, it returns the data. Useful in loaders and route guards."
+    category: "tanstack_query_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query", "tanstack-query-v5"]
+    tags: ["tanstack-query", "ensureQueryData", "loader", "cache"]
+    example: |
+      // ✅ In a route loader
+      export const loader = async () => {
+        const todos = await queryClient.ensureQueryData({
+          queryKey: ['todos'],
+          queryFn: fetchTodos,
+        });
+        return { todos };
+      };
+
+  - id: TSQUERY025
+    title: "Configure global QueryCache onError for centralized error handling"
+    description: "Use QueryCache with a global onError callback to handle all query errors in one place. This is ideal for logging, analytics, and global error toasts."
+    category: "tanstack_query_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "QueryCache", "error-handling", "global"]
+    example: |
+      const queryClient = new QueryClient({
+        queryCache: new QueryCache({
+          onError: (error, query) => {
+            if (query.state.data !== undefined) {
+              toast.error(`Background update failed: ${error.message}`);
+            }
+          },
+        }),
+      });
+
+  - id: TSQUERY026
+    title: "Use query persistence for offline-first patterns"
+    description: "Use persistQueryClient or createSyncStoragePersister for caching query data to localStorage/IndexedDB. Combine with gcTime: Infinity for persistent offline caches."
+    category: "tanstack_query_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "persist", "offline", "storage"]
+    example: |
+      import { persistQueryClient } from '@tanstack/query-persist-client-core';
+      import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+
+      const persister = createSyncStoragePersister({ storage: window.localStorage });
+      persistQueryClient({ queryClient, persister, maxAge: 24 * 60 * 60 * 1000 });
+
+  # ============================================================================
+  # TANSTACK QUERY SSR (TSQUERY027-TSQUERY032) - SSR/hydration best practices
+  # ============================================================================
+
+  - id: TSQUERY027
+    title: "Use dehydrate/HydrationBoundary for SSR hydration (v5)"
+    description: "In v5, use HydrationBoundary with dehydrate() to pass server-prefetched data to the client. This replaces the v4 Hydrate component."
+    category: "tanstack_query_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["tanstack-query", "tanstack-query-v5", "next", "react"]
+    tags: ["tanstack-query", "v5", "ssr", "hydration", "dehydrate"]
+    example: |
+      // Server Component (Next.js App Router)
+      export default async function TodosPage() {
+        const queryClient = new QueryClient();
+        await queryClient.prefetchQuery({
+          queryKey: ['todos'],
+          queryFn: fetchTodos,
+        });
+        return (
+          <HydrationBoundary state={dehydrate(queryClient)}>
+            <TodoList />
+          </HydrationBoundary>
+        );
+      }
+
+  - id: TSQUERY028
+    title: "Create per-request QueryClient in SSR environments"
+    description: "In SSR, create a new QueryClient per request to prevent data leaking between users. Never use a module-level singleton for server-side QueryClient."
+    category: "tanstack_query_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["tanstack-query", "next"]
+    tags: ["tanstack-query", "ssr", "per-request", "security"]
+    example: |
+      // ✅ Per-request client (Next.js)
+      export default async function Page() {
+        const queryClient = new QueryClient();
+        await queryClient.prefetchQuery({
+          queryKey: ['todos'],
+          queryFn: fetchTodos,
+        });
+        return (
+          <HydrationBoundary state={dehydrate(queryClient)}>
+            <Todos />
+          </HydrationBoundary>
+        );
+      }
+
+      // ❌ Shared singleton in SSR — data leaks between requests
+      const queryClient = new QueryClient();
+
+  - id: TSQUERY029
+    title: "Use getServerSideProps/getStaticProps for Pages Router SSR"
+    description: "In Next.js Pages Router, prefetch queries in getServerSideProps or getStaticProps and pass dehydrated state as props."
+    category: "tanstack_query_ssr"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query", "next"]
+    tags: ["tanstack-query", "next", "pages-router", "ssr"]
+    example: |
+      export async function getServerSideProps() {
+        const queryClient = new QueryClient();
+        await queryClient.prefetchQuery({
+          queryKey: ['todos'],
+          queryFn: fetchTodos,
+        });
+        return { props: { dehydratedState: dehydrate(queryClient) } };
+      }
+
+      export default function Page({ dehydratedState }) {
+        return (
+          <HydrationBoundary state={dehydratedState}>
+            <Todos />
+          </HydrationBoundary>
+        );
+      }
+
+  - id: TSQUERY030
+    title: "Use loader-based prefetching for Remix/React Router"
+    description: "In Remix or React Router v6, prefetch queries in the loader function and pass dehydrated state. Use ensureQueryData for optimal cache utilization."
+    category: "tanstack_query_ssr"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "remix", "react-router", "loader"]
+    example: |
+      // Remix loader
+      export const loader = async () => {
+        const queryClient = new QueryClient();
+        await queryClient.ensureQueryData({
+          queryKey: ['todos'],
+          queryFn: fetchTodos,
+        });
+        return json({ dehydratedState: dehydrate(queryClient) });
+      };
+
+  - id: TSQUERY031
+    title: "Set appropriate staleTime in SSR to prevent double-fetch"
+    description: "When using SSR, set staleTime > 0 (e.g., 60 seconds) to prevent the client from immediately refetching data that was just prefetched on the server."
+    category: "tanstack_query_ssr"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query", "next"]
+    tags: ["tanstack-query", "ssr", "staleTime", "double-fetch"]
+    example: |
+      // ✅ Prevent double-fetch after SSR
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: { staleTime: 60 * 1000 }, // Data fresh for 60s after SSR
+        },
+      });
+
+  - id: TSQUERY032
+    title: "Stream prefetched data in React Server Components"
+    description: "In RSC with streaming, use useSuspenseQuery in client components wrapped with HydrationBoundary. The server component prefetches and the boundary streams the dehydrated state."
+    category: "tanstack_query_ssr"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query", "tanstack-query-v5", "next", "react"]
+    tags: ["tanstack-query", "v5", "rsc", "streaming", "suspense"]
+    example: |
+      // Server Component
+      async function TodosServer() {
+        const queryClient = new QueryClient();
+        void queryClient.prefetchQuery({
+          queryKey: ['todos'],
+          queryFn: fetchTodos,
+        });
+        return (
+          <HydrationBoundary state={dehydrate(queryClient)}>
+            <Suspense fallback={<Loading />}>
+              <TodosClient />
+            </Suspense>
+          </HydrationBoundary>
+        );
+      }
+
+      // Client Component
+      'use client';
+      function TodosClient() {
+        const { data } = useSuspenseQuery({ queryKey: ['todos'], queryFn: fetchTodos });
+        return <ul>{data.map(t => <li key={t.id}>{t.title}</li>)}</ul>;
+      }
+
+  # ============================================================================
+  # TANSTACK QUERY TYPESCRIPT (TSQUERY033-TSQUERY036) - Type safety practices
+  # ============================================================================
+
+  - id: TSQUERY033
+    title: "Type query functions with explicit return types"
+    description: "Always type your queryFn return type or use queryOptions for type inference. Explicit typing catches API contract changes at compile time."
+    category: "tanstack_query_typescript"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "typescript", "type-safety", "queryFn"]
+    example: |
+      // ✅ Typed query function
+      const fetchTodos = async (): Promise<Todo[]> => {
+        const { data } = await axios.get<Todo[]>('/api/todos');
+        return data;
+      };
+
+      // ✅ Type inference via queryOptions (v5)
+      const todosOptions = queryOptions({
+        queryKey: ['todos'],
+        queryFn: fetchTodos, // Return type inferred
+      });
+
+  - id: TSQUERY034
+    title: "Type error responses for proper error handling"
+    description: "Pass the error type as the second generic parameter to useQuery. In v5, set the global error type via register module augmentation."
+    category: "tanstack_query_typescript"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "typescript", "error", "type"]
+    example: |
+      // ✅ v5 global error registration
+      declare module '@tanstack/react-query' {
+        interface Register {
+          defaultError: AxiosError<ApiError>;
+        }
+      }
+
+      // Now error is typed everywhere
+      const { error } = useQuery({ queryKey: ['todos'], queryFn: fetchTodos });
+      // error is AxiosError<ApiError> | null
+
+  - id: TSQUERY035
+    title: "Use as const for query key type narrowing"
+    description: "Use 'as const' assertions on query key arrays and factory return types to get readonly tuple types instead of string[]. This enables precise key matching in TypeScript."
+    category: "tanstack_query_typescript"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "typescript", "as-const", "query-key"]
+    example: |
+      // ✅ as const for precise types
+      const todoKeys = {
+        all: ['todos'] as const,
+        detail: (id: number) => ['todos', 'detail', id] as const,
+      };
+      // Type: readonly ['todos', 'detail', number]
+
+  - id: TSQUERY036
+    title: "Type mutation variables and response"
+    description: "Always provide generic type parameters for useMutation to type the mutation function input (variables), return data, error, and context."
+    category: "tanstack_query_typescript"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "typescript", "mutation", "generics"]
+    example: |
+      // ✅ Typed mutation
+      const mutation = useMutation<
+        Todo,          // Return data type
+        AxiosError,    // Error type
+        CreateTodoDto, // Variables type
+        { previous: Todo[] | undefined } // Context type for optimistic updates
+      >({
+        mutationFn: (dto) => createTodo(dto),
+        onMutate: async (dto) => {
+          const previous = queryClient.getQueryData<Todo[]>(['todos']);
+          return { previous };
+        },
+      });
+
+  # ============================================================================
+  # TANSTACK QUERY PERFORMANCE (TSQUERY037-TSQUERY040) - Performance practices
+  # ============================================================================
+
+  - id: TSQUERY037
+    title: "Avoid unnecessary re-renders with structural sharing"
+    description: "TanStack Query uses structural sharing by default — only changed parts of data trigger re-renders. Don't disable structuralSharing unless you have a specific reason."
+    category: "tanstack_query_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "performance", "structural-sharing", "re-render"]
+    example: |
+      // ✅ Default behavior — structural sharing enabled
+      useQuery({ queryKey: ['todos'], queryFn: fetchTodos });
+
+      // ❌ Don't disable without reason
+      useQuery({
+        queryKey: ['todos'],
+        queryFn: fetchTodos,
+        structuralSharing: false, // Only for non-serializable data
+      });
+
+  - id: TSQUERY038
+    title: "Use maxPages with useInfiniteQuery to limit memory"
+    description: "Set maxPages on useInfiniteQuery to limit how many pages are kept in memory. When the user scrolls back, pages are automatically refetched."
+    category: "tanstack_query_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query", "tanstack-query-v5"]
+    tags: ["tanstack-query", "infinite", "maxPages", "memory"]
+    example: |
+      // ✅ Limit to 5 pages in memory
+      useInfiniteQuery({
+        queryKey: ['feed'],
+        queryFn: fetchFeed,
+        initialPageParam: 0,
+        getNextPageParam: (last) => last.nextCursor,
+        maxPages: 5,
+      });
+
+  - id: TSQUERY039
+    title: "Use query cancellation with AbortSignal"
+    description: "TanStack Query v4+ automatically passes an AbortSignal to queryFn. Forward it to fetch/axios to cancel in-flight requests when queries are invalidated or components unmount."
+    category: "tanstack_query_performance"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "abort", "cancellation", "signal"]
+    example: |
+      // ✅ Forward AbortSignal to fetch
+      useQuery({
+        queryKey: ['todos'],
+        queryFn: async ({ signal }) => {
+          const res = await fetch('/api/todos', { signal });
+          return res.json();
+        },
+      });
+
+      // ✅ With axios
+      queryFn: async ({ signal }) => {
+        const { data } = await axios.get('/api/todos', { signal });
+        return data;
+      }
+
+  - id: TSQUERY040
+    title: "Use refetchOnWindowFocus wisely"
+    description: "refetchOnWindowFocus is enabled by default. For frequently changing data, keep it. For static data, disable it per query or globally to reduce unnecessary requests."
+    category: "tanstack_query_performance"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "refetchOnWindowFocus", "performance"]
+    example: |
+      // ✅ Disable globally for mostly-static apps
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: { refetchOnWindowFocus: false },
+        },
+      });
+
+      // ✅ Override per query for dynamic data
+      useQuery({
+        queryKey: ['notifications'],
+        queryFn: fetchNotifications,
+        refetchOnWindowFocus: true, // Always fresh
+      });
+
+  # ============================================================================
+  # TANSTACK QUERY TESTING (TSQUERY041-TSQUERY043) - Testing best practices
+  # ============================================================================
+
+  - id: TSQUERY041
+    title: "Create a test wrapper with fresh QueryClient per test"
+    description: "Create a new QueryClient for each test to prevent state leaking between tests. Disable retries and set gcTime to Infinity in tests."
+    category: "tanstack_query_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "testing", "wrapper", "isolation"]
+    example: |
+      function createWrapper() {
+        const queryClient = new QueryClient({
+          defaultOptions: {
+            queries: { retry: false, gcTime: Infinity },
+          },
+        });
+        return ({ children }) => (
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        );
+      }
+
+      test('loads todos', async () => {
+        const { result } = renderHook(() => useQuery({ queryKey: ['todos'], queryFn: fetchTodos }), {
+          wrapper: createWrapper(),
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      });
+
+  - id: TSQUERY042
+    title: "Use MSW for API mocking in query tests"
+    description: "Use Mock Service Worker (MSW) to mock API endpoints at the network level. This provides realistic testing without modifying query hooks or mocking fetch/axios directly."
+    category: "tanstack_query_testing"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query", "msw"]
+    tags: ["tanstack-query", "testing", "msw", "mocking"]
+    example: |
+      import { http, HttpResponse } from 'msw';
+      import { setupServer } from 'msw/node';
+
+      const server = setupServer(
+        http.get('/api/todos', () => HttpResponse.json([{ id: 1, title: 'Test' }])),
+      );
+
+      beforeAll(() => server.listen());
+      afterEach(() => server.resetHandlers());
+      afterAll(() => server.close());
+
+  - id: TSQUERY043
+    title: "Turn off error logging in tests"
+    description: "Suppress console.error in tests for expected error scenarios. In v5, use the QueryClient logger option or mock console.error before testing error states."
+    category: "tanstack_query_testing"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "testing", "error", "console"]
+    example: |
+      const consoleMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      test('handles error', async () => {
+        server.use(http.get('/api/todos', () => HttpResponse.error()));
+        const { result } = renderHook(() => useQuery({ queryKey: ['todos'], queryFn: fetchTodos }), {
+          wrapper: createWrapper(),
+        });
+        await waitFor(() => expect(result.current.isError).toBe(true));
+      });
+
+      afterEach(() => consoleMock.mockRestore());
+
+  # ============================================================================
+  # TANSTACK QUERY PATTERNS (TSQUERY044-TSQUERY047) - Common patterns
+  # ============================================================================
+
+  - id: TSQUERY044
+    title: "Create custom hooks wrapping useQuery for domain logic"
+    description: "Wrap useQuery in custom hooks (e.g., useTodos, useUser) to encapsulate query keys, query functions, and configurations. This keeps components clean and centralizes data fetching logic."
+    category: "tanstack_query_patterns"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "custom-hook", "pattern", "encapsulation"]
+    example: |
+      // ✅ Custom hook
+      export function useTodos(filters?: TodoFilters) {
+        return useQuery({
+          queryKey: todoKeys.list(filters),
+          queryFn: () => fetchTodos(filters),
+          staleTime: 5 * 60 * 1000,
+        });
+      }
+
+      // In component
+      function TodoList() {
+        const { data, isPending, error } = useTodos({ status: 'active' });
+      }
+
+  - id: TSQUERY045
+    title: "Use isPending instead of isLoading for initial load state (v5)"
+    description: "In v5, isLoading was split into isPending (no data yet) and isFetching (any fetch in progress). Use isPending for initial loading states and isFetching for background refetch indicators."
+    category: "tanstack_query_patterns"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query", "tanstack-query-v5"]
+    tags: ["tanstack-query", "v5", "isPending", "isLoading", "status"]
+    example: |
+      const { data, isPending, isFetching } = useQuery({
+        queryKey: ['todos'],
+        queryFn: fetchTodos,
+      });
+
+      if (isPending) return <Skeleton />;       // First load — no data
+      if (isFetching) return <RefreshSpinner />; // Background refetch — data exists
+
+  - id: TSQUERY046
+    title: "Separate server state from client state"
+    description: "Use TanStack Query exclusively for server/async state. Keep UI state (modals, forms, selections) in local state (useState) or client state managers (Zustand/Jotai). Don't mix server and client state."
+    category: "tanstack_query_patterns"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "server-state", "client-state", "architecture"]
+    example: |
+      function TodoPage() {
+        // ✅ Server state — TanStack Query
+        const { data: todos } = useQuery({ queryKey: ['todos'], queryFn: fetchTodos });
+
+        // ✅ Client state — useState
+        const [filter, setFilter] = useState('all');
+        const [selectedId, setSelectedId] = useState<number | null>(null);
+
+        const filteredTodos = useMemo(
+          () => todos?.filter(t => filter === 'all' || t.status === filter),
+          [todos, filter]
+        );
+      }
+
+  - id: TSQUERY047
+    title: "Use DevTools during development"
+    description: "Install @tanstack/react-query-devtools for visual debugging of queries, cache state, and timing. DevTools are tree-shaken out of production builds by default."
+    category: "tanstack_query_patterns"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query", "react"]
+    tags: ["tanstack-query", "devtools", "debugging", "development"]
+    example: |
+      import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+      function App() {
+        return (
+          <QueryClientProvider client={queryClient}>
+            <YourApp />
+            <ReactQueryDevtools initialIsOpen={false} />
+          </QueryClientProvider>
+        );
+      }
+
+  # ============================================================================
+  # TANSTACK QUERY MIGRATION (TSQUERY048-TSQUERY050) - Migration best practices
+  # ============================================================================
+
+  - id: TSQUERY048
+    title: "Migrate from react-query v3 to @tanstack/react-query v4"
+    description: "Key v3→v4 changes: package renamed to @tanstack/react-query, useQuery signature changed to single object, query keys must be arrays, onSuccess/onError/onSettled on useQuery deprecated."
+    category: "tanstack_query_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "migration", "v3", "v4"]
+    example: |
+      // ❌ v3
+      import { useQuery } from 'react-query';
+      useQuery('todos', fetchTodos, { staleTime: 5000 });
+
+      // ✅ v4
+      import { useQuery } from '@tanstack/react-query';
+      useQuery({ queryKey: ['todos'], queryFn: fetchTodos, staleTime: 5000 });
+
+  - id: TSQUERY049
+    title: "Migrate from @tanstack/react-query v4 to v5"
+    description: "Key v4→v5 changes: cacheTime→gcTime, keepPreviousData→placeholderData(keepPreviousData), isLoading→isPending, suspense option→useSuspenseQuery, useQuery callbacks deprecated, initialPageParam required."
+    category: "tanstack_query_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "migration", "v4", "v5"]
+    example: |
+      // ❌ v4                                    // ✅ v5
+      cacheTime: 5000                             gcTime: 5000
+      keepPreviousData: true                      placeholderData: keepPreviousData
+      isLoading                                   isPending
+      suspense: true                              useSuspenseQuery({...})
+      onSuccess on useQuery                       (removed — use useEffect or global cache callbacks)
+
+  - id: TSQUERY050
+    title: "Use codemods for automated migration"
+    description: "Use the official @tanstack/react-query codemod to automate migration between major versions. Run the codemod first, then manually fix edge cases."
+    category: "tanstack_query_migration"
+    severity: "medium"
+    applicability:
+      frameworks: ["tanstack-query"]
+    tags: ["tanstack-query", "codemod", "migration", "automation"]
+    example: |
+      # v4 to v5 codemod
+      npx jscodeshift@latest ./src/ \
+        --extensions=ts,tsx \
+        --transform=./node_modules/@tanstack/react-query/build/codemods/v5/remove-overloads.cjs
+
+      # Or using the @tanstack/eslint-plugin-query for gradual migration
+      npm install @tanstack/eslint-plugin-query

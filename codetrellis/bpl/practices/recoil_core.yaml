@@ -1,0 +1,819 @@
+# Recoil State Management Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.50 - Recoil State Management Framework Support
+# Practice IDs: RECOIL001-RECOIL050
+# Coverage: Atom Creation, Selectors, Effects, Hooks, Snapshot API,
+#           TypeScript, Performance, Testing, SSR, Patterns, Migration
+# Versions: Recoil 0.0.x-0.7.x (atom, selector, atomFamily, selectorFamily,
+#           atom effects, useRecoilState, useRecoilCallback,
+#           Snapshot API, recoil-sync, recoil-relay, recoil-nexus)
+
+practices:
+  # ============================================================================
+  # RECOIL ATOM CREATION (RECOIL001-RECOIL008) - Atom definition best practices
+  # ============================================================================
+
+  - id: RECOIL001
+    title: "Use unique string keys for every atom and selector"
+    description: "Every atom and selector in Recoil must have a globally unique string key. This key is used for persistence, debugging, and Snapshot serialization. Use a naming convention (e.g., module/atomName) to avoid collisions."
+    category: "recoil_atoms"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "atom", "key", "unique", "naming"]
+    example: |
+      // ✅ Unique, descriptive keys
+      const userAtom = atom({ key: 'auth/currentUser', default: null });
+      const cartAtom = atom({ key: 'cart/items', default: [] });
+
+      // ❌ Generic or duplicate keys
+      const userAtom = atom({ key: 'user', default: null });
+      const otherUser = atom({ key: 'user', default: null }); // COLLISION
+
+  - id: RECOIL002
+    title: "Define atoms at module scope, not inside components"
+    description: "Atoms must be defined at module level outside of React components. Defining atoms inside components creates new atom instances on every render, causing performance issues and state loss."
+    category: "recoil_atoms"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "atom", "module-scope", "stable-reference"]
+    example: |
+      // ✅ Module scope
+      const countAtom = atom({ key: 'count', default: 0 });
+      function Counter() { const [count, setCount] = useRecoilState(countAtom); }
+
+      // ❌ Inside component
+      function Counter() {
+        const countAtom = atom({ key: 'count', default: 0 }); // BUG
+        const [count, setCount] = useRecoilState(countAtom);
+      }
+
+  - id: RECOIL003
+    title: "Use primitive atoms for independent state values"
+    description: "Create atoms with simple default values (string, number, boolean, null) for independent state. Keep atoms small and focused on a single concern. Compose larger state from multiple atoms using selectors."
+    category: "recoil_atoms"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "atom", "primitive", "single-concern"]
+    example: |
+      // ✅ Small, focused atoms
+      const countAtom = atom({ key: 'count', default: 0 });
+      const nameAtom = atom({ key: 'name', default: '' });
+      const isDarkAtom = atom({ key: 'isDark', default: false });
+
+      // ❌ Monolithic state
+      const appState = atom({ key: 'app', default: { count: 0, name: '', isDark: false } });
+
+  - id: RECOIL004
+    title: "Use atomFamily for parameterized atoms"
+    description: "Use atomFamily to create parameterized atom factories that return unique atoms based on a parameter. Useful for lists, maps, and dynamic state where each item needs its own atom instance."
+    category: "recoil_atoms"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "atomFamily", "parameterized", "dynamic"]
+    example: |
+      const todoAtom = atomFamily({
+        key: 'todo',
+        default: (id) => ({ id, text: '', completed: false }),
+      });
+      // Usage: useRecoilState(todoAtom(todoId))
+
+  - id: RECOIL005
+    title: "Avoid dangerouslyAllowMutability unless absolutely necessary"
+    description: "The dangerouslyAllowMutability option disables Recoil's immutability checks. Only use it for class instances or objects that must remain mutable (e.g., Map, Set). Always prefer immutable data."
+    category: "recoil_atoms"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "atom", "mutability", "immutable"]
+    example: |
+      // ✅ Only when truly needed (e.g., Map/Set instances)
+      const mapAtom = atom({
+        key: 'myMap',
+        default: new Map(),
+        dangerouslyAllowMutability: true,
+      });
+
+      // ✅ Prefer immutable data
+      const itemsAtom = atom({ key: 'items', default: [] });
+
+  - id: RECOIL006
+    title: "Use atom effects for side effects, not selectors"
+    description: "Use the effects or effects_UNSTABLE option on atoms for side effects like persistence, logging, and synchronization. Selectors should remain pure computations without side effects."
+    category: "recoil_atoms"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "atom", "effects", "side-effects"]
+    example: |
+      const persistedAtom = atom({
+        key: 'persisted',
+        default: '',
+        effects: [
+          ({ setSelf, onSet }) => {
+            setSelf(localStorage.getItem('persisted') ?? '');
+            onSet((newValue) => localStorage.setItem('persisted', newValue));
+          },
+        ],
+      });
+
+  - id: RECOIL007
+    title: "Set sensible default values for atoms"
+    description: "Always provide meaningful default values for atoms. Use null for optional reference types, empty arrays/objects for collections, and appropriate zero-values for primitives. Avoid undefined."
+    category: "recoil_atoms"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "atom", "default", "initialization"]
+    example: |
+      // ✅ Meaningful defaults
+      const userAtom = atom<User | null>({ key: 'user', default: null });
+      const itemsAtom = atom<Item[]>({ key: 'items', default: [] });
+      const countAtom = atom({ key: 'count', default: 0 });
+
+  - id: RECOIL008
+    title: "Group related atoms in dedicated files"
+    description: "Organize atoms into files by domain or feature (e.g., authAtoms.ts, cartAtoms.ts). Co-locate atoms with their selectors and effects. Export atoms as named exports for tree-shaking."
+    category: "recoil_atoms"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "organization", "file-structure", "co-location"]
+    example: |
+      // atoms/authAtoms.ts
+      export const currentUserAtom = atom({ key: 'auth/currentUser', default: null });
+      export const isAuthenticatedSelector = selector({
+        key: 'auth/isAuthenticated',
+        get: ({ get }) => get(currentUserAtom) !== null,
+      });
+
+  # ============================================================================
+  # RECOIL SELECTORS (RECOIL009-RECOIL018) - Selector best practices
+  # ============================================================================
+
+  - id: RECOIL009
+    title: "Use selectors for derived/computed state"
+    description: "Use selectors to compute derived state from atoms or other selectors. Selectors automatically track dependencies and memoize results. Prefer selectors over computing values in components."
+    category: "recoil_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "selector", "derived", "computed", "memoization"]
+    example: |
+      const filteredTodosSelector = selector({
+        key: 'filteredTodos',
+        get: ({ get }) => {
+          const filter = get(filterAtom);
+          const todos = get(todosAtom);
+          return todos.filter(todo => filter === 'all' || todo.status === filter);
+        },
+      });
+
+  - id: RECOIL010
+    title: "Use selectorFamily for parameterized selectors"
+    description: "Use selectorFamily to create selectors that accept parameters. Parameters must be serializable (primitives, arrays, plain objects). Use this for filtered lists, lookups by ID, and computed values with parameters."
+    category: "recoil_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "selectorFamily", "parameterized"]
+    example: |
+      const todoByIdSelector = selectorFamily({
+        key: 'todoById',
+        get: (id) => ({ get }) => get(todoListAtom).find(t => t.id === id),
+      });
+      // Usage: useRecoilValue(todoByIdSelector(todoId))
+
+  - id: RECOIL011
+    title: "Use async selectors for data fetching"
+    description: "Selectors can return Promises for async data fetching. React Suspense automatically handles loading states. For error handling, use ErrorBoundary. For non-suspending access, use useRecoilValueLoadable."
+    category: "recoil_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "selector", "async", "suspense", "data-fetching"]
+    example: |
+      const userDataSelector = selector({
+        key: 'userData',
+        get: async ({ get }) => {
+          const userId = get(userIdAtom);
+          const response = await fetch(`/api/users/${userId}`);
+          return response.json();
+        },
+      });
+      // Wrap consumer in <Suspense fallback={<Loading />}>
+
+  - id: RECOIL012
+    title: "Use writable selectors for bi-directional transformations"
+    description: "Add a set function to selectors for writable derived state. The set function receives the new value and should update upstream atoms. Check for DefaultValue when handling reset operations."
+    category: "recoil_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "selector", "writable", "set", "DefaultValue"]
+    example: |
+      const tempFahrenheitSelector = selector({
+        key: 'tempFahrenheit',
+        get: ({ get }) => get(tempCelsiusAtom) * 9/5 + 32,
+        set: ({ set }, newValue) => {
+          if (newValue instanceof DefaultValue) { set(tempCelsiusAtom, newValue); return; }
+          set(tempCelsiusAtom, (newValue - 32) * 5/9);
+        },
+      });
+
+  - id: RECOIL013
+    title: "Use waitForAll for parallel async selectors"
+    description: "Use waitForAll to resolve multiple async selectors in parallel rather than sequentially. This prevents waterfall loading patterns and improves performance."
+    category: "recoil_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "waitForAll", "parallel", "async", "performance"]
+    example: |
+      const dashboardSelector = selector({
+        key: 'dashboard',
+        get: ({ get }) => {
+          const [user, posts, comments] = get(waitForAll([
+            userSelector, postsSelector, commentsSelector,
+          ]));
+          return { user, posts, comments };
+        },
+      });
+
+  - id: RECOIL014
+    title: "Use noWait for non-blocking async access"
+    description: "Use noWait to access async selector values without suspending. Returns a Loadable with .state ('hasValue', 'loading', 'hasError') and .contents. Useful for optional data or progress indicators."
+    category: "recoil_selectors"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "noWait", "loadable", "non-blocking"]
+    example: |
+      const statusSelector = selector({
+        key: 'status',
+        get: ({ get }) => {
+          const loadable = get(noWait(asyncDataSelector));
+          if (loadable.state === 'loading') return 'Loading...';
+          if (loadable.state === 'hasError') return 'Error';
+          return loadable.contents;
+        },
+      });
+
+  - id: RECOIL015
+    title: "Use constSelector and errorSelector for testing and defaults"
+    description: "Use constSelector for constant values and errorSelector for testing error states. These are useful in tests and as default values for atoms that will be overridden."
+    category: "recoil_selectors"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "constSelector", "errorSelector", "testing"]
+    example: |
+      const alwaysZero = constSelector(0);
+      const alwaysFails = errorSelector(new Error('Not implemented'));
+
+  - id: RECOIL016
+    title: "Keep selectors pure and side-effect free"
+    description: "Selector get functions must be pure — no side effects, no mutations, no logging, no API calls with side effects. Use atom effects for side effects. Selectors may be re-evaluated at any time."
+    category: "recoil_selectors"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "selector", "pure", "no-side-effects"]
+    example: |
+      // ✅ Pure selector
+      const totalSelector = selector({
+        key: 'total',
+        get: ({ get }) => get(itemsAtom).reduce((sum, i) => sum + i.price, 0),
+      });
+
+      // ❌ Side effect in selector
+      const badSelector = selector({
+        key: 'bad',
+        get: ({ get }) => { console.log('evaluated'); return get(countAtom); },
+      });
+
+  - id: RECOIL017
+    title: "Minimize selector dependency chains"
+    description: "Deep chains of selectors (A→B→C→D→E) create cascading re-evaluations. Keep dependency depth to 3-4 levels maximum. Flatten chains by computing from source atoms directly when possible."
+    category: "recoil_selectors"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "selector", "dependency-chain", "performance"]
+
+  - id: RECOIL018
+    title: "Use waitForAllSettled for resilient parallel loading"
+    description: "Use waitForAllSettled when some async operations may fail but you still want results from successful ones. Each result is a Loadable, allowing partial success handling."
+    category: "recoil_selectors"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "waitForAllSettled", "resilient", "error-handling"]
+    example: |
+      const resultsSelector = selector({
+        key: 'results',
+        get: ({ get }) => {
+          const loadables = get(waitForAllSettled([apiA, apiB, apiC]));
+          return loadables
+            .filter(l => l.state === 'hasValue')
+            .map(l => l.contents);
+        },
+      });
+
+  # ============================================================================
+  # RECOIL EFFECTS (RECOIL019-RECOIL024) - Atom effects best practices
+  # ============================================================================
+
+  - id: RECOIL019
+    title: "Return cleanup functions from atom effects"
+    description: "Atom effects should return cleanup functions to prevent memory leaks. Cleanup runs when the atom is no longer used or the effect is replaced. Use cleanup for event listeners, subscriptions, and timers."
+    category: "recoil_effects"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "effects", "cleanup", "memory-leak"]
+    example: |
+      const wsAtom = atom({
+        key: 'ws',
+        default: null,
+        effects: [
+          ({ setSelf }) => {
+            const ws = new WebSocket('ws://example.com');
+            ws.onmessage = (e) => setSelf(JSON.parse(e.data));
+            return () => ws.close(); // ✅ Cleanup
+          },
+        ],
+      });
+
+  - id: RECOIL020
+    title: "Use trigger to differentiate init vs set in effects"
+    description: "The trigger parameter in atom effects tells you whether the effect is running on 'get' (first read) or 'set' (explicit set). Use this to avoid unnecessary initialization on read-only access."
+    category: "recoil_effects"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "effects", "trigger", "init", "optimization"]
+    example: |
+      effects: [
+        ({ trigger, setSelf }) => {
+          if (trigger === 'get') {
+            setSelf(loadFromStorage());
+          }
+        },
+      ]
+
+  - id: RECOIL021
+    title: "Create reusable effect factories"
+    description: "Extract common effect patterns into factory functions. This promotes DRY code and consistent behavior across atoms. Common factories: localStorage, URL sync, logging, validation."
+    category: "recoil_effects"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "effects", "factory", "reusable", "DRY"]
+    example: |
+      const localStorageEffect = (key: string) => ({ setSelf, onSet }) => {
+        const saved = localStorage.getItem(key);
+        if (saved != null) setSelf(JSON.parse(saved));
+        onSet((newValue, _, isReset) => {
+          isReset ? localStorage.removeItem(key) : localStorage.setItem(key, JSON.stringify(newValue));
+        });
+      };
+
+      const themeAtom = atom({ key: 'theme', default: 'light', effects: [localStorageEffect('theme')] });
+
+  - id: RECOIL022
+    title: "Use storeID for multi-store effect isolation"
+    description: "When using multiple RecoilRoots, use the storeID parameter in effects to isolate side effects per store. This prevents cross-store interference in micro-frontend or multi-root architectures."
+    category: "recoil_effects"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "effects", "storeID", "multi-root", "isolation"]
+    example: |
+      effects: [
+        ({ storeID, setSelf, onSet }) => {
+          const storageKey = `${storeID}_myAtom`;
+          setSelf(localStorage.getItem(storageKey) ?? defaultValue);
+          onSet((val) => localStorage.setItem(storageKey, JSON.stringify(val)));
+        },
+      ]
+
+  - id: RECOIL023
+    title: "Handle async initialization in effects with setSelf"
+    description: "Use setSelf for async initialization in effects. setSelf can accept a Promise or be called asynchronously. The atom default is used until the async value resolves."
+    category: "recoil_effects"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "effects", "async", "setSelf", "initialization"]
+    example: |
+      effects: [
+        ({ setSelf }) => {
+          setSelf(
+            fetch('/api/config').then(r => r.json())
+          );
+        },
+      ]
+
+  - id: RECOIL024
+    title: "Use onSet for reactive side effects"
+    description: "Use onSet in atom effects to react to state changes. onSet receives (newValue, oldValue, isReset). Use isReset to handle reset operations differently. Avoid calling setSelf inside onSet to prevent loops."
+    category: "recoil_effects"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "effects", "onSet", "reactive", "isReset"]
+    example: |
+      effects: [
+        ({ onSet }) => {
+          onSet((newValue, oldValue, isReset) => {
+            if (isReset) { analytics.track('reset'); return; }
+            analytics.track('change', { from: oldValue, to: newValue });
+          });
+        },
+      ]
+
+  # ============================================================================
+  # RECOIL HOOKS (RECOIL025-RECOIL032) - Hook usage best practices
+  # ============================================================================
+
+  - id: RECOIL025
+    title: "Use useRecoilValue for read-only access"
+    description: "When a component only reads state, use useRecoilValue instead of useRecoilState. This is semantically clearer and ensures the component doesn't accidentally modify state."
+    category: "recoil_hooks"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "useRecoilValue", "read-only", "optimization"]
+    example: |
+      // ✅ Read-only
+      const count = useRecoilValue(countAtom);
+
+      // ❌ Unnecessary setter
+      const [count, setCount] = useRecoilState(countAtom); // setCount never used
+
+  - id: RECOIL026
+    title: "Use useSetRecoilState for write-only access"
+    description: "When a component only writes state (e.g., a button), use useSetRecoilState. This prevents the component from re-rendering when the atom value changes."
+    category: "recoil_hooks"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "useSetRecoilState", "write-only", "performance"]
+    example: |
+      // ✅ Write-only — no re-render on countAtom change
+      const setCount = useSetRecoilState(countAtom);
+      return <button onClick={() => setCount(c => c + 1)}>+</button>;
+
+  - id: RECOIL027
+    title: "Use useRecoilStateLoadable for non-suspending async access"
+    description: "Use useRecoilStateLoadable when you want to handle loading/error states in-component instead of with Suspense/ErrorBoundary. Returns [loadable, setter] where loadable.state is 'hasValue', 'loading', or 'hasError'."
+    category: "recoil_hooks"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "loadable", "async", "non-suspending"]
+    example: |
+      const [userLoadable, setUser] = useRecoilStateLoadable(userSelector);
+      if (userLoadable.state === 'loading') return <Spinner />;
+      if (userLoadable.state === 'hasError') return <Error error={userLoadable.contents} />;
+      return <UserProfile user={userLoadable.contents} />;
+
+  - id: RECOIL028
+    title: "Use useRecoilCallback for complex state operations"
+    description: "Use useRecoilCallback for operations that need to read/write multiple atoms, access snapshots, or perform batch updates. The callback receives {snapshot, set, reset, gotoSnapshot, refresh}."
+    category: "recoil_hooks"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "useRecoilCallback", "batch", "snapshot", "complex"]
+    example: |
+      const saveAll = useRecoilCallback(({ snapshot, set }) => async () => {
+        const items = await snapshot.getPromise(itemsAtom);
+        const user = await snapshot.getPromise(userAtom);
+        await api.save({ items, user });
+        set(lastSavedAtom, new Date());
+      });
+
+  - id: RECOIL029
+    title: "Use useRecoilTransaction_UNSTABLE for atomic batch updates"
+    description: "Use useRecoilTransaction_UNSTABLE to batch multiple set/reset operations into a single transaction. All updates are applied atomically, preventing intermediate renders."
+    category: "recoil_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "transaction", "batch", "atomic"]
+    example: |
+      const resetAll = useRecoilTransaction_UNSTABLE(({ set, reset }) => () => {
+        reset(countAtom);
+        reset(nameAtom);
+        set(timestampAtom, Date.now());
+      });
+
+  - id: RECOIL030
+    title: "Use useRecoilRefresher_UNSTABLE to refresh async selectors"
+    description: "Use useRecoilRefresher_UNSTABLE to force re-evaluation of async selectors (e.g., after mutation). This clears the selector cache and triggers a fresh fetch."
+    category: "recoil_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "refresher", "async", "cache-invalidation"]
+    example: |
+      const refreshUser = useRecoilRefresher_UNSTABLE(userSelector);
+      const handleUpdate = async () => {
+        await api.updateUser(data);
+        refreshUser(); // Force re-fetch
+      };
+
+  - id: RECOIL031
+    title: "Use useResetRecoilState for reset functionality"
+    description: "Use useResetRecoilState to reset an atom to its default value. This is cleaner than manually setting back to the initial value and works correctly with atom effects."
+    category: "recoil_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "useResetRecoilState", "reset", "default"]
+    example: |
+      const resetFilter = useResetRecoilState(filterAtom);
+      return <button onClick={resetFilter}>Clear Filters</button>;
+
+  - id: RECOIL032
+    title: "Use useRecoilBridgeAcrossReactRoots for cross-root state sharing"
+    description: "Use useRecoilBridgeAcrossReactRoots_UNSTABLE to share Recoil state across multiple React roots (e.g., portals, iframes, micro-frontends). Wrap the child root with the bridge component."
+    category: "recoil_hooks"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "bridge", "cross-root", "portal", "micro-frontend"]
+    example: |
+      const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
+      // In portal: <RecoilBridge><ChildApp /></RecoilBridge>
+
+  # ============================================================================
+  # RECOIL SNAPSHOT API (RECOIL033-RECOIL036) - Snapshot best practices
+  # ============================================================================
+
+  - id: RECOIL033
+    title: "Use snapshot.retain() to prevent garbage collection"
+    description: "Snapshots are garbage-collected after the tick they are created. If you need to keep a snapshot reference (e.g., for undo/redo), call snapshot.retain() and release() when done."
+    category: "recoil_snapshot"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "snapshot", "retain", "release", "memory"]
+    example: |
+      const undoStack = useRef<Snapshot[]>([]);
+      const snapshot = useRecoilSnapshot();
+      useEffect(() => {
+        const release = snapshot.retain();
+        undoStack.current.push(snapshot);
+        return release;
+      }, [snapshot]);
+
+  - id: RECOIL034
+    title: "Use snapshot_UNSTABLE for testing outside React"
+    description: "Use snapshot_UNSTABLE() to create snapshots for testing Recoil atoms and selectors outside of React components. This enables unit testing of state logic without rendering."
+    category: "recoil_snapshot"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "snapshot_UNSTABLE", "testing", "unit-test"]
+    example: |
+      test('selector computes correctly', () => {
+        const snapshot = snapshot_UNSTABLE(({ set }) => {
+          set(countAtom, 5);
+        });
+        expect(snapshot.getLoadable(doubledSelector).getValue()).toBe(10);
+      });
+
+  - id: RECOIL035
+    title: "Use useGotoRecoilSnapshot for time-travel debugging"
+    description: "Use useGotoRecoilSnapshot to restore the entire Recoil state to a previous snapshot. Useful for undo/redo, time-travel debugging, and state restoration."
+    category: "recoil_snapshot"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "gotoSnapshot", "undo", "redo", "time-travel"]
+    example: |
+      const gotoSnapshot = useGotoRecoilSnapshot();
+      const undo = () => {
+        const prev = undoStack.current.pop();
+        if (prev) gotoSnapshot(prev);
+      };
+
+  - id: RECOIL036
+    title: "Use snapshot.map for derived snapshots"
+    description: "Use snapshot.map() to create new snapshots with modifications. This is useful for previewing state changes, creating hypothetical states, and testing."
+    category: "recoil_snapshot"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "snapshot", "map", "derived", "preview"]
+    example: |
+      const previewSnapshot = currentSnapshot.map(({ set }) => {
+        set(themeAtom, 'dark');
+        set(fontSizeAtom, 16);
+      });
+
+  # ============================================================================
+  # RECOIL TYPESCRIPT (RECOIL037-RECOIL040) - TypeScript best practices
+  # ============================================================================
+
+  - id: RECOIL037
+    title: "Type atoms with explicit generic parameters"
+    description: "Always provide explicit type parameters for atoms, especially for complex types, nullable types, and union types. This ensures type safety when reading and writing atom values."
+    category: "recoil_typescript"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "typescript", "generics", "type-safety"]
+    example: |
+      const userAtom = atom<User | null>({ key: 'user', default: null });
+      const itemsAtom = atom<Item[]>({ key: 'items', default: [] });
+      const statusAtom = atom<'idle' | 'loading' | 'error'>({ key: 'status', default: 'idle' });
+
+  - id: RECOIL038
+    title: "Type selectorFamily parameters"
+    description: "Provide explicit type parameters for selectorFamily including both the return type and parameter type. Parameters must be serializable (no functions, no class instances)."
+    category: "recoil_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "typescript", "selectorFamily", "generics"]
+    example: |
+      const userByIdSelector = selectorFamily<User | undefined, string>({
+        key: 'userById',
+        get: (id) => ({ get }) => get(usersAtom).find(u => u.id === id),
+      });
+
+  - id: RECOIL039
+    title: "Use RecoilState and RecoilValue types for function signatures"
+    description: "Use RecoilState<T> for atoms (read-write) and RecoilValue<T> for selectors (read-only) in function signatures and utility types. This ensures correct read/write semantics."
+    category: "recoil_typescript"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "typescript", "RecoilState", "RecoilValue"]
+    example: |
+      function useAtomReset<T>(atom: RecoilState<T>) {
+        const reset = useResetRecoilState(atom);
+        return reset;
+      }
+
+  - id: RECOIL040
+    title: "Handle DefaultValue in writable selector types"
+    description: "In writable selector set functions, the new value can be T | DefaultValue. Always check for DefaultValue using instanceof when the set function needs to differentiate between value updates and resets."
+    category: "recoil_typescript"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "typescript", "DefaultValue", "writable-selector"]
+    example: |
+      import { DefaultValue } from 'recoil';
+      set: ({ set }, newValue) => {
+        if (newValue instanceof DefaultValue) { set(sourceAtom, newValue); return; }
+        set(sourceAtom, transform(newValue));
+      }
+
+  # ============================================================================
+  # RECOIL PERFORMANCE (RECOIL041-RECOIL044) - Performance best practices
+  # ============================================================================
+
+  - id: RECOIL041
+    title: "Split large atoms to minimize re-renders"
+    description: "Split large state objects into separate atoms so components only subscribe to the slices they need. This prevents unnecessary re-renders when unrelated parts of state change."
+    category: "recoil_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "performance", "split", "granular", "re-render"]
+    example: |
+      // ✅ Split atoms
+      const firstNameAtom = atom({ key: 'firstName', default: '' });
+      const lastNameAtom = atom({ key: 'lastName', default: '' });
+      const emailAtom = atom({ key: 'email', default: '' });
+
+      // ❌ Single large atom — all consumers re-render on any field change
+      const formAtom = atom({ key: 'form', default: { firstName: '', lastName: '', email: '' } });
+
+  - id: RECOIL042
+    title: "Use useRecoilValueLoadable to avoid Suspense cascades"
+    description: "In components with multiple async selectors, use useRecoilValueLoadable instead of useRecoilValue to avoid Suspense cascades. Handle loading states individually for better UX."
+    category: "recoil_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "loadable", "suspense", "performance"]
+
+  - id: RECOIL043
+    title: "Memoize selector computations for expensive operations"
+    description: "For expensive computations in selectors, consider using helper memoization or ensuring the selector input references are stable. Recoil caches selector results but re-evaluates when any dependency changes."
+    category: "recoil_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "selector", "memoization", "performance"]
+
+  - id: RECOIL044
+    title: "Use atomFamily with stable serializable keys"
+    description: "atomFamily and selectorFamily use parameter serialization for caching. Use primitive types or simple objects as parameters. Avoid complex nested objects or objects with unstable references."
+    category: "recoil_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "atomFamily", "selectorFamily", "serialization", "caching"]
+    example: |
+      // ✅ Stable primitive parameter
+      const todoAtom = atomFamily({ key: 'todo', default: id => ({ id, done: false }) });
+      useRecoilState(todoAtom('todo-1'));
+
+      // ❌ Unstable object parameter (new ref every render)
+      useRecoilState(todoAtom({ id: 'todo-1', ts: Date.now() })); // cache miss every time
+
+  # ============================================================================
+  # RECOIL TESTING (RECOIL045-RECOIL046)
+  # ============================================================================
+
+  - id: RECOIL045
+    title: "Wrap test components in RecoilRoot"
+    description: "Always wrap components under test in a RecoilRoot. Use initializeState to set up initial atom values for testing. For isolated tests, use a fresh RecoilRoot per test."
+    category: "recoil_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "testing", "RecoilRoot", "initializeState"]
+    example: |
+      render(
+        <RecoilRoot initializeState={({ set }) => { set(userAtom, mockUser); }}>
+          <UserProfile />
+        </RecoilRoot>
+      );
+
+  - id: RECOIL046
+    title: "Test selectors independently with snapshot_UNSTABLE"
+    description: "Use snapshot_UNSTABLE to test selector logic without rendering components. Set atom values, then verify selector output with getLoadable().getValue()."
+    category: "recoil_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "testing", "snapshot_UNSTABLE", "selector", "unit"]
+
+  # ============================================================================
+  # RECOIL PATTERNS (RECOIL047-RECOIL050)
+  # ============================================================================
+
+  - id: RECOIL047
+    title: "Wrap app root in a single RecoilRoot"
+    description: "Place a single RecoilRoot at the top of your component tree. All atoms share this root's store. Multiple RecoilRoots create separate state stores (useful for micro-frontends but not for single apps)."
+    category: "recoil_patterns"
+    severity: "critical"
+    applicability:
+      frameworks: ["recoil", "react"]
+    tags: ["recoil", "RecoilRoot", "provider", "setup"]
+    example: |
+      function App() {
+        return (
+          <RecoilRoot>
+            <Suspense fallback={<Loading />}>
+              <Router />
+            </Suspense>
+          </RecoilRoot>
+        );
+      }
+
+  - id: RECOIL048
+    title: "Use recoil-sync for URL and external state synchronization"
+    description: "Use the recoil-sync package for synchronizing atom state with URLs, databases, or other external stores. Use syncEffect and RecoilURLSync for URL-based state synchronization."
+    category: "recoil_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil", "recoil-sync"]
+    tags: ["recoil", "recoil-sync", "URL", "synchronization"]
+    example: |
+      import { syncEffect } from 'recoil-sync';
+      const filterAtom = atom({
+        key: 'filter',
+        default: 'all',
+        effects: [syncEffect({ refine: string() })],
+      });
+      // <RecoilURLSyncJSON location={{ part: 'queryParams' }}>
+
+  - id: RECOIL049
+    title: "Avoid mixing Recoil with other state managers"
+    description: "Avoid using Recoil alongside Redux, Zustand, or Jotai for the same state concerns. Choose one state management solution per domain. Mixing creates confusion about source of truth and debugging complexity."
+    category: "recoil_patterns"
+    severity: "warning"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "architecture", "single-source", "state-management"]
+
+  - id: RECOIL050
+    title: "Consider Recoil's maintenance status for new projects"
+    description: "Recoil is maintained by Meta but has slower release cadence compared to alternatives. For new projects, evaluate if Recoil's unique features (Snapshot API, atom effects, selector families) justify the dependency. Consider Jotai or Zustand as alternatives."
+    category: "recoil_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["recoil"]
+    tags: ["recoil", "evaluation", "alternatives", "maintenance"]

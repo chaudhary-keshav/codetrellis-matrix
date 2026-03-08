@@ -1,0 +1,928 @@
+# XState State Machine Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.55 - XState State Machine Framework Support
+# Practice IDs: XSTATE001-XSTATE050
+# Coverage: Machine Definition, States, Transitions, Actions, Guards,
+#           Actors, Context, TypeScript, Testing, Performance, Migration
+# Versions: XState v3.x-v5.x (Machine, createMachine, setup, createActor,
+#           interpret, assign, send, fromPromise, fromCallback, fromObservable)
+
+practices:
+  # ============================================================================
+  # XSTATE MACHINE DEFINITION (XSTATE001-XSTATE008) - Machine creation best practices
+  # ============================================================================
+
+  - id: XSTATE001
+    title: "Use setup().createMachine() in XState v5"
+    description: "In XState v5, prefer the setup() API over bare createMachine() to define actions, guards, actors, and delays with full type inference. setup() provides a strongly-typed, composable machine factory."
+    category: "xstate_machine"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate", "xstate-v5"]
+    tags: ["xstate", "setup", "createMachine", "v5", "type-safety"]
+    example: |
+      // ✅ XState v5: setup().createMachine()
+      import { setup, assign } from 'xstate';
+      const machine = setup({
+        types: {} as { context: { count: number }; events: { type: 'INC' } | { type: 'DEC' } },
+        actions: { increment: assign({ count: ({ context }) => context.count + 1 }) },
+        guards: { isPositive: ({ context }) => context.count > 0 },
+      }).createMachine({ id: 'counter', initial: 'active', context: { count: 0 }, states: { active: {} } });
+
+      // ❌ Bare createMachine without setup (less type-safe in v5)
+      const machine = createMachine({ id: 'counter', context: { count: 0 }, states: { active: {} } });
+
+  - id: XSTATE002
+    title: "Give every machine a unique id"
+    description: "Always provide a unique 'id' property to every machine definition. Machine IDs are used for debugging, DevTools inspection, actor identification, and generating machine descriptions."
+    category: "xstate_machine"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "machine", "id", "identification", "devtools"]
+    example: |
+      // ✅ Machine with id
+      const authMachine = createMachine({ id: 'auth', initial: 'idle', states: { idle: {}, loading: {} } });
+
+      // ❌ Missing id
+      const authMachine = createMachine({ initial: 'idle', states: { idle: {} } });
+
+  - id: XSTATE003
+    title: "Define context with initial values"
+    description: "Always provide initial values for machine context. In XState v5, context can be a function that receives input for dynamic initialization. Avoid undefined context values."
+    category: "xstate_machine"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "context", "initial", "state", "data"]
+    example: |
+      // ✅ XState v5: context factory with input
+      const machine = setup({
+        types: {} as { context: { user: User | null }; input: { userId: string } },
+      }).createMachine({
+        context: ({ input }) => ({ user: null, userId: input.userId }),
+      });
+
+      // ✅ XState v4: static context
+      const machine = createMachine({ context: { count: 0, items: [] } });
+
+  - id: XSTATE004
+    title: "Keep machines small and focused"
+    description: "Each machine should model a single bounded process or workflow. Split complex flows into multiple machines that communicate via actors. Avoid monolithic machines with dozens of states."
+    category: "xstate_machine"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "machine", "single-responsibility", "composition"]
+    example: |
+      // ✅ Separate machines for separate concerns
+      const authMachine = createMachine({ id: 'auth', ... });
+      const formMachine = createMachine({ id: 'form', ... });
+
+      // Compose via invoke
+      const appMachine = createMachine({
+        states: {
+          authenticating: { invoke: { src: authMachine, onDone: 'ready' } },
+          ready: { invoke: { src: formMachine } },
+        },
+      });
+
+  - id: XSTATE005
+    title: "Use predictableActionArguments in v4"
+    description: "In XState v4.35+, enable predictableActionArguments: true to opt into v5 behavior where actions receive (context, event) consistently. This is the default in v5."
+    category: "xstate_machine"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate", "xstate-v4"]
+    tags: ["xstate", "v4", "predictableActionArguments", "migration"]
+    example: |
+      // ✅ v4 with v5-compatible action args
+      const machine = createMachine({
+        predictableActionArguments: true,
+        context: { count: 0 },
+        on: { INC: { actions: assign({ count: (ctx) => ctx.count + 1 }) } },
+      });
+
+  - id: XSTATE006
+    title: "Export machines as named exports"
+    description: "Export machine definitions as named exports from dedicated files. This enables tree-shaking, clear imports, and machine reuse across the application."
+    category: "xstate_machine"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "export", "module", "organization"]
+    example: |
+      // ✅ Named export in dedicated file
+      // auth.machine.ts
+      export const authMachine = setup({ ... }).createMachine({ id: 'auth', ... });
+
+      // ❌ Default export or inline definition
+      export default createMachine({ ... });
+
+  - id: XSTATE007
+    title: "Use TypeScript types for context and events"
+    description: "Define TypeScript types for machine context and events. In v5 use setup({ types: {} as { context: C; events: E } }). In v4 use createMachine<Context, Event>() with typegen."
+    category: "xstate_machine"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate", "typescript"]
+    tags: ["xstate", "typescript", "types", "context", "events", "typegen"]
+    example: |
+      // ✅ XState v5 with types
+      type Context = { user: User | null; error: string };
+      type Events = { type: 'LOGIN'; credentials: Creds } | { type: 'LOGOUT' };
+
+      const machine = setup({
+        types: {} as { context: Context; events: Events },
+      }).createMachine({ ... });
+
+      // ✅ XState v4 with typegen
+      const machine = createMachine({
+        tsTypes: {} as import('./auth.machine.typegen').Typegen0,
+        schema: { context: {} as Context, events: {} as Events },
+      });
+
+  - id: XSTATE008
+    title: "Avoid inline machine definitions in components"
+    description: "Define machines outside of React/Vue/Svelte components. Inline definitions cause machines to be recreated on every render, breaking actor state persistence."
+    category: "xstate_machine"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate", "react", "vue", "svelte"]
+    tags: ["xstate", "component", "inline", "performance", "actor"]
+    example: |
+      // ✅ Machine defined outside component
+      const toggleMachine = createMachine({ id: 'toggle', ... });
+      function Toggle() { const [state, send] = useMachine(toggleMachine); }
+
+      // ❌ Machine recreated every render
+      function Toggle() { const [state, send] = useMachine(createMachine({ ... })); }
+
+  # ============================================================================
+  # XSTATE STATES (XSTATE009-XSTATE016) - State definition best practices
+  # ============================================================================
+
+  - id: XSTATE009
+    title: "Use descriptive state names"
+    description: "Name states after the condition or phase they represent (idle, loading, authenticated, error), not after the transition that led to them. States are nouns/adjectives, not verbs."
+    category: "xstate_states"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "states", "naming", "convention"]
+    example: |
+      // ✅ Descriptive state names (condition)
+      states: { idle: {}, loading: {}, loaded: {}, error: {} }
+
+      // ❌ Verb-based names (transition)
+      states: { fetch: {}, handleSuccess: {}, handleError: {} }
+
+  - id: XSTATE010
+    title: "Use compound states for related sub-workflows"
+    description: "Group related states into compound (nested/hierarchical) states. Child states inherit parent transitions and entry/exit actions. Use initial to set the default child state."
+    category: "xstate_states"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "compound", "hierarchical", "nested", "states"]
+    example: |
+      states: {
+        authenticated: {
+          initial: 'idle',
+          states: {
+            idle: { on: { FETCH: 'loading' } },
+            loading: { on: { SUCCESS: 'success', FAILURE: 'error' } },
+            success: {},
+            error: { on: { RETRY: 'loading' } },
+          },
+        },
+      }
+
+  - id: XSTATE011
+    title: "Use parallel states for concurrent processes"
+    description: "Use type: 'parallel' when multiple independent processes must run concurrently. Each parallel region evolves independently and receives the same events."
+    category: "xstate_states"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "parallel", "concurrent", "orthogonal"]
+    example: |
+      states: {
+        dashboard: {
+          type: 'parallel',
+          states: {
+            notifications: { initial: 'idle', states: { idle: {}, fetching: {} } },
+            profile: { initial: 'idle', states: { idle: {}, editing: {} } },
+          },
+        },
+      }
+
+  - id: XSTATE012
+    title: "Use final states to signal completion"
+    description: "Mark terminal states with type: 'final'. When a machine reaches a final state, it emits a 'done' event to the parent actor. This is essential for invoke/spawn composition."
+    category: "xstate_states"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "final", "done", "completion", "invoke"]
+    example: |
+      states: {
+        processing: { on: { COMPLETE: 'done' } },
+        done: { type: 'final' },
+      }
+      // Parent machine: invoke: { src: childMachine, onDone: 'nextState' }
+
+  - id: XSTATE013
+    title: "Use history states for return-to-previous behavior"
+    description: "Use type: 'history' (shallow) or history: 'deep' when a machine needs to return to its previous state after an interruption. Shallow history remembers the direct child; deep remembers the full tree."
+    category: "xstate_states"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "history", "shallow", "deep", "return"]
+    example: |
+      states: {
+        form: {
+          initial: 'step1',
+          states: {
+            step1: {},
+            step2: {},
+            step3: {},
+            hist: { type: 'history', history: 'shallow' },
+          },
+        },
+        interrupted: { on: { RESUME: 'form.hist' } },
+      }
+
+  - id: XSTATE014
+    title: "Use tags for state categorization"
+    description: "Add tags to states for querying state categories without checking specific state values. Tags enable state.hasTag('loading') instead of brittle state name checks."
+    category: "xstate_states"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "tags", "categorization", "query"]
+    example: |
+      states: {
+        fetching: { tags: ['loading'], ... },
+        retrying: { tags: ['loading'], ... },
+        success: { tags: ['ready'], ... },
+      }
+      // Usage: state.hasTag('loading')
+
+  - id: XSTATE015
+    title: "Prefer eventless (always) transitions for automatic routing"
+    description: "Use 'always' transitions (formerly transient transitions with empty event) to automatically route to states based on conditions. These fire immediately when the state is entered."
+    category: "xstate_states"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "always", "transient", "eventless", "routing"]
+    example: |
+      states: {
+        checking: {
+          always: [
+            { guard: 'isAdmin', target: 'admin' },
+            { guard: 'isUser', target: 'user' },
+            { target: 'guest' },
+          ],
+        },
+      }
+
+  - id: XSTATE016
+    title: "Use after for time-based transitions"
+    description: "Use 'after' (delayed transitions) for timeouts, polling, and timed state changes. In v5, delays can be parameterized or defined in setup({ delays: {} })."
+    category: "xstate_states"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "after", "delay", "timeout", "timer"]
+    example: |
+      states: {
+        debouncing: {
+          after: { 300: { target: 'searching', actions: 'startSearch' } },
+        },
+        polling: {
+          after: { POLL_INTERVAL: { target: 'polling', actions: 'fetchData' } },
+        },
+      }
+
+  # ============================================================================
+  # XSTATE TRANSITIONS (XSTATE017-XSTATE022) - Event and transition best practices
+  # ============================================================================
+
+  - id: XSTATE017
+    title: "Use SCREAMING_SNAKE_CASE for event types"
+    description: "Follow the convention of using SCREAMING_SNAKE_CASE for event type names. This distinguishes events from actions and makes them clearly identifiable in machine definitions."
+    category: "xstate_transitions"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "events", "naming", "convention", "SCREAMING_SNAKE_CASE"]
+    example: |
+      // ✅ SCREAMING_SNAKE_CASE events
+      on: { FETCH_DATA: 'loading', USER_LOGGED_IN: 'dashboard', FORM_SUBMITTED: 'processing' }
+
+      // ❌ camelCase or lowercase
+      on: { fetchData: 'loading', user_logged_in: 'dashboard' }
+
+  - id: XSTATE018
+    title: "Use guarded transitions for conditional branching"
+    description: "Use guards (cond in v4, guard in v5) on transitions for conditional logic. Multiple guarded transitions on the same event provide declarative branching."
+    category: "xstate_transitions"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "guard", "cond", "conditional", "branching"]
+    example: |
+      // ✅ XState v5: guarded transitions
+      on: {
+        SUBMIT: [
+          { guard: 'isValid', target: 'submitting', actions: 'clearErrors' },
+          { target: 'invalid', actions: 'showErrors' },
+        ],
+      }
+
+      // ✅ XState v4: cond
+      on: { SUBMIT: [{ target: 'submitting', cond: 'isValid' }, { target: 'invalid' }] }
+
+  - id: XSTATE019
+    title: "Prefer named actions over inline functions"
+    description: "Use named action strings referencing setup() definitions rather than inline functions. Named actions are testable, reusable, serializable, and visible in DevTools."
+    category: "xstate_transitions"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "actions", "named", "setup", "testable"]
+    example: |
+      // ✅ Named actions
+      const machine = setup({
+        actions: { fetchUser: ({ context }) => api.getUser(context.userId) },
+      }).createMachine({
+        on: { FETCH: { actions: 'fetchUser' } },
+      });
+
+      // ❌ Inline functions (not serializable, hard to test)
+      on: { FETCH: { actions: (ctx) => api.getUser(ctx.userId) } }
+
+  - id: XSTATE020
+    title: "Use internal transitions for self-targeting events"
+    description: "When an event should trigger actions without re-entering the current state, omit the target or explicitly use an internal transition. External self-transitions re-execute entry/exit actions."
+    category: "xstate_transitions"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "internal", "self-transition", "reenter"]
+    example: |
+      // ✅ Internal transition (no re-entry)
+      states: {
+        active: {
+          on: { UPDATE: { actions: 'updateContext' } }, // no target = internal
+        },
+      }
+
+      // External self-transition (re-entry, runs entry/exit)
+      on: { RESET: { target: 'active', reenter: true } } // v5
+      on: { RESET: { target: 'active', internal: false } } // v4
+
+  - id: XSTATE021
+    title: "Use wildcard events sparingly"
+    description: "The '*' wildcard event catches all events not handled by other transitions. Use it for logging or fallback behavior, but avoid relying on it for core logic."
+    category: "xstate_transitions"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "wildcard", "catch-all", "event"]
+    example: |
+      states: {
+        active: {
+          on: {
+            SUBMIT: 'submitting',
+            '*': { actions: 'logUnhandledEvent' },
+          },
+        },
+      }
+
+  - id: XSTATE022
+    title: "Model events as objects with payload"
+    description: "Events should be typed objects with a 'type' field and optional payload. Avoid using bare strings. This enables proper TypeScript inference and DevTools inspection."
+    category: "xstate_transitions"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate", "typescript"]
+    tags: ["xstate", "events", "payload", "typescript", "type"]
+    example: |
+      // ✅ Typed event objects
+      type Events =
+        | { type: 'FETCH'; userId: string }
+        | { type: 'SUCCESS'; data: User }
+        | { type: 'ERROR'; error: Error };
+
+      send({ type: 'FETCH', userId: '123' });
+
+      // ❌ Bare string events (no payload)
+      send('FETCH');
+
+  # ============================================================================
+  # XSTATE ACTIONS (XSTATE023-XSTATE030) - Action best practices
+  # ============================================================================
+
+  - id: XSTATE023
+    title: "Use assign() for context updates"
+    description: "Always use the assign() action creator to update machine context. Never mutate context directly. assign() ensures immutable updates and proper change tracking."
+    category: "xstate_actions"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "assign", "context", "immutable", "update"]
+    example: |
+      // ✅ XState v5: assign with arrow
+      actions: { increment: assign({ count: ({ context }) => context.count + 1 }) }
+
+      // ✅ XState v4: assign
+      actions: { increment: assign({ count: (ctx) => ctx.count + 1 }) }
+
+      // ❌ Direct mutation
+      actions: { increment: (ctx) => { ctx.count += 1; } }
+
+  - id: XSTATE024
+    title: "Use entry/exit actions for state lifecycle"
+    description: "Attach entry actions for work that should happen when entering a state, and exit actions for cleanup. This keeps transition definitions clean and ensures proper lifecycle management."
+    category: "xstate_actions"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "entry", "exit", "lifecycle", "cleanup"]
+    example: |
+      states: {
+        loading: {
+          entry: ['startSpinner', 'fetchData'],
+          exit: ['stopSpinner'],
+          on: { SUCCESS: 'success', FAILURE: 'error' },
+        },
+      }
+
+  - id: XSTATE025
+    title: "Use enqueueActions for conditional action logic (v5)"
+    description: "In XState v5, use enqueueActions() to conditionally enqueue actions based on context or event. This replaces v4's pure() and choose() action creators."
+    category: "xstate_actions"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate", "xstate-v5"]
+    tags: ["xstate", "enqueueActions", "conditional", "v5"]
+    example: |
+      import { enqueueActions } from 'xstate';
+      actions: {
+        handleResult: enqueueActions(({ enqueue, context }) => {
+          enqueue.assign({ processed: true });
+          if (context.shouldNotify) {
+            enqueue({ type: 'sendNotification' });
+          }
+        }),
+      }
+
+  - id: XSTATE026
+    title: "Use emit() for event broadcasting (v5)"
+    description: "In XState v5, use the emit() action to broadcast events to parent actors or subscribers. This replaces v4's sendParent() for type-safe event emission."
+    category: "xstate_actions"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate", "xstate-v5"]
+    tags: ["xstate", "emit", "broadcast", "parent", "v5"]
+    example: |
+      import { emit } from 'xstate';
+      const childMachine = setup({
+        types: { emitted: {} as { type: 'notification'; message: string } },
+      }).createMachine({
+        on: { NOTIFY: { actions: emit({ type: 'notification', message: 'Done!' }) } },
+      });
+
+  - id: XSTATE027
+    title: "Use sendTo() for actor-to-actor communication (v5)"
+    description: "In XState v5, use sendTo() to send events to specific actors by reference or ID. This replaces v4's send() with { to: ... } for explicit, type-safe inter-actor messaging."
+    category: "xstate_actions"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate", "xstate-v5"]
+    tags: ["xstate", "sendTo", "actor", "communication", "v5"]
+    example: |
+      import { sendTo } from 'xstate';
+      actions: {
+        notifyChild: sendTo('childActor', { type: 'UPDATE', data: 'new' }),
+        notifyRef: sendTo(({ context }) => context.childRef, { type: 'PING' }),
+      }
+
+  - id: XSTATE028
+    title: "Use raise() for internal event dispatching"
+    description: "Use raise() to send events to the machine itself. Raised events are processed in the current microstep, before external events. Useful for triggering internal transitions."
+    category: "xstate_actions"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "raise", "internal", "event", "self"]
+    example: |
+      import { raise } from 'xstate';
+      on: {
+        SUBMIT: { actions: [raise({ type: 'VALIDATE' }), 'logSubmission'] },
+        VALIDATE: [
+          { guard: 'isValid', target: 'submitting' },
+          { target: 'invalid' },
+        ],
+      }
+
+  - id: XSTATE029
+    title: "Avoid side effects in assign actions"
+    description: "assign() should be pure — only return new context values. Side effects (API calls, logging, DOM manipulation) should be in separate actions, not inside assign()."
+    category: "xstate_actions"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "assign", "pure", "side-effects", "separation"]
+    example: |
+      // ✅ Separate side effect from assignment
+      on: { SUCCESS: { actions: ['logSuccess', assign({ data: ({ event }) => event.data })] } }
+
+      // ❌ Side effect inside assign
+      on: { SUCCESS: { actions: assign({ data: (ctx, event) => { console.log('!'); return event.data; } }) } }
+
+  - id: XSTATE030
+    title: "Use stop() for actor cleanup"
+    description: "Use the stop() action to explicitly stop child actors when they are no longer needed. This prevents memory leaks from orphaned actors."
+    category: "xstate_actions"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "stop", "actor", "cleanup", "memory"]
+    example: |
+      import { stop } from 'xstate';
+      states: {
+        active: {
+          exit: stop('childActor'),
+          invoke: { id: 'childActor', src: childMachine },
+        },
+      }
+
+  # ============================================================================
+  # XSTATE GUARDS (XSTATE031-XSTATE034) - Guard best practices
+  # ============================================================================
+
+  - id: XSTATE031
+    title: "Use named guards defined in setup"
+    description: "Define guards as named functions in setup({ guards: {} }) and reference them by string name. Named guards are testable, serializable, and inspectable in DevTools."
+    category: "xstate_guards"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "guard", "named", "setup", "testable"]
+    example: |
+      const machine = setup({
+        guards: {
+          isAuthenticated: ({ context }) => context.user !== null,
+          hasPermission: ({ context, event }) => context.user?.role === event.requiredRole,
+        },
+      }).createMachine({
+        on: { ACCESS: { guard: 'hasPermission', target: 'granted' } },
+      });
+
+  - id: XSTATE032
+    title: "Use guard combinators for complex conditions"
+    description: "In XState v5, use and(), or(), not() guard combinators to compose complex conditions from simple guards. This avoids duplicating guard logic."
+    category: "xstate_guards"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate", "xstate-v5"]
+    tags: ["xstate", "guard", "and", "or", "not", "combinator"]
+    example: |
+      import { and, or, not } from 'xstate';
+      on: {
+        SUBMIT: [
+          { guard: and(['isValid', 'isAuthenticated']), target: 'submitting' },
+          { guard: or([not('isValid'), 'hasErrors']), target: 'invalid' },
+        ],
+      }
+
+  - id: XSTATE033
+    title: "Keep guards pure and synchronous"
+    description: "Guards must be pure functions that return boolean values synchronously. Avoid side effects, async operations, or throwing errors inside guards."
+    category: "xstate_guards"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "guard", "pure", "synchronous", "boolean"]
+    example: |
+      // ✅ Pure synchronous guard
+      guards: { isValid: ({ context }) => context.email.includes('@') && context.password.length >= 8 }
+
+      // ❌ Async / side-effectful guard
+      guards: { isValid: async ({ context }) => await validateOnServer(context) }
+
+  - id: XSTATE034
+    title: "Use stateIn guard for state-dependent transitions"
+    description: "Use the stateIn() guard (v5) to check if a parallel region or other part of the state tree is in a specific state before allowing a transition."
+    category: "xstate_guards"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate", "xstate-v5"]
+    tags: ["xstate", "stateIn", "parallel", "guard", "state"]
+    example: |
+      import { stateIn } from 'xstate';
+      on: {
+        SUBMIT: {
+          guard: stateIn({ form: 'valid' }),
+          target: 'submitting',
+        },
+      }
+
+  # ============================================================================
+  # XSTATE ACTORS & INVOCATIONS (XSTATE035-XSTATE042) - Actor model best practices
+  # ============================================================================
+
+  - id: XSTATE035
+    title: "Use invoke for async operations"
+    description: "Use invoke to call promises, callbacks, observables, or child machines from states. invoke handles lifecycle (start/stop) automatically and provides onDone/onError handlers."
+    category: "xstate_actors"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "invoke", "async", "promise", "actor"]
+    example: |
+      states: {
+        loading: {
+          invoke: {
+            id: 'fetchUser',
+            src: 'fetchUserService',
+            onDone: { target: 'success', actions: assign({ user: ({ event }) => event.output }) },
+            onError: { target: 'error', actions: assign({ error: ({ event }) => event.error }) },
+          },
+        },
+      }
+
+  - id: XSTATE036
+    title: "Use fromPromise for async data fetching (v5)"
+    description: "In XState v5, use fromPromise() to create actors from async functions. Define them in setup({ actors: {} }) for type-safe invocation with input."
+    category: "xstate_actors"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate", "xstate-v5"]
+    tags: ["xstate", "fromPromise", "async", "actor", "v5"]
+    example: |
+      import { fromPromise } from 'xstate';
+      const machine = setup({
+        actors: {
+          fetchUser: fromPromise(async ({ input }: { input: { userId: string } }) => {
+            const res = await fetch(`/api/users/${input.userId}`);
+            return res.json();
+          }),
+        },
+      }).createMachine({
+        states: {
+          loading: {
+            invoke: { src: 'fetchUser', input: ({ context }) => ({ userId: context.userId }) },
+          },
+        },
+      });
+
+  - id: XSTATE037
+    title: "Use fromCallback for long-running subscriptions (v5)"
+    description: "Use fromCallback() for event-based subscriptions (WebSocket, EventSource, DOM events). The callback receives sendBack for sending events to the parent and receive for receiving events."
+    category: "xstate_actors"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate", "xstate-v5"]
+    tags: ["xstate", "fromCallback", "subscription", "websocket", "v5"]
+    example: |
+      import { fromCallback } from 'xstate';
+      const machine = setup({
+        actors: {
+          socketListener: fromCallback(({ sendBack, receive, input }) => {
+            const ws = new WebSocket(input.url);
+            ws.onmessage = (msg) => sendBack({ type: 'MESSAGE', data: msg.data });
+            receive((event) => { if (event.type === 'SEND') ws.send(event.data); });
+            return () => ws.close(); // cleanup
+          }),
+        },
+      }).createMachine({ ... });
+
+  - id: XSTATE038
+    title: "Use fromObservable for reactive streams (v5)"
+    description: "Use fromObservable() to wrap RxJS or similar observables as XState actors. Each emitted value becomes a snapshot event. The observable is unsubscribed when the actor stops."
+    category: "xstate_actors"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate", "xstate-v5", "rxjs"]
+    tags: ["xstate", "fromObservable", "rxjs", "reactive", "v5"]
+    example: |
+      import { fromObservable } from 'xstate';
+      import { interval } from 'rxjs';
+      const machine = setup({
+        actors: { ticker: fromObservable(() => interval(1000)) },
+      }).createMachine({
+        states: { running: { invoke: { src: 'ticker', onSnapshot: { actions: 'onTick' } } } },
+      });
+
+  - id: XSTATE039
+    title: "Use createActor instead of interpret (v5)"
+    description: "In XState v5, use createActor() to instantiate a machine actor. interpret() is deprecated. createActor returns an actor that must be started with .start()."
+    category: "xstate_actors"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate", "xstate-v5"]
+    tags: ["xstate", "createActor", "interpret", "v5", "migration"]
+    example: |
+      // ✅ XState v5
+      import { createActor } from 'xstate';
+      const actor = createActor(machine, { input: { userId: '123' } });
+      actor.subscribe((snapshot) => console.log(snapshot.value));
+      actor.start();
+
+      // ❌ Deprecated in v5
+      import { interpret } from 'xstate';
+      const service = interpret(machine).start();
+
+  - id: XSTATE040
+    title: "Always handle onError for invoked services"
+    description: "Every invoke should have an onError handler. Unhandled errors in invoked services will cause the actor to stop, potentially leaving the application in an inconsistent state."
+    category: "xstate_actors"
+    severity: "critical"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "invoke", "onError", "error-handling", "resilience"]
+    example: |
+      invoke: {
+        src: 'fetchData',
+        onDone: { target: 'success', actions: 'setData' },
+        onError: { target: 'error', actions: assign({ error: ({ event }) => event.error.message }) },
+      }
+
+  - id: XSTATE041
+    title: "Give unique IDs to invoked actors"
+    description: "Provide an 'id' to invoked services for debugging and inter-actor communication. The ID can be used with sendTo() to send events to the specific actor instance."
+    category: "xstate_actors"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "invoke", "id", "actor", "communication"]
+    example: |
+      invoke: {
+        id: 'authService',
+        src: 'authenticate',
+        onDone: 'authenticated',
+      }
+      // Can now: sendTo('authService', { type: 'REFRESH' })
+
+  - id: XSTATE042
+    title: "Clean up spawned actors explicitly"
+    description: "When using spawn/spawnChild, ensure spawned actors are stopped when no longer needed. Use exit actions with stop() or manage actor refs in context."
+    category: "xstate_actors"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "spawn", "cleanup", "stop", "memory"]
+    example: |
+      // ✅ XState v5: spawnChild in setup
+      const machine = setup({
+        actions: {
+          spawnWorker: spawnChild('workerMachine', { id: 'worker' }),
+          stopWorker: stopChild('worker'),
+        },
+      }).createMachine({
+        states: {
+          working: { entry: 'spawnWorker', exit: 'stopWorker' },
+        },
+      });
+
+  # ============================================================================
+  # XSTATE TESTING & TOOLING (XSTATE043-XSTATE046)
+  # ============================================================================
+
+  - id: XSTATE043
+    title: "Test machines with actor snapshots"
+    description: "Test state machines by creating actors, sending events, and asserting on snapshots. Test the machine definition, not internal implementation details."
+    category: "xstate_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate"]
+    tags: ["xstate", "testing", "actor", "snapshot", "assert"]
+    example: |
+      // ✅ XState v5 testing
+      import { createActor } from 'xstate';
+      test('should transition to loading', () => {
+        const actor = createActor(fetchMachine).start();
+        actor.send({ type: 'FETCH' });
+        expect(actor.getSnapshot().value).toBe('loading');
+      });
+
+  - id: XSTATE044
+    title: "Use @xstate/test for model-based testing"
+    description: "Use @xstate/test to generate test paths from machine definitions. This ensures all reachable states and transitions are covered by tests automatically."
+    category: "xstate_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate", "xstate-test"]
+    tags: ["xstate", "test", "model-based", "coverage", "paths"]
+    example: |
+      import { createTestModel } from '@xstate/test';
+      const model = createTestModel(toggleMachine);
+      const testPlans = model.getSimplePathPlans();
+      testPlans.forEach((plan) => {
+        plan.paths.forEach((path) => {
+          it(path.description, async () => { await path.test({ ... }); });
+        });
+      });
+
+  - id: XSTATE045
+    title: "Use Stately Inspector for visual debugging"
+    description: "Use @stately/inspect or @xstate/inspect to visualize machine execution in real-time. The inspector shows state transitions, context changes, and event flow."
+    category: "xstate_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate", "xstate-inspect"]
+    tags: ["xstate", "inspect", "devtools", "debugging", "visualization"]
+    example: |
+      // ✅ XState v5 with @stately/inspect
+      import { createBrowserInspector } from '@stately/inspect';
+      const inspector = createBrowserInspector();
+      const actor = createActor(machine, { inspect: inspector.inspect });
+      actor.start();
+
+  - id: XSTATE046
+    title: "Use @xstate/graph for machine analysis"
+    description: "Use @xstate/graph to analyze machine definitions, generate state graphs, find shortest paths, and detect unreachable states. Useful for documentation and validation."
+    category: "xstate_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate", "xstate-graph"]
+    tags: ["xstate", "graph", "analysis", "paths", "documentation"]
+    example: |
+      import { getSimplePaths } from '@xstate/graph';
+      const paths = getSimplePaths(machine);
+      // Verify all states are reachable
+      expect(Object.keys(paths)).toContain('success');
+
+  # ============================================================================
+  # XSTATE PERFORMANCE & PATTERNS (XSTATE047-XSTATE050)
+  # ============================================================================
+
+  - id: XSTATE047
+    title: "Use useSelector for granular React subscriptions"
+    description: "In React, use useSelector() (from @xstate/react) to subscribe to specific parts of the state. This prevents unnecessary re-renders compared to useMachine() which re-renders on every transition."
+    category: "xstate_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate", "xstate-react", "react"]
+    tags: ["xstate", "useSelector", "react", "performance", "render"]
+    example: |
+      // ✅ Granular subscription
+      const count = useSelector(actorRef, (snapshot) => snapshot.context.count);
+      const isLoading = useSelector(actorRef, (snapshot) => snapshot.hasTag('loading'));
+
+      // ❌ Full state subscription (re-renders on every transition)
+      const [state] = useMachine(machine);
+
+  - id: XSTATE048
+    title: "Use @xstate/store for simple state (v5)"
+    description: "For simple key-value state without complex transitions, use @xstate/store instead of full state machines. It provides a lightweight, typed store with event-driven updates."
+    category: "xstate_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate", "xstate-store"]
+    tags: ["xstate", "store", "simple", "lightweight", "v5"]
+    example: |
+      import { createStore } from '@xstate/store';
+      const store = createStore({ count: 0 }, {
+        inc: (context) => ({ count: context.count + 1 }),
+        dec: (context) => ({ count: context.count - 1 }),
+      });
+
+  - id: XSTATE049
+    title: "Migrate from v4 to v5 incrementally"
+    description: "When migrating from XState v4 to v5: replace interpret with createActor, cond with guard, services with actors in setup(), and adopt the new action argument patterns. Use the @xstate/codemod package."
+    category: "xstate_migration"
+    severity: "warning"
+    applicability:
+      frameworks: ["xstate", "xstate-v4", "xstate-v5"]
+    tags: ["xstate", "migration", "v4", "v5", "codemod"]
+    example: |
+      // v4 → v5 key changes:
+      // interpret(machine) → createActor(machine)
+      // { services: { ... } } → setup({ actors: { ... } })
+      // { actions: { inc: assign((ctx) => ...) } } → { actions: { inc: assign(({ context }) => ...) } }
+      // cond: 'myGuard' → guard: 'myGuard'
+      // sendParent() → emit() (for typed events)
+
+  - id: XSTATE050
+    title: "Use input for actor parameterization (v5)"
+    description: "In XState v5, use the input property when creating actors to provide initial parameters. Input is different from context — it's the data provided at actor creation time."
+    category: "xstate_migration"
+    severity: "info"
+    applicability:
+      frameworks: ["xstate", "xstate-v5"]
+    tags: ["xstate", "input", "parameterization", "createActor", "v5"]
+    example: |
+      const machine = setup({
+        types: {} as { input: { userId: string }; context: { user: null | User; userId: string } },
+      }).createMachine({
+        context: ({ input }) => ({ user: null, userId: input.userId }),
+      });
+
+      const actor = createActor(machine, { input: { userId: '123' } });
+      actor.start();

@@ -1,0 +1,2318 @@
+# Svelte / SvelteKit Best Practices Library
+# Version: 1.0.0
+# Svelte Version: 3.x through 5.x (Runes, Snippets, SvelteKit 2)
+# Total Practices: 50
+# Coverage: Components, Runes, Stores, Routing, Actions, Lifecycle, Performance, Testing, Security, Accessibility
+
+version: "1.0.0"
+framework: svelte
+framework_version:
+  min_version: "3.0"
+description: "Comprehensive Svelte 3-5 and SvelteKit 1-2 best practices including Runes, Stores, Actions, and modern patterns"
+
+practices:
+  # ============================================================================
+  # COMPONENT FUNDAMENTALS (SVELTE001-SVELTE010)
+  # ============================================================================
+
+  - id: SVELTE001
+    title: "Use Runes for Reactive State in Svelte 5"
+    category: svelte_runes
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        In Svelte 5+, use runes ($state, $derived, $effect) instead of legacy
+        reactive declarations ($:) and let bindings. Runes provide explicit,
+        composable, and type-safe reactivity.
+      rationale: |
+        Runes are the future of Svelte reactivity. They work in .svelte and .svelte.ts
+        files, provide better TypeScript inference, and enable reactive logic extraction
+        into reusable modules.
+      good_examples:
+        - |
+          <script lang="ts">
+          let count = $state(0)
+          let doubled = $derived(count * 2)
+
+          $effect(() => {
+            console.log(`Count changed to ${count}`)
+          })
+          </script>
+      bad_examples:
+        - |
+          <script>
+          let count = 0
+          $: doubled = count * 2  // Legacy reactive declaration
+          $: console.log(`Count changed to ${count}`)  // Legacy reactive statement
+          </script>
+    tags:
+      - runes
+      - svelte5
+      - reactivity
+    python_version:
+      min_version: null
+
+  - id: SVELTE002
+    title: "Type Component Props with $props Rune"
+    category: svelte_components
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        In Svelte 5, use $props() with TypeScript interfaces for type-safe,
+        self-documenting component APIs. Use $bindable() for two-way binding props.
+      rationale: |
+        $props() replaces export let declarations with a single, destructurable
+        call that provides better TypeScript support and default values.
+      good_examples:
+        - |
+          <script lang="ts">
+          interface Props {
+            title: string
+            count?: number
+            onUpdate?: (value: number) => void
+          }
+
+          let { title, count = 0, onUpdate }: Props = $props()
+          </script>
+      bad_examples:
+        - |
+          <script lang="ts">
+          // Svelte 3/4 style - verbose, no single source of truth
+          export let title: string
+          export let count: number = 0
+          export let onUpdate: ((value: number) => void) | undefined = undefined
+          </script>
+    tags:
+      - components
+      - props
+      - typescript
+    python_version:
+      min_version: null
+
+  - id: SVELTE003
+    title: "Keep Components Small and Focused"
+    category: svelte_components
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Each .svelte component should have a single responsibility. Extract
+        reusable logic into .svelte.ts modules and shared UI into child components.
+        Aim for under 200 lines per component.
+      rationale: |
+        Small components are easier to test, reason about, and reuse. Svelte's
+        component model encourages composition over inheritance.
+      good_examples:
+        - |
+          <!-- UserCard.svelte - focused on display -->
+          <script lang="ts">
+          import Avatar from './Avatar.svelte'
+          import { formatDate } from '$lib/utils'
+
+          let { user }: { user: User } = $props()
+          </script>
+
+          <div class="card">
+            <Avatar src={user.avatar} />
+            <h3>{user.name}</h3>
+            <p>{formatDate(user.joinedAt)}</p>
+          </div>
+      bad_examples:
+        - |
+          <!-- Avoid: monolithic component doing everything -->
+          <script>
+          // 500+ lines of mixed concerns: fetching, formatting, validation, display
+          </script>
+    tags:
+      - components
+      - architecture
+    python_version:
+      min_version: null
+
+  - id: SVELTE004
+    title: "Use Snippets Instead of Slots in Svelte 5"
+    category: svelte_components
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        In Svelte 5, prefer the {#snippet} block over <slot> for content
+        projection. Snippets are more powerful, composable, and type-safe.
+      rationale: |
+        Snippets can be passed as props, stored in variables, and composed.
+        They replace slots, named slots, and slot props with a unified API.
+      good_examples:
+        - |
+          <!-- Card.svelte -->
+          <script lang="ts">
+          import type { Snippet } from 'svelte'
+
+          interface Props {
+            header: Snippet
+            children: Snippet
+            footer?: Snippet
+          }
+
+          let { header, children, footer }: Props = $props()
+          </script>
+
+          <div class="card">
+            <header>{@render header()}</header>
+            <main>{@render children()}</main>
+            {#if footer}
+              <footer>{@render footer()}</footer>
+            {/if}
+          </div>
+      bad_examples:
+        - |
+          <!-- Avoid in Svelte 5: legacy slot syntax -->
+          <div class="card">
+            <header><slot name="header" /></header>
+            <main><slot /></main>
+            <footer><slot name="footer" /></footer>
+          </div>
+    tags:
+      - snippets
+      - svelte5
+      - components
+    python_version:
+      min_version: null
+
+  - id: SVELTE005
+    title: "Use Events via Callback Props in Svelte 5"
+    category: svelte_components
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        In Svelte 5, pass event handlers as callback props instead of using
+        createEventDispatcher. This is simpler and type-safe.
+      rationale: |
+        Callback props remove the need for dispatch boilerplate and provide
+        direct TypeScript type checking on event signatures.
+      good_examples:
+        - |
+          <script lang="ts">
+          interface Props {
+            onClose: () => void
+            onSave: (data: FormData) => Promise<void>
+          }
+
+          let { onClose, onSave }: Props = $props()
+          </script>
+
+          <button onclick={onClose}>Cancel</button>
+          <button onclick={() => onSave(formData)}>Save</button>
+      bad_examples:
+        - |
+          <script>
+          import { createEventDispatcher } from 'svelte'
+          const dispatch = createEventDispatcher()
+          </script>
+          <button on:click={() => dispatch('close')}>Cancel</button>
+    tags:
+      - events
+      - svelte5
+      - components
+    python_version:
+      min_version: null
+
+  - id: SVELTE006
+    title: "Prefer $derived Over $effect for Computed Values"
+    category: svelte_runes
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use $derived for values computed from other reactive state. Reserve
+        $effect for side effects only (DOM manipulation, logging, API calls).
+      rationale: |
+        $derived values are synchronous, memoized, and tracked by the compiler.
+        Using $effect to set reactive state creates unnecessary re-renders and
+        can lead to infinite loops.
+      good_examples:
+        - |
+          <script lang="ts">
+          let items = $state<Item[]>([])
+          let filter = $state('')
+
+          // Correct: derived computation
+          let filtered = $derived(
+            items.filter(item => item.name.includes(filter))
+          )
+          let total = $derived(filtered.length)
+          </script>
+      bad_examples:
+        - |
+          <script>
+          let items = $state([])
+          let filter = $state('')
+          let filtered = $state([])
+
+          // Wrong: using $effect to compute derived state
+          $effect(() => {
+            filtered = items.filter(item => item.name.includes(filter))
+          })
+          </script>
+    tags:
+      - runes
+      - derived
+      - reactivity
+    python_version:
+      min_version: null
+
+  - id: SVELTE007
+    title: "Clean Up Side Effects in $effect"
+    category: svelte_runes
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Always return a cleanup function from $effect when setting up
+        subscriptions, event listeners, or timers. Use $effect.pre for
+        DOM-read-before-update patterns.
+      rationale: |
+        Cleanup functions prevent memory leaks and stale subscriptions when
+        components are destroyed or dependencies change.
+      good_examples:
+        - |
+          <script lang="ts">
+          let element: HTMLElement
+
+          $effect(() => {
+            const observer = new ResizeObserver(entries => {
+              // handle resize
+            })
+            observer.observe(element)
+
+            return () => observer.disconnect()
+          })
+
+          $effect(() => {
+            const id = setInterval(() => tick(), 1000)
+            return () => clearInterval(id)
+          })
+          </script>
+      bad_examples:
+        - |
+          <script>
+          $effect(() => {
+            // Missing cleanup - memory leak!
+            window.addEventListener('resize', handleResize)
+          })
+          </script>
+    tags:
+      - effects
+      - cleanup
+      - lifecycle
+    python_version:
+      min_version: null
+
+  - id: SVELTE008
+    title: "Use $state.raw for Non-Proxied Large Objects"
+    category: svelte_state
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use $state.raw() for large objects or arrays that are replaced wholesale
+        rather than mutated. This avoids the overhead of deep reactivity proxying.
+      rationale: |
+        $state() deeply proxies objects for fine-grained reactivity. For data
+        that is fetched from APIs and replaced entirely, $state.raw() is more
+        efficient and avoids proxy overhead.
+      good_examples:
+        - |
+          <script lang="ts">
+          // Large dataset replaced on each fetch - use raw
+          let users = $state.raw<User[]>([])
+
+          async function load() {
+            users = await fetch('/api/users').then(r => r.json())
+          }
+          </script>
+      bad_examples:
+        - |
+          <script>
+          // Unnecessary deep proxy on data that's always replaced wholesale
+          let users = $state([])
+
+          async function load() {
+            users = await fetch('/api/users').then(r => r.json())
+          }
+          </script>
+    tags:
+      - state
+      - performance
+      - svelte5
+    python_version:
+      min_version: null
+
+  - id: SVELTE009
+    title: "Use $bindable for Two-Way Binding Props"
+    category: svelte_components
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        In Svelte 5, use $bindable() to declare props that support bind:
+        directives from parent components.
+      rationale: |
+        $bindable() makes the two-way binding contract explicit in the component
+        API, improving discoverability and type safety.
+      good_examples:
+        - |
+          <!-- TextInput.svelte -->
+          <script lang="ts">
+          let { value = $bindable('') }: { value: string } = $props()
+          </script>
+
+          <input bind:value />
+
+          <!-- Usage -->
+          <TextInput bind:value={name} />
+      bad_examples:
+        - |
+          <!-- Svelte 4: implicit binding support on all exported props -->
+          <script>
+          export let value = ''
+          </script>
+    tags:
+      - bindable
+      - svelte5
+      - forms
+    python_version:
+      min_version: null
+
+  - id: SVELTE010
+    title: "Use TypeScript with lang='ts' in All Components"
+    category: svelte_typescript
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Always use <script lang="ts"> in Svelte components. Configure
+        svelte-check for CI validation and enable strict mode in tsconfig.
+      rationale: |
+        TypeScript catches type errors at build time, improves IDE support,
+        and documents component interfaces. Svelte 5's runes have first-class
+        TypeScript support.
+      good_examples:
+        - |
+          <script lang="ts">
+          import type { User } from '$lib/types'
+
+          interface Props {
+            user: User
+            onSelect: (id: string) => void
+          }
+
+          let { user, onSelect }: Props = $props()
+          </script>
+      bad_examples:
+        - |
+          <script>
+          // No type safety, no IDE autocompletion for props
+          export let user
+          export let onSelect
+          </script>
+    tags:
+      - typescript
+      - tooling
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # STORES AND STATE MANAGEMENT (SVELTE011-SVELTE018)
+  # ============================================================================
+
+  - id: SVELTE011
+    title: "Use Writable Stores for Shared State"
+    category: svelte_stores
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use writable stores from svelte/store for state shared across components.
+        In Svelte 5, consider extracting reactive state into .svelte.ts modules instead.
+      rationale: |
+        Stores provide a reactive contract that works across components without
+        prop drilling. The $ prefix auto-subscription in templates is concise and safe.
+      good_examples:
+        - |
+          // stores/auth.ts
+          import { writable, derived } from 'svelte/store'
+          import type { User } from '$lib/types'
+
+          export const user = writable<User | null>(null)
+          export const isLoggedIn = derived(user, $user => $user !== null)
+
+          export function login(userData: User) {
+            user.set(userData)
+          }
+
+          export function logout() {
+            user.set(null)
+          }
+      bad_examples:
+        - |
+          // Avoid: mutable module-level state without store contract
+          export let user = null
+          export function setUser(u) { user = u }
+    tags:
+      - stores
+      - state
+    python_version:
+      min_version: null
+
+  - id: SVELTE012
+    title: "Use Derived Stores for Computed Shared State"
+    category: svelte_stores
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use derived() from svelte/store for values computed from other stores.
+        Derived stores automatically update when their dependencies change.
+      rationale: |
+        Derived stores prevent duplicated state and ensure consistency. They
+        are lazy and only compute when subscribed to.
+      good_examples:
+        - |
+          import { writable, derived } from 'svelte/store'
+
+          export const cart = writable<CartItem[]>([])
+
+          export const itemCount = derived(cart, $cart => $cart.length)
+          export const total = derived(cart, $cart =>
+            $cart.reduce((sum, item) => sum + item.price * item.qty, 0)
+          )
+          export const hasItems = derived(itemCount, $count => $count > 0)
+      bad_examples:
+        - |
+          // Avoid: manually syncing derived state
+          export const cart = writable([])
+          export const itemCount = writable(0)
+
+          cart.subscribe($cart => {
+            itemCount.set($cart.length)  // Manual sync - fragile
+          })
+    tags:
+      - stores
+      - derived
+    python_version:
+      min_version: null
+
+  - id: SVELTE013
+    title: "Create Custom Stores with Encapsulated Logic"
+    category: svelte_stores
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Wrap writable stores in custom store functions that expose a controlled
+        API. Only expose subscribe and specific mutation methods.
+      rationale: |
+        Custom stores encapsulate business logic, prevent uncontrolled mutations,
+        and provide a clean API. They implement the store contract (subscribe method).
+      good_examples:
+        - |
+          import { writable } from 'svelte/store'
+
+          function createTodoStore() {
+            const { subscribe, update } = writable<Todo[]>([])
+
+            return {
+              subscribe,
+              add: (text: string) => update(todos => [...todos, { id: crypto.randomUUID(), text, done: false }]),
+              toggle: (id: string) => update(todos =>
+                todos.map(t => t.id === id ? { ...t, done: !t.done } : t)
+              ),
+              remove: (id: string) => update(todos => todos.filter(t => t.id !== id)),
+            }
+          }
+
+          export const todos = createTodoStore()
+      bad_examples:
+        - |
+          // Avoid: exposing raw set/update to consumers
+          export const todos = writable([])
+          // Any component can todos.set([]) and wipe everything
+    tags:
+      - stores
+      - patterns
+    python_version:
+      min_version: null
+
+  - id: SVELTE014
+    title: "Use .svelte.ts Modules for Shared Reactive State in Svelte 5"
+    category: svelte_state
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        In Svelte 5, extract shared reactive logic into .svelte.ts files that
+        use runes. These replace many store patterns with simpler, more composable code.
+      rationale: |
+        .svelte.ts modules can use $state, $derived, and $effect, making reactive
+        logic reusable without the store subscribe/unsubscribe boilerplate.
+      good_examples:
+        - |
+          // lib/state/counter.svelte.ts
+          let count = $state(0)
+          let doubled = $derived(count * 2)
+
+          export function increment() { count++ }
+          export function decrement() { count-- }
+          export function getCount() { return count }
+          export function getDoubled() { return doubled }
+
+          // In component:
+          import { getCount, increment } from '$lib/state/counter.svelte'
+      bad_examples:
+        - |
+          // Avoid in Svelte 5: using stores when runes are simpler
+          import { writable, derived } from 'svelte/store'
+          export const count = writable(0)
+          export const doubled = derived(count, $c => $c * 2)
+    tags:
+      - runes
+      - svelte5
+      - state
+    python_version:
+      min_version: null
+
+  - id: SVELTE015
+    title: "Unsubscribe from Manual Store Subscriptions"
+    category: svelte_stores
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        When subscribing to stores in <script> (not templates), always
+        unsubscribe in onDestroy or use the $store auto-subscription syntax.
+      rationale: |
+        Leaked subscriptions cause memory leaks and stale callbacks. The $
+        prefix in templates auto-unsubscribes, but manual .subscribe() does not.
+      good_examples:
+        - |
+          <script lang="ts">
+          import { onDestroy } from 'svelte'
+          import { myStore } from '$lib/stores'
+
+          // Option A: auto-subscription (preferred)
+          // just use $myStore in template
+
+          // Option B: manual with cleanup
+          const unsubscribe = myStore.subscribe(value => {
+            console.log(value)
+          })
+          onDestroy(unsubscribe)
+          </script>
+      bad_examples:
+        - |
+          <script>
+          import { myStore } from '$lib/stores'
+
+          // Memory leak! Never unsubscribed
+          myStore.subscribe(value => {
+            console.log(value)
+          })
+          </script>
+    tags:
+      - stores
+      - memory
+      - lifecycle
+    python_version:
+      min_version: null
+
+  - id: SVELTE016
+    title: "Use Context API for Component Tree Data"
+    category: svelte_lifecycle
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use setContext/getContext for passing data down the component tree
+        without prop drilling. Use typed keys for type safety.
+      rationale: |
+        Context avoids prop drilling for deeply nested components. Unlike stores,
+        context is scoped to the component tree and automatically cleaned up.
+      good_examples:
+        - |
+          // types.ts
+          import type { Writable } from 'svelte/store'
+
+          export const THEME_KEY = Symbol('theme')
+          export type ThemeContext = Writable<'light' | 'dark'>
+
+          // Parent.svelte
+          <script lang="ts">
+          import { setContext } from 'svelte'
+          import { writable } from 'svelte/store'
+          import { THEME_KEY, type ThemeContext } from './types'
+
+          setContext<ThemeContext>(THEME_KEY, writable('light'))
+          </script>
+
+          // Child.svelte
+          <script lang="ts">
+          import { getContext } from 'svelte'
+          import { THEME_KEY, type ThemeContext } from './types'
+
+          const theme = getContext<ThemeContext>(THEME_KEY)
+          </script>
+      bad_examples:
+        - |
+          // Avoid: prop drilling through many levels
+          <Parent {theme}>
+            <Child {theme}>
+              <GrandChild {theme}>
+                <DeepChild {theme} />
+    tags:
+      - context
+      - patterns
+    python_version:
+      min_version: null
+
+  - id: SVELTE017
+    title: "Use $inspect for Development-Only Debugging"
+    category: svelte_runes
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use $inspect() in Svelte 5 to log reactive state changes during
+        development. It is automatically stripped in production builds.
+      rationale: |
+        $inspect provides zero-cost debugging that doesn't leak into production.
+        It deeply tracks reactive values and logs both init and update events.
+      good_examples:
+        - |
+          <script lang="ts">
+          let count = $state(0)
+          let items = $state<string[]>([])
+
+          // Logs whenever count or items change
+          $inspect(count, items)
+
+          // Custom handler for advanced debugging
+          $inspect(count).with((type, value) => {
+            if (type === 'update') debugger
+          })
+          </script>
+      bad_examples:
+        - |
+          <script>
+          let count = $state(0)
+
+          // Avoid: manual console.log that ships to production
+          $effect(() => {
+            console.log('count changed:', count)
+          })
+          </script>
+    tags:
+      - debugging
+      - runes
+      - svelte5
+    python_version:
+      min_version: null
+
+  - id: SVELTE018
+    title: "Avoid Mutating Store Values Outside Store Methods"
+    category: svelte_stores
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Never directly mutate objects obtained from store subscriptions.
+        Always use store.update() or custom store methods.
+      rationale: |
+        Direct mutation bypasses the store's notification mechanism, leading
+        to components not re-rendering and inconsistent state.
+      good_examples:
+        - |
+          // Correct: use update to create new state
+          cart.update(items => [...items, newItem])
+
+          // Correct: custom store method
+          cartStore.addItem(newItem)
+      bad_examples:
+        - |
+          // Wrong: mutating the subscribed value directly
+          $cart.push(newItem)  // Subscribers won't be notified!
+    tags:
+      - stores
+      - immutability
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # SVELTEKIT ROUTING AND DATA (SVELTE019-SVELTE028)
+  # ============================================================================
+
+  - id: SVELTE019
+    title: "Use File-Based Routing Conventions"
+    category: svelte_routing
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - svelte
+        - sveltekit
+    content:
+      description: |
+        Follow SvelteKit's file-based routing conventions: +page.svelte for pages,
+        +layout.svelte for layouts, +page.server.ts for server load, +server.ts for API.
+      rationale: |
+        Consistent file naming enables automatic route generation, code splitting,
+        and SvelteKit's data loading pipeline.
+      good_examples:
+        - |
+          src/routes/
+            +page.svelte              # /
+            +layout.svelte            # Root layout
+            about/+page.svelte        # /about
+            blog/
+              +page.svelte            # /blog
+              [slug]/
+                +page.svelte          # /blog/:slug
+                +page.server.ts       # Server load for blog post
+            api/
+              users/+server.ts        # /api/users endpoint
+      bad_examples:
+        - |
+          // Avoid: custom routing outside SvelteKit conventions
+          src/pages/
+            Home.svelte
+            About.svelte
+            BlogPost.svelte
+    tags:
+      - routing
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE020
+    title: "Use Load Functions for Data Fetching"
+    category: svelte_sveltekit
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Use +page.ts (universal) or +page.server.ts (server-only) load functions
+        to fetch data. Never fetch in onMount for initial page data.
+      rationale: |
+        Load functions run before rendering, enable SSR, and provide type-safe
+        data to components. They support streaming, caching, and invalidation.
+      good_examples:
+        - |
+          // +page.server.ts
+          import type { PageServerLoad } from './$types'
+          import { db } from '$lib/server/db'
+
+          export const load: PageServerLoad = async ({ params }) => {
+            const post = await db.post.findUnique({
+              where: { slug: params.slug }
+            })
+
+            if (!post) throw error(404, 'Post not found')
+
+            return { post }
+          }
+
+          // +page.svelte
+          <script lang="ts">
+          import type { PageData } from './$types'
+
+          let { data }: { data: PageData } = $props()
+          </script>
+
+          <h1>{data.post.title}</h1>
+      bad_examples:
+        - |
+          <script>
+          import { onMount } from 'svelte'
+          let post = null
+
+          // Wrong: fetching in onMount breaks SSR
+          onMount(async () => {
+            const res = await fetch(`/api/posts/${slug}`)
+            post = await res.json()
+          })
+          </script>
+    tags:
+      - data-loading
+      - sveltekit
+      - ssr
+    python_version:
+      min_version: null
+
+  - id: SVELTE021
+    title: "Use Form Actions for Mutations"
+    category: svelte_forms
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Use SvelteKit form actions (+page.server.ts actions) for data mutations
+        instead of API endpoints. They provide progressive enhancement.
+      rationale: |
+        Form actions work without JavaScript, provide automatic CSRF protection,
+        and integrate with SvelteKit's invalidation and error handling.
+      good_examples:
+        - |
+          // +page.server.ts
+          import type { Actions } from './$types'
+          import { fail } from '@sveltejs/kit'
+
+          export const actions: Actions = {
+            create: async ({ request }) => {
+              const data = await request.formData()
+              const title = data.get('title')
+
+              if (!title) return fail(400, { title, missing: true })
+
+              await db.todo.create({ data: { title: String(title) } })
+              return { success: true }
+            },
+            delete: async ({ request }) => {
+              const data = await request.formData()
+              await db.todo.delete({ where: { id: String(data.get('id')) } })
+            }
+          }
+
+          // +page.svelte
+          <script lang="ts">
+          import { enhance } from '$app/forms'
+          </script>
+
+          <form method="POST" action="?/create" use:enhance>
+            <input name="title" />
+            <button>Add</button>
+          </form>
+      bad_examples:
+        - |
+          // Avoid: manual fetch for mutations
+          async function createTodo() {
+            await fetch('/api/todos', {
+              method: 'POST',
+              body: JSON.stringify({ title })
+            })
+          }
+    tags:
+      - forms
+      - actions
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE022
+    title: "Use $app/navigation for Programmatic Navigation"
+    category: svelte_routing
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Use goto(), invalidate(), and invalidateAll() from $app/navigation
+        for programmatic navigation and data refresh.
+      rationale: |
+        SvelteKit's navigation functions integrate with the router, trigger
+        load functions, and maintain scroll position and state.
+      good_examples:
+        - |
+          <script lang="ts">
+          import { goto, invalidate, invalidateAll } from '$app/navigation'
+
+          async function handleLogin() {
+            await login(credentials)
+            await invalidateAll()  // Refresh all load functions
+            goto('/dashboard')
+          }
+
+          async function refreshData() {
+            await invalidate('app:posts')  // Refresh specific dependency
+          }
+          </script>
+      bad_examples:
+        - |
+          // Avoid: raw window.location changes bypass SvelteKit router
+          window.location.href = '/dashboard'
+    tags:
+      - navigation
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE023
+    title: "Implement Error Boundaries with +error.svelte"
+    category: svelte_sveltekit
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Create +error.svelte pages at route boundaries to handle errors
+        gracefully. Use the error() helper to throw expected errors.
+      rationale: |
+        Error boundaries prevent full-page crashes and provide user-friendly
+        error messages. SvelteKit propagates errors up the layout tree.
+      good_examples:
+        - |
+          <!-- routes/+error.svelte -->
+          <script lang="ts">
+          import { page } from '$app/stores'
+          </script>
+
+          <div class="error">
+            <h1>{$page.status}</h1>
+            <p>{$page.error?.message}</p>
+            <a href="/">Go home</a>
+          </div>
+
+          // In load function:
+          import { error } from '@sveltejs/kit'
+
+          if (!post) throw error(404, { message: 'Post not found' })
+      bad_examples:
+        - |
+          // Avoid: unhandled errors crash the page
+          export const load = async () => {
+            const data = await fetch('/api/data')
+            return { data: await data.json() }  // No error handling!
+          }
+    tags:
+      - errors
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE024
+    title: "Use Hooks for Cross-Cutting Concerns"
+    category: svelte_sveltekit
+    level: advanced
+    priority: high
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Use hooks.server.ts for authentication, logging, and request
+        transformation. Use hooks.client.ts for client-side error handling.
+      rationale: |
+        Hooks provide a centralized place for cross-cutting concerns that
+        apply to every request, similar to middleware in Express.
+      good_examples:
+        - |
+          // src/hooks.server.ts
+          import type { Handle } from '@sveltejs/kit'
+          import { sequence } from '@sveltejs/kit/hooks'
+
+          const auth: Handle = async ({ event, resolve }) => {
+            const session = await getSession(event.cookies.get('session'))
+            event.locals.user = session?.user ?? null
+            return resolve(event)
+          }
+
+          const logger: Handle = async ({ event, resolve }) => {
+            const start = performance.now()
+            const response = await resolve(event)
+            const duration = performance.now() - start
+            console.log(`${event.request.method} ${event.url.pathname} ${duration.toFixed(0)}ms`)
+            return response
+          }
+
+          export const handle = sequence(auth, logger)
+      bad_examples:
+        - |
+          // Avoid: duplicating auth checks in every load function
+          export const load = async ({ cookies }) => {
+            const session = await getSession(cookies.get('session'))
+            if (!session) throw redirect(303, '/login')
+            // ... repeated in every protected route
+          }
+    tags:
+      - hooks
+      - middleware
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE025
+    title: "Use $app/stores for Page and Navigation State"
+    category: svelte_routing
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Use page, navigating, and updated stores from $app/stores for
+        reactive access to current route, navigation state, and app updates.
+      rationale: |
+        These stores are the canonical way to access route params, URL
+        search params, and navigation status in SvelteKit.
+      good_examples:
+        - |
+          <script lang="ts">
+          import { page, navigating } from '$app/stores'
+          </script>
+
+          {#if $navigating}
+            <LoadingBar />
+          {/if}
+
+          <nav>
+            <a href="/" class:active={$page.url.pathname === '/'}>Home</a>
+            <a href="/about" class:active={$page.url.pathname === '/about'}>About</a>
+          </nav>
+
+          <!-- Access route params -->
+          <h1>Post: {$page.params.slug}</h1>
+      bad_examples:
+        - |
+          // Avoid: parsing URL manually
+          const path = window.location.pathname
+    tags:
+      - stores
+      - routing
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE026
+    title: "Use Param Matchers for Route Validation"
+    category: svelte_routing
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Create param matchers in src/params/ to validate dynamic route
+        parameters before load functions run.
+      rationale: |
+        Param matchers prevent invalid routes from matching, reducing error
+        handling in load functions and providing better 404 behavior.
+      good_examples:
+        - |
+          // src/params/integer.ts
+          import type { ParamMatcher } from '@sveltejs/kit'
+
+          export const match: ParamMatcher = (param) => {
+            return /^\d+$/.test(param)
+          }
+
+          // routes/posts/[id=integer]/+page.svelte
+          // Only matches /posts/123, not /posts/abc
+      bad_examples:
+        - |
+          // Avoid: validating params inside load function
+          export const load = async ({ params }) => {
+            if (!/^\d+$/.test(params.id)) throw error(404)
+            // ...
+          }
+    tags:
+      - routing
+      - validation
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE027
+    title: "Use Streaming with Promises in Load Functions"
+    category: svelte_sveltekit
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Return nested promises from load functions to stream non-critical
+        data. Use {#await} blocks to handle loading states.
+      rationale: |
+        Streaming allows the page to render immediately with critical data
+        while non-essential data loads in the background.
+      good_examples:
+        - |
+          // +page.server.ts
+          export const load: PageServerLoad = async ({ params }) => {
+            const post = await db.post.findUnique({ where: { id: params.id } })
+
+            return {
+              post,  // Awaited - blocks rendering
+              comments: db.comment.findMany({ where: { postId: params.id } }),  // Streamed
+              related: db.post.findMany({ where: { tags: { hasSome: post.tags } } }),  // Streamed
+            }
+          }
+
+          // +page.svelte
+          <h1>{data.post.title}</h1>
+
+          {#await data.comments}
+            <p>Loading comments...</p>
+          {:then comments}
+            {#each comments as comment}
+              <Comment {comment} />
+            {/each}
+          {/await}
+      bad_examples:
+        - |
+          // Avoid: awaiting everything blocks the entire page
+          export const load = async ({ params }) => {
+            const post = await db.post.findUnique(...)
+            const comments = await db.comment.findMany(...)  // Blocks!
+            const related = await db.post.findMany(...)  // Blocks!
+            return { post, comments, related }
+          }
+    tags:
+      - streaming
+      - performance
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE028
+    title: "Use $lib Alias for Internal Imports"
+    category: svelte_sveltekit
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Always use the $lib alias (mapped to src/lib) for importing shared
+        code. Use $lib/server for server-only modules.
+      rationale: |
+        $lib provides consistent, refactor-friendly imports. $lib/server
+        modules are automatically excluded from client bundles.
+      good_examples:
+        - |
+          <script lang="ts">
+          import Button from '$lib/components/Button.svelte'
+          import { formatDate } from '$lib/utils'
+          import type { User } from '$lib/types'
+          </script>
+
+          // In +page.server.ts:
+          import { db } from '$lib/server/db'
+          import { validateSession } from '$lib/server/auth'
+      bad_examples:
+        - |
+          // Avoid: relative path spaghetti
+          import Button from '../../../../lib/components/Button.svelte'
+          import { formatDate } from '../../../utils'
+    tags:
+      - imports
+      - sveltekit
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # ACTIONS AND DIRECTIVES (SVELTE029-SVELTE032)
+  # ============================================================================
+
+  - id: SVELTE029
+    title: "Create Reusable Actions for DOM Behavior"
+    category: svelte_actions
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use Svelte actions (use: directive) to encapsulate reusable DOM
+        behavior. Actions receive the element and optional parameters,
+        and can return update and destroy callbacks.
+      rationale: |
+        Actions provide a clean way to add DOM behavior (tooltips, click-outside,
+        intersection observers) without wrapper components or imperative code.
+      good_examples:
+        - |
+          // lib/actions/clickOutside.ts
+          export function clickOutside(node: HTMLElement, callback: () => void) {
+            function handleClick(event: MouseEvent) {
+              if (!node.contains(event.target as Node)) {
+                callback()
+              }
+            }
+
+            document.addEventListener('click', handleClick, true)
+
+            return {
+              destroy() {
+                document.removeEventListener('click', handleClick, true)
+              }
+            }
+          }
+
+          // Usage:
+          <div use:clickOutside={() => open = false}>
+            <Dropdown />
+          </div>
+      bad_examples:
+        - |
+          // Avoid: manual event listeners in onMount
+          onMount(() => {
+            document.addEventListener('click', handleClick)
+            return () => document.removeEventListener('click', handleClick)
+          })
+    tags:
+      - actions
+      - dom
+    python_version:
+      min_version: null
+
+  - id: SVELTE030
+    title: "Return Update and Destroy from Actions"
+    category: svelte_actions
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Always implement destroy() for cleanup. Implement update() when
+        action parameters can change. Type action parameters.
+      rationale: |
+        Proper lifecycle methods prevent memory leaks and ensure actions
+        respond to parameter changes without remounting.
+      good_examples:
+        - |
+          import type { Action } from 'svelte/action'
+
+          interface TooltipParams {
+            text: string
+            position?: 'top' | 'bottom'
+          }
+
+          export const tooltip: Action<HTMLElement, TooltipParams> = (node, params) => {
+            let tip: HTMLElement | null = null
+
+            function show() {
+              tip = createTooltip(params!.text, params!.position ?? 'top')
+              document.body.appendChild(tip)
+            }
+
+            function hide() {
+              tip?.remove()
+              tip = null
+            }
+
+            node.addEventListener('mouseenter', show)
+            node.addEventListener('mouseleave', hide)
+
+            return {
+              update(newParams) {
+                params = newParams
+                if (tip) {
+                  tip.textContent = newParams.text
+                }
+              },
+              destroy() {
+                hide()
+                node.removeEventListener('mouseenter', show)
+                node.removeEventListener('mouseleave', hide)
+              }
+            }
+          }
+      bad_examples:
+        - |
+          // Missing destroy - memory leak!
+          export function tooltip(node, params) {
+            node.addEventListener('mouseenter', show)
+            node.addEventListener('mouseleave', hide)
+            // No cleanup!
+          }
+    tags:
+      - actions
+      - lifecycle
+    python_version:
+      min_version: null
+
+  - id: SVELTE031
+    title: "Use Transitions and Animations Appropriately"
+    category: svelte_transitions
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use Svelte's built-in transition directives (transition:, in:, out:)
+        for enter/exit animations. Use animate: for FLIP animations in keyed each blocks.
+      rationale: |
+        Built-in transitions are optimized, cancelable, and coordinated
+        with Svelte's DOM updates. They avoid layout thrashing.
+      good_examples:
+        - |
+          <script lang="ts">
+          import { fade, fly, slide } from 'svelte/transition'
+          import { flip } from 'svelte/animate'
+
+          let items = $state<Item[]>([])
+          </script>
+
+          {#each items as item (item.id)}
+            <div
+              animate:flip={{ duration: 300 }}
+              in:fly={{ y: 20, duration: 200 }}
+              out:fade={{ duration: 150 }}
+            >
+              {item.name}
+            </div>
+          {/each}
+
+          {#if visible}
+            <div transition:slide={{ duration: 300 }}>
+              Content
+            </div>
+          {/if}
+      bad_examples:
+        - |
+          <!-- Avoid: CSS animations without Svelte coordination -->
+          <div class={visible ? 'fade-in' : 'fade-out'}>
+            Content
+          </div>
+    tags:
+      - transitions
+      - animations
+    python_version:
+      min_version: null
+
+  - id: SVELTE032
+    title: "Use Custom Transitions for Complex Animations"
+    category: svelte_transitions
+    level: advanced
+    priority: low
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Create custom transition functions when built-in transitions
+        don't meet requirements. Return css or tick functions.
+      rationale: |
+        Custom transitions integrate with Svelte's transition engine for
+        proper cancelation, direction (in/out), and coordination.
+      good_examples:
+        - |
+          function typewriter(node: HTMLElement, { speed = 1 }: { speed?: number }) {
+            const text = node.textContent ?? ''
+            const duration = text.length / (speed * 0.01)
+
+            return {
+              duration,
+              tick: (t: number) => {
+                const i = Math.trunc(text.length * t)
+                node.textContent = text.slice(0, i)
+              }
+            }
+          }
+
+          <p transition:typewriter={{ speed: 2 }}>Hello world</p>
+      bad_examples:
+        - |
+          // Avoid: imperative animation not coordinated with Svelte
+          function animateIn(node) {
+            let i = 0
+            const interval = setInterval(() => {
+              node.textContent = text.slice(0, ++i)
+              if (i >= text.length) clearInterval(interval)
+            }, 50)
+          }
+    tags:
+      - transitions
+      - custom
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # PERFORMANCE (SVELTE033-SVELTE038)
+  # ============================================================================
+
+  - id: SVELTE033
+    title: "Use {#key} Blocks to Force Re-creation"
+    category: svelte_performance
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use {#key expression} blocks when a component needs to be fully
+        destroyed and recreated when data changes, rather than updated.
+      rationale: |
+        {#key} is useful for resetting component state, re-triggering
+        transitions, or reinitializing third-party libraries on data change.
+      good_examples:
+        - |
+          <!-- Recreate editor when post changes -->
+          {#key data.post.id}
+            <RichTextEditor content={data.post.body} />
+          {/key}
+
+          <!-- Re-trigger transition on route change -->
+          {#key $page.url.pathname}
+            <main in:fade={{ duration: 200 }}>
+              <slot />
+            </main>
+          {/key}
+      bad_examples:
+        - |
+          <!-- Component keeps old state when post changes -->
+          <RichTextEditor content={data.post.body} />
+    tags:
+      - performance
+      - components
+    python_version:
+      min_version: null
+
+  - id: SVELTE034
+    title: "Lazy Load Components with Dynamic Imports"
+    category: svelte_performance
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use dynamic imports and {#await} to lazy load heavy components.
+        Combine with SvelteKit's preloading for optimal UX.
+      rationale: |
+        Lazy loading reduces initial bundle size and improves Time to
+        Interactive. SvelteKit's code splitting handles route-level splitting
+        automatically.
+      good_examples:
+        - |
+          <script lang="ts">
+          let showChart = $state(false)
+
+          // Lazy load heavy charting library
+          const ChartComponent = showChart
+            ? import('$lib/components/Chart.svelte')
+            : null
+          </script>
+
+          <button onclick={() => showChart = true}>Show Chart</button>
+
+          {#if ChartComponent}
+            {#await ChartComponent}
+              <p>Loading chart...</p>
+            {:then module}
+              <module.default data={chartData} />
+            {/await}
+          {/if}
+      bad_examples:
+        - |
+          // Avoid: importing heavy components unconditionally
+          import Chart from '$lib/components/Chart.svelte'
+          // Chart library loaded even if user never views chart
+    tags:
+      - performance
+      - code-splitting
+    python_version:
+      min_version: null
+
+  - id: SVELTE035
+    title: "Use Each Block Keys for Efficient List Rendering"
+    category: svelte_performance
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Always provide a unique key expression in {#each} blocks for
+        lists of components. Use stable IDs, not array indices.
+      rationale: |
+        Keys enable Svelte's diffing algorithm to efficiently update, reorder,
+        and animate list items without unnecessary DOM operations.
+      good_examples:
+        - |
+          {#each items as item (item.id)}
+            <ListItem {item} />
+          {/each}
+
+          {#each filteredUsers as user (user.email)}
+            <UserCard {user} />
+          {/each}
+      bad_examples:
+        - |
+          <!-- Missing key: full re-render on any change -->
+          {#each items as item}
+            <ListItem {item} />
+          {/each}
+
+          <!-- Index key: wrong item updates on reorder -->
+          {#each items as item, i (i)}
+            <ListItem {item} />
+          {/each}
+    tags:
+      - performance
+      - lists
+    python_version:
+      min_version: null
+
+  - id: SVELTE036
+    title: "Avoid Unnecessary Reactivity"
+    category: svelte_performance
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Don't make every variable reactive. Use const for static values,
+        plain functions for non-reactive helpers, and $state only for
+        values that trigger UI updates.
+      rationale: |
+        Over-reactivity adds proxy overhead and unnecessary re-renders.
+        Static values and pure functions don't need the reactivity system.
+      good_examples:
+        - |
+          <script lang="ts">
+          // Static - no reactivity needed
+          const API_URL = '/api/v1'
+          const ITEMS_PER_PAGE = 20
+
+          // Pure function - no reactivity needed
+          function formatPrice(cents: number): string {
+            return `$${(cents / 100).toFixed(2)}`
+          }
+
+          // Reactive - these drive UI updates
+          let items = $state<Item[]>([])
+          let page = $state(1)
+          let total = $derived(items.length)
+          </script>
+      bad_examples:
+        - |
+          <script>
+          // Unnecessarily reactive constants
+          let API_URL = $state('/api/v1')  // Never changes!
+          let ITEMS_PER_PAGE = $state(20)  // Never changes!
+          </script>
+    tags:
+      - performance
+      - reactivity
+    python_version:
+      min_version: null
+
+  - id: SVELTE037
+    title: "Preload Data and Links in SvelteKit"
+    category: svelte_performance
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Use data-sveltekit-preload-data and data-sveltekit-preload-code
+        attributes to preload route data on hover or viewport entry.
+      rationale: |
+        Preloading makes navigation feel instant by fetching data before
+        the user clicks. SvelteKit handles caching and deduplication.
+      good_examples:
+        - |
+          <!-- Preload on hover (default for <a> tags) -->
+          <a href="/posts/{post.slug}">{post.title}</a>
+
+          <!-- Preload eagerly on viewport entry -->
+          <a href="/about" data-sveltekit-preload-data="eager">About</a>
+
+          <!-- Preload code only (for static pages) -->
+          <a href="/docs" data-sveltekit-preload-code="viewport">Docs</a>
+
+          <!-- Disable preloading for external links -->
+          <a href="https://example.com" data-sveltekit-preload-data="off">External</a>
+      bad_examples:
+        - |
+          // Avoid: disabling all preloading
+          <body data-sveltekit-preload-data="off">
+    tags:
+      - performance
+      - preloading
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE038
+    title: "Use Static and Prerendered Pages Where Possible"
+    category: svelte_performance
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Mark pages as prerenderable when they don't depend on user-specific
+        data. Use adapter-static for fully static sites.
+      rationale: |
+        Prerendered pages are served as static HTML, reducing server load
+        and improving TTFB. SvelteKit can prerender at build time.
+      good_examples:
+        - |
+          // +page.ts
+          export const prerender = true  // Prerender this page
+
+          // +layout.ts (prerender all child pages)
+          export const prerender = true
+
+          // +page.server.ts (opt out of prerendering)
+          export const prerender = false
+
+          // svelte.config.js - for fully static site
+          import adapter from '@sveltejs/adapter-static'
+          export default {
+            kit: { adapter: adapter() }
+          }
+      bad_examples:
+        - |
+          // Avoid: SSR for pages that could be prerendered
+          // Marketing pages, docs, blog posts with no user data
+    tags:
+      - performance
+      - prerendering
+      - sveltekit
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # SECURITY (SVELTE039-SVELTE042)
+  # ============================================================================
+
+  - id: SVELTE039
+    title: "Validate and Sanitize Form Input Server-Side"
+    category: svelte_security
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Always validate form data in server-side actions. Use Zod or
+        similar schema validation. Never trust client-side validation alone.
+      rationale: |
+        Client-side validation is a UX convenience. Server-side validation
+        is a security requirement. Form data can be manipulated.
+      good_examples:
+        - |
+          import { z } from 'zod'
+          import { fail } from '@sveltejs/kit'
+
+          const schema = z.object({
+            email: z.string().email(),
+            password: z.string().min(8).max(100),
+          })
+
+          export const actions = {
+            login: async ({ request }) => {
+              const formData = Object.fromEntries(await request.formData())
+              const result = schema.safeParse(formData)
+
+              if (!result.success) {
+                return fail(400, {
+                  errors: result.error.flatten().fieldErrors
+                })
+              }
+
+              // Safe to use result.data
+              await authenticate(result.data.email, result.data.password)
+            }
+          }
+      bad_examples:
+        - |
+          export const actions = {
+            login: async ({ request }) => {
+              const data = await request.formData()
+              // No validation! Trusting raw input
+              await db.query(`SELECT * FROM users WHERE email = '${data.get('email')}'`)
+            }
+          }
+    tags:
+      - security
+      - validation
+      - forms
+    python_version:
+      min_version: null
+
+  - id: SVELTE040
+    title: "Use $lib/server for Server-Only Code"
+    category: svelte_security
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Place sensitive code (DB connections, API keys, auth logic) in
+        $lib/server/. SvelteKit ensures these modules never reach the client.
+      rationale: |
+        Importing server-only modules in client code causes a build error,
+        preventing accidental exposure of secrets and server logic.
+      good_examples:
+        - |
+          // $lib/server/db.ts - only importable in server code
+          import { PrismaClient } from '@prisma/client'
+          export const db = new PrismaClient()
+
+          // $lib/server/auth.ts
+          import { PRIVATE_KEY } from '$env/static/private'
+          export function verifyToken(token: string) { ... }
+
+          // +page.server.ts - can import server modules
+          import { db } from '$lib/server/db'
+      bad_examples:
+        - |
+          // Avoid: server code accessible from client
+          // $lib/db.ts - could be imported in +page.svelte!
+          import { PrismaClient } from '@prisma/client'
+          export const db = new PrismaClient()
+    tags:
+      - security
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE041
+    title: "Use Environment Variables Safely"
+    category: svelte_security
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Use $env/static/private for server-only secrets and $env/static/public
+        for client-safe config. Never expose PRIVATE_ vars to the client.
+      rationale: |
+        SvelteKit enforces env variable visibility at the import level.
+        Public vars must be prefixed with PUBLIC_ and are safe to expose.
+      good_examples:
+        - |
+          // Server-only
+          import { DATABASE_URL, API_SECRET } from '$env/static/private'
+
+          // Client-safe
+          import { PUBLIC_API_URL, PUBLIC_GA_ID } from '$env/static/public'
+
+          // Dynamic (runtime) - server only
+          import { env } from '$env/dynamic/private'
+          const dbUrl = env.DATABASE_URL
+      bad_examples:
+        - |
+          // Avoid: hardcoded secrets
+          const API_KEY = 'sk-1234567890'
+
+          // Avoid: process.env (not available in SvelteKit)
+          const url = process.env.DATABASE_URL
+    tags:
+      - security
+      - environment
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE042
+    title: "Sanitize HTML to Prevent XSS"
+    category: svelte_security
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Never use {@html} with unsanitized user input. Use a sanitization
+        library like DOMPurify when rendering user-provided HTML.
+      rationale: |
+        {@html} bypasses Svelte's automatic XSS protection. Any user input
+        rendered with {@html} is a potential XSS vector.
+      good_examples:
+        - |
+          <script lang="ts">
+          import DOMPurify from 'dompurify'
+
+          let { content }: { content: string } = $props()
+          let sanitized = $derived(DOMPurify.sanitize(content))
+          </script>
+
+          {@html sanitized}
+      bad_examples:
+        - |
+          <script>
+          let { userComment } = $props()
+          </script>
+
+          <!-- XSS vulnerability! User can inject scripts -->
+          {@html userComment}
+    tags:
+      - security
+      - xss
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # TESTING (SVELTE043-SVELTE046)
+  # ============================================================================
+
+  - id: SVELTE043
+    title: "Unit Test Components with Vitest and Testing Library"
+    category: svelte_testing
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use Vitest with @testing-library/svelte for component unit tests.
+        Test user interactions and rendered output, not implementation details.
+      rationale: |
+        Testing Library encourages testing from the user's perspective,
+        making tests more maintainable and less coupled to implementation.
+      good_examples:
+        - |
+          import { render, screen, fireEvent } from '@testing-library/svelte'
+          import { describe, it, expect } from 'vitest'
+          import Counter from './Counter.svelte'
+
+          describe('Counter', () => {
+            it('increments when button is clicked', async () => {
+              render(Counter, { props: { initial: 0 } })
+
+              expect(screen.getByText('Count: 0')).toBeInTheDocument()
+
+              await fireEvent.click(screen.getByRole('button', { name: 'Increment' }))
+
+              expect(screen.getByText('Count: 1')).toBeInTheDocument()
+            })
+          })
+      bad_examples:
+        - |
+          // Avoid: testing implementation details
+          it('updates internal state', () => {
+            const component = new Counter({ target: document.body })
+            expect(component.count).toBe(0)  // Testing internal state!
+          })
+    tags:
+      - testing
+      - vitest
+    python_version:
+      min_version: null
+
+  - id: SVELTE044
+    title: "E2E Test with Playwright"
+    category: svelte_testing
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Use Playwright for end-to-end testing of SvelteKit applications.
+        Test critical user flows, form submissions, and navigation.
+      rationale: |
+        E2E tests verify the entire stack works together. Playwright is
+        SvelteKit's recommended E2E testing framework.
+      good_examples:
+        - |
+          import { test, expect } from '@playwright/test'
+
+          test('login flow', async ({ page }) => {
+            await page.goto('/login')
+            await page.fill('input[name="email"]', 'user@example.com')
+            await page.fill('input[name="password"]', 'password123')
+            await page.click('button[type="submit"]')
+
+            await expect(page).toHaveURL('/dashboard')
+            await expect(page.locator('h1')).toContainText('Welcome')
+          })
+
+          test('form action works without JS', async ({ page }) => {
+            await page.route('**/*.js', route => route.abort())
+            await page.goto('/todos')
+            await page.fill('input[name="title"]', 'New todo')
+            await page.click('button[type="submit"]')
+            await expect(page.locator('.todo-item')).toContainText('New todo')
+          })
+      bad_examples:
+        - |
+          // Avoid: no E2E tests for critical flows
+    tags:
+      - testing
+      - e2e
+      - playwright
+    python_version:
+      min_version: null
+
+  - id: SVELTE045
+    title: "Test Load Functions in Isolation"
+    category: svelte_testing
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - sveltekit
+    content:
+      description: |
+        Unit test SvelteKit load functions by mocking the event object.
+        Test both success and error paths.
+      rationale: |
+        Load functions are pure(ish) functions that can be tested without
+        rendering components, making tests faster and more focused.
+      good_examples:
+        - |
+          import { describe, it, expect, vi } from 'vitest'
+          import { load } from './+page.server'
+
+          describe('load', () => {
+            it('returns post data', async () => {
+              const result = await load({
+                params: { slug: 'hello-world' },
+                locals: { user: { id: '1' } },
+              } as any)
+
+              expect(result.post).toBeDefined()
+              expect(result.post.slug).toBe('hello-world')
+            })
+
+            it('throws 404 for unknown slug', async () => {
+              await expect(load({
+                params: { slug: 'nonexistent' },
+                locals: {},
+              } as any)).rejects.toThrow()
+            })
+          })
+      bad_examples:
+        - |
+          // Avoid: only testing via E2E - slow feedback loop
+    tags:
+      - testing
+      - load-functions
+      - sveltekit
+    python_version:
+      min_version: null
+
+  - id: SVELTE046
+    title: "Use svelte-check in CI"
+    category: svelte_testing
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Run svelte-check in CI to catch type errors, accessibility warnings,
+        and unused CSS. Configure it alongside TypeScript strict mode.
+      rationale: |
+        svelte-check validates .svelte files that tsc alone cannot check.
+        It catches template type errors, a11y issues, and unused styles.
+      good_examples:
+        - |
+          // package.json
+          {
+            "scripts": {
+              "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+              "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+            }
+          }
+
+          // CI workflow
+          // - name: Type check
+          //   run: npm run check
+      bad_examples:
+        - |
+          // Avoid: no type checking in CI
+          // Avoid: only running tsc (misses .svelte file errors)
+    tags:
+      - testing
+      - ci
+      - tooling
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # ACCESSIBILITY (SVELTE047-SVELTE049)
+  # ============================================================================
+
+  - id: SVELTE047
+    title: "Use Semantic HTML and ARIA Attributes"
+    category: svelte_accessibility
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use semantic HTML elements (nav, main, article, button) and proper
+        ARIA attributes. Svelte warns about missing alt text and other a11y issues.
+      rationale: |
+        Svelte's compiler includes accessibility warnings. Following them
+        ensures the app works with screen readers and keyboard navigation.
+      good_examples:
+        - |
+          <nav aria-label="Main navigation">
+            <ul>
+              {#each links as link}
+                <li><a href={link.url} aria-current={$page.url.pathname === link.url ? 'page' : undefined}>{link.label}</a></li>
+              {/each}
+            </ul>
+          </nav>
+
+          <img src={photo.url} alt={photo.description} />
+
+          <button onclick={toggle} aria-expanded={open} aria-controls="menu">
+            Menu
+          </button>
+
+          <dialog bind:this={dialogEl} aria-labelledby="dialog-title">
+            <h2 id="dialog-title">Confirm</h2>
+          </dialog>
+      bad_examples:
+        - |
+          <!-- Missing alt, using div as button -->
+          <img src={photo.url} />
+          <div on:click={toggle}>Menu</div>
+    tags:
+      - accessibility
+      - html
+    python_version:
+      min_version: null
+
+  - id: SVELTE048
+    title: "Handle Keyboard Navigation"
+    category: svelte_accessibility
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Ensure all interactive elements are keyboard accessible. Use
+        proper focus management for modals, dropdowns, and dynamic content.
+      rationale: |
+        Many users navigate via keyboard. Interactive elements must be
+        focusable, have visible focus indicators, and support expected key bindings.
+      good_examples:
+        - |
+          <script lang="ts">
+          let dialogEl: HTMLDialogElement
+
+          function openDialog() {
+            dialogEl.showModal()
+          }
+
+          function handleKeydown(event: KeyboardEvent) {
+            if (event.key === 'Escape') {
+              dialogEl.close()
+            }
+          }
+          </script>
+
+          <button onclick={openDialog}>Open</button>
+
+          <dialog bind:this={dialogEl} onkeydown={handleKeydown}>
+            <h2>Dialog Title</h2>
+            <button onclick={() => dialogEl.close()}>Close</button>
+          </dialog>
+      bad_examples:
+        - |
+          <!-- No keyboard support, no focus management -->
+          <div class="modal" class:visible={open}>
+            <div class="content">...</div>
+          </div>
+    tags:
+      - accessibility
+      - keyboard
+    python_version:
+      min_version: null
+
+  - id: SVELTE049
+    title: "Announce Dynamic Content Changes"
+    category: svelte_accessibility
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Use ARIA live regions to announce dynamic content updates to
+        screen readers. Use role="alert" for errors and aria-live for updates.
+      rationale: |
+        Screen readers don't automatically announce DOM changes. Live regions
+        ensure users are informed of important updates.
+      good_examples:
+        - |
+          <script lang="ts">
+          let message = $state('')
+
+          async function save() {
+            try {
+              await saveData()
+              message = 'Changes saved successfully'
+            } catch {
+              message = 'Error saving changes'
+            }
+          }
+          </script>
+
+          <div aria-live="polite" class="sr-only">{message}</div>
+
+          {#if formError}
+            <p role="alert">{formError}</p>
+          {/if}
+      bad_examples:
+        - |
+          <!-- No announcement - screen reader users miss the update -->
+          {#if saved}
+            <p class="success">Saved!</p>
+          {/if}
+    tags:
+      - accessibility
+      - aria
+    python_version:
+      min_version: null
+
+  # ============================================================================
+  # ADVANCED PATTERNS (SVELTE050)
+  # ============================================================================
+
+  - id: SVELTE050
+    title: "Migrate from Svelte 4 to Svelte 5 Incrementally"
+    category: svelte_components
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - svelte
+    content:
+      description: |
+        Migrate Svelte 4 components to Svelte 5 incrementally. Legacy syntax
+        works in Svelte 5. Prioritize migrating shared state to runes.
+      rationale: |
+        Svelte 5 maintains backward compatibility. Migrate gradually:
+        1. Shared state ($state in .svelte.ts), 2. New components (runes),
+        3. Existing components (one at a time).
+      good_examples:
+        - |
+          // Step 1: Convert stores to .svelte.ts
+          // Before: stores/count.ts
+          import { writable } from 'svelte/store'
+          export const count = writable(0)
+
+          // After: state/count.svelte.ts
+          let count = $state(0)
+          export function getCount() { return count }
+          export function increment() { count++ }
+
+          // Step 2: Convert components one at a time
+          // Before (Svelte 4):
+          <script>
+            export let name
+            $: greeting = `Hello ${name}`
+          </script>
+
+          // After (Svelte 5):
+          <script lang="ts">
+            let { name }: { name: string } = $props()
+            let greeting = $derived(`Hello ${name}`)
+          </script>
+      bad_examples:
+        - |
+          // Avoid: big-bang migration of entire codebase at once
+          // Avoid: mixing old and new patterns in same component
+    tags:
+      - migration
+      - svelte5
+    python_version:
+      min_version: null

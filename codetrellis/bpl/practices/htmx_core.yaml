@@ -1,0 +1,1311 @@
+# HTMX Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.67 - HTMX Framework Support
+# Practice IDs: HTMX001-HTMX050
+# Coverage: Attributes, Requests, Events, Extensions, Swapping,
+#           Triggers, Performance, Security, Patterns, Testing
+# Versions: HTMX v1.x (data-hx-* prefix), v2.x (hx-on:*, hx-disabled-elt)
+# Ecosystem: _hyperscript, Alpine.js, Django, Flask, Rails, Laravel, FastAPI,
+#            Go/templ, ASP.NET, Spring, Phoenix, Tailwind
+
+practices:
+  # ============================================================================
+  # HTMX ATTRIBUTES (HTMX001-HTMX010) - Core attribute best practices
+  # ============================================================================
+
+  - id: HTMX001
+    title: "Use semantic HTTP methods for HTMX requests"
+    description: "Use hx-get for reading data, hx-post for creating, hx-put for full updates, hx-patch for partial updates, and hx-delete for removal. This follows REST conventions and makes intent clear to both developers and server-side frameworks."
+    category: "htmx_attributes"
+    severity: "critical"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "http-methods", "rest", "semantics"]
+    example: |
+      <!-- ✅ Semantic HTTP methods -->
+      <button hx-get="/api/users">Load Users</button>
+      <form hx-post="/api/users">Create User</form>
+      <form hx-put="/api/users/1">Replace User</form>
+      <form hx-patch="/api/users/1">Update User</form>
+      <button hx-delete="/api/users/1">Delete User</button>
+
+      <!-- ❌ Using POST for everything -->
+      <button hx-post="/api/users/delete/1">Delete User</button>
+      <button hx-post="/api/users/list">Load Users</button>
+
+  - id: HTMX002
+    title: "Always specify hx-target for precise DOM updates"
+    description: "Use hx-target to specify where the response HTML should be placed. Without hx-target, HTMX replaces the innerHTML of the element that triggered the request. Use CSS selectors like #id, .class, closest, find, next, previous, or this."
+    category: "htmx_attributes"
+    severity: "warning"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-target", "dom", "targeting"]
+    example: |
+      <!-- ✅ Explicit target -->
+      <button hx-get="/users" hx-target="#user-list">Load Users</button>
+      <div id="user-list"></div>
+
+      <!-- ✅ Relative targeting -->
+      <button hx-get="/status" hx-target="closest .card-body">Refresh</button>
+      <button hx-get="/count" hx-target="find .counter">Update Count</button>
+
+      <!-- ❌ No target (replaces button innerHTML) -->
+      <button hx-get="/users">Load Users</button>
+
+  - id: HTMX003
+    title: "Choose the right hx-swap strategy for your use case"
+    description: "HTMX provides multiple swap strategies: innerHTML (default), outerHTML, beforebegin, afterbegin, beforeend, afterend, delete, none. Choose based on whether you're replacing content, appending, prepending, or updating the element itself."
+    category: "htmx_attributes"
+    severity: "warning"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-swap", "swap-strategy", "dom-manipulation"]
+    example: |
+      <!-- ✅ Replace inner content (default) -->
+      <div hx-get="/content" hx-swap="innerHTML">Loading...</div>
+
+      <!-- ✅ Replace entire element -->
+      <div hx-get="/card/1" hx-swap="outerHTML">Old Card</div>
+
+      <!-- ✅ Append to a list -->
+      <div id="notifications" hx-get="/new-notifications" hx-swap="beforeend">
+        <!-- existing notifications -->
+      </div>
+
+      <!-- ✅ Delete after action -->
+      <button hx-delete="/items/1" hx-target="closest .item" hx-swap="delete">
+        Remove
+      </button>
+
+      <!-- ✅ Fire-and-forget (no DOM update) -->
+      <button hx-post="/api/track" hx-swap="none">Track Click</button>
+
+  - id: HTMX004
+    title: "Use hx-indicator for loading state feedback"
+    description: "Always provide visual feedback during HTMX requests using hx-indicator. Point to an element with the htmx-indicator class that will be shown during the request. This improves UX by showing users that something is happening."
+    category: "htmx_attributes"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-indicator", "loading", "ux"]
+    example: |
+      <!-- ✅ Loading indicator -->
+      <button hx-get="/data" hx-indicator="#spinner">
+        Load Data
+        <span id="spinner" class="htmx-indicator">Loading...</span>
+      </button>
+
+      <!-- ✅ Shared indicator for a section -->
+      <div hx-indicator="#section-loader">
+        <button hx-get="/users">Users</button>
+        <button hx-get="/posts">Posts</button>
+        <div id="section-loader" class="htmx-indicator">
+          <img src="/spinner.gif" alt="Loading">
+        </div>
+      </div>
+
+  - id: HTMX005
+    title: "Use hx-confirm for destructive actions"
+    description: "Add hx-confirm to destructive operations like delete, reset, or irreversible changes. This provides a browser confirmation dialog before the request is sent, preventing accidental data loss."
+    category: "htmx_attributes"
+    severity: "warning"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-confirm", "confirmation", "safety"]
+    example: |
+      <!-- ✅ Confirm before delete -->
+      <button hx-delete="/users/1"
+              hx-confirm="Are you sure you want to delete this user?"
+              hx-target="closest tr"
+              hx-swap="outerHTML">
+        Delete
+      </button>
+
+      <!-- ✅ Confirm before destructive form submit -->
+      <form hx-post="/reset-database"
+            hx-confirm="This will reset ALL data. Continue?">
+        <button type="submit">Reset Database</button>
+      </form>
+
+      <!-- ❌ No confirmation on destructive action -->
+      <button hx-delete="/users/1">Delete</button>
+
+  - id: HTMX006
+    title: "Use hx-boost for progressive enhancement"
+    description: "Apply hx-boost='true' to links and forms to automatically convert them to AJAX requests. This provides SPA-like navigation while maintaining full HTML fallback. Place on a parent element to boost all contained links and forms."
+    category: "htmx_attributes"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-boost", "progressive-enhancement", "spa"]
+    example: |
+      <!-- ✅ Boost entire navigation -->
+      <nav hx-boost="true">
+        <a href="/home">Home</a>
+        <a href="/about">About</a>
+        <a href="/contact">Contact</a>
+      </nav>
+
+      <!-- ✅ Boost a form -->
+      <form hx-boost="true" action="/login" method="post">
+        <input name="username">
+        <input name="password" type="password">
+        <button type="submit">Login</button>
+      </form>
+
+      <!-- ✅ Opt out specific elements -->
+      <div hx-boost="true">
+        <a href="/page">Boosted</a>
+        <a href="/download.pdf" hx-boost="false">Not boosted</a>
+      </div>
+
+  - id: HTMX007
+    title: "Use hx-push-url for browser history integration"
+    description: "Add hx-push-url='true' to update the browser URL when making HTMX requests. This enables back/forward navigation and bookmarking. Use with hx-boost or on individual navigation requests."
+    category: "htmx_attributes"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-push-url", "history", "navigation"]
+    example: |
+      <!-- ✅ Push URL on navigation -->
+      <a hx-get="/users" hx-push-url="true" hx-target="#content">Users</a>
+
+      <!-- ✅ Custom URL -->
+      <button hx-get="/search?q=test"
+              hx-push-url="/search?q=test"
+              hx-target="#results">
+        Search
+      </button>
+
+      <!-- ✅ Replace URL (no history entry) -->
+      <a hx-get="/tab/2" hx-replace-url="true" hx-target="#tab-content">
+        Tab 2
+      </a>
+
+  - id: HTMX008
+    title: "Use hx-select to extract partial content from responses"
+    description: "Use hx-select with a CSS selector to pick specific content from the server response. This allows the server to return full pages while HTMX only inserts the relevant fragment. Useful for progressive enhancement where the same endpoint serves both full page and partial requests."
+    category: "htmx_attributes"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-select", "partial", "fragment"]
+    example: |
+      <!-- ✅ Select specific content from full page response -->
+      <div hx-get="/users" hx-select="#user-table" hx-target="#content">
+        Load Users
+      </div>
+
+      <!-- ✅ Select multiple elements -->
+      <div hx-get="/dashboard"
+           hx-select=".stats-widget"
+           hx-target="#widgets"
+           hx-swap="innerHTML">
+        Refresh Widgets
+      </div>
+
+  - id: HTMX009
+    title: "Use hx-vals and hx-headers for additional request data"
+    description: "Use hx-vals to include extra values in HTMX requests without hidden form fields. Use hx-headers to add custom HTTP headers. Both accept JSON or JavaScript expressions (with js: prefix). Prefer JSON format for static values."
+    category: "htmx_attributes"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-vals", "hx-headers", "request-data"]
+    example: |
+      <!-- ✅ Static JSON values -->
+      <button hx-post="/api/action"
+              hx-vals='{"action": "archive", "confirm": true}'>
+        Archive
+      </button>
+
+      <!-- ✅ Dynamic values with js: prefix -->
+      <button hx-get="/search"
+              hx-vals="js:{query: document.getElementById('q').value}">
+        Search
+      </button>
+
+      <!-- ✅ Custom headers -->
+      <div hx-get="/api/data"
+           hx-headers='{"X-Custom-Header": "value"}'>
+        Load
+      </div>
+
+  - id: HTMX010
+    title: "Use hx-preserve for elements that should survive swaps"
+    description: "Add hx-preserve to elements that should not be replaced during HTMX swaps, such as video players, audio elements, or iframes. The element must have an id attribute. HTMX will keep the original element in the DOM."
+    category: "htmx_attributes"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-preserve", "persist", "swap"]
+    example: |
+      <!-- ✅ Preserve video during content swaps -->
+      <div id="content">
+        <video id="bg-video" hx-preserve>
+          <source src="/background.mp4" type="video/mp4">
+        </video>
+        <div hx-get="/new-content" hx-target="#content">
+          Content that can change
+        </div>
+      </div>
+
+  # ============================================================================
+  # HTMX REQUESTS (HTMX011-HTMX015) - Request configuration best practices
+  # ============================================================================
+
+  - id: HTMX011
+    title: "Use hx-include to scope form data collection"
+    description: "Use hx-include with a CSS selector to include additional form inputs in the request that are outside the triggering element. This is useful when a button needs to submit data from multiple form sections."
+    category: "htmx_requests"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-include", "form-data", "scope"]
+    example: |
+      <!-- ✅ Include inputs from another section -->
+      <input id="search-input" name="q" type="text">
+      <select id="filter" name="category">
+        <option>All</option>
+        <option>Active</option>
+      </select>
+      <button hx-get="/search"
+              hx-include="#search-input, #filter"
+              hx-target="#results">
+        Search
+      </button>
+
+      <!-- ✅ Include entire form -->
+      <button hx-post="/api/save"
+              hx-include="closest form"
+              hx-target="#status">
+        Save
+      </button>
+
+  - id: HTMX012
+    title: "Use hx-params to filter submitted parameters"
+    description: "Use hx-params to control which parameters are submitted with the request. Options: *, none, not <param-list>, or <param-list>. This prevents unnecessary data from being sent and can improve security."
+    category: "htmx_requests"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-params", "filter", "security"]
+    example: |
+      <!-- ✅ Only send specific params -->
+      <form hx-post="/api/update" hx-params="name,email">
+        <input name="name">
+        <input name="email">
+        <input name="internal_id"><!-- Not sent -->
+        <button type="submit">Update</button>
+      </form>
+
+      <!-- ✅ Exclude specific params -->
+      <form hx-post="/api/save" hx-params="not csrf_token">
+        <!-- csrf_token will not be sent via HTMX -->
+      </form>
+
+      <!-- ✅ Send no params -->
+      <button hx-post="/api/ping" hx-params="none">Ping</button>
+
+  - id: HTMX013
+    title: "Use hx-encoding for file uploads"
+    description: "Set hx-encoding='multipart/form-data' on forms that include file inputs. Without this, HTMX uses the default URL-encoded format which cannot transmit files."
+    category: "htmx_requests"
+    severity: "critical"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-encoding", "file-upload", "multipart"]
+    example: |
+      <!-- ✅ File upload with proper encoding -->
+      <form hx-post="/upload" hx-encoding="multipart/form-data">
+        <input type="file" name="document">
+        <button type="submit">Upload</button>
+      </form>
+
+      <!-- ❌ Missing encoding (file won't be sent) -->
+      <form hx-post="/upload">
+        <input type="file" name="document">
+        <button type="submit">Upload</button>
+      </form>
+
+  - id: HTMX014
+    title: "Use hx-sync to coordinate concurrent requests"
+    description: "Use hx-sync to control how requests from an element interact with in-flight requests. Strategies: drop (ignore new), abort (cancel old), replace (cancel old, start new), queue first/last/all. Essential for search inputs and rapid-fire interactions."
+    category: "htmx_requests"
+    severity: "warning"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-sync", "concurrency", "race-condition"]
+    example: |
+      <!-- ✅ Drop new requests while one is in-flight -->
+      <button hx-post="/api/save" hx-sync="this:drop">Save</button>
+
+      <!-- ✅ Replace in-flight request (search) -->
+      <input type="search" name="q"
+             hx-get="/search"
+             hx-trigger="keyup changed delay:300ms"
+             hx-target="#results"
+             hx-sync="this:replace">
+
+      <!-- ✅ Queue requests -->
+      <button hx-post="/api/increment"
+              hx-sync="this:queue last">
+        Increment
+      </button>
+
+  - id: HTMX015
+    title: "Use hx-disable to prevent concurrent form submissions"
+    description: "Add hx-disable (v1.x) or hx-disabled-elt (v2.x) to disable form elements during HTMX requests, preventing double submissions. In v2, use hx-disabled-elt with a CSS selector to specify which elements to disable."
+    category: "htmx_requests"
+    severity: "warning"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-disable", "hx-disabled-elt", "double-submit"]
+    example: |
+      <!-- ✅ v1.x: Disable during request -->
+      <form hx-post="/api/order">
+        <button type="submit" hx-disable>Place Order</button>
+      </form>
+
+      <!-- ✅ v2.x: Disable specific elements -->
+      <form hx-post="/api/order" hx-disabled-elt="find button">
+        <button type="submit">Place Order</button>
+        <button type="reset">Reset</button>
+      </form>
+
+      <!-- ✅ v2.x: Disable the triggering element -->
+      <button hx-post="/api/save" hx-disabled-elt="this">Save</button>
+
+  # ============================================================================
+  # HTMX EVENTS (HTMX016-HTMX022) - Trigger and event best practices
+  # ============================================================================
+
+  - id: HTMX016
+    title: "Use hx-trigger modifiers for debounce and throttle"
+    description: "Add delay:Ns to debounce rapid triggers (e.g., search input), throttle:Ns to limit frequency, and changed to only fire when value changes. Combine modifiers for optimal behavior."
+    category: "htmx_triggers"
+    severity: "warning"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-trigger", "debounce", "throttle"]
+    example: |
+      <!-- ✅ Debounced search -->
+      <input type="search" name="q"
+             hx-get="/search"
+             hx-trigger="keyup changed delay:300ms"
+             hx-target="#results">
+
+      <!-- ✅ Throttled scroll -->
+      <div hx-get="/infinite-scroll"
+           hx-trigger="intersect once throttle:1s"
+           hx-swap="afterend">
+        Loading more...
+      </div>
+
+      <!-- ✅ Only on change -->
+      <select hx-get="/filter"
+              hx-trigger="change"
+              hx-target="#results">
+        <option>All</option>
+        <option>Active</option>
+      </select>
+
+  - id: HTMX017
+    title: "Use trigger filters for conditional requests"
+    description: "Add filter expressions to hx-trigger using bracket syntax to conditionally fire requests based on event properties, element state, or global conditions. This reduces unnecessary server requests."
+    category: "htmx_triggers"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-trigger", "filter", "conditional"]
+    example: |
+      <!-- ✅ Only trigger on Enter key -->
+      <input hx-get="/search"
+             hx-trigger="keyup[key=='Enter']"
+             hx-target="#results">
+
+      <!-- ✅ Only trigger on Ctrl+S -->
+      <textarea hx-post="/save"
+                hx-trigger="keydown[ctrlKey&&key=='s'] from:body">
+      </textarea>
+
+      <!-- ✅ Conditional based on checkbox -->
+      <button hx-post="/api/action"
+              hx-trigger="click[document.getElementById('agree').checked]">
+        Submit
+      </button>
+
+  - id: HTMX018
+    title: "Use hx-trigger 'load' and 'revealed' for lazy loading"
+    description: "Use hx-trigger='load' to fire a request when an element enters the DOM. Use hx-trigger='revealed' (or 'intersect') to fire when the element becomes visible in the viewport. Essential for lazy loading and infinite scroll."
+    category: "htmx_triggers"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-trigger", "lazy-load", "revealed", "intersect"]
+    example: |
+      <!-- ✅ Load content when page loads -->
+      <div hx-get="/sidebar-content"
+           hx-trigger="load"
+           hx-target="this">
+        Loading sidebar...
+      </div>
+
+      <!-- ✅ Lazy load when visible -->
+      <div hx-get="/heavy-widget"
+           hx-trigger="revealed"
+           hx-swap="outerHTML">
+        <div class="skeleton-loader"></div>
+      </div>
+
+      <!-- ✅ Infinite scroll with intersect -->
+      <div hx-get="/page/2"
+           hx-trigger="intersect once"
+           hx-swap="afterend"
+           hx-target="this">
+        <span class="htmx-indicator">Loading more...</span>
+      </div>
+
+  - id: HTMX019
+    title: "Use hx-trigger 'from:' for cross-element event listening"
+    description: "Use the from: modifier in hx-trigger to listen for events from other elements or the document/window. This enables decoupled component communication without JavaScript."
+    category: "htmx_events"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-trigger", "from", "cross-element"]
+    example: |
+      <!-- ✅ Listen for events from another element -->
+      <div hx-get="/notifications"
+           hx-trigger="newMessage from:body"
+           hx-target="this">
+        Notifications will refresh on newMessage event
+      </div>
+
+      <!-- ✅ Listen for custom events from a form -->
+      <div hx-get="/user-list"
+           hx-trigger="userCreated from:#create-form"
+           hx-target="this">
+        User list refreshes when form fires userCreated
+      </div>
+
+      <!-- ✅ Listen for window events -->
+      <div hx-get="/data"
+           hx-trigger="storage from:window"
+           hx-target="this">
+        Syncs with other tabs via storage event
+      </div>
+
+  - id: HTMX020
+    title: "Use hx-on:* for inline HTMX event handling (v2)"
+    description: "In HTMX v2, use hx-on:eventName for inline event handlers instead of JavaScript event listeners. This keeps event handling close to the markup. For HTMX lifecycle events, use hx-on::eventName (double colon). In v1, use hx-on='event: handler' attribute."
+    category: "htmx_events"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-on", "events", "v2"]
+    example: |
+      <!-- ✅ v2: Inline event handler -->
+      <button hx-get="/data"
+              hx-on:click="console.log('clicked')">
+        Click Me
+      </button>
+
+      <!-- ✅ v2: HTMX lifecycle event (double colon) -->
+      <form hx-post="/save"
+            hx-on::after-request="alert('Saved!')">
+        <button type="submit">Save</button>
+      </form>
+
+      <!-- ✅ v2: Before request validation -->
+      <form hx-post="/submit"
+            hx-on::before-request="if(!this.checkValidity()) event.preventDefault()">
+        <input required name="email">
+        <button type="submit">Submit</button>
+      </form>
+
+  - id: HTMX021
+    title: "Use htmx.on() for JavaScript lifecycle event handling"
+    description: "Use htmx.on() in JavaScript to listen for HTMX lifecycle events like htmx:configRequest, htmx:beforeRequest, htmx:afterRequest, htmx:responseError, etc. This is the recommended way to handle complex event logic."
+    category: "htmx_events"
+    severity: "warning"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "htmx.on", "lifecycle", "javascript"]
+    example: |
+      // ✅ Handle response errors globally
+      htmx.on('htmx:responseError', function(event) {
+        console.error('Request failed:', event.detail.xhr.status);
+        showToast('Something went wrong. Please try again.');
+      });
+
+      // ✅ Add auth header to all requests
+      htmx.on('htmx:configRequest', function(event) {
+        event.detail.headers['Authorization'] = 'Bearer ' + getToken();
+      });
+
+      // ✅ Trigger animations after swap
+      htmx.on('htmx:afterSwap', function(event) {
+        event.detail.target.querySelectorAll('.animate-in').forEach(el => {
+          el.classList.add('animated');
+        });
+      });
+
+  - id: HTMX022
+    title: "Use every:Ns trigger for polling patterns"
+    description: "Use hx-trigger='every Ns' for polling endpoints at regular intervals. Combine with hx-trigger='load, every 5s' to load immediately and then poll. Use the stop-polling response header or 286 status code to stop polling."
+    category: "htmx_triggers"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "polling", "every", "real-time"]
+    example: |
+      <!-- ✅ Poll every 5 seconds -->
+      <div hx-get="/api/status"
+           hx-trigger="every 5s"
+           hx-target="this"
+           hx-swap="innerHTML">
+        Checking status...
+      </div>
+
+      <!-- ✅ Load immediately + poll -->
+      <div hx-get="/api/notifications"
+           hx-trigger="load, every 30s"
+           hx-target="this">
+        Loading notifications...
+      </div>
+
+      <!-- Server can stop polling by returning 286 status code -->
+
+  # ============================================================================
+  # HTMX EXTENSIONS (HTMX023-HTMX028) - Extension best practices
+  # ============================================================================
+
+  - id: HTMX023
+    title: "Use Server-Sent Events (SSE) extension for real-time updates"
+    description: "Use the SSE extension (hx-ext='sse') with sse-connect for server-push updates. Elements with sse-swap receive content when the named SSE event fires. This is simpler than WebSocket for one-way data flow."
+    category: "htmx_extensions"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "sse", "server-sent-events", "real-time"]
+    example: |
+      <!-- ✅ SSE connection with event-based swapping -->
+      <div hx-ext="sse" sse-connect="/events">
+        <div sse-swap="notifications">Waiting for notifications...</div>
+        <div sse-swap="status">Waiting for status...</div>
+      </div>
+
+      <!-- ✅ SSE with specific swap strategy -->
+      <ul hx-ext="sse" sse-connect="/chat-stream">
+        <li sse-swap="message" hx-swap="beforeend">
+          Messages appear here
+        </li>
+      </ul>
+
+  - id: HTMX024
+    title: "Use WebSocket extension for bidirectional communication"
+    description: "Use the WebSocket extension (hx-ext='ws') with ws-connect for bidirectional real-time communication. Use ws-send on forms to send data to the WebSocket server. The server pushes HTML fragments that HTMX swaps into the DOM."
+    category: "htmx_extensions"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "websocket", "ws", "real-time", "bidirectional"]
+    example: |
+      <!-- ✅ WebSocket chat -->
+      <div hx-ext="ws" ws-connect="/chat-ws">
+        <div id="chat-messages">
+          <!-- Server pushes messages here -->
+        </div>
+        <form ws-send>
+          <input name="message" placeholder="Type a message...">
+          <button type="submit">Send</button>
+        </form>
+      </div>
+
+  - id: HTMX025
+    title: "Use json-enc extension for JSON request bodies"
+    description: "Use hx-ext='json-enc' to send form data as JSON instead of URL-encoded format. This is essential when your API expects JSON request bodies. The extension automatically sets Content-Type: application/json."
+    category: "htmx_extensions"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "json-enc", "json", "api"]
+    example: |
+      <!-- ✅ Send JSON body -->
+      <form hx-ext="json-enc" hx-post="/api/users">
+        <input name="name" value="John">
+        <input name="email" value="john@example.com">
+        <button type="submit">Create User</button>
+      </form>
+      <!-- Sends: {"name": "John", "email": "john@example.com"} -->
+
+      <!-- ✅ Scoped to specific element -->
+      <div hx-ext="json-enc">
+        <form hx-post="/api/data">
+          <input name="key" value="value">
+          <button type="submit">Submit</button>
+        </form>
+      </div>
+
+  - id: HTMX026
+    title: "Use response-targets extension for status-based error handling"
+    description: "Use the response-targets extension (hx-ext='response-targets') with hx-target-* attributes to specify different swap targets based on HTTP status codes. This enables elegant error display without JavaScript."
+    category: "htmx_extensions"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "response-targets", "error-handling", "status-code"]
+    example: |
+      <!-- ✅ Different targets for different status codes -->
+      <form hx-ext="response-targets"
+            hx-post="/api/users"
+            hx-target="#success-area"
+            hx-target-422="#validation-errors"
+            hx-target-500="#server-error"
+            hx-target-4*="#client-error">
+        <input name="email" required>
+        <button type="submit">Submit</button>
+      </form>
+      <div id="success-area"></div>
+      <div id="validation-errors"></div>
+      <div id="client-error"></div>
+      <div id="server-error"></div>
+
+  - id: HTMX027
+    title: "Use idiomorph extension for morphing-based swaps"
+    description: "Use hx-ext='idiomorph' (or hx-ext='morph' in older versions) for intelligent DOM morphing instead of wholesale replacement. Idiomorph preserves DOM state like focus, scroll position, and CSS transitions during swaps."
+    category: "htmx_extensions"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "idiomorph", "morph", "dom-diffing"]
+    example: |
+      <!-- ✅ Morph-based swapping (preserves state) -->
+      <div hx-ext="idiomorph">
+        <div hx-get="/dashboard"
+             hx-swap="morph:innerHTML"
+             hx-trigger="every 10s">
+          Dashboard content with preserved focus/scroll
+        </div>
+      </div>
+
+      <!-- ✅ Morph outer HTML -->
+      <div hx-get="/card/1"
+           hx-swap="morph:outerHTML"
+           hx-trigger="click">
+        Click to refresh card with morph
+      </div>
+
+  - id: HTMX028
+    title: "Use preload extension for predictive loading"
+    description: "Use hx-ext='preload' to prefetch content when users hover over or touch links/buttons. This reduces perceived latency by loading content before the user clicks. Use preload='mouseover' (default) or preload='mousedown'."
+    category: "htmx_extensions"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "preload", "prefetch", "performance"]
+    example: |
+      <!-- ✅ Preload on hover -->
+      <div hx-ext="preload">
+        <a hx-get="/page/1" preload="mouseover">Page 1</a>
+        <a hx-get="/page/2" preload="mouseover">Page 2</a>
+      </div>
+
+      <!-- ✅ Preload on mousedown (more immediate) -->
+      <button hx-get="/expensive-content"
+              preload="mousedown"
+              hx-target="#content">
+        Load Content
+      </button>
+
+  # ============================================================================
+  # HTMX SWAPPING (HTMX029-HTMX033) - Advanced swap behavior
+  # ============================================================================
+
+  - id: HTMX029
+    title: "Use swap modifiers for scroll control and timing"
+    description: "HTMX swap supports modifiers like scroll:top, scroll:bottom, show:top, show:bottom, swap:Ns (delay before swap), settle:Ns (delay before settle). Combine these for smooth scroll-to-content patterns."
+    category: "htmx_swapping"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-swap", "scroll", "timing", "modifiers"]
+    example: |
+      <!-- ✅ Scroll to top after swap -->
+      <div hx-get="/page/2"
+           hx-swap="innerHTML scroll:top"
+           hx-target="#content">
+        Next Page
+      </div>
+
+      <!-- ✅ Show the target element -->
+      <button hx-get="/details"
+              hx-target="#details-panel"
+              hx-swap="innerHTML show:top">
+        Show Details
+      </button>
+
+      <!-- ✅ Delay swap for animation -->
+      <div hx-get="/new-content"
+           hx-swap="innerHTML swap:500ms settle:100ms"
+           hx-target="this">
+        Content with transition timing
+      </div>
+
+  - id: HTMX030
+    title: "Use Out-of-Band (OOB) swaps for multi-target updates"
+    description: "Use hx-swap-oob='true' in server responses to update multiple DOM elements from a single response. The server includes extra elements with id and hx-swap-oob attributes that are swapped into their matching targets."
+    category: "htmx_swapping"
+    severity: "warning"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "oob", "out-of-band", "multi-target"]
+    example: |
+      <!-- Server response with OOB swaps -->
+      <!--
+      <div id="main-content">
+        Updated main content
+      </div>
+
+      <div id="notification-count" hx-swap-oob="true">
+        3
+      </div>
+
+      <div id="sidebar" hx-swap-oob="innerHTML">
+        Updated sidebar content
+      </div>
+      -->
+
+      <!-- ✅ Client-side: targets update automatically -->
+      <button hx-post="/api/action" hx-target="#main-content">
+        Action (also updates notifications + sidebar via OOB)
+      </button>
+      <span id="notification-count">0</span>
+      <div id="sidebar">Original sidebar</div>
+
+  - id: HTMX031
+    title: "Use transition classes for swap animations"
+    description: "HTMX automatically adds CSS classes during swaps: htmx-swapping (during swap), htmx-settling (after swap, during settle), htmx-added (on new content). Use these with CSS transitions for smooth animations."
+    category: "htmx_swapping"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "transitions", "css", "animation"]
+    example: |
+      /* ✅ CSS transitions for HTMX swaps */
+      .htmx-swapping {
+        opacity: 0;
+        transition: opacity 300ms ease-out;
+      }
+
+      .htmx-settling {
+        opacity: 1;
+        transition: opacity 300ms ease-in;
+      }
+
+      .htmx-added {
+        opacity: 0;
+      }
+
+      .htmx-added.htmx-settling {
+        opacity: 1;
+        transition: opacity 300ms ease-in;
+      }
+
+  - id: HTMX032
+    title: "Use View Transitions API with HTMX for page transitions"
+    description: "Enable the View Transitions API in HTMX config (htmx.config.globalViewTransitions = true or meta tag) for smooth page transitions during navigation. Combine with hx-boost for SPA-like page transition effects."
+    category: "htmx_swapping"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "view-transitions", "animation", "navigation"]
+    example: |
+      <!-- ✅ Enable global view transitions -->
+      <meta name="htmx-config"
+            content='{"globalViewTransitions": true}'>
+
+      <!-- ✅ Per-element view transition -->
+      <a hx-get="/page/2"
+         hx-swap="innerHTML transition:true"
+         hx-target="#content"
+         hx-push-url="true">
+        Next Page
+      </a>
+
+      /* CSS view transition styles */
+      ::view-transition-old(root) {
+        animation: fade-out 0.3s;
+      }
+      ::view-transition-new(root) {
+        animation: fade-in 0.3s;
+      }
+
+  - id: HTMX033
+    title: "Use hx-select-oob for selective out-of-band swaps"
+    description: "Use hx-select-oob on the requesting element to pull specific elements from the response for OOB swapping. This is a client-side alternative to server-side hx-swap-oob, useful when you can't modify server responses."
+    category: "htmx_swapping"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-select-oob", "oob", "client-side"]
+    example: |
+      <!-- ✅ Client-side OOB selection -->
+      <button hx-get="/dashboard"
+              hx-target="#main"
+              hx-select="#main"
+              hx-select-oob="#notifications:innerHTML, #sidebar:outerHTML">
+        Refresh Dashboard
+      </button>
+
+  # ============================================================================
+  # HTMX PERFORMANCE (HTMX034-HTMX038) - Performance best practices
+  # ============================================================================
+
+  - id: HTMX034
+    title: "Use hx-trigger with 'once' modifier for one-time loads"
+    description: "Add the 'once' modifier to hx-trigger for content that should only load once, such as lazy-loaded images, initial data fetches, or one-time animations. This prevents unnecessary repeated requests."
+    category: "htmx_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "once", "performance", "lazy-load"]
+    example: |
+      <!-- ✅ Load only once when visible -->
+      <div hx-get="/widget"
+           hx-trigger="intersect once"
+           hx-swap="outerHTML">
+        <div class="skeleton"></div>
+      </div>
+
+      <!-- ✅ One-time initialization -->
+      <div hx-get="/init-data"
+           hx-trigger="load once"
+           hx-target="#data-container">
+        Initializing...
+      </div>
+
+  - id: HTMX035
+    title: "Return minimal HTML fragments from server endpoints"
+    description: "HTMX endpoints should return only the HTML fragment needed for the swap, not full pages. This reduces bandwidth, server load, and DOM processing. Use server-side template partials or fragments."
+    category: "htmx_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "fragments", "performance", "server"]
+    example: |
+      # ✅ Python/Flask - return fragment only
+      @app.route('/users')
+      def users():
+          if request.headers.get('HX-Request'):
+              return render_template('partials/user_list.html',
+                                     users=get_users())
+          return render_template('full_page.html',
+                                users=get_users())
+
+      # ✅ Check HX-Request header for partial rendering
+      # HX-Request: true
+      # HX-Target: #user-list
+      # HX-Trigger: click
+
+  - id: HTMX036
+    title: "Use hx-history='false' for ephemeral content"
+    description: "Add hx-history='false' to prevent HTMX from caching page state in the history. Use this for pages with sensitive data, dynamic dashboards, or content that should always be fetched fresh."
+    category: "htmx_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-history", "cache", "privacy"]
+    example: |
+      <!-- ✅ Don't cache sensitive content -->
+      <div hx-history="false">
+        <div id="account-details" hx-get="/account">
+          Account info (not cached in history)
+        </div>
+      </div>
+
+      <!-- ✅ Always fresh dashboard -->
+      <div hx-get="/dashboard"
+           hx-trigger="load"
+           hx-history="false">
+        Dashboard (always fetched fresh on back-navigation)
+      </div>
+
+  - id: HTMX037
+    title: "Use htmx.config for global performance tuning"
+    description: "Configure HTMX globally using htmx.config or a meta tag. Key performance settings: defaultSwapDelay, defaultSettleDelay, timeout, historyCacheSize, scrollBehavior. Set appropriate timeouts and cache sizes for your application."
+    category: "htmx_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "config", "performance", "tuning"]
+    example: |
+      <!-- ✅ Meta tag configuration -->
+      <meta name="htmx-config" content='{
+        "timeout": 10000,
+        "historyCacheSize": 20,
+        "defaultSwapDelay": 0,
+        "defaultSettleDelay": 20,
+        "scrollBehavior": "smooth"
+      }'>
+
+      <!-- ✅ JavaScript configuration -->
+      <script>
+        htmx.config.timeout = 10000;
+        htmx.config.historyCacheSize = 20;
+        htmx.config.selfRequestsOnly = true;
+      </script>
+
+  - id: HTMX038
+    title: "Use hx-swap='none' for fire-and-forget requests"
+    description: "Use hx-swap='none' when you need to send a request but don't need to update the DOM. This is useful for tracking, analytics, logging, or actions that provide feedback through other means (toasts, OOB swaps)."
+    category: "htmx_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "hx-swap-none", "fire-and-forget", "tracking"]
+    example: |
+      <!-- ✅ Track user action -->
+      <button hx-post="/api/track"
+              hx-vals='{"event": "button_click", "page": "home"}'
+              hx-swap="none">
+        Tracked Button
+      </button>
+
+      <!-- ✅ Logout with redirect handled by server -->
+      <button hx-post="/logout"
+              hx-swap="none"
+              hx-on::after-request="window.location = '/login'">
+        Logout
+      </button>
+
+  # ============================================================================
+  # HTMX PATTERNS (HTMX039-HTMX044) - Common UI patterns
+  # ============================================================================
+
+  - id: HTMX039
+    title: "Implement active search with debounced input"
+    description: "Combine hx-get, hx-trigger='keyup changed delay:300ms', and hx-target for live search. Add hx-indicator for loading feedback and hx-sync='this:replace' to cancel stale requests."
+    category: "htmx_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "search", "pattern", "debounce"]
+    example: |
+      <!-- ✅ Complete active search pattern -->
+      <div class="search-container">
+        <input type="search" name="q"
+               hx-get="/search"
+               hx-trigger="keyup changed delay:300ms, search"
+               hx-target="#search-results"
+               hx-indicator="#search-spinner"
+               hx-sync="this:replace"
+               placeholder="Search...">
+        <span id="search-spinner" class="htmx-indicator">🔍</span>
+        <div id="search-results"></div>
+      </div>
+
+  - id: HTMX040
+    title: "Implement inline editing with click-to-edit pattern"
+    description: "Use hx-get to load an edit form on click, hx-put to save changes, and hx-swap='outerHTML' to swap between view and edit modes. This pattern replaces display content with an inline form."
+    category: "htmx_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "inline-edit", "click-to-edit", "pattern"]
+    example: |
+      <!-- ✅ View mode -->
+      <div hx-get="/users/1/edit"
+           hx-trigger="click"
+           hx-swap="outerHTML">
+        <span>John Doe</span>
+        <span class="edit-icon">✏️</span>
+      </div>
+
+      <!-- ✅ Edit mode (returned by /users/1/edit) -->
+      <!--
+      <form hx-put="/users/1"
+            hx-target="this"
+            hx-swap="outerHTML">
+        <input name="name" value="John Doe">
+        <button type="submit">Save</button>
+        <button hx-get="/users/1" hx-swap="outerHTML">Cancel</button>
+      </form>
+      -->
+
+  - id: HTMX041
+    title: "Implement infinite scroll with sentinel elements"
+    description: "Place a sentinel element at the bottom of a list that triggers loading the next page when it becomes visible. Use hx-trigger='intersect once' and hx-swap='outerHTML' so the sentinel is replaced by new content plus a new sentinel."
+    category: "htmx_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "infinite-scroll", "pagination", "pattern"]
+    example: |
+      <!-- ✅ Infinite scroll pattern -->
+      <div id="item-list">
+        <div class="item">Item 1</div>
+        <div class="item">Item 2</div>
+        <!-- ... -->
+      </div>
+
+      <!-- Sentinel (server returns more items + new sentinel) -->
+      <div hx-get="/items?page=2"
+           hx-trigger="intersect once"
+           hx-swap="outerHTML"
+           hx-indicator="#load-more-spinner">
+        <span id="load-more-spinner" class="htmx-indicator">
+          Loading more...
+        </span>
+      </div>
+
+  - id: HTMX042
+    title: "Implement cascading selects with dependent dropdowns"
+    description: "Use hx-get with hx-target to load dependent dropdown options when a parent select changes. Chain multiple selects for multi-level cascading selections like country → state → city."
+    category: "htmx_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "cascading-select", "dependent-dropdown", "pattern"]
+    example: |
+      <!-- ✅ Cascading selects -->
+      <label>Country</label>
+      <select name="country"
+              hx-get="/api/states"
+              hx-trigger="change"
+              hx-target="#state-select"
+              hx-include="this">
+        <option value="">Select Country</option>
+        <option value="US">United States</option>
+        <option value="CA">Canada</option>
+      </select>
+
+      <label>State</label>
+      <select id="state-select" name="state"
+              hx-get="/api/cities"
+              hx-trigger="change"
+              hx-target="#city-select"
+              hx-include="[name='country'], this">
+        <option value="">Select State</option>
+      </select>
+
+      <label>City</label>
+      <select id="city-select" name="city">
+        <option value="">Select City</option>
+      </select>
+
+  - id: HTMX043
+    title: "Implement delete with confirmation and row removal"
+    description: "Combine hx-delete with hx-confirm, hx-target='closest tr' (or parent element), and hx-swap='outerHTML swap:500ms' for animated row removal. Return empty content from the server to remove the element."
+    category: "htmx_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "delete", "confirmation", "pattern"]
+    example: |
+      <!-- ✅ Table row delete with animation -->
+      <table>
+        <tr>
+          <td>John Doe</td>
+          <td>john@example.com</td>
+          <td>
+            <button hx-delete="/users/1"
+                    hx-confirm="Delete this user?"
+                    hx-target="closest tr"
+                    hx-swap="outerHTML swap:500ms">
+              🗑️ Delete
+            </button>
+          </td>
+        </tr>
+      </table>
+
+      <style>
+        tr.htmx-swapping {
+          opacity: 0;
+          transition: opacity 500ms ease-out;
+        }
+      </style>
+
+  - id: HTMX044
+    title: "Implement bulk operations with checkbox selection"
+    description: "Use hx-include with a checkbox group and hx-post for bulk operations like delete, archive, or status changes. Combine with hx-confirm for safety on destructive operations."
+    category: "htmx_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "bulk-operations", "checkbox", "pattern"]
+    example: |
+      <!-- ✅ Bulk delete with checkboxes -->
+      <form>
+        <table>
+          <tr>
+            <td><input type="checkbox" name="ids" value="1"></td>
+            <td>Item 1</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" name="ids" value="2"></td>
+            <td>Item 2</td>
+          </tr>
+        </table>
+        <button hx-delete="/api/items/bulk"
+                hx-include="[name='ids']"
+                hx-confirm="Delete selected items?"
+                hx-target="#item-table"
+                hx-swap="innerHTML">
+          Delete Selected
+        </button>
+      </form>
+
+  # ============================================================================
+  # HTMX SECURITY (HTMX045-HTMX047) - Security best practices
+  # ============================================================================
+
+  - id: HTMX045
+    title: "Enable selfRequestsOnly for CSRF protection"
+    description: "Set htmx.config.selfRequestsOnly = true to ensure HTMX only makes requests to the same origin. This prevents CSRF attacks via injected hx-* attributes. Additionally, include CSRF tokens in requests via hx-headers or htmx:configRequest."
+    category: "htmx_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "csrf", "security", "selfRequestsOnly"]
+    example: |
+      <!-- ✅ Restrict to same-origin requests -->
+      <meta name="htmx-config" content='{"selfRequestsOnly": true}'>
+
+      <!-- ✅ Include CSRF token in all requests -->
+      <script>
+        htmx.on('htmx:configRequest', function(event) {
+          event.detail.headers['X-CSRFToken'] =
+            document.querySelector('[name=csrfmiddlewaretoken]').value;
+        });
+      </script>
+
+      <!-- ✅ Django: Include CSRF in hx-headers -->
+      <form hx-post="/api/save"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        <button type="submit">Save</button>
+      </form>
+
+  - id: HTMX046
+    title: "Validate and sanitize all HTMX response content server-side"
+    description: "Since HTMX swaps raw HTML into the DOM, all server responses must be properly escaped and sanitized. Never include unsanitized user input in HTMX responses. Use server-side template engines with auto-escaping enabled."
+    category: "htmx_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "xss", "sanitization", "security"]
+    example: |
+      # ✅ Django - auto-escaping enabled by default
+      # template: partials/user_card.html
+      # <div class="user-card">
+      #   <h3>{{ user.name }}</h3>  <!-- Auto-escaped -->
+      #   <p>{{ user.bio }}</p>     <!-- Auto-escaped -->
+      # </div>
+
+      # ❌ NEVER use |safe with user input
+      # <div>{{ user.bio|safe }}</div>  <!-- XSS vulnerability! -->
+
+      # ✅ Flask - use Jinja2 auto-escaping
+      # {{ user_input }}         <!-- Auto-escaped -->
+      # {{ user_input | e }}     <!-- Explicit escape -->
+
+  - id: HTMX047
+    title: "Use Content-Security-Policy headers with HTMX"
+    description: "Configure CSP headers to work with HTMX. Allow 'self' for connect-src (AJAX), script-src (htmx.js), and style-src (htmx classes). If using inline hx-on:* handlers, you may need 'unsafe-inline' for script-src or use nonces."
+    category: "htmx_security"
+    severity: "warning"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "csp", "content-security-policy", "headers"]
+    example: |
+      # ✅ CSP headers for HTMX applications
+      Content-Security-Policy:
+        default-src 'self';
+        script-src 'self' 'nonce-abc123';
+        style-src 'self' 'unsafe-inline';
+        connect-src 'self';
+
+      <!-- ✅ HTMX with nonce-based CSP -->
+      <script nonce="abc123" src="/htmx.min.js"></script>
+
+      <!-- ✅ Avoid inline hx-on with strict CSP -->
+      <!-- Instead of hx-on:click="...", use htmx.on() in a script -->
+
+  # ============================================================================
+  # HTMX TESTING (HTMX048-HTMX050) - Testing best practices
+  # ============================================================================
+
+  - id: HTMX048
+    title: "Test HTMX endpoints return correct HTML fragments"
+    description: "Write server-side tests that verify HTMX endpoints return the expected HTML fragments, not full pages. Check for the presence of HX-Request header handling and correct Content-Type. Test both HTMX and non-HTMX request paths."
+    category: "htmx_testing"
+    severity: "warning"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "testing", "server-side", "fragments"]
+    example: |
+      # ✅ Python/pytest - Test HTMX endpoint
+      def test_users_endpoint_htmx(client):
+          response = client.get('/users',
+              headers={'HX-Request': 'true'})
+          assert response.status_code == 200
+          assert '<table' not in response.text  # No full page
+          assert '<tr' in response.text  # Just rows
+
+      def test_users_endpoint_full_page(client):
+          response = client.get('/users')
+          assert response.status_code == 200
+          assert '<html' in response.text  # Full page
+
+  - id: HTMX049
+    title: "Test HTMX response headers for client-side behavior"
+    description: "Test that HTMX response headers (HX-Trigger, HX-Redirect, HX-Refresh, HX-Retarget, HX-Reswap, HX-Push-Url) are set correctly. These headers control client-side behavior and are critical for proper HTMX interaction."
+    category: "htmx_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "testing", "response-headers", "HX-Trigger"]
+    example: |
+      # ✅ Test HX-Trigger response header
+      def test_create_user_triggers_event(client):
+          response = client.post('/users',
+              data={'name': 'John'},
+              headers={'HX-Request': 'true'})
+          assert response.status_code == 201
+          assert response.headers.get('HX-Trigger') == 'userCreated'
+
+      # ✅ Test HX-Redirect
+      def test_login_redirects(client):
+          response = client.post('/login',
+              data={'user': 'admin', 'pass': 'secret'},
+              headers={'HX-Request': 'true'})
+          assert response.headers.get('HX-Redirect') == '/dashboard'
+
+  - id: HTMX050
+    title: "Use browser testing for HTMX interaction flows"
+    description: "Use browser testing tools (Playwright, Cypress, Selenium) to test full HTMX interaction flows including DOM swaps, event triggers, loading indicators, and error handling. Test that HTMX attributes produce the expected user experience."
+    category: "htmx_testing"
+    severity: "info"
+    applicability:
+      frameworks: ["htmx"]
+    tags: ["htmx", "testing", "e2e", "browser", "playwright"]
+    example: |
+      # ✅ Playwright - Test HTMX interaction
+      async def test_search_with_htmx(page):
+          await page.goto('/search')
+          search_input = page.locator('input[name="q"]')
+          await search_input.fill('python')
+          # Wait for HTMX to complete the request
+          await page.wait_for_selector('#results .result-item')
+          results = await page.locator('#results .result-item').count()
+          assert results > 0
+
+      # ✅ Test delete with confirmation
+      async def test_delete_item(page):
+          await page.goto('/items')
+          page.on('dialog', lambda d: d.accept())
+          await page.click('button[hx-delete="/items/1"]')
+          await page.wait_for_selector('tr:has-text("Item 1")',
+                                        state='detached')

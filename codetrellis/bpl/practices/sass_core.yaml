@@ -1,0 +1,716 @@
+# Sass/SCSS Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.44 - Sass/SCSS Language Support
+# Practice IDs: SASS001-SASS050
+# Coverage: Variables, Mixins, Functions, Modules, Nesting,
+#           Architecture, Performance, Naming, Best Practices, Tooling
+# Versions: Dart Sass 1.x, LibSass (deprecated), Ruby Sass (deprecated)
+# Syntax: SCSS (.scss), Indented Sass (.sass)
+
+practices:
+  # ============================================================================
+  # SASS VARIABLES (SASS001-SASS005)
+  # ============================================================================
+
+  - id: SASS001
+    title: "Use !default for configurable library variables"
+    description: "Mark variables with !default when building reusable libraries or design systems. This allows consumers to override values before importing."
+    category: "sass_variables"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "variables", "library", "configurable"]
+    example: |
+      // _config.scss
+      $primary-color: #3498db !default;
+      $font-size-base: 16px !default;
+      $border-radius: 4px !default;
+
+  - id: SASS002
+    title: "Prefer Sass maps over loose variables for related values"
+    description: "Group related values (colors, breakpoints, spacing) into Sass maps for easier iteration, dynamic access, and maintainability."
+    category: "sass_variables"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "variables", "maps", "organization"]
+    example: |
+      $colors: (
+        primary: #3498db,
+        secondary: #2ecc71,
+        danger: #e74c3c,
+      );
+      // Usage: map.get($colors, primary)
+
+  - id: SASS003
+    title: "Avoid !global in nested scopes"
+    description: "Minimize use of !global to modify global variables from nested scopes. It breaks encapsulation and makes variable flow hard to trace."
+    category: "sass_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "variables", "scope", "encapsulation"]
+
+  - id: SASS004
+    title: "Use descriptive variable names with consistent conventions"
+    description: "Name variables descriptively using consistent prefixes/suffixes. Use semantic names ($color-primary) over literal ($blue). Follow kebab-case convention."
+    category: "sass_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "variables", "naming"]
+    example: |
+      // Good: semantic names
+      $color-primary: #3498db;
+      $spacing-sm: 8px;
+      $font-weight-bold: 700;
+      // Bad: literal / vague names
+      $blue: #3498db;
+      $s: 8px;
+
+  - id: SASS005
+    title: "Define variables in a central configuration file"
+    description: "Keep design tokens and configuration variables in dedicated partial files (_variables.scss, _config.scss). Avoid scattering variable definitions across component files."
+    category: "sass_variables"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "variables", "organization", "architecture"]
+
+  # ============================================================================
+  # SASS MIXINS (SASS006-SASS010)
+  # ============================================================================
+
+  - id: SASS006
+    title: "Use mixins for repeated patterns with variation"
+    description: "Create mixins for CSS patterns that need to be repeated with slight variations. Use parameters for the parts that change."
+    category: "sass_mixins"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "mixins", "dry", "reuse"]
+    example: |
+      @mixin flex-center($direction: row) {
+        display: flex;
+        flex-direction: $direction;
+        align-items: center;
+        justify-content: center;
+      }
+
+  - id: SASS007
+    title: "Prefer @extend with placeholders over class-based @extend"
+    description: "Use %placeholder selectors with @extend instead of extending class selectors. Placeholders don't generate output unless extended, preventing bloat."
+    category: "sass_mixins"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "extend", "placeholder", "output"]
+    example: |
+      // Good: placeholder
+      %visually-hidden {
+        position: absolute;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+      }
+      .sr-only { @extend %visually-hidden; }
+
+      // Bad: extending a class
+      .visually-hidden { ... }
+      .sr-only { @extend .visually-hidden; }
+
+  - id: SASS008
+    title: "Use @content for flexible mixin composition"
+    description: "Use @content blocks in mixins to allow callers to inject arbitrary CSS. This is especially useful for media query mixins, state mixins, and container mixins."
+    category: "sass_mixins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "mixins", "content", "composition"]
+    example: |
+      @mixin respond-to($breakpoint) {
+        @media (min-width: map.get($breakpoints, $breakpoint)) {
+          @content;
+        }
+      }
+      .card {
+        @include respond-to(md) {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+  - id: SASS009
+    title: "Avoid mixins that only wrap a single declaration"
+    description: "Don't create mixins for single CSS properties. Use variables or functions instead. Mixins add overhead and complexity when a simple variable would suffice."
+    category: "sass_mixins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "mixins", "overhead"]
+
+  - id: SASS010
+    title: "Document mixin parameters and expected usage"
+    description: "Add comments above complex mixins documenting parameters, defaults, and usage examples. This is critical for team shared codebases and libraries."
+    category: "sass_mixins"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "mixins", "documentation"]
+
+  # ============================================================================
+  # SASS FUNCTIONS (SASS011-SASS015)
+  # ============================================================================
+
+  - id: SASS011
+    title: "Use @function for value computation, @mixin for output"
+    description: "Functions should return values; mixins should output CSS. Never use a mixin when a function would suffice, and never use a function to generate CSS rules."
+    category: "sass_functions"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "functions", "mixins", "separation"]
+    example: |
+      // Good: function returns a value
+      @function spacing($multiplier) {
+        @return $base-spacing * $multiplier;
+      }
+      .card { padding: spacing(2); }
+
+      // Bad: using a mixin to return a value
+      @mixin spacing($multiplier) {
+        padding: $base-spacing * $multiplier;
+      }
+
+  - id: SASS012
+    title: "Use built-in module functions over global functions"
+    description: "In Dart Sass, use namespaced module functions (math.div(), color.adjust()) instead of deprecated global functions (/ for division, lighten(), darken())."
+    category: "sass_functions"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "functions", "modules", "migration"]
+    example: |
+      @use "sass:math";
+      @use "sass:color";
+
+      // Good
+      $half: math.div($width, 2);
+      $light: color.adjust($color, $lightness: 10%);
+
+      // Deprecated
+      $half: $width / 2;
+      $light: lighten($color, 10%);
+
+  - id: SASS013
+    title: "Always include @return in every code path of a function"
+    description: "Ensure every conditional branch in a @function has a @return statement. Missing returns produce null, leading to silent bugs."
+    category: "sass_functions"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "functions", "return", "safety"]
+
+  - id: SASS014
+    title: "Use type-checking functions for input validation"
+    description: "Validate function parameters using type-checking built-ins (type-of(), unitless(), comparable()) to produce helpful error messages."
+    category: "sass_functions"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "functions", "validation", "safety"]
+    example: |
+      @function to-rem($px) {
+        @if type-of($px) != 'number' {
+          @error 'to-rem() expects a number, got #{type-of($px)}';
+        }
+        @if not unitless($px) and unit($px) != 'px' {
+          @error 'to-rem() expects px or unitless, got #{unit($px)}';
+        }
+        @return math.div($px, 16) * 1rem;
+      }
+
+  - id: SASS015
+    title: "Keep functions pure — avoid side effects"
+    description: "Functions should not modify global variables or produce side effects. Use @mixin for stateful operations. Pure functions are easier to test and reason about."
+    category: "sass_functions"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "functions", "purity", "design"]
+
+  # ============================================================================
+  # SASS MODULES (SASS016-SASS025)
+  # ============================================================================
+
+  - id: SASS016
+    title: "Use @use/@forward instead of @import"
+    description: "Migrate from @import to @use/@forward module system. @import is deprecated in Dart Sass and will be removed. @use provides proper scoping and namespacing."
+    category: "sass_modules"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "modules", "import", "migration"]
+    example: |
+      // Good: @use with namespace
+      @use "variables" as vars;
+      .card { color: vars.$primary; }
+
+      // Deprecated: @import
+      @import "variables";
+      .card { color: $primary; }
+
+  - id: SASS017
+    title: "Use explicit namespaces with @use"
+    description: "Prefer explicit namespace aliases over wildcard (*) or implicit namespaces. Clear namespaces make it obvious where variables/mixins come from."
+    category: "sass_modules"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "modules", "namespace", "clarity"]
+    example: |
+      // Good: explicit namespace
+      @use "sass:math" as math;
+      @use "config" as cfg;
+
+      // Acceptable but less clear
+      @use "sass:math";  // auto-namespace: math
+
+      // Avoid: no namespace
+      @use "config" as *;
+
+  - id: SASS018
+    title: "Use @forward for re-exporting from index files"
+    description: "Use @forward in _index.scss files to re-export members from internal partials. This creates clean public APIs for Sass packages."
+    category: "sass_modules"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "modules", "forward", "api"]
+    example: |
+      // _index.scss
+      @forward "variables";
+      @forward "mixins";
+      @forward "functions";
+
+      // Consumer
+      @use "my-library";
+
+  - id: SASS019
+    title: "Use show/hide to control forwarded members"
+    description: "Use show and hide clauses in @forward to control which members are part of the public API. Hide internal implementation details."
+    category: "sass_modules"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "modules", "encapsulation", "api"]
+    example: |
+      @forward "helpers" hide _internal-helper, _debug-mode;
+      @forward "colors" show $primary, $secondary, $accent;
+
+  - id: SASS020
+    title: "Use prefix in @forward to avoid naming collisions"
+    description: "Use as prefix-* in @forward to add prefixes to forwarded members, preventing naming collisions when combining multiple modules."
+    category: "sass_modules"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "modules", "forward", "prefix"]
+    example: |
+      // _index.scss
+      @forward "colors" as color-*;
+      @forward "spacing" as space-*;
+      // Members become: $color-primary, $space-sm, etc.
+
+  - id: SASS021
+    title: "Prefix private members with underscore or hyphen"
+    description: "In the module system, members starting with _ or - are private to that module. Use this convention to hide implementation details."
+    category: "sass_modules"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "modules", "private", "encapsulation"]
+    example: |
+      // _helpers.scss
+      $_internal-spacing: 4px;   // private
+      $public-spacing: 8px;      // public
+
+      @function _internal-calc($n) { ... }  // private
+      @function calculate($n) { ... }       // public
+
+  - id: SASS022
+    title: "Structure Sass projects with a consistent file organization"
+    description: "Organize Sass files using a pattern like 7-1 (abstracts, base, components, layout, pages, themes, vendors) or similar conventions."
+    category: "sass_modules"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "architecture", "organization"]
+    example: |
+      sass/
+        abstracts/
+          _variables.scss
+          _mixins.scss
+          _functions.scss
+        base/
+          _reset.scss
+          _typography.scss
+        components/
+          _buttons.scss
+          _cards.scss
+        layout/
+          _header.scss
+          _grid.scss
+        main.scss
+
+  - id: SASS023
+    title: "Use partials (underscore prefix) for imported files"
+    description: "Name imported Sass files with an underscore prefix (_variables.scss). This prevents them from being compiled into standalone CSS files."
+    category: "sass_modules"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "partials", "compilation", "organization"]
+
+  - id: SASS024
+    title: "Use @use with configuration to override library defaults"
+    description: "Use @use ... with ($var: value) syntax to configure library modules at load time. This is the recommended way to customize third-party Sass libraries."
+    category: "sass_modules"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "modules", "configuration", "libraries"]
+    example: |
+      @use "bootstrap/scss/bootstrap" with (
+        $primary: #custom-blue,
+        $enable-rounded: false,
+      );
+
+  - id: SASS025
+    title: "Avoid circular @use dependencies"
+    description: "Structure modules to prevent circular @use chains. Circular dependencies cause load-order issues and are an error in Dart Sass."
+    category: "sass_modules"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "modules", "circular", "dependencies"]
+
+  # ============================================================================
+  # SASS NESTING (SASS026-SASS030)
+  # ============================================================================
+
+  - id: SASS026
+    title: "Limit nesting depth to 3 levels maximum"
+    description: "Keep nesting to 3 levels deep or less. Deep nesting creates overly specific selectors, hurts performance, and tightly couples CSS to HTML structure."
+    category: "sass_nesting"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "nesting", "specificity", "performance"]
+    example: |
+      // Good: max 3 levels
+      .card {
+        &__header { ... }
+        &__body {
+          p { ... }
+        }
+      }
+
+      // Bad: 5+ levels deep
+      .page .content .card .header .title { ... }
+
+  - id: SASS027
+    title: "Use & parent selector for BEM patterns"
+    description: "Use the & parent selector for BEM-style element (&__element) and modifier (&--modifier) selectors. This keeps selectors colocated and maintainable."
+    category: "sass_nesting"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "nesting", "BEM", "parent-selector"]
+    example: |
+      .card {
+        &__header { ... }
+        &__body { ... }
+        &--featured { ... }
+        &--disabled { ... }
+      }
+
+  - id: SASS028
+    title: "Use @at-root to escape nesting when needed"
+    description: "Use @at-root to output a rule at the document root level while keeping it logically grouped in nested source code."
+    category: "sass_nesting"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "nesting", "at-root", "specificity"]
+    example: |
+      .card {
+        color: black;
+        @at-root #{&}--dark {
+          color: white;
+        }
+      }
+
+  - id: SASS029
+    title: "Use %placeholders over @extend with classes for shared patterns"
+    description: "Define shared CSS patterns as %placeholder selectors rather than regular classes. Placeholders only output CSS when extended, preventing unused styles."
+    category: "sass_nesting"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "extend", "placeholder", "output-size"]
+
+  - id: SASS030
+    title: "Use !optional with @extend for defensive extending"
+    description: "Use @extend %name !optional when extending selectors that might not exist in all compilation contexts (e.g., conditional includes)."
+    category: "sass_nesting"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "extend", "optional", "safety"]
+
+  # ============================================================================
+  # SASS ARCHITECTURE (SASS031-SASS035)
+  # ============================================================================
+
+  - id: SASS031
+    title: "Separate design tokens from component styles"
+    description: "Keep design tokens (colors, spacing, typography, breakpoints) in dedicated config files separate from component style rules."
+    category: "sass_architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "architecture", "tokens", "separation"]
+
+  - id: SASS032
+    title: "Use a main entry point that only imports"
+    description: "The main stylesheet should contain no rules — only @use/@forward statements that compose all partials. This makes the dependency graph clear."
+    category: "sass_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "architecture", "entry-point"]
+    example: |
+      // main.scss — no rules, only composition
+      @use "abstracts";
+      @use "base";
+      @use "components";
+      @use "layout";
+      @use "pages";
+      @use "themes";
+
+  - id: SASS033
+    title: "Keep compiled CSS output size minimal"
+    description: "Monitor compiled CSS size. Avoid patterns that bloat output: excessive @extend across selectors, duplicated mixin output, unused variables."
+    category: "sass_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "architecture", "output", "performance"]
+
+  - id: SASS034
+    title: "Use CSS custom properties for runtime theming"
+    description: "Use Sass to generate CSS custom properties for runtime-switchable values (dark mode, themes). Sass variables are compile-time only."
+    category: "sass_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "theming", "custom-properties", "runtime"]
+    example: |
+      $themes: (
+        light: (bg: #fff, text: #333),
+        dark: (bg: #1a1a1a, text: #eee),
+      );
+      @each $name, $theme in $themes {
+        [data-theme="#{$name}"] {
+          --bg: #{map.get($theme, bg)};
+          --text: #{map.get($theme, text)};
+        }
+      }
+
+  - id: SASS035
+    title: "Avoid generating excessive selector output with @extend"
+    description: "Be cautious with @extend across media queries and distant selectors. It can create unexpectedly large selector groups in compiled CSS."
+    category: "sass_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "extend", "output", "bloat"]
+
+  # ============================================================================
+  # SASS PERFORMANCE (SASS036-SASS040)
+  # ============================================================================
+
+  - id: SASS036
+    title: "Avoid @import in favor of @use for faster compilation"
+    description: "@import re-evaluates files on every import causing O(n²) compilation. @use caches modules and evaluates each file once."
+    category: "sass_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "performance", "compilation", "import"]
+
+  - id: SASS037
+    title: "Minimize deeply nested @each/@for loops"
+    description: "Avoid deeply nested @each and @for loops that generate large amounts of CSS. Each additional loop dimension multiplies output size."
+    category: "sass_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "performance", "loops", "output"]
+
+  - id: SASS038
+    title: "Use Dart Sass (sass) instead of LibSass (node-sass)"
+    description: "Migrate to Dart Sass (the sass npm package) from node-sass (LibSass wrapper). LibSass is deprecated and missing modern features."
+    category: "sass_performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "tooling", "migration", "dart-sass"]
+
+  - id: SASS039
+    title: "Use sass-embedded for faster compilation in Node.js"
+    description: "Use the sass-embedded npm package for significantly faster Dart Sass compilation in Node.js projects. It uses the native Dart VM instead of JavaScript transpilation."
+    category: "sass_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "performance", "compilation", "tooling"]
+
+  - id: SASS040
+    title: "Avoid excessive string interpolation in selectors"
+    description: "Excessive #{$var} interpolation in selectors can prevent Sass from analyzing selector specificity and produces harder-to-debug output."
+    category: "sass_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "performance", "interpolation", "selectors"]
+
+  # ============================================================================
+  # SASS NAMING (SASS041-SASS043)
+  # ============================================================================
+
+  - id: SASS041
+    title: "Use kebab-case for all Sass identifiers"
+    description: "Use kebab-case (hyphen-separated) for variables, mixins, functions, and placeholders. This matches CSS naming conventions."
+    category: "sass_naming"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "naming", "convention"]
+    example: |
+      // Good: kebab-case
+      $font-size-base: 16px;
+      @mixin flex-center { ... }
+      @function to-rem($px) { ... }
+      %visually-hidden { ... }
+
+      // Bad: camelCase, snake_case
+      $fontSize: 16px;
+      @mixin flex_center { ... }
+
+  - id: SASS042
+    title: "Prefix mixins/functions by domain for large codebases"
+    description: "In large projects, prefix mixins and functions with their domain (layout-, color-, type-) to prevent naming collisions and improve discoverability."
+    category: "sass_naming"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "naming", "prefix", "organization"]
+
+  - id: SASS043
+    title: "Use consistent naming for breakpoint variables"
+    description: "Name breakpoint variables consistently (xs, sm, md, lg, xl, xxl or phone, tablet, desktop). Use a map for iteration."
+    category: "sass_naming"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "naming", "breakpoints", "responsive"]
+
+  # ============================================================================
+  # SASS BEST PRACTICES (SASS044-SASS048)
+  # ============================================================================
+
+  - id: SASS044
+    title: "Use @warn and @error for developer feedback"
+    description: "Use @warn for deprecation notices and @error for invalid input in mixins/functions. These help catch misuse at compile time."
+    category: "sass_best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "debugging", "error-handling", "safety"]
+    example: |
+      @function spacing($size) {
+        @if not map.has-key($spacing-map, $size) {
+          @error "Unknown spacing size: #{$size}. Available: #{map.keys($spacing-map)}";
+        }
+        @return map.get($spacing-map, $size);
+      }
+
+  - id: SASS045
+    title: "Use @debug during development, remove for production"
+    description: "Use @debug for inspecting variable values and computation results during development. Remove or gate behind a flag before shipping."
+    category: "sass_best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "debugging", "development"]
+
+  - id: SASS046
+    title: "Avoid using color manipulation without accessibility checks"
+    description: "When using color.adjust(), color.scale(), or color.mix(), verify the resulting contrast ratios meet WCAG guidelines (4.5:1 for text)."
+    category: "sass_best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "color", "accessibility", "WCAG"]
+
+  - id: SASS047
+    title: "Use math.div() instead of / for division"
+    description: "The / operator for division is deprecated in Dart Sass. Use math.div() for division and math.percentage() where appropriate."
+    category: "sass_best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["sass", "dart_sass"]
+    tags: ["sass", "math", "division", "migration"]
+    example: |
+      @use "sass:math";
+      // Good
+      $half: math.div($width, 2);
+      // Deprecated — will be removed
+      $half: $width / 2;
+
+  - id: SASS048
+    title: "Use @each with maps for generating utility classes"
+    description: "Use @each to iterate over Sass maps when generating utility classes, responsive variants, or theme properties. This is DRY and maintainable."
+    category: "sass_best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "loops", "maps", "utilities"]
+    example: |
+      $spacings: (0: 0, 1: 4px, 2: 8px, 3: 16px, 4: 32px);
+      @each $key, $value in $spacings {
+        .m-#{$key} { margin: $value; }
+        .p-#{$key} { padding: $value; }
+      }
+
+  # ============================================================================
+  # SASS TOOLING (SASS049-SASS050)
+  # ============================================================================
+
+  - id: SASS049
+    title: "Use stylelint with scss plugin for linting"
+    description: "Configure stylelint with stylelint-config-standard-scss for consistent code quality. Avoid deprecated scss-lint and sass-lint."
+    category: "sass_tooling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "tooling", "linting", "stylelint"]
+
+  - id: SASS050
+    title: "Enable source maps for development debugging"
+    description: "Enable source maps in development builds to map compiled CSS back to original Sass source files. Disable for production to reduce file size."
+    category: "sass_tooling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sass"]
+    tags: ["sass", "tooling", "source-maps", "debugging"]

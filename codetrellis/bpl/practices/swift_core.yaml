@@ -1,0 +1,547 @@
+# Swift Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.22 - Swift Language Support
+# Practice IDs: SWIFT001-SWIFT050
+# Category: swift
+# Frameworks: swift
+# Covers: Swift 5.0 through Swift 6.0+, SwiftUI, Combine, Vapor, Concurrency
+
+practices:
+  # ============================
+  # Type System & Value Semantics
+  # ============================
+
+  - id: SWIFT001
+    title: "Prefer structs over classes for value types"
+    description: "Use structs for types that represent data values. Structs provide value semantics, are stack-allocated, and avoid reference-counting overhead. Use classes only when identity, inheritance, or reference semantics are needed."
+    category: "swift_value_semantics"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "value-semantics", "struct", "class"]
+    example: |
+      // Good: Value type for data
+      struct Point { var x: Double; var y: Double }
+      // Use class when identity matters
+      class DatabaseConnection { ... }
+
+  - id: SWIFT002
+    title: "Use protocols for abstraction instead of class inheritance"
+    description: "Define protocols to specify behavior contracts. Protocol-oriented programming enables composition, supports value types, and avoids deep inheritance hierarchies."
+    category: "swift_protocol_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "protocol", "pop", "abstraction"]
+
+  - id: SWIFT003
+    title: "Use enums with associated values instead of class hierarchies"
+    description: "Model finite sets of related types as enums with associated values. This provides exhaustive switch checking and eliminates the need for type casting."
+    category: "swift_value_semantics"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "enum", "associated-values"]
+    example: |
+      enum NetworkResult {
+        case success(Data)
+        case failure(Error)
+        case loading(progress: Double)
+      }
+
+  - id: SWIFT004
+    title: "Mark classes as final unless designed for subclassing"
+    description: "Use 'final' keyword on classes that aren't designed for inheritance. This improves performance through static dispatch and makes the API contract clearer."
+    category: "swift_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "final", "performance", "class"]
+
+  - id: SWIFT005
+    title: "Use access control consistently"
+    description: "Mark types, properties, and methods with appropriate access levels (public, internal, fileprivate, private). Default to the most restrictive level that works."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "access-control", "encapsulation"]
+
+  # ============================
+  # Error Handling
+  # ============================
+
+  - id: SWIFT006
+    title: "Use typed errors with enums conforming to Error"
+    description: "Define domain-specific error enums conforming to Error and LocalizedError. Avoid using generic Error or NSError. Provide localizedDescription for user-facing errors."
+    category: "swift_error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "error-handling", "enum"]
+    example: |
+      enum APIError: LocalizedError {
+        case notFound, unauthorized
+        case serverError(Int)
+        var errorDescription: String? { ... }
+      }
+
+  - id: SWIFT007
+    title: "Use do-try-catch for recoverable errors"
+    description: "Handle throwing functions with do-try-catch blocks. Use try? for optional results and try! only when failure is truly impossible (and document why)."
+    category: "swift_error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "error-handling", "try-catch"]
+
+  - id: SWIFT008
+    title: "Use Result type for asynchronous error handling"
+    description: "For completion-handler-based APIs, use Result<Success, Failure> instead of separate success/error parameters. Prefer async/await for new code."
+    category: "swift_error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "result", "error-handling", "async"]
+
+  - id: SWIFT009
+    title: "Use typed throws (Swift 6.0+) for precise error types"
+    description: "With Swift 6.0+, use typed throws (throws(MyError)) to specify exact error types functions can throw, enabling exhaustive error handling at call sites."
+    category: "swift_error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "typed-throws", "swift6"]
+
+  # ============================
+  # Concurrency (async/await)
+  # ============================
+
+  - id: SWIFT010
+    title: "Use async/await instead of completion handlers"
+    description: "Prefer async/await (Swift 5.5+) over callback-based APIs. Use withCheckedContinuation/withCheckedThrowingContinuation to bridge callback APIs."
+    category: "swift_concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "async-await", "concurrency"]
+
+  - id: SWIFT011
+    title: "Use actors for shared mutable state"
+    description: "Protect shared mutable state with actors instead of manual locking. Actors provide data-race safety through Swift's concurrency model."
+    category: "swift_concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "actor", "concurrency", "data-race"]
+    example: |
+      actor UserCache {
+        private var users: [String: User] = [:]
+        func getUser(_ id: String) -> User? { users[id] }
+        func setUser(_ user: User) { users[user.id] = user }
+      }
+
+  - id: SWIFT012
+    title: "Use structured concurrency with TaskGroup"
+    description: "Use TaskGroup and withThrowingTaskGroup for concurrent work instead of creating unstructured Task instances. This ensures proper cancellation propagation and resource cleanup."
+    category: "swift_concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "task-group", "structured-concurrency"]
+
+  - id: SWIFT013
+    title: "Mark types as Sendable when thread-safe"
+    description: "Conform types to Sendable when they can safely be passed across concurrency boundaries. Use @Sendable for closures. Enable strict concurrency checking."
+    category: "swift_concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "sendable", "concurrency", "thread-safety"]
+
+  - id: SWIFT014
+    title: "Use @MainActor for UI-bound state"
+    description: "Annotate properties and methods that must run on the main thread with @MainActor. Use MainActor.run for explicit main-thread dispatch."
+    category: "swift_concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "main-actor", "ui", "concurrency"]
+
+  # ============================
+  # Memory Management
+  # ============================
+
+  - id: SWIFT015
+    title: "Use weak or unowned to break reference cycles"
+    description: "Use [weak self] in closures to avoid retain cycles. Use unowned only when the referenced object is guaranteed to outlive the closure. Prefer weak with guard let."
+    category: "swift_memory_management"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "memory", "weak", "retain-cycle"]
+    example: |
+      // Good
+      fetchData { [weak self] result in
+        guard let self else { return }
+        self.handleResult(result)
+      }
+
+  - id: SWIFT016
+    title: "Avoid strong reference cycles in delegates"
+    description: "Declare delegate properties as weak. Define delegate protocols with AnyObject constraint to enable weak references."
+    category: "swift_memory_management"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "delegate", "weak", "memory"]
+
+  - id: SWIFT017
+    title: "Use value types to avoid reference counting overhead"
+    description: "Prefer structs and enums over classes to reduce ARC overhead. Use copy-on-write for large value types."
+    category: "swift_memory_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "arc", "value-types", "performance"]
+
+  # ============================
+  # SwiftUI
+  # ============================
+
+  - id: SWIFT018
+    title: "Use @State for local view state, @Binding for parent-owned state"
+    description: "Use @State for private view state, @Binding for values owned by parent views. Use @StateObject for reference-type model objects that the view owns."
+    category: "swift_swiftui"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift", "swiftui"]
+    tags: ["swift", "swiftui", "state-management"]
+
+  - id: SWIFT019
+    title: "Use @Observable (iOS 17+) or ObservableObject for view models"
+    description: "With iOS 17+, use @Observable macro for simpler observation. For older targets, use ObservableObject with @Published properties."
+    category: "swift_swiftui"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift", "swiftui"]
+    tags: ["swift", "swiftui", "observable", "mvvm"]
+
+  - id: SWIFT020
+    title: "Extract reusable views into separate types"
+    description: "Keep view body methods small. Extract complex sub-views into separate View structs. Use ViewModifier for reusable view modifications."
+    category: "swift_swiftui"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift", "swiftui"]
+    tags: ["swift", "swiftui", "composition"]
+
+  - id: SWIFT021
+    title: "Use EnvironmentValues for dependency injection in SwiftUI"
+    description: "Pass shared dependencies through the SwiftUI Environment using custom EnvironmentKeys or @EnvironmentObject. Avoid passing dependencies through many levels of view hierarchy."
+    category: "swift_swiftui"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift", "swiftui"]
+    tags: ["swift", "swiftui", "dependency-injection", "environment"]
+
+  - id: SWIFT022
+    title: "Minimize view body recomputation"
+    description: "Use Equatable conformance and .equatable() modifier to prevent unnecessary view updates. Avoid expensive computations in body. Use lazy stacks for large collections."
+    category: "swift_swiftui"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift", "swiftui"]
+    tags: ["swift", "swiftui", "performance"]
+
+  # ============================
+  # Combine
+  # ============================
+
+  - id: SWIFT023
+    title: "Store Cancellables properly"
+    description: "Store AnyCancellable instances in a Set<AnyCancellable> using .store(in:). Avoid losing cancellables which causes subscriptions to be immediately cancelled."
+    category: "swift_combine"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift", "combine"]
+    tags: ["swift", "combine", "cancellable", "memory"]
+
+  - id: SWIFT024
+    title: "Use .receive(on:) to switch to main thread for UI updates"
+    description: "Use .receive(on: DispatchQueue.main) before sink/assign when updating UI. Place it as late as possible in the chain to minimize main thread work."
+    category: "swift_combine"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift", "combine"]
+    tags: ["swift", "combine", "threading", "main-thread"]
+
+  # ============================
+  # Vapor / Server-Side Swift
+  # ============================
+
+  - id: SWIFT025
+    title: "Use Vapor's Content protocol for request/response types"
+    description: "Define request and response types conforming to Content (which implies Codable). Use the built-in content negotiation instead of manual JSON handling."
+    category: "swift_vapor"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift", "vapor"]
+    tags: ["swift", "vapor", "content", "codable"]
+
+  - id: SWIFT026
+    title: "Use Fluent migrations for database schema changes"
+    description: "Always use Fluent migrations for schema changes. Never modify the database schema directly. Register migrations in configure.swift in order."
+    category: "swift_vapor"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift", "vapor"]
+    tags: ["swift", "vapor", "fluent", "migration"]
+
+  - id: SWIFT027
+    title: "Use Vapor middleware for cross-cutting concerns"
+    description: "Implement authentication, logging, CORS, and rate limiting as middleware. Register middleware in the correct order in configure.swift."
+    category: "swift_vapor"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift", "vapor"]
+    tags: ["swift", "vapor", "middleware"]
+
+  # ============================
+  # API Design & Patterns
+  # ============================
+
+  - id: SWIFT028
+    title: "Use Codable for JSON serialization"
+    description: "Conform types to Codable (Encodable & Decodable) for JSON/Plist serialization. Use CodingKeys enum for custom key mappings. Use JSONEncoder/JSONDecoder with consistent formatting."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "codable", "json", "serialization"]
+
+  - id: SWIFT029
+    title: "Use protocol extensions for default implementations"
+    description: "Provide default implementations in protocol extensions to reduce boilerplate. Use constrained extensions (where clauses) for conditional conformance."
+    category: "swift_protocol_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "protocol", "extension", "default-implementation"]
+
+  - id: SWIFT030
+    title: "Use generics with protocol constraints"
+    description: "Use generic functions and types with protocol constraints (some Protocol, any Protocol) instead of type erasure. Prefer some for opaque types."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "generics", "opaque-types", "any-some"]
+
+  - id: SWIFT031
+    title: "Use property wrappers for reusable property patterns"
+    description: "Create custom @propertyWrapper types for common property patterns like validation, clamping, or user defaults access."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "property-wrapper", "reusability"]
+
+  - id: SWIFT032
+    title: "Use extensions to organize code by protocol conformance"
+    description: "Group protocol conformance implementations in separate extensions. This improves readability and makes conformance explicit."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "extension", "code-organization"]
+    example: |
+      struct User { let name: String; let email: String }
+      extension User: Codable { }
+      extension User: Equatable { }
+      extension User: CustomStringConvertible { var description: String { name } }
+
+  # ============================
+  # Testing
+  # ============================
+
+  - id: SWIFT033
+    title: "Use Swift Testing framework (@Test) for new test suites"
+    description: "For Swift 5.9+, use the Swift Testing framework with @Test and @Suite attributes. It provides better parameterized testing, traits, and parallel execution."
+    category: "swift_testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "testing", "swift-testing"]
+
+  - id: SWIFT034
+    title: "Use protocols for dependency injection in tests"
+    description: "Define protocol abstractions for dependencies (networking, storage). Inject mock implementations in tests. Avoid singletons that make testing difficult."
+    category: "swift_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "testing", "dependency-injection", "mocking"]
+
+  - id: SWIFT035
+    title: "Test async code with async test methods"
+    description: "Use async test methods to test async/await code directly. Avoid XCTExpectation for async code when async test support is available."
+    category: "swift_testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "testing", "async", "concurrency"]
+
+  # ============================
+  # Performance & Safety
+  # ============================
+
+  - id: SWIFT036
+    title: "Use lazy properties for expensive initialization"
+    description: "Use 'lazy var' for properties that are expensive to compute and may not always be accessed. Note: lazy properties are not thread-safe."
+    category: "swift_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "lazy", "performance"]
+
+  - id: SWIFT037
+    title: "Use appropriate collection types"
+    description: "Use Array for ordered collections, Set for unique unordered elements, Dictionary for key-value pairs. Use ContiguousArray for performance-critical code with class elements."
+    category: "swift_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "collections", "performance"]
+
+  - id: SWIFT038
+    title: "Avoid force unwrapping optionals"
+    description: "Use guard let, if let, or nil coalescing (??) instead of force unwrap (!). Force unwrapping hides potential crashes. Use fatalError with a message for truly impossible cases."
+    category: "swift_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "optionals", "safety", "force-unwrap"]
+
+  - id: SWIFT039
+    title: "Use guard for early returns"
+    description: "Use guard let/guard else for precondition checks at the start of functions. This keeps the happy path unindented and makes requirements explicit."
+    category: "swift_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "guard", "early-return"]
+
+  - id: SWIFT040
+    title: "Use @available for platform-specific code"
+    description: "Annotate platform-specific APIs with @available. Use #available checks at call sites. Support minimum deployment targets specified in Package.swift."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "availability", "platform"]
+
+  # ============================
+  # Swift 6.0+ Features
+  # ============================
+
+  - id: SWIFT041
+    title: "Enable strict concurrency checking"
+    description: "Set StrictConcurrency to 'complete' in build settings for Swift 6 readiness. Fix Sendable warnings incrementally. Use @unchecked Sendable only as a last resort."
+    category: "swift_concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "swift6", "strict-concurrency", "sendable"]
+
+  - id: SWIFT042
+    title: "Use Swift macros for code generation"
+    description: "With Swift 5.9+, use @attached and @freestanding macros for compile-time code generation instead of code generation scripts or runtime reflection."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "macros", "code-generation"]
+
+  - id: SWIFT043
+    title: "Use noncopyable types (~Copyable) for unique ownership"
+    description: "With Swift 5.9+, use ~Copyable to enforce unique ownership for resources like file handles or network connections. This provides Rust-like move semantics."
+    category: "swift_value_semantics"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "noncopyable", "ownership", "move-semantics"]
+
+  - id: SWIFT044
+    title: "Use parameter packs for variadic generics"
+    description: "With Swift 5.9+, use parameter packs (each T) for type-safe variadic generics instead of overloading functions for different arities."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "parameter-packs", "generics"]
+
+  # ============================
+  # Package & Project Structure
+  # ============================
+
+  - id: SWIFT045
+    title: "Use Swift Package Manager for dependency management"
+    description: "Prefer SPM (Package.swift) over CocoaPods or Carthage. Define clear package boundaries with separate targets for app, library, and tests."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "spm", "package-management"]
+
+  - id: SWIFT046
+    title: "Define explicit public API surface"
+    description: "Mark only intended public API as public. Use internal (default) for implementation details. Use @_spi for semi-public API that should only be used by specific clients."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "api-surface", "access-control"]
+
+  - id: SWIFT047
+    title: "Use Swift conventions for naming"
+    description: "Follow Swift API Design Guidelines: camelCase for functions/properties, PascalCase for types/protocols. Use prepositions for clarity: contains(element:), insert(at:)."
+    category: "code_style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "naming", "api-guidelines"]
+
+  - id: SWIFT048
+    title: "Use Equatable and Hashable conformance where appropriate"
+    description: "Conform value types to Equatable and Hashable. Use synthesized conformance when possible. Implement manually only when custom equality logic is needed."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "equatable", "hashable", "protocols"]
+
+  - id: SWIFT049
+    title: "Use @discardableResult for functions with ignorable return values"
+    description: "Mark functions with @discardableResult when callers commonly ignore the return value. This prevents unnecessary compiler warnings."
+    category: "swift_api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "discardable-result", "api-design"]
+
+  - id: SWIFT050
+    title: "Document public API with doc comments"
+    description: "Use /// doc comments for all public types and methods. Include parameter descriptions, return values, throws documentation, and code examples."
+    category: "documentation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["swift"]
+    tags: ["swift", "documentation", "doc-comments"]
+    example: |
+      /// Fetches user data from the remote server.
+      /// - Parameters:
+      ///   - id: The unique user identifier.
+      ///   - includeProfile: Whether to include the full profile.
+      /// - Returns: The requested user.
+      /// - Throws: `APIError.notFound` if the user doesn't exist.
+      func fetchUser(id: String, includeProfile: Bool) async throws -> User

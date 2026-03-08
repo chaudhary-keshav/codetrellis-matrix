@@ -1,0 +1,21 @@
+{
+  "name": "codetrellis-lsp-bridge",
+  "version": "1.0.0",
+  "description": "TypeScript LSP bridge for CodeTrellis type extraction",
+  "main": "extract-types.ts",
+  "scripts": {
+    "extract": "npx ts-node extract-types.ts",
+    "build": "tsc extract-types.ts --outDir dist",
+    "test": "npx ts-node extract-types.ts ../../../ai/trading-ui --compact"
+  },
+  "dependencies": {
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.7",
+    "ts-node": "^10.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

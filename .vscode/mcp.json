@@ -1,0 +1,15 @@
+{
+  "servers": {
+    "codetrellis": {
+      "type": "stdio",
+      "command": "/Users/keshavchaudhary/Documents/GitHub/codetrellis-reops/codetrellis/.venv/bin/python",
+      "args": [
+        "-m",
+        "codetrellis",
+        "mcp",
+        "/Users/keshavchaudhary/Documents/GitHub/codetrellis-reops/codetrellis"
+      ],
+      "env": {}
+    }
+  }
+}

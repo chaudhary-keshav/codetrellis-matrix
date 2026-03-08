@@ -1,0 +1,1377 @@
+# Next.js Best Practices Library
+# Version: 1.0.0
+# Next.js Version: 9.x through 15.x+ (Pages Router, App Router, Server Actions, PPR)
+# Total Practices: 50
+# Coverage: App Router, Data Fetching, Server Actions, Caching, Middleware, Performance, Security
+
+version: "1.0.0"
+framework: nextjs
+framework_version:
+  min_version: "13.0"
+description: "Comprehensive Next.js 13-15+ best practices: App Router, Server Components, Server Actions, Caching, Middleware"
+
+practices:
+  # ============================================================================
+  # APP ROUTER FUNDAMENTALS (NEXT001-NEXT010)
+  # ============================================================================
+
+  - id: NEXT001
+    title: "Use App Router for New Projects"
+    category: nextjs_app_router
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use the App Router (app/ directory) for all new Next.js projects.
+        The App Router supports React Server Components, nested layouts,
+        streaming, and is the recommended approach from Next.js 13+.
+      rationale: |
+        App Router provides better performance through Server Components,
+        streaming SSR, and nested layouts. It is the future of Next.js.
+      good_examples:
+        - |
+          // app/dashboard/page.tsx - Server Component by default
+          export default async function DashboardPage() {
+            const data = await fetchDashboardData();
+            return (
+              <main>
+                <h1>Dashboard</h1>
+                <DashboardContent data={data} />
+              </main>
+            );
+          }
+      bad_examples:
+        - |
+          // pages/dashboard.tsx - Pages Router (legacy)
+          export default function Dashboard({ data }) {
+            return <main>{/* ... */}</main>;
+          }
+          export async function getServerSideProps() {
+            const data = await fetchDashboardData();
+            return { props: { data } };
+          }
+
+  - id: NEXT002
+    title: "Leverage Server Components by Default"
+    category: nextjs_rendering
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Keep components as Server Components by default. Only add 'use client'
+        when you need interactivity (event handlers, state, effects, browser APIs).
+        This reduces the JavaScript bundle sent to the client.
+      rationale: |
+        Server Components don't add to the client bundle, can directly access
+        server resources, and improve initial page load performance.
+      good_examples:
+        - |
+          // app/products/page.tsx - Server Component (no 'use client')
+          import { ProductList } from './product-list';
+          import { db } from '@/lib/db';
+
+          export default async function ProductsPage() {
+            const products = await db.product.findMany();
+            return <ProductList products={products} />;
+          }
+      bad_examples:
+        - |
+          // ❌ Unnecessary 'use client' for non-interactive component
+          'use client';
+          export default function ProductsPage({ products }) {
+            return <ul>{products.map(p => <li key={p.id}>{p.name}</li>)}</ul>;
+          }
+
+  - id: NEXT003
+    title: "Use Proper Layout Hierarchy"
+    category: nextjs_app_router
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Structure layouts hierarchically with a root layout (app/layout.tsx)
+        containing global providers, fonts, and metadata. Use nested layouts
+        for route-specific UI like sidebars and navigation.
+      rationale: |
+        Layouts are preserved across navigations and don't re-render,
+        improving performance. Root layout replaces _app.tsx and _document.tsx.
+      good_examples:
+        - |
+          // app/layout.tsx - Root layout
+          import { Inter } from 'next/font/google';
+          import { Providers } from './providers';
+
+          const inter = Inter({ subsets: ['latin'] });
+
+          export const metadata = {
+            title: { default: 'My App', template: '%s | My App' },
+            description: 'My application',
+          };
+
+          export default function RootLayout({ children }: { children: React.ReactNode }) {
+            return (
+              <html lang="en" className={inter.className}>
+                <body>
+                  <Providers>{children}</Providers>
+                </body>
+              </html>
+            );
+          }
+
+  - id: NEXT004
+    title: "Implement Loading UI with loading.tsx"
+    category: nextjs_app_router
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Create loading.tsx files to show instant loading states while
+        route segments fetch data. Use Suspense boundaries for granular loading.
+      rationale: |
+        loading.tsx creates an automatic Suspense boundary, showing a fallback
+        while the page component fetches data, improving perceived performance.
+      good_examples:
+        - |
+          // app/dashboard/loading.tsx
+          export default function DashboardLoading() {
+            return (
+              <div className="animate-pulse">
+                <div className="h-8 w-48 bg-gray-200 rounded mb-4" />
+                <div className="grid grid-cols-3 gap-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-32 bg-gray-200 rounded" />
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
+  - id: NEXT005
+    title: "Implement Error Boundaries with error.tsx"
+    category: nextjs_app_router
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Create error.tsx files as client components to catch and handle errors
+        in route segments. Include a reset function for recovery. Use
+        global-error.tsx for root layout errors.
+      rationale: |
+        Error boundaries prevent the entire app from crashing when a
+        component fails. The reset function allows users to retry.
+      good_examples:
+        - |
+          // app/dashboard/error.tsx
+          'use client';
+
+          export default function DashboardError({
+            error,
+            reset,
+          }: {
+            error: Error & { digest?: string };
+            reset: () => void;
+          }) {
+            return (
+              <div role="alert">
+                <h2>Something went wrong!</h2>
+                <p>{error.message}</p>
+                <button onClick={reset}>Try again</button>
+              </div>
+            );
+          }
+
+  - id: NEXT006
+    title: "Use Metadata API for SEO"
+    category: nextjs_metadata
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use the Metadata API (export metadata or generateMetadata) instead of
+        Head component for defining page metadata. Use template patterns for
+        consistent title formatting across routes.
+      rationale: |
+        The Metadata API is type-safe, supports dynamic generation, and
+        automatically handles deduplication and streaming.
+      good_examples:
+        - |
+          // app/blog/[slug]/page.tsx
+          import type { Metadata } from 'next';
+
+          export async function generateMetadata({ params }): Promise<Metadata> {
+            const post = await getPost(params.slug);
+            return {
+              title: post.title,
+              description: post.excerpt,
+              openGraph: { images: [post.image] },
+            };
+          }
+
+  - id: NEXT007
+    title: "Use Route Groups for Organization"
+    category: nextjs_routing
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use route groups (parentheses folders like (marketing), (auth))
+        to organize routes without affecting the URL structure. This enables
+        different layouts for different sections.
+      rationale: |
+        Route groups provide clean organization and allow multiple root layouts
+        for different sections of the application.
+      good_examples:
+        - |
+          // File structure:
+          // app/(marketing)/page.tsx        -> /
+          // app/(marketing)/about/page.tsx  -> /about
+          // app/(auth)/login/page.tsx       -> /login
+          // app/(dashboard)/admin/page.tsx  -> /admin
+
+  - id: NEXT008
+    title: "Use Parallel Routes for Complex Layouts"
+    category: nextjs_routing
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use parallel routes (@folder convention) to render multiple pages
+        simultaneously in the same layout, such as dashboards with
+        independently loading panels.
+      rationale: |
+        Parallel routes enable independent error and loading states for
+        each slot, improving resilience and user experience.
+      good_examples:
+        - |
+          // app/dashboard/layout.tsx
+          export default function DashboardLayout({
+            children,
+            analytics,
+            team,
+          }: {
+            children: React.ReactNode;
+            analytics: React.ReactNode;
+            team: React.ReactNode;
+          }) {
+            return (
+              <div className="grid grid-cols-2">
+                <div>{children}</div>
+                <div>{analytics}</div>
+                <div>{team}</div>
+              </div>
+            );
+          }
+
+  - id: NEXT009
+    title: "Use Intercepting Routes for Modals"
+    category: nextjs_routing
+    level: advanced
+    priority: low
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use intercepting routes ((..)slug convention) to display route
+        content in a modal on the current page while preserving the full
+        page on direct navigation or refresh.
+      rationale: |
+        Intercepting routes create a polished UX where content can be previewed
+        in a modal, with the full page as a fallback on hard navigation.
+
+  - id: NEXT010
+    title: "Use Segment Config Exports"
+    category: nextjs_rendering
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use segment config exports (dynamic, revalidate, runtime,
+        fetchCache, preferredRegion) to control rendering behavior
+        at the route segment level.
+      rationale: |
+        Segment configs give fine-grained control over SSR/SSG/ISR
+        behavior per route, optimizing for each page's specific needs.
+      good_examples:
+        - |
+          // Force dynamic rendering
+          export const dynamic = 'force-dynamic';
+
+          // ISR with 60 second revalidation
+          export const revalidate = 60;
+
+          // Run on edge runtime
+          export const runtime = 'edge';
+
+          // Deploy to specific region
+          export const preferredRegion = 'iad1';
+
+  # ============================================================================
+  # DATA FETCHING (NEXT011-NEXT020)
+  # ============================================================================
+
+  - id: NEXT011
+    title: "Fetch Data in Server Components"
+    category: nextjs_data_fetching
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Fetch data directly in Server Components using async/await.
+        Avoid fetching in client components when the data can be fetched
+        on the server and passed as props.
+      rationale: |
+        Server-side fetching reduces client bundle, avoids waterfalls,
+        keeps secrets safe, and reduces latency to data sources.
+      good_examples:
+        - |
+          // app/users/page.tsx
+          async function getUsers() {
+            const res = await fetch('https://api.example.com/users', {
+              next: { revalidate: 3600 },
+            });
+            if (!res.ok) throw new Error('Failed to fetch');
+            return res.json();
+          }
+
+          export default async function UsersPage() {
+            const users = await getUsers();
+            return <UserList users={users} />;
+          }
+
+  - id: NEXT012
+    title: "Use Appropriate Cache Strategy"
+    category: nextjs_caching
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Choose the right caching strategy for each data request:
+        - cache: 'force-cache' for static data (default in Next.js 14)
+        - cache: 'no-store' for real-time data
+        - next: { revalidate: N } for ISR
+        - next: { tags: ['tag'] } for on-demand revalidation
+      rationale: |
+        Proper caching dramatically improves performance while ensuring
+        data freshness. Over-caching shows stale data; under-caching wastes resources.
+      good_examples:
+        - |
+          // Static data - cached indefinitely
+          fetch(url, { cache: 'force-cache' });
+
+          // Real-time data - never cached
+          fetch(url, { cache: 'no-store' });
+
+          // Revalidate every 60 seconds (ISR)
+          fetch(url, { next: { revalidate: 60 } });
+
+          // On-demand revalidation with tags
+          fetch(url, { next: { tags: ['products'] } });
+          // Then in a Server Action:
+          revalidateTag('products');
+
+  - id: NEXT013
+    title: "Use Parallel Data Fetching"
+    category: nextjs_data_fetching
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Fetch multiple data sources in parallel using Promise.all or
+        Promise.allSettled to avoid sequential request waterfalls.
+      rationale: |
+        Sequential fetches multiply latency. Parallel fetches reduce
+        total wait time to the slowest individual request.
+      good_examples:
+        - |
+          export default async function DashboardPage() {
+            const [stats, recentOrders, notifications] = await Promise.all([
+              getStats(),
+              getRecentOrders(),
+              getNotifications(),
+            ]);
+            return (
+              <>
+                <StatsPanel stats={stats} />
+                <OrderTable orders={recentOrders} />
+                <NotificationList items={notifications} />
+              </>
+            );
+          }
+
+  - id: NEXT014
+    title: "Use generateStaticParams for Dynamic Routes"
+    category: nextjs_data_fetching
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use generateStaticParams to pre-render dynamic routes at build time.
+        This replaces getStaticPaths from the Pages Router and works with
+        the App Router's nested dynamic segments.
+      rationale: |
+        Pre-rendering dynamic routes improves performance and reduces
+        server load by generating static HTML at build time.
+      good_examples:
+        - |
+          // app/blog/[slug]/page.tsx
+          export async function generateStaticParams() {
+            const posts = await getAllPosts();
+            return posts.map(post => ({ slug: post.slug }));
+          }
+
+          export default async function BlogPost({ params }: { params: { slug: string } }) {
+            const post = await getPost(params.slug);
+            return <Article post={post} />;
+          }
+
+  - id: NEXT015
+    title: "Use React cache() for Request Deduplication"
+    category: nextjs_caching
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use React's cache() function to deduplicate identical data fetches
+        across multiple components in the same request. This prevents
+        redundant database queries or API calls.
+      rationale: |
+        When multiple components need the same data, cache() ensures only
+        one request is made per render pass, improving efficiency.
+      good_examples:
+        - |
+          import { cache } from 'react';
+          import { db } from '@/lib/db';
+
+          export const getUser = cache(async (id: string) => {
+            return db.user.findUnique({ where: { id } });
+          });
+
+          // Can be called in multiple components - only executes once per request
+
+  - id: NEXT016
+    title: "Use revalidatePath and revalidateTag"
+    category: nextjs_caching
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use revalidatePath() to purge cached data for a specific route path
+        and revalidateTag() for tag-based cache invalidation. Prefer tags
+        for granular invalidation of specific data types.
+      rationale: |
+        On-demand revalidation provides the best of static and dynamic:
+        fast static pages that update immediately when data changes.
+      good_examples:
+        - |
+          'use server';
+          import { revalidatePath, revalidateTag } from 'next/cache';
+
+          export async function updateProduct(id: string, data: ProductData) {
+            await db.product.update({ where: { id }, data });
+            revalidateTag('products');           // Invalidate all product fetches
+            revalidatePath(`/products/${id}`);    // Revalidate specific page
+          }
+
+  - id: NEXT017
+    title: "Handle Streaming with Suspense"
+    category: nextjs_rendering
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Wrap slow-loading components in Suspense boundaries to stream
+        the rest of the page immediately. This improves perceived performance
+        by showing content as it becomes available.
+      rationale: |
+        Streaming SSR sends the page shell immediately and progressively
+        fills in components as their data resolves.
+      good_examples:
+        - |
+          import { Suspense } from 'react';
+
+          export default function Page() {
+            return (
+              <main>
+                <h1>Dashboard</h1>
+                <Suspense fallback={<StatsSkeleton />}>
+                  <SlowStats />
+                </Suspense>
+                <Suspense fallback={<ChartSkeleton />}>
+                  <SlowChart />
+                </Suspense>
+              </main>
+            );
+          }
+
+  - id: NEXT018
+    title: "Avoid Client-Side Data Fetching When Possible"
+    category: nextjs_data_fetching
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Prefer Server Components for data fetching over client-side libraries
+        like SWR or TanStack Query. Use client-side fetching only for
+        real-time data or user-specific interactive content.
+      rationale: |
+        Server Component fetching eliminates loading spinners, prevents
+        layout shift, reduces bundle size, and keeps API keys secure.
+
+  - id: NEXT019
+    title: "Use unstable_cache for Non-fetch Data"
+    category: nextjs_caching
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use unstable_cache (or cacheLife/cacheTag in Next.js 15+) to cache
+        data from sources other than fetch(), such as database queries,
+        ORM calls, or computed values.
+      rationale: |
+        The built-in fetch cache doesn't cover ORM queries or other data sources.
+        unstable_cache extends Next.js caching to any async function.
+      good_examples:
+        - |
+          import { unstable_cache } from 'next/cache';
+
+          const getCachedUser = unstable_cache(
+            async (id: string) => db.user.findUnique({ where: { id } }),
+            ['user'],
+            { revalidate: 3600, tags: ['users'] }
+          );
+
+  - id: NEXT020
+    title: "Use Dynamic Rendering Intentionally"
+    category: nextjs_rendering
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Understand what triggers dynamic rendering: cookies(), headers(),
+        searchParams, cache: 'no-store'. Use these intentionally and avoid
+        accidentally opting entire routes into dynamic rendering.
+      rationale: |
+        Static rendering is faster and cheaper. Accidental dynamic signals
+        can degrade performance across entire route segments.
+
+  # ============================================================================
+  # SERVER ACTIONS (NEXT021-NEXT030)
+  # ============================================================================
+
+  - id: NEXT021
+    title: "Use Server Actions for Mutations"
+    category: nextjs_server_actions
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use Server Actions ('use server') for data mutations instead of
+        creating API route handlers. Server Actions provide type-safe,
+        progressive enhancement-compatible form handling.
+      rationale: |
+        Server Actions reduce boilerplate, provide automatic form handling,
+        work without JavaScript, and integrate with revalidation.
+      good_examples:
+        - |
+          // app/actions.ts
+          'use server';
+
+          export async function createTodo(formData: FormData) {
+            const title = formData.get('title') as string;
+            await db.todo.create({ data: { title } });
+            revalidatePath('/todos');
+          }
+
+          // app/todos/page.tsx
+          import { createTodo } from '../actions';
+
+          export default function TodosPage() {
+            return (
+              <form action={createTodo}>
+                <input name="title" required />
+                <button type="submit">Add</button>
+              </form>
+            );
+          }
+
+  - id: NEXT022
+    title: "Validate Input in Server Actions"
+    category: nextjs_security
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Always validate and sanitize input in Server Actions using a
+        validation library like Zod. Never trust client input.
+      rationale: |
+        Server Actions are public endpoints. Without validation,
+        they're vulnerable to injection and data corruption.
+      good_examples:
+        - |
+          'use server';
+          import { z } from 'zod';
+
+          const CreatePostSchema = z.object({
+            title: z.string().min(1).max(200),
+            content: z.string().min(1),
+          });
+
+          export async function createPost(formData: FormData) {
+            const parsed = CreatePostSchema.safeParse({
+              title: formData.get('title'),
+              content: formData.get('content'),
+            });
+
+            if (!parsed.success) {
+              return { error: parsed.error.flatten() };
+            }
+
+            await db.post.create({ data: parsed.data });
+            revalidatePath('/posts');
+          }
+
+  - id: NEXT023
+    title: "Use useFormState for Action Feedback"
+    category: nextjs_server_actions
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use useFormState (or useActionState in React 19) to handle
+        Server Action return values and display validation errors,
+        success messages, or loading states.
+      rationale: |
+        useFormState provides a clean pattern for two-way communication
+        between Server Actions and the client UI.
+      good_examples:
+        - |
+          'use client';
+          import { useFormState, useFormStatus } from 'react-dom';
+          import { createUser } from './actions';
+
+          function SubmitButton() {
+            const { pending } = useFormStatus();
+            return <button disabled={pending}>{pending ? 'Creating...' : 'Create'}</button>;
+          }
+
+          export function CreateUserForm() {
+            const [state, formAction] = useFormState(createUser, { error: null });
+            return (
+              <form action={formAction}>
+                <input name="email" />
+                {state?.error && <p className="text-red-500">{state.error}</p>}
+                <SubmitButton />
+              </form>
+            );
+          }
+
+  - id: NEXT024
+    title: "Separate Server Actions into Dedicated Files"
+    category: nextjs_server_actions
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Put Server Actions in dedicated files with 'use server' at the top
+        rather than defining them inline in components. Organize by domain.
+      rationale: |
+        Dedicated action files improve code organization, enable reuse,
+        and make it clear which functions run on the server.
+      good_examples:
+        - |
+          // app/actions/user.ts
+          'use server';
+
+          export async function createUser(formData: FormData) { /* ... */ }
+          export async function updateUser(id: string, formData: FormData) { /* ... */ }
+          export async function deleteUser(id: string) { /* ... */ }
+
+  - id: NEXT025
+    title: "Handle Optimistic Updates with useOptimistic"
+    category: nextjs_server_actions
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use React's useOptimistic hook with Server Actions to immediately
+        update the UI while the mutation is pending, rolling back on error.
+      rationale: |
+        Optimistic updates make the UI feel instant, dramatically improving
+        perceived performance for mutations.
+      good_examples:
+        - |
+          'use client';
+          import { useOptimistic } from 'react';
+          import { toggleTodo } from './actions';
+
+          export function TodoList({ todos }) {
+            const [optimisticTodos, addOptimistic] = useOptimistic(
+              todos,
+              (state, id) => state.map(t => t.id === id ? { ...t, done: !t.done } : t)
+            );
+
+            return (
+              <ul>
+                {optimisticTodos.map(todo => (
+                  <li key={todo.id}>
+                    <form action={async () => {
+                      addOptimistic(todo.id);
+                      await toggleTodo(todo.id);
+                    }}>
+                      <button>{todo.done ? '✓' : '○'} {todo.title}</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+
+  - id: NEXT026
+    title: "Use redirect() in Server Actions"
+    category: nextjs_server_actions
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use redirect() from next/navigation in Server Actions after
+        successful mutations to navigate the user to the appropriate page.
+      rationale: |
+        redirect() works seamlessly with Server Actions and ensures
+        the user sees the updated page after a mutation.
+      good_examples:
+        - |
+          'use server';
+          import { redirect } from 'next/navigation';
+
+          export async function createPost(formData: FormData) {
+            const post = await db.post.create({ data: { /* ... */ } });
+            revalidatePath('/posts');
+            redirect(`/posts/${post.id}`);
+          }
+
+  - id: NEXT027
+    title: "Implement Rate Limiting for Server Actions"
+    category: nextjs_security
+    level: advanced
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Implement rate limiting for Server Actions to prevent abuse.
+        Server Actions are public HTTP endpoints and need protection.
+      rationale: |
+        Without rate limiting, attackers can flood Server Actions with
+        requests, causing resource exhaustion or data abuse.
+
+  - id: NEXT028
+    title: "Add Authentication Checks in Server Actions"
+    category: nextjs_security
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Always check authentication and authorization at the start of
+        Server Actions. Never assume the caller is authenticated just
+        because the form is on a protected page.
+      rationale: |
+        Server Actions can be called directly via HTTP POST. Without
+        auth checks, any unauthenticated user can invoke them.
+      good_examples:
+        - |
+          'use server';
+          import { auth } from '@/lib/auth';
+
+          export async function deletePost(postId: string) {
+            const session = await auth();
+            if (!session?.user) throw new Error('Unauthorized');
+
+            const post = await db.post.findUnique({ where: { id: postId } });
+            if (post?.authorId !== session.user.id) throw new Error('Forbidden');
+
+            await db.post.delete({ where: { id: postId } });
+            revalidatePath('/posts');
+          }
+
+  - id: NEXT029
+    title: "Use Error Boundaries for Server Action Errors"
+    category: nextjs_server_actions
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Return errors from Server Actions instead of throwing them.
+        Use error.tsx boundaries for unexpected errors and return
+        structured error objects for validation failures.
+      rationale: |
+        Throwing errors in Server Actions triggers the error boundary.
+        Returning errors allows the UI to handle them gracefully.
+
+  - id: NEXT030
+    title: "Use Form Progressive Enhancement"
+    category: nextjs_server_actions
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Ensure forms work without JavaScript by using the action
+        prop directly on <form> elements with Server Actions.
+        Add enhancements with useFormState/useFormStatus.
+      rationale: |
+        Progressive enhancement ensures the app works for all users,
+        including those with slow connections or disabled JavaScript.
+
+  # ============================================================================
+  # ROUTING & MIDDLEWARE (NEXT031-NEXT035)
+  # ============================================================================
+
+  - id: NEXT031
+    title: "Use Route Handlers for API Endpoints"
+    category: nextjs_routing
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use Route Handlers (app/api/*/route.ts) for REST API endpoints,
+        webhooks, and external integrations. Export named HTTP method
+        handlers (GET, POST, PUT, DELETE).
+      rationale: |
+        Route Handlers are the App Router equivalent of API Routes and
+        support streaming, edge runtime, and Web API standards.
+      good_examples:
+        - |
+          // app/api/users/route.ts
+          import { NextResponse } from 'next/server';
+
+          export async function GET() {
+            const users = await db.user.findMany();
+            return NextResponse.json(users);
+          }
+
+          export async function POST(request: Request) {
+            const body = await request.json();
+            const user = await db.user.create({ data: body });
+            return NextResponse.json(user, { status: 201 });
+          }
+
+  - id: NEXT032
+    title: "Use Middleware for Cross-Cutting Concerns"
+    category: nextjs_middleware
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use middleware.ts for authentication, redirects, rewrites, headers,
+        and other cross-cutting concerns. Keep middleware lightweight as it
+        runs on every matching request.
+      rationale: |
+        Middleware runs before the request is completed, enabling auth
+        checks, A/B testing, and geo-routing at the edge.
+      good_examples:
+        - |
+          // middleware.ts
+          import { NextResponse } from 'next/server';
+          import type { NextRequest } from 'next/server';
+
+          export function middleware(request: NextRequest) {
+            const { pathname } = request.nextUrl;
+
+            // Auth check
+            const token = request.cookies.get('session');
+            if (pathname.startsWith('/dashboard') && !token) {
+              return NextResponse.redirect(new URL('/login', request.url));
+            }
+
+            return NextResponse.next();
+          }
+
+          export const config = {
+            matcher: ['/dashboard/:path*', '/api/:path*'],
+          };
+
+  - id: NEXT033
+    title: "Use Matcher Config in Middleware"
+    category: nextjs_middleware
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Always use the matcher config to limit middleware to specific routes.
+        Avoid running middleware on static assets, _next, and public files.
+      rationale: |
+        Running middleware on every request (including static files) wastes
+        resources and can cause unexpected behavior.
+      good_examples:
+        - |
+          export const config = {
+            matcher: [
+              '/((?!_next/static|_next/image|favicon.ico|public).*)',
+            ],
+          };
+
+  - id: NEXT034
+    title: "Prefer Middleware over Layout Auth Checks"
+    category: nextjs_middleware
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use middleware for authentication redirects rather than checking auth
+        in layout.tsx. Middleware runs before the page renders, preventing
+        flash of unauthorized content.
+      rationale: |
+        Layout-based auth shows a loading state before redirecting.
+        Middleware redirects before any rendering occurs.
+
+  - id: NEXT035
+    title: "Keep Middleware Lightweight"
+    category: nextjs_middleware
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Keep middleware fast and lightweight. Avoid heavy computation,
+        database queries, or external API calls in middleware. Use it for
+        request/response transformation, not business logic.
+      rationale: |
+        Middleware runs on every matching request and adds latency to
+        every page load. Heavy middleware degrades overall performance.
+
+  # ============================================================================
+  # PERFORMANCE (NEXT036-NEXT042)
+  # ============================================================================
+
+  - id: NEXT036
+    title: "Use next/image for Image Optimization"
+    category: nextjs_image_optimization
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use the next/image component for all images. It provides automatic
+        optimization, lazy loading, responsive sizes, and format conversion
+        (WebP/AVIF).
+      rationale: |
+        Images are the largest contributor to page weight. next/image
+        reduces image sizes by up to 90% with automatic optimization.
+      good_examples:
+        - |
+          import Image from 'next/image';
+
+          export function Avatar({ src, name }: { src: string; name: string }) {
+            return (
+              <Image
+                src={src}
+                alt={name}
+                width={48}
+                height={48}
+                className="rounded-full"
+                priority={false}
+              />
+            );
+          }
+
+  - id: NEXT037
+    title: "Use next/font for Font Optimization"
+    category: nextjs_performance
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use next/font for automatic font optimization. It self-hosts fonts,
+        eliminates layout shift, and supports both Google Fonts and local fonts.
+      rationale: |
+        next/font eliminates external network requests for fonts,
+        prevents layout shift with automatic size-adjust, and reduces CLS.
+      good_examples:
+        - |
+          import { Inter, Roboto_Mono } from 'next/font/google';
+
+          const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+          const mono = Roboto_Mono({ subsets: ['latin'], variable: '--font-mono' });
+
+          export default function RootLayout({ children }) {
+            return (
+              <html className={`${inter.variable} ${mono.variable}`}>
+                <body>{children}</body>
+              </html>
+            );
+          }
+
+  - id: NEXT038
+    title: "Use Dynamic Imports for Code Splitting"
+    category: nextjs_performance
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use next/dynamic for code splitting heavy client components.
+        Specify ssr: false for components that use browser-only APIs
+        like charts, maps, or editors.
+      rationale: |
+        Dynamic imports reduce the initial JavaScript bundle by loading
+        heavy components only when needed.
+      good_examples:
+        - |
+          import dynamic from 'next/dynamic';
+
+          const Chart = dynamic(() => import('./chart'), {
+            loading: () => <ChartSkeleton />,
+            ssr: false,
+          });
+
+          const Editor = dynamic(() => import('./editor'), {
+            loading: () => <EditorSkeleton />,
+            ssr: false,
+          });
+
+  - id: NEXT039
+    title: "Configure Proper Output Mode"
+    category: nextjs_deployment
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Configure the appropriate output mode in next.config.js:
+        - undefined (default): Node.js server
+        - 'standalone': Self-contained Docker deployment
+        - 'export': Static HTML export
+      rationale: |
+        The output mode determines how the application is built and
+        deployed. Standalone mode is ideal for Docker deployments.
+
+  - id: NEXT040
+    title: "Use Edge Runtime Wisely"
+    category: nextjs_performance
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use the Edge Runtime for Route Handlers and middleware that need
+        low latency and global distribution. Be aware of Edge Runtime
+        limitations (no Node.js APIs, no native modules).
+      rationale: |
+        Edge Runtime provides lower latency by running closer to users,
+        but has a limited API surface compared to Node.js runtime.
+
+  - id: NEXT041
+    title: "Optimize Third-Party Scripts"
+    category: nextjs_performance
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use next/script with appropriate loading strategies (beforeInteractive,
+        afterInteractive, lazyOnload) for third-party scripts like analytics,
+        chat widgets, and ads.
+      rationale: |
+        Third-party scripts are a major source of performance issues.
+        next/script ensures they load at the right time.
+
+  - id: NEXT042
+    title: "Use Partial Prerendering (PPR)"
+    category: nextjs_rendering
+    level: advanced
+    priority: low
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Enable Partial Prerendering (Next.js 14+) to combine static and
+        dynamic rendering in a single route. The static shell is served
+        instantly while dynamic content streams in.
+      rationale: |
+        PPR provides the performance of static rendering with the
+        flexibility of dynamic content, the best of both worlds.
+
+  # ============================================================================
+  # CONFIGURATION & SECURITY (NEXT043-NEXT050)
+  # ============================================================================
+
+  - id: NEXT043
+    title: "Structure next.config.js Properly"
+    category: nextjs_configuration
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Keep next.config.js clean and well-organized. Use next.config.ts
+        (Next.js 15+) for type safety. Configure images, redirects,
+        and headers declaratively.
+      rationale: |
+        A well-structured config file is easier to maintain and prevents
+        misconfigurations that can cause build or runtime errors.
+      good_examples:
+        - |
+          /** @type {import('next').NextConfig} */
+          const nextConfig = {
+            images: {
+              remotePatterns: [
+                { protocol: 'https', hostname: 'images.example.com' },
+              ],
+            },
+            async redirects() {
+              return [
+                { source: '/old-path', destination: '/new-path', permanent: true },
+              ];
+            },
+          };
+          module.exports = nextConfig;
+
+  - id: NEXT044
+    title: "Use Environment Variables Properly"
+    category: nextjs_configuration
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use NEXT_PUBLIC_ prefix only for variables that must be exposed to
+        the browser. Keep API keys, database URLs, and secrets as server-only
+        environment variables.
+      rationale: |
+        Variables without NEXT_PUBLIC_ are only available on the server,
+        keeping secrets safe. Exposed variables are bundled into client JS.
+      good_examples:
+        - |
+          # .env.local
+          DATABASE_URL=postgres://...          # Server-only
+          API_SECRET=sk_...                     # Server-only
+          NEXT_PUBLIC_APP_URL=https://...       # Client-accessible
+          NEXT_PUBLIC_ANALYTICS_ID=UA-...       # Client-accessible
+
+  - id: NEXT045
+    title: "Configure Content Security Policy"
+    category: nextjs_security
+    level: advanced
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Configure Content Security Policy headers in middleware or
+        next.config.js to prevent XSS, clickjacking, and other attacks.
+      rationale: |
+        CSP headers are a critical defense layer against code injection.
+        Next.js middleware is ideal for setting security headers.
+
+  - id: NEXT046
+    title: "Implement Proper Error Handling Strategy"
+    category: nextjs_app_router
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Implement a comprehensive error handling strategy with error.tsx
+        at each route segment level, global-error.tsx for root errors,
+        and not-found.tsx for 404 pages.
+      rationale: |
+        Granular error boundaries prevent full-page errors and allow
+        users to recover from errors in specific sections.
+
+  - id: NEXT047
+    title: "Use TypeScript for Type-Safe Next.js"
+    category: nextjs_configuration
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use TypeScript with Next.js for type-safe page props, metadata,
+        Server Actions, and API routes. Leverage next-env.d.ts types.
+      rationale: |
+        TypeScript catches errors at build time, provides autocompletion,
+        and makes refactoring safer in large codebases.
+
+  - id: NEXT048
+    title: "Write Tests for Server and Client Components"
+    category: nextjs_testing
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Test Server Components with integration tests, client components
+        with React Testing Library, and Server Actions with unit tests.
+        Use Playwright or Cypress for E2E tests.
+      rationale: |
+        A comprehensive testing strategy ensures reliability across
+        the server/client boundary.
+
+  - id: NEXT049
+    title: "Monitor Core Web Vitals"
+    category: nextjs_performance
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Monitor Core Web Vitals (LCP, FID, CLS, INP, TTFB) using
+        Vercel Analytics, web-vitals library, or SpeedInsights.
+        Set performance budgets and track regressions.
+      rationale: |
+        Core Web Vitals directly impact SEO rankings and user experience.
+        Monitoring prevents performance regressions.
+
+  - id: NEXT050
+    title: "Use Instrumentation for Monitoring"
+    category: nextjs_deployment
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - nextjs
+    content:
+      description: |
+        Use instrumentation.ts (Next.js 13.2+) to initialize monitoring
+        tools like Sentry, OpenTelemetry, or DataDog before any other
+        code runs. This ensures complete error and performance coverage.
+      rationale: |
+        instrumentation.ts runs once at server startup, making it ideal
+        for initializing monitoring SDKs that need early registration.
+      good_examples:
+        - |
+          // instrumentation.ts
+          export async function register() {
+            if (process.env.NEXT_RUNTIME === 'nodejs') {
+              await import('./sentry.server.config');
+            }
+            if (process.env.NEXT_RUNTIME === 'edge') {
+              await import('./sentry.edge.config');
+            }
+          }

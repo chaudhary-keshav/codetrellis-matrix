@@ -1,0 +1,1051 @@
+# C# Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.13 - C# Language Support
+# Practice IDs: CS001-CS050
+# Category: csharp
+# Frameworks: csharp, aspnet, aspnet_core, ef_core, blazor, maui, minimal_api
+
+practices:
+  # ── Core C# ────────────────────────────────────────────────────
+
+  - id: CS001
+    title: "Prefer records for immutable data transfer objects"
+    description: "Use C# 9+ records for DTOs, value objects, and event payloads. Records provide value equality, immutability by default, and concise positional syntax. Use record struct for stack-allocated value types."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "records", "immutability", "dto"]
+    example: |
+      // Good: positional record (C# 9+)
+      public record OrderDto(int Id, string Description, decimal Total, DateTime CreatedAt);
+      // Good: record struct for value types (C# 10+)
+      public readonly record struct Money(decimal Amount, string Currency);
+      // Good: record with additional behavior
+      public record UserDto(string Name, string Email)
+      {
+          public string DisplayName => $"{Name} <{Email}>";
+      }
+
+  - id: CS002
+    title: "Use nullable reference types and enable project-wide"
+    description: "Enable nullable reference types (<Nullable>enable</Nullable>) project-wide. Annotate all API boundaries with ? for nullable and non-null for required. Use the null-forgiving operator (!) sparingly and only when you can guarantee non-null."
+    category: "best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "nullable", "safety"]
+    example: |
+      // Good: nullable annotation
+      public string? FindEmail(int userId)  // may return null
+      public string GetName(int userId)     // guaranteed non-null
+      // In .csproj:
+      // <Nullable>enable</Nullable>
+
+  - id: CS003
+    title: "Use pattern matching for type checks and flow control"
+    description: "Leverage C# pattern matching (is, switch expressions, property patterns) instead of if-else chains and explicit casts. Combine with when clauses for complex guards."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "pattern-matching", "readability"]
+    example: |
+      // Good: switch expression with pattern matching
+      var discount = customer switch
+      {
+          { IsPremium: true, OrderCount: > 100 } => 0.20m,
+          { IsPremium: true } => 0.10m,
+          { OrderCount: > 50 } => 0.05m,
+          _ => 0m,
+      };
+      // Good: is pattern
+      if (result is { Success: true, Data: var data })
+          Process(data);
+
+  - id: CS004
+    title: "Prefer expression-bodied members for single-expression methods"
+    description: "Use expression-bodied members (=>) for methods, properties, and constructors that consist of a single expression. Keeps code concise without sacrificing readability."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "readability", "style"]
+    example: |
+      // Good
+      public string FullName => $"{FirstName} {LastName}";
+      public override string ToString() => $"User({Id}, {Name})";
+      public int Add(int a, int b) => a + b;
+
+  - id: CS005
+    title: "Use IAsyncEnumerable for streaming data"
+    description: "Return IAsyncEnumerable<T> instead of Task<List<T>> when processing large datasets or streaming results. Combine with await foreach for memory-efficient consumption."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "async", "streaming", "performance"]
+    example: |
+      // Good: streaming results
+      public async IAsyncEnumerable<Order> GetOrdersAsync(
+          [EnumeratorCancellation] CancellationToken ct = default)
+      {
+          await foreach (var order in _context.Orders.AsAsyncEnumerable())
+          {
+              ct.ThrowIfCancellationRequested();
+              yield return order;
+          }
+      }
+
+  - id: CS006
+    title: "Use CancellationToken for all async operations"
+    description: "Accept CancellationToken as the last parameter in all async methods. Propagate it to all downstream async calls. Check for cancellation in long-running loops."
+    category: "best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "async", "cancellation"]
+    example: |
+      // Good: propagate cancellation
+      public async Task<Order> GetOrderAsync(int id, CancellationToken ct = default)
+      {
+          return await _context.Orders
+              .Include(o => o.Items)
+              .FirstOrDefaultAsync(o => o.Id == id, ct)
+              ?? throw new NotFoundException(id);
+      }
+
+  - id: CS007
+    title: "Prefer ValueTask over Task for hot-path synchronous results"
+    description: "Use ValueTask<T> when a method frequently completes synchronously (cached results, fast paths). Avoid ValueTask for general use — it has restrictions on awaiting multiple times."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "async", "performance", "valuetask"]
+    example: |
+      // Good: frequently synchronous completion
+      public ValueTask<User?> GetCachedUserAsync(int id)
+      {
+          if (_cache.TryGetValue(id, out var user))
+              return ValueTask.FromResult<User?>(user);
+          return new ValueTask<User?>(LoadFromDatabaseAsync(id));
+      }
+
+  - id: CS008
+    title: "Use file-scoped namespaces (C# 10+)"
+    description: "Use file-scoped namespace declarations to reduce nesting. One namespace per file is the standard convention in modern C#."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "namespace", "style", "csharp10"]
+    example: |
+      // Good: file-scoped (C# 10+)
+      namespace MyApp.Services;
+      public class OrderService { }
+
+      // Avoid: traditional nested
+      namespace MyApp.Services
+      {
+          public class OrderService { }
+      }
+
+  - id: CS009
+    title: "Use primary constructors for DI (C# 12+)"
+    description: "Use primary constructors on classes for dependency injection, reducing boilerplate. Parameters are captured as fields automatically."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "di", "constructor", "csharp12"]
+    example: |
+      // Good: primary constructor (C# 12+)
+      public class OrderService(
+          IOrderRepository repository,
+          ILogger<OrderService> logger)
+      {
+          public async Task<Order> GetAsync(int id) =>
+              await repository.GetByIdAsync(id)
+              ?? throw new NotFoundException(id);
+      }
+
+  - id: CS010
+    title: "Implement IDisposable/IAsyncDisposable correctly"
+    description: "Follow the dispose pattern for unmanaged resources. Use IAsyncDisposable for async cleanup. Always use using/await using for disposable objects."
+    category: "best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "dispose", "resources", "safety"]
+    example: |
+      // Good: IAsyncDisposable
+      public class DbConnection : IAsyncDisposable
+      {
+          private readonly NpgsqlConnection _conn;
+          public async ValueTask DisposeAsync()
+          {
+              await _conn.DisposeAsync();
+              GC.SuppressFinalize(this);
+          }
+      }
+      // Usage
+      await using var conn = new DbConnection(connStr);
+
+  # ── ASP.NET Core ────────────────────────────────────────────────
+
+  - id: CS011
+    title: "Use Minimal APIs for simple endpoints, Controllers for complex"
+    description: "Prefer Minimal API (MapGet/MapPost) for microservices and simple endpoints. Use Controllers with [ApiController] for complex APIs with model binding, filters, and conventions."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core", "aspnet"]
+    tags: ["aspnet", "minimal-api", "controllers", "architecture"]
+    example: |
+      // Good: Minimal API for simple CRUD
+      app.MapGet("/api/orders/{id}", async (int id, IOrderService svc) =>
+          await svc.GetAsync(id) is { } order
+              ? Results.Ok(order)
+              : Results.NotFound());
+      // Good: Controller for complex scenarios
+      [ApiController]
+      [Route("api/[controller]")]
+      public class OrdersController(IMediator mediator) : ControllerBase
+      {
+          [HttpPost]
+          public async Task<IActionResult> Create(CreateOrderCommand cmd)
+              => Ok(await mediator.Send(cmd));
+      }
+
+  - id: CS012
+    title: "Use TypedResults for Minimal API responses"
+    description: "Return TypedResults instead of Results in Minimal APIs for better OpenAPI schema generation and compile-time safety."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "minimal-api", "openapi"]
+    example: |
+      // Good: TypedResults with explicit return type
+      app.MapGet("/api/orders/{id}",
+          async Task<Results<Ok<OrderDto>, NotFound>> (int id, IOrderService svc) =>
+              await svc.GetAsync(id) is { } order
+                  ? TypedResults.Ok(order.ToDto())
+                  : TypedResults.NotFound());
+
+  - id: CS013
+    title: "Register services with correct lifetimes"
+    description: "Use AddTransient for stateless services, AddScoped for per-request (DbContext, UoW), AddSingleton for thread-safe shared state. Never inject scoped into singleton."
+    category: "best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["aspnet_core", "aspnet"]
+    tags: ["aspnet", "di", "lifetime", "services"]
+    example: |
+      // Good: correct lifetimes
+      builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+      builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+      builder.Services.AddTransient<IEmailService, EmailService>();
+      builder.Services.AddSingleton<ICacheService, RedisCacheService>();
+      builder.Services.AddDbContext<AppDbContext>(o =>
+          o.UseNpgsql(connectionString));
+
+  - id: CS014
+    title: "Use the Options pattern for configuration"
+    description: "Bind configuration sections to strongly-typed options classes. Use IOptions<T>, IOptionsSnapshot<T>, or IOptionsMonitor<T> for configuration injection."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "configuration", "options"]
+    example: |
+      // Options class
+      public class SmtpOptions
+      {
+          public const string Section = "Smtp";
+          public required string Host { get; init; }
+          public int Port { get; init; } = 587;
+          public required string Username { get; init; }
+      }
+      // Registration
+      builder.Services.Configure<SmtpOptions>(
+          builder.Configuration.GetSection(SmtpOptions.Section));
+      // Injection
+      public class EmailService(IOptions<SmtpOptions> options) { }
+
+  - id: CS015
+    title: "Use global exception handling middleware"
+    description: "Implement IExceptionHandler (NET 8+) or custom middleware for centralized exception handling. Map domain exceptions to appropriate HTTP status codes. Never leak stack traces in production."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "errors", "middleware", "security"]
+    example: |
+      // Good: .NET 8+ IExceptionHandler
+      public class GlobalExceptionHandler : IExceptionHandler
+      {
+          public async ValueTask<bool> TryHandleAsync(
+              HttpContext ctx, Exception ex, CancellationToken ct)
+          {
+              var (status, message) = ex switch
+              {
+                  NotFoundException => (404, ex.Message),
+                  ValidationException ve => (400, ve.Message),
+                  _ => (500, "An error occurred"),
+              };
+              ctx.Response.StatusCode = status;
+              await ctx.Response.WriteAsJsonAsync(
+                  new ProblemDetails { Status = status, Detail = message }, ct);
+              return true;
+          }
+      }
+
+  - id: CS016
+    title: "Use endpoint filters for cross-cutting concerns"
+    description: "Apply endpoint filters (IEndpointFilter) for validation, logging, and authorization in Minimal APIs. Use action filters or middleware for Controllers."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "filters", "minimal-api", "middleware"]
+    example: |
+      // Good: validation filter
+      app.MapPost("/api/orders", CreateOrder)
+          .AddEndpointFilter<ValidationFilter<CreateOrderRequest>>();
+      // Filter implementation
+      public class ValidationFilter<T>(IValidator<T> validator) : IEndpointFilter
+      {
+          public async ValueTask<object?> InvokeAsync(
+              EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+          {
+              var arg = ctx.GetArgument<T>(0);
+              var result = await validator.ValidateAsync(arg);
+              return result.IsValid ? await next(ctx)
+                  : Results.ValidationProblem(result.ToDictionary());
+          }
+      }
+
+  - id: CS017
+    title: "Use rate limiting middleware"
+    description: "Apply rate limiting using built-in .NET 7+ middleware. Configure fixed window, sliding window, token bucket, or concurrency limiters per endpoint or globally."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "security", "rate-limiting"]
+    example: |
+      // Registration
+      builder.Services.AddRateLimiter(o =>
+      {
+          o.AddFixedWindowLimiter("api", opt =>
+          {
+              opt.Window = TimeSpan.FromMinutes(1);
+              opt.PermitLimit = 100;
+              opt.QueueLimit = 10;
+          });
+      });
+      // Usage
+      app.MapGet("/api/orders", GetOrders).RequireRateLimiting("api");
+
+  - id: CS018
+    title: "Use output caching for GET endpoints"
+    description: "Leverage .NET 7+ output caching for GET endpoints that return stable data. Tag cache entries for selective invalidation."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "caching", "performance"]
+    example: |
+      // Registration
+      builder.Services.AddOutputCache(o =>
+      {
+          o.AddBasePolicy(b => b.Expire(TimeSpan.FromMinutes(5)));
+          o.AddPolicy("orders", b => b.Tag("orders").Expire(TimeSpan.FromMinutes(2)));
+      });
+      // Usage
+      app.MapGet("/api/orders", GetOrders).CacheOutput("orders");
+      // Invalidation
+      app.MapPost("/api/orders", async (IOutputCacheStore cache, ...) =>
+      {
+          await cache.EvictByTagAsync("orders", default);
+      });
+
+  - id: CS019
+    title: "Use strongly-typed route handlers with route groups"
+    description: "Organize Minimal API endpoints into route groups with shared prefixes, filters, and metadata. Map handler methods to named static methods for testability."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "minimal-api", "organization", "routing"]
+    example: |
+      // Good: route group organization
+      public static class OrderEndpoints
+      {
+          public static RouteGroupBuilder MapOrdersApi(this IEndpointRouteBuilder app)
+          {
+              var group = app.MapGroup("/api/orders")
+                  .WithTags("Orders")
+                  .RequireAuthorization();
+              group.MapGet("/", GetAll);
+              group.MapGet("/{id:int}", GetById);
+              group.MapPost("/", Create);
+              return group;
+          }
+          static async Task<Ok<List<OrderDto>>> GetAll(IOrderService svc)
+              => TypedResults.Ok(await svc.GetAllAsync());
+      }
+
+  - id: CS020
+    title: "Use Health Checks for service monitoring"
+    description: "Implement health checks for database, cache, message broker, and downstream services. Map health check endpoints for orchestrator readiness/liveness probes."
+    category: "devops"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "health-checks", "monitoring", "devops"]
+    example: |
+      builder.Services.AddHealthChecks()
+          .AddNpgSql(connectionString, name: "database")
+          .AddRedis(redisConnection, name: "cache")
+          .AddCheck<OrderServiceHealthCheck>("order-service");
+      app.MapHealthChecks("/health/ready", new HealthCheckOptions
+      {
+          Predicate = check => check.Tags.Contains("ready")
+      });
+      app.MapHealthChecks("/health/live", new HealthCheckOptions
+      {
+          Predicate = _ => false
+      });
+
+  # ── Entity Framework Core ──────────────────────────────────────
+
+  - id: CS021
+    title: "Use AsNoTracking for read-only queries"
+    description: "Apply AsNoTracking() or UseQueryTrackingBehavior(NoTracking) for queries that don't modify data. Significantly reduces memory allocation and improves query performance."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["ef_core"]
+    tags: ["efcore", "performance", "queries"]
+    example: |
+      // Good: read-only query
+      public async Task<List<OrderDto>> GetOrdersAsync(CancellationToken ct)
+      {
+          return await _context.Orders
+              .AsNoTracking()
+              .Select(o => new OrderDto(o.Id, o.Description, o.Total))
+              .ToListAsync(ct);
+      }
+      // Good: default no-tracking for read contexts
+      builder.Services.AddDbContext<ReadOnlyContext>(o =>
+          o.UseNpgsql(conn).UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
+
+  - id: CS022
+    title: "Use Fluent API for entity configuration"
+    description: "Prefer Fluent API in IEntityTypeConfiguration<T> classes over data annotations for complex mappings. Keep DbContext clean by using ApplyConfigurationsFromAssembly."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ef_core"]
+    tags: ["efcore", "configuration", "fluent-api"]
+    example: |
+      // Good: separate configuration
+      public class OrderConfiguration : IEntityTypeConfiguration<Order>
+      {
+          public void Configure(EntityTypeBuilder<Order> builder)
+          {
+              builder.ToTable("orders");
+              builder.HasKey(o => o.Id);
+              builder.Property(o => o.Description).HasMaxLength(200).IsRequired();
+              builder.HasOne(o => o.Buyer).WithMany(b => b.Orders);
+              builder.HasIndex(o => o.OrderDate);
+          }
+      }
+      // In DbContext
+      protected override void OnModelCreating(ModelBuilder modelBuilder)
+      {
+          modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+      }
+
+  - id: CS023
+    title: "Use compiled queries for hot-path queries"
+    description: "Use EF.CompileAsyncQuery for frequently executed queries. Compiled queries skip expression tree translation on each execution."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ef_core"]
+    tags: ["efcore", "performance", "compiled-queries"]
+    example: |
+      // Good: compiled query
+      private static readonly Func<AppDbContext, int, Task<Order?>> _getOrderById =
+          EF.CompileAsyncQuery((AppDbContext ctx, int id) =>
+              ctx.Orders
+                  .Include(o => o.Items)
+                  .FirstOrDefault(o => o.Id == id));
+      public Task<Order?> GetByIdAsync(int id) => _getOrderById(_context, id);
+
+  - id: CS024
+    title: "Avoid N+1 queries — use Include and projection"
+    description: "Always eager-load related data with Include/ThenInclude or project to DTOs with Select. Never iterate and query in loops. Use split queries for complex includes."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["ef_core"]
+    tags: ["efcore", "performance", "n-plus-one"]
+    example: |
+      // Good: eager loading
+      var orders = await _context.Orders
+          .Include(o => o.Items).ThenInclude(i => i.Product)
+          .Include(o => o.Buyer)
+          .AsSplitQuery()
+          .ToListAsync(ct);
+      // Better: projection avoids loading full entities
+      var dtos = await _context.Orders
+          .Select(o => new OrderSummaryDto
+          {
+              Id = o.Id,
+              ItemCount = o.Items.Count,
+              Total = o.Items.Sum(i => i.Price * i.Quantity)
+          })
+          .ToListAsync(ct);
+
+  - id: CS025
+    title: "Use value converters for custom column types"
+    description: "Use HasConversion for enum storage, value objects, and complex types. In EF Core 8+, use complex types for owned value objects."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ef_core"]
+    tags: ["efcore", "value-converters", "mapping"]
+    example: |
+      // Good: enum as string
+      builder.Property(o => o.Status)
+          .HasConversion<string>()
+          .HasMaxLength(20);
+      // Good: value object conversion
+      builder.Property(o => o.Address)
+          .HasConversion(
+              v => JsonSerializer.Serialize(v, default(JsonSerializerOptions)),
+              v => JsonSerializer.Deserialize<Address>(v, default(JsonSerializerOptions))!);
+
+  - id: CS026
+    title: "Use migrations with idempotent scripts for production"
+    description: "Generate EF Core migrations for schema changes. Use Script-Migration -Idempotent for production deployment. Never use EnsureCreated in production."
+    category: "devops"
+    severity: "critical"
+    applicability:
+      frameworks: ["ef_core"]
+    tags: ["efcore", "migrations", "deployment"]
+    example: |
+      // Generate migration
+      // dotnet ef migrations add AddOrderIndex
+      // Generate idempotent SQL script
+      // dotnet ef migrations script --idempotent -o deploy.sql
+      // Apply in code (dev only)
+      if (app.Environment.IsDevelopment())
+          await using (var scope = app.Services.CreateAsyncScope())
+              await scope.ServiceProvider.GetRequiredService<AppDbContext>()
+                  .Database.MigrateAsync();
+
+  - id: CS027
+    title: "Use DbContext pooling for performance"
+    description: "Use AddDbContextPool instead of AddDbContext to reuse DbContext instances. Reduces GC pressure and initialization cost in high-throughput scenarios."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ef_core", "aspnet_core"]
+    tags: ["efcore", "performance", "pooling"]
+    example: |
+      // Good: context pooling
+      builder.Services.AddDbContextPool<AppDbContext>(o =>
+          o.UseNpgsql(connectionString));
+      // With factory for scoped scenarios
+      builder.Services.AddPooledDbContextFactory<AppDbContext>(o =>
+          o.UseNpgsql(connectionString));
+
+  - id: CS028
+    title: "Implement soft delete with global query filters"
+    description: "Use HasQueryFilter for soft delete and multi-tenancy. Apply globally and use IgnoreQueryFilters() when needed for admin operations."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ef_core"]
+    tags: ["efcore", "soft-delete", "query-filters"]
+    example: |
+      // Entity
+      public class Order : ISoftDeletable
+      {
+          public bool IsDeleted { get; set; }
+          public DateTime? DeletedAt { get; set; }
+      }
+      // Configuration
+      builder.HasQueryFilter(o => !o.IsDeleted);
+      // Soft delete
+      public async Task SoftDeleteAsync(int id)
+      {
+          var order = await _context.Orders.FindAsync(id);
+          order!.IsDeleted = true;
+          order.DeletedAt = DateTime.UtcNow;
+          await _context.SaveChangesAsync();
+      }
+
+  - id: CS029
+    title: "Use interceptors for cross-cutting DB concerns"
+    description: "Use SaveChangesInterceptor for audit logging, IDbCommandInterceptor for query logging, and IDbConnectionInterceptor for connection management."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ef_core"]
+    tags: ["efcore", "interceptors", "audit"]
+    example: |
+      public class AuditInterceptor : SaveChangesInterceptor
+      {
+          public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+              DbContextEventData data, InterceptionResult<int> result, CancellationToken ct)
+          {
+              foreach (var entry in data.Context!.ChangeTracker
+                  .Entries<IAuditable>().Where(e => e.State is EntityState.Added or EntityState.Modified))
+              {
+                  entry.Entity.ModifiedAt = DateTime.UtcNow;
+                  if (entry.State == EntityState.Added)
+                      entry.Entity.CreatedAt = DateTime.UtcNow;
+              }
+              return base.SavingChangesAsync(data, result, ct);
+          }
+      }
+
+  - id: CS030
+    title: "Use raw SQL only for complex queries with FromSqlInterpolated"
+    description: "When LINQ is insufficient, use FromSqlInterpolated (parameterized) or ExecuteSqlInterpolatedAsync. Never use string concatenation for SQL to prevent injection."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["ef_core"]
+    tags: ["efcore", "raw-sql", "security", "sql-injection"]
+    example: |
+      // Good: parameterized
+      var orders = await _context.Orders
+          .FromSqlInterpolated($"SELECT * FROM orders WHERE total > {minTotal}")
+          .ToListAsync(ct);
+      // Good: exec
+      await _context.Database.ExecuteSqlInterpolatedAsync(
+          $"UPDATE orders SET status = {newStatus} WHERE id = {orderId}", ct);
+      // BAD: string concatenation — SQL injection risk
+      // _context.Orders.FromSqlRaw($"SELECT * FROM orders WHERE id = {id}")
+
+  # ── Architecture Patterns ──────────────────────────────────────
+
+  - id: CS031
+    title: "Use MediatR / CQRS for complex domain operations"
+    description: "Separate reads (queries) from writes (commands) using MediatR IRequest/IRequestHandler. Add pipeline behaviors for validation, logging, and transactions."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core", "csharp"]
+    tags: ["csharp", "cqrs", "mediatr", "architecture"]
+    example: |
+      // Command
+      public record CreateOrderCommand(string Description, List<OrderItemDto> Items)
+          : IRequest<int>;
+      // Handler
+      public class CreateOrderHandler(AppDbContext context)
+          : IRequestHandler<CreateOrderCommand, int>
+      {
+          public async Task<int> Handle(CreateOrderCommand cmd, CancellationToken ct)
+          {
+              var order = Order.Create(cmd.Description, cmd.Items);
+              context.Orders.Add(order);
+              await context.SaveChangesAsync(ct);
+              return order.Id;
+          }
+      }
+
+  - id: CS032
+    title: "Use Result pattern instead of throwing exceptions for expected failures"
+    description: "Return Result<T> or OneOf<T, Error> for expected failure cases (validation, not found). Reserve exceptions for unexpected failures. Improves performance and makes error handling explicit."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "result-pattern", "errors", "functional"]
+    example: |
+      // Good: Result pattern
+      public record Result<T>(bool IsSuccess, T? Value, string? Error)
+      {
+          public static Result<T> Success(T value) => new(true, value, null);
+          public static Result<T> Failure(string error) => new(false, default, error);
+      }
+      public async Task<Result<Order>> GetOrderAsync(int id)
+      {
+          var order = await _context.Orders.FindAsync(id);
+          return order is null
+              ? Result<Order>.Failure($"Order {id} not found")
+              : Result<Order>.Success(order);
+      }
+
+  - id: CS033
+    title: "Use the Repository + Unit of Work pattern for data access"
+    description: "Abstract data access behind IRepository<T> and IUnitOfWork interfaces. Keep repositories focused on persistence, not business logic."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp", "ef_core"]
+    tags: ["csharp", "repository", "unit-of-work", "architecture"]
+    example: |
+      public interface IRepository<T> where T : class
+      {
+          Task<T?> GetByIdAsync(int id, CancellationToken ct = default);
+          Task<List<T>> GetAllAsync(CancellationToken ct = default);
+          void Add(T entity);
+          void Remove(T entity);
+      }
+      public interface IUnitOfWork
+      {
+          IRepository<Order> Orders { get; }
+          Task<int> SaveChangesAsync(CancellationToken ct = default);
+      }
+
+  - id: CS034
+    title: "Use domain events for cross-aggregate communication"
+    description: "Raise domain events from aggregate roots for side effects. Handle them in separate handlers to maintain loose coupling between aggregates."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "ddd", "domain-events", "architecture"]
+    example: |
+      // Domain event
+      public record OrderCreatedEvent(int OrderId, DateTime CreatedAt) : INotification;
+      // Raise in aggregate
+      public class Order : AggregateRoot
+      {
+          public static Order Create(string desc)
+          {
+              var order = new Order { Description = desc };
+              order.AddDomainEvent(new OrderCreatedEvent(order.Id, DateTime.UtcNow));
+              return order;
+          }
+      }
+      // Handler
+      public class SendOrderConfirmation(IEmailService email)
+          : INotificationHandler<OrderCreatedEvent>
+      {
+          public async Task Handle(OrderCreatedEvent e, CancellationToken ct)
+              => await email.SendOrderConfirmationAsync(e.OrderId, ct);
+      }
+
+  - id: CS035
+    title: "Use strongly-typed IDs for entities"
+    description: "Wrap primitive IDs in value objects or records to prevent ID mix-ups between entity types. Use converters for EF Core and JSON serialization."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "ddd", "strong-typing", "value-objects"]
+    example: |
+      public readonly record struct OrderId(int Value);
+      public readonly record struct CustomerId(int Value);
+      // EF Core converter
+      builder.Property(o => o.Id)
+          .HasConversion(id => id.Value, v => new OrderId(v));
+      // Prevents: order.BuyerId = orderId; (compile error!)
+
+  # ── Testing ─────────────────────────────────────────────────────
+
+  - id: CS036
+    title: "Use WebApplicationFactory for integration tests"
+    description: "Use WebApplicationFactory<Program> for in-memory integration testing of ASP.NET Core apps. Override services with test doubles in ConfigureWebHost."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "testing", "integration-tests"]
+    example: |
+      public class OrdersApiTests : IClassFixture<WebApplicationFactory<Program>>
+      {
+          private readonly HttpClient _client;
+          public OrdersApiTests(WebApplicationFactory<Program> factory)
+          {
+              _client = factory.WithWebHostBuilder(b =>
+                  b.ConfigureTestServices(s =>
+                      s.AddScoped<IOrderRepository, InMemoryOrderRepository>()))
+                  .CreateClient();
+          }
+          [Fact]
+          public async Task GetOrders_ReturnsOk()
+          {
+              var response = await _client.GetAsync("/api/orders");
+              response.EnsureSuccessStatusCode();
+          }
+      }
+
+  - id: CS037
+    title: "Use Testcontainers for database integration tests"
+    description: "Use Testcontainers to spin up real database instances in Docker for integration tests. Avoids InMemory provider limitations and tests real SQL behavior."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["ef_core", "csharp"]
+    tags: ["csharp", "testing", "testcontainers", "database"]
+    example: |
+      public class DatabaseFixture : IAsyncLifetime
+      {
+          private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
+              .WithImage("postgres:16-alpine").Build();
+          public string ConnectionString => _postgres.GetConnectionString();
+          public Task InitializeAsync() => _postgres.StartAsync();
+          public Task DisposeAsync() => _postgres.DisposeAsync().AsTask();
+      }
+
+  - id: CS038
+    title: "Use Verify for snapshot testing"
+    description: "Use Verify for snapshot testing of complex objects, API responses, and serialization output. Reduces assertion boilerplate for large object graphs."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "testing", "snapshots"]
+    example: |
+      [Fact]
+      public async Task GetOrder_MatchesSnapshot()
+      {
+          var order = await _service.GetOrderAsync(1);
+          await Verify(order);
+      }
+
+  - id: CS039
+    title: "Use NSubstitute or Moq for unit test mocking"
+    description: "Use NSubstitute (preferred) or Moq for creating test doubles. Mock at interface boundaries, not concrete classes."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "testing", "mocking"]
+    example: |
+      // NSubstitute
+      var repo = Substitute.For<IOrderRepository>();
+      repo.GetByIdAsync(1, Arg.Any<CancellationToken>())
+          .Returns(new Order { Id = 1, Description = "Test" });
+      var svc = new OrderService(repo);
+      var result = await svc.GetOrderAsync(1);
+      Assert.Equal("Test", result.Description);
+      await repo.Received(1).GetByIdAsync(1, Arg.Any<CancellationToken>());
+
+  - id: CS040
+    title: "Use FluentAssertions for readable test assertions"
+    description: "Use FluentAssertions for expressive, readable test assertions. Chain assertions for complex object validation."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "testing", "assertions"]
+    example: |
+      var order = await service.GetOrderAsync(1);
+      order.Should().NotBeNull();
+      order.Id.Should().Be(1);
+      order.Items.Should().HaveCount(3)
+          .And.OnlyContain(i => i.Price > 0);
+
+  # ── Security ────────────────────────────────────────────────────
+
+  - id: CS041
+    title: "Use data protection API for sensitive data"
+    description: "Use IDataProtector for encrypting sensitive data at rest. Use purpose strings for key isolation between features."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "security", "encryption"]
+    example: |
+      public class TokenService(IDataProtectionProvider provider)
+      {
+          private readonly IDataProtector _protector =
+              provider.CreateProtector("TokenService.v1");
+          public string Protect(string token) => _protector.Protect(token);
+          public string Unprotect(string token) => _protector.Unprotect(token);
+      }
+
+  - id: CS042
+    title: "Use policy-based authorization"
+    description: "Define authorization policies with requirements and handlers. Prefer policies over role-based [Authorize(Roles)] for flexible, testable authorization."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core"]
+    tags: ["aspnet", "security", "authorization"]
+    example: |
+      // Policy registration
+      builder.Services.AddAuthorization(o =>
+      {
+          o.AddPolicy("OrderOwner", p =>
+              p.AddRequirements(new OrderOwnerRequirement()));
+      });
+      // Requirement handler
+      public class OrderOwnerHandler(AppDbContext context)
+          : AuthorizationHandler<OrderOwnerRequirement, Order>
+      {
+          protected override async Task HandleRequirementAsync(
+              AuthorizationHandlerContext ctx,
+              OrderOwnerRequirement req, Order order)
+          {
+              var userId = ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+              if (order.BuyerId.ToString() == userId)
+                  ctx.Succeed(req);
+          }
+      }
+
+  - id: CS043
+    title: "Validate all input with FluentValidation"
+    description: "Use FluentValidation for complex input validation. Register validators in DI and use them in pipeline behaviors or endpoint filters."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["aspnet_core", "csharp"]
+    tags: ["csharp", "validation", "fluent-validation", "security"]
+    example: |
+      public class CreateOrderValidator : AbstractValidator<CreateOrderCommand>
+      {
+          public CreateOrderValidator()
+          {
+              RuleFor(x => x.Description).NotEmpty().MaximumLength(200);
+              RuleFor(x => x.Items).NotEmpty();
+              RuleForEach(x => x.Items).ChildRules(item =>
+              {
+                  item.RuleFor(i => i.Quantity).GreaterThan(0);
+                  item.RuleFor(i => i.Price).GreaterThan(0);
+              });
+          }
+      }
+
+  # ── Performance & Observability ─────────────────────────────────
+
+  - id: CS044
+    title: "Use Span<T> and Memory<T> for zero-allocation parsing"
+    description: "Use Span<T> and ReadOnlySpan<T> for string slicing, binary parsing, and buffer manipulation without allocations. Use stackalloc for small fixed-size buffers."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "performance", "span", "memory"]
+    example: |
+      // Good: zero-allocation string parsing
+      public static (ReadOnlySpan<char> Key, ReadOnlySpan<char> Value) ParseHeader(
+          ReadOnlySpan<char> header)
+      {
+          var idx = header.IndexOf(':');
+          return (header[..idx].Trim(), header[(idx + 1)..].Trim());
+      }
+
+  - id: CS045
+    title: "Use OpenTelemetry for distributed tracing"
+    description: "Instrument services with OpenTelemetry for traces, metrics, and logs. Use Activity for custom spans. Export to Jaeger, Zipkin, or OTLP."
+    category: "devops"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core", "csharp"]
+    tags: ["csharp", "observability", "tracing", "opentelemetry"]
+    example: |
+      builder.Services.AddOpenTelemetry()
+          .WithTracing(t => t
+              .AddAspNetCoreInstrumentation()
+              .AddHttpClientInstrumentation()
+              .AddEntityFrameworkCoreInstrumentation()
+              .AddSource("MyApp")
+              .AddOtlpExporter())
+          .WithMetrics(m => m
+              .AddAspNetCoreInstrumentation()
+              .AddRuntimeInstrumentation()
+              .AddOtlpExporter());
+
+  - id: CS046
+    title: "Use structured logging with Serilog or built-in ILogger"
+    description: "Use structured logging with named parameters (not string interpolation). Configure log levels per namespace. Use scopes for correlation."
+    category: "devops"
+    severity: "recommended"
+    applicability:
+      frameworks: ["aspnet_core", "csharp"]
+    tags: ["csharp", "logging", "structured-logging"]
+    example: |
+      // Good: structured parameters
+      _logger.LogInformation("Order {OrderId} created for {BuyerId} with {ItemCount} items",
+          order.Id, order.BuyerId, order.Items.Count);
+      // Good: log scope
+      using (_logger.BeginScope(new Dictionary<string, object>
+          { ["OrderId"] = orderId, ["CorrelationId"] = correlationId }))
+      {
+          await ProcessOrderAsync(orderId);
+      }
+
+  # ── Blazor ──────────────────────────────────────────────────────
+
+  - id: CS047
+    title: "Use CascadingValue for shared state in Blazor"
+    description: "Use CascadingValue/CascadingParameter for deeply nested state like theme, user info, and settings. Prefer fixed values for performance."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["blazor"]
+    tags: ["blazor", "state", "cascading"]
+    example: |
+      // App.razor
+      <CascadingValue Value="@_theme" IsFixed="true">
+          <Router AppAssembly="@typeof(App).Assembly" />
+      </CascadingValue>
+      // Component
+      @code {
+          [CascadingParameter] public Theme Theme { get; set; } = default!;
+      }
+
+  - id: CS048
+    title: "Use virtualization for large lists in Blazor"
+    description: "Use <Virtualize> component for rendering large lists efficiently. Only renders visible items, dramatically reducing DOM size."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["blazor"]
+    tags: ["blazor", "performance", "virtualization"]
+    example: |
+      <Virtualize Items="@orders" Context="order" ItemSize="50">
+          <ItemContent>
+              <div class="order-row">@order.Id — @order.Description</div>
+          </ItemContent>
+          <Placeholder>
+              <div class="loading-row">Loading...</div>
+          </Placeholder>
+      </Virtualize>
+
+  # ── Misc Modern C# ──────────────────────────────────────────────
+
+  - id: CS049
+    title: "Use collection expressions (C# 12+)"
+    description: "Use collection expressions ([]) and spread operator (..) for concise collection initialization. Works with arrays, lists, spans, and custom collection types."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "collections", "csharp12"]
+    example: |
+      // Good: C# 12 collection expressions
+      int[] numbers = [1, 2, 3, 4, 5];
+      List<string> names = ["Alice", "Bob"];
+      // Spread operator
+      int[] combined = [..first, ..second, 99];
+
+  - id: CS050
+    title: "Use source generators instead of runtime reflection"
+    description: "Prefer compile-time source generators over runtime reflection for serialization, validation, and DI. System.Text.Json source generation eliminates reflection-based serialization overhead."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["csharp"]
+    tags: ["csharp", "source-generators", "performance", "aot"]
+    example: |
+      // Good: JSON source generation
+      [JsonSerializable(typeof(OrderDto))]
+      [JsonSerializable(typeof(List<OrderDto>))]
+      internal partial class AppJsonContext : JsonSerializerContext { }
+      // Usage
+      builder.Services.ConfigureHttpJsonOptions(o =>
+          o.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonContext.Default));

@@ -1,0 +1,553 @@
+# Bash/Shell Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.18 - Bash Language Support
+# Practice IDs: BASH001-BASH050
+# Category: bash
+# Frameworks: bash, sh, zsh, ksh, dash
+
+practices:
+  # ── Error Handling & Safety ────────────────────────────────
+  - id: BASH001
+    title: "Always use strict mode (set -euo pipefail)"
+    description: "Start scripts with 'set -euo pipefail' to exit on error (-e), treat unset variables as errors (-u), and fail pipelines on any command failure (-o pipefail). This catches bugs early."
+    category: "bash_error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "safety", "strict-mode", "error-handling"]
+    example: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+  - id: BASH002
+    title: "Use trap for cleanup on EXIT"
+    description: "Register a trap on EXIT to clean up temporary files, release locks, or restore state. This ensures cleanup happens even if the script fails."
+    category: "bash_error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "trap", "cleanup", "error-handling"]
+    example: |
+      cleanup() { rm -f "$tmpfile"; }
+      trap cleanup EXIT
+      tmpfile=$(mktemp)
+
+  - id: BASH003
+    title: "Check command exit codes explicitly"
+    description: "When set -e is not used, check $? or use 'if ! command; then' patterns. Never ignore potential failures in critical paths."
+    category: "bash_error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "error-handling", "exit-code"]
+
+  - id: BASH004
+    title: "Use 'set -x' for debugging, remove before production"
+    description: "Enable 'set -x' (trace mode) during development to debug scripts. Remove or guard it behind a DEBUG variable for production use."
+    category: "bash_error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "debugging", "trace"]
+    example: |
+      [[ "${DEBUG:-}" == "true" ]] && set -x
+
+  - id: BASH005
+    title: "Use error handling functions for consistent messaging"
+    description: "Define die() or error() functions for consistent error messages that include the script name, line number, and a meaningful message."
+    category: "bash_error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "error-handling", "functions"]
+    example: |
+      die() { echo "ERROR: $*" >&2; exit 1; }
+
+  # ── Variable Handling ──────────────────────────────────────
+  - id: BASH006
+    title: "Always quote variables to prevent word splitting"
+    description: 'Use "$var" instead of $var to prevent word splitting and glob expansion. Unquoted variables are the #1 source of shell script bugs.'
+    category: "shell_scripting"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "quoting", "variables", "safety"]
+    example: |
+      # Good
+      echo "$filename"
+      # Bad - breaks on spaces/globs
+      echo $filename
+
+  - id: BASH007
+    title: "Use ${var:-default} for default values"
+    description: "Use parameter expansion ${var:-default} to provide fallbacks for unset variables. Use ${var:?error} to require variables."
+    category: "shell_scripting"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "variables", "parameter-expansion"]
+    example: |
+      port="${PORT:-8080}"
+      config="${CONFIG_FILE:?CONFIG_FILE must be set}"
+
+  - id: BASH008
+    title: "Declare variables as local inside functions"
+    description: "Use 'local' keyword for all variables inside functions to prevent unintentional global scope pollution."
+    category: "bash_patterns"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "variables", "scope", "functions"]
+    example: |
+      my_func() {
+        local result=""
+        local -i count=0
+        # ...
+      }
+
+  - id: BASH009
+    title: "Use readonly for constants"
+    description: "Declare constants with 'readonly' to prevent accidental modification. Name them in UPPER_CASE by convention."
+    category: "shell_scripting"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "variables", "constants"]
+    example: |
+      readonly MAX_RETRIES=3
+      readonly CONFIG_DIR="/etc/myapp"
+
+  - id: BASH010
+    title: "Prefer declare -r/-i/-a for typed variables"
+    description: "Use 'declare -r' for readonly, '-i' for integer arithmetic, '-a' for indexed arrays, '-A' for associative arrays. This adds type safety."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "variables", "declare", "typing"]
+
+  # ── Functions ──────────────────────────────────────────────
+  - id: BASH011
+    title: "Use function keyword or POSIX syntax consistently"
+    description: "Pick one function syntax and use it consistently. POSIX 'name() { }' is most portable. Bash 'function name { }' is bash-specific."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "functions", "style"]
+
+  - id: BASH012
+    title: "Document functions with preceding comment blocks"
+    description: "Add a comment block before each function describing purpose, parameters ($1, $2), return values, and side effects."
+    category: "shell_scripting"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "documentation", "functions"]
+    example: |
+      # Create a user account
+      # Args: $1 = username, $2 = email
+      # Returns: 0 on success, 1 on failure
+      create_user() { ... }
+
+  - id: BASH013
+    title: "Return exit codes, not strings, from functions"
+    description: "Use 'return 0/1' for success/failure. For returning data, use stdout capture: result=$(my_func). Avoid global variables for return values."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "functions", "return-values"]
+
+  - id: BASH014
+    title: "Keep functions small and single-purpose"
+    description: "Each function should do one thing. If a function exceeds ~50 lines or has complexity > 10, split it into smaller functions."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "functions", "complexity"]
+
+  - id: BASH015
+    title: "Use getopts or manual parsing for function arguments"
+    description: "For functions with more than 2-3 parameters, use getopts or named argument parsing instead of positional parameters."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "functions", "arguments"]
+
+  # ── POSIX Compliance & Portability ─────────────────────────
+  - id: BASH016
+    title: "Use [[ ]] for conditionals in bash, [ ] for POSIX"
+    description: "Use [[ ]] in bash scripts for safer conditionals (no word splitting). Use [ ] only when POSIX compatibility is required."
+    category: "posix_compliance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "conditionals", "posix", "portability"]
+
+  - id: BASH017
+    title: "Use #!/usr/bin/env bash for portability"
+    description: "Use '#!/usr/bin/env bash' instead of '#!/bin/bash' for portability across systems where bash may be in different locations."
+    category: "posix_compliance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "shebang", "portability"]
+
+  - id: BASH018
+    title: "Avoid bashisms in /bin/sh scripts"
+    description: "If shebang is #!/bin/sh, avoid bash-specific features: [[ ]], arrays, process substitution <(), let, (( )), select, here-strings <<<."
+    category: "posix_compliance"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "posix", "portability", "sh"]
+
+  - id: BASH019
+    title: "Use printf instead of echo for portable output"
+    description: "echo behavior varies across shells (-n, -e flags). Use printf for consistent, portable output formatting."
+    category: "posix_compliance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "posix", "printf", "portability"]
+
+  - id: BASH020
+    title: "Use $(...) instead of backticks for command substitution"
+    description: "$(command) is nestable and more readable than `command`. Backticks have quoting issues and are harder to nest."
+    category: "posix_compliance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "command-substitution", "style"]
+
+  # ── Security ───────────────────────────────────────────────
+  - id: BASH021
+    title: "Never use eval with user input"
+    description: "eval executes arbitrary code. Never pass unvalidated input to eval. Use parameter expansion, arrays, or safer alternatives."
+    category: "bash_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "security", "eval", "injection"]
+
+  - id: BASH022
+    title: "Use mktemp for temporary files"
+    description: "Always use mktemp to create temporary files/directories. Never use predictable names in /tmp which are vulnerable to symlink attacks."
+    category: "bash_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "security", "tempfiles"]
+    example: |
+      tmpdir=$(mktemp -d)
+      tmpfile=$(mktemp)
+
+  - id: BASH023
+    title: "Validate and sanitize all inputs"
+    description: "Check that arguments exist, are the expected type, and don't contain injection characters. Use regex matching with [[ ]] =~."
+    category: "bash_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "security", "validation"]
+
+  - id: BASH024
+    title: "Store secrets in environment variables, not in script files"
+    description: "Never hardcode passwords, API keys, or tokens in scripts. Use environment variables or credential stores."
+    category: "bash_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "security", "secrets"]
+
+  - id: BASH025
+    title: "Use restricted shell or least privilege"
+    description: "Run scripts with minimal permissions. Use umask, drop privileges after initialization, and avoid running as root unless necessary."
+    category: "bash_security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "security", "permissions"]
+
+  # ── Performance ────────────────────────────────────────────
+  - id: BASH026
+    title: "Avoid unnecessary subshells and external commands"
+    description: "Use built-in string operations (${var#}, ${var%}, ${var//}) instead of calling sed/awk/cut for simple transformations."
+    category: "bash_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "performance", "builtins"]
+    example: |
+      # Good: built-in
+      ext="${filename##*.}"
+      # Slower: external command
+      ext=$(echo "$filename" | awk -F. '{print $NF}')
+
+  - id: BASH027
+    title: "Use while read loops instead of for on command output"
+    description: "Use 'while IFS= read -r line' for reading command output line-by-line. Avoid 'for line in $(command)' which splits on whitespace."
+    category: "bash_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "performance", "loops"]
+    example: |
+      while IFS= read -r line; do
+        echo "$line"
+      done < <(command)
+
+  - id: BASH028
+    title: "Use arrays instead of space-separated strings"
+    description: "Use bash arrays for lists of items instead of space-separated strings. Arrays handle items with spaces correctly."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "arrays", "data-structures"]
+    example: |
+      files=("file one.txt" "file two.txt")
+      for f in "${files[@]}"; do echo "$f"; done
+
+  - id: BASH029
+    title: "Minimize pipe chains in hot loops"
+    description: "In loops that execute many times, minimize pipe chains. Each pipe creates a subshell. Use process substitution or built-ins where possible."
+    category: "bash_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "performance", "pipes"]
+
+  - id: BASH030
+    title: "Use parallel execution for independent tasks"
+    description: "Use & and wait, GNU parallel, or xargs -P for parallelizing independent tasks like file processing or API calls."
+    category: "bash_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "performance", "parallel"]
+    example: |
+      for file in *.csv; do
+        process_file "$file" &
+      done
+      wait
+
+  # ── Automation & DevOps ────────────────────────────────────
+  - id: BASH031
+    title: "Make scripts idempotent"
+    description: "Scripts should be safe to run multiple times. Use 'mkdir -p', 'ln -sf', check existence before creation, use 'CREATE IF NOT EXISTS'."
+    category: "bash_automation"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "automation", "idempotent"]
+
+  - id: BASH032
+    title: "Use meaningful exit codes"
+    description: "Exit 0 for success, 1 for general errors, 2 for usage errors. Define named constants for specific error conditions."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "exit-codes", "conventions"]
+    example: |
+      readonly E_SUCCESS=0
+      readonly E_MISSING_ARG=2
+      readonly E_FILE_NOT_FOUND=3
+
+  - id: BASH033
+    title: "Implement logging with severity levels"
+    description: "Create log functions (log_info, log_warn, log_error) that write to stderr with timestamps. Support verbosity levels."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "logging", "debugging"]
+    example: |
+      log_info()  { echo "[INFO]  $(date +%T) $*" >&2; }
+      log_error() { echo "[ERROR] $(date +%T) $*" >&2; }
+
+  - id: BASH034
+    title: "Implement retry logic for network operations"
+    description: "Wrap curl/wget/API calls in retry loops with exponential backoff. Network operations are inherently unreliable."
+    category: "bash_automation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "automation", "retry", "network"]
+
+  - id: BASH035
+    title: "Use lock files to prevent concurrent execution"
+    description: "Use flock or mkdir-based locks to prevent multiple instances of a script from running simultaneously."
+    category: "bash_automation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "concurrency", "locking"]
+    example: |
+      exec 200>/var/lock/myscript.lock
+      flock -n 200 || { echo "Already running"; exit 1; }
+
+  # ── Input/Output & File Handling ───────────────────────────
+  - id: BASH036
+    title: "Use 'read -r' to prevent backslash interpretation"
+    description: "Always use 'read -r' to prevent backslash escape interpretation. Combine with IFS= to preserve leading/trailing whitespace."
+    category: "shell_scripting"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "read", "input"]
+
+  - id: BASH037
+    title: "Redirect stderr and stdout appropriately"
+    description: "Use >&2 for error messages, separate stdout (data) from stderr (messages). Use 2>&1 only when combining is intentional."
+    category: "shell_scripting"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "redirection", "stderr"]
+
+  - id: BASH038
+    title: "Use here documents for multi-line strings"
+    description: "Use <<EOF for multi-line text generation instead of multiple echo statements. Use <<-EOF with tabs for indented heredocs."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "heredoc", "strings"]
+
+  - id: BASH039
+    title: "Check file existence and permissions before access"
+    description: "Use -f, -d, -r, -w, -x tests before accessing files. Provide clear error messages for missing or inaccessible files."
+    category: "bash_error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "files", "validation"]
+    example: |
+      [[ -f "$config" ]] || die "Config not found: $config"
+      [[ -r "$config" ]] || die "Config not readable: $config"
+
+  - id: BASH040
+    title: "Use process substitution for avoiding subshell variable loss"
+    description: "Use <(command) instead of 'command | while read' to avoid the subshell created by pipes, which loses variable modifications."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "process-substitution", "subshell"]
+
+  # ── Script Structure & Organization ────────────────────────
+  - id: BASH041
+    title: "Use a main() function pattern"
+    description: "Define a main() function and call it at the bottom. This prevents accidental execution when sourced and allows proper testing."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "structure", "main"]
+    example: |
+      main() {
+        parse_args "$@"
+        validate_inputs
+        do_work
+      }
+      main "$@"
+
+  - id: BASH042
+    title: "Parse arguments with getopt/getopts"
+    description: "Use getopts for POSIX option parsing or getopt (GNU) for long options. Provide --help and handle unknown options gracefully."
+    category: "shell_scripting"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "arguments", "getopts"]
+
+  - id: BASH043
+    title: "Provide usage/help output"
+    description: "Every script should have a usage() function that prints help text with description, options, examples, and exit codes."
+    category: "shell_scripting"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "documentation", "usage"]
+
+  - id: BASH044
+    title: "Source configuration from separate files"
+    description: "Load configuration from separate files using 'source' or '. config'. This separates configuration from logic and supports per-environment settings."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "configuration", "source"]
+
+  - id: BASH045
+    title: "Use shellcheck for static analysis"
+    description: "Run shellcheck on all scripts as part of CI/CD. Address warnings and disable only with explicit comments (# shellcheck disable=SC2086)."
+    category: "shell_scripting"
+    severity: "critical"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "shellcheck", "linting", "ci"]
+
+  # ── Advanced Patterns ──────────────────────────────────────
+  - id: BASH046
+    title: "Use associative arrays for key-value data (bash 4.0+)"
+    description: "Use 'declare -A' for dictionaries/maps. Check bash version >= 4.0 before using. Provide fallback for older systems."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "arrays", "associative", "bash4"]
+
+  - id: BASH047
+    title: "Use nameref variables for indirect references (bash 4.3+)"
+    description: "Use 'declare -n ref=varname' for indirect variable access instead of eval. Namerefs are safer and more readable."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "nameref", "indirect", "bash43"]
+
+  - id: BASH048
+    title: "Use signal traps for graceful shutdown"
+    description: "Trap SIGTERM, SIGINT for graceful shutdown of long-running scripts. Clean up child processes with 'kill -- -$$' or process group kills."
+    category: "bash_automation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "signals", "trap", "graceful-shutdown"]
+
+  - id: BASH049
+    title: "Use heredocs with variable expansion for templates"
+    description: "Use heredocs with variable expansion for generating config files, SQL, YAML. Use <<'EOF' (quoted) to prevent expansion when literals are needed."
+    category: "bash_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "templates", "heredoc"]
+    example: |
+      # With expansion
+      cat <<EOF > config.yaml
+      server:
+        host: ${HOST}
+        port: ${PORT}
+      EOF
+      # Without expansion (literal)
+      cat <<'EOF' > script.sh
+      echo "$HOME"
+      EOF
+
+  - id: BASH050
+    title: "Implement versioning and changelog in scripts"
+    description: "Add a VERSION variable and support --version flag. Maintain a changelog comment block for tracking changes to critical automation scripts."
+    category: "bash_automation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bash"]
+    tags: ["bash", "versioning", "maintenance"]
+    example: |
+      readonly VERSION="1.2.0"
+      [[ "${1:-}" == "--version" ]] && { echo "$VERSION"; exit 0; }

@@ -1,0 +1,407 @@
+# Go Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.5 - Go Language Support (G-17)
+# Practice IDs: GO001-GO040
+# Category: golang
+# Frameworks: golang
+
+practices:
+  - id: GO001
+    title: 'Use struct embedding for composition over inheritance'
+    description: 'Go favors composition over inheritance. Use struct embedding to compose behavior from smaller, focused types rather than deep inheritance hierarchies.'
+    category: 'best_practices'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'composition', 'struct']
+    example: |
+      // Good: Compose with embedding
+      type Logger struct { ... }
+      type Server struct {
+          Logger
+          addr string
+      }
+
+  - id: GO002
+    title: 'Accept interfaces, return structs'
+    description: 'Functions should accept interface parameters for flexibility and return concrete struct types for clarity. This enables loose coupling and testability.'
+    category: 'api_design'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'interface', 'design']
+    example: |
+      // Good
+      func NewService(repo Repository) *Service { ... }
+      // Bad
+      func NewService(repo *PostgresRepo) ServiceInterface { ... }
+
+  - id: GO003
+    title: 'Keep interfaces small — prefer single-method interfaces'
+    description: 'Go interfaces should be small, typically one or two methods. Larger interfaces reduce composability. Follow the io.Reader/io.Writer pattern.'
+    category: 'api_design'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'interface', 'design']
+
+  - id: GO004
+    title: 'Handle errors explicitly — never ignore returned errors'
+    description: 'Always check and handle returned errors. Use if err != nil pattern. Never use _ to discard errors silently in production code.'
+    category: 'error_handling'
+    severity: 'critical'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'error', 'safety']
+    example: |
+      // Good
+      result, err := doSomething()
+      if err != nil {
+          return fmt.Errorf("doSomething failed: %w", err)
+      }
+
+  - id: GO005
+    title: 'Wrap errors with context using fmt.Errorf and %w'
+    description: 'When propagating errors, wrap them with additional context using fmt.Errorf("context: %w", err). This preserves the error chain for errors.Is/errors.As.'
+    category: 'error_handling'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'error', 'wrapping']
+
+  - id: GO006
+    title: 'Use custom error types for domain-specific errors'
+    description: 'Define sentinel errors (var ErrNotFound = errors.New(...)) or custom error types implementing the error interface for domain-specific error handling.'
+    category: 'error_handling'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'error', 'domain']
+
+  - id: GO007
+    title: 'Use context.Context for cancellation and timeouts'
+    description: 'Pass context.Context as the first parameter to functions that perform I/O, network calls, or long-running operations. Use context.WithTimeout and context.WithCancel.'
+    category: 'concurrency'
+    severity: 'critical'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'context', 'cancellation']
+
+  - id: GO008
+    title: 'Use goroutines with proper synchronization'
+    description: 'When spawning goroutines, ensure proper synchronization with sync.WaitGroup, channels, or sync.Mutex. Avoid goroutine leaks by ensuring all goroutines can exit.'
+    category: 'concurrency'
+    severity: 'critical'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'goroutine', 'concurrency']
+
+  - id: GO009
+    title: 'Prefer channels for communication, mutexes for state'
+    description: "Use channels to communicate between goroutines. Use sync.Mutex only when protecting shared state. Follow the principle: 'Don't communicate by sharing memory; share memory by communicating.'"
+    category: 'concurrency'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'channel', 'mutex']
+
+  - id: GO010
+    title: 'Use defer for cleanup operations'
+    description: 'Use defer to ensure cleanup code runs when a function exits. Common uses: closing files, unlocking mutexes, closing database connections, flushing buffers.'
+    category: 'best_practices'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'defer', 'cleanup']
+    example: |
+      func readFile(path string) ([]byte, error) {
+          f, err := os.Open(path)
+          if err != nil { return nil, err }
+          defer f.Close()
+          return io.ReadAll(f)
+      }
+
+  - id: GO011
+    title: 'Use table-driven tests'
+    description: 'Structure tests as table-driven tests with test cases defined in a slice of structs. Use t.Run for subtests. This pattern is idiomatic and produces clear test output.'
+    category: 'testing'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'testing', 'table-driven']
+
+  - id: GO012
+    title: 'Use meaningful variable and function names'
+    description: 'Follow Go naming conventions: short names for local scope (i, n, err), descriptive names for exported identifiers. Use MixedCaps, not underscores.'
+    category: 'code_style'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'naming', 'style']
+
+  - id: GO013
+    title: 'Export only what is necessary'
+    description: 'In Go, capitalized identifiers are exported. Keep the public API surface small. Unexport types, functions, and fields unless they need to be accessed from outside the package.'
+    category: 'api_design'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'export', 'encapsulation']
+
+  - id: GO014
+    title: 'Use functional options pattern for complex constructors'
+    description: 'For types with many optional configuration parameters, use the functional options pattern (WithXxx functions) instead of large config structs or many constructor variants.'
+    category: 'design_patterns'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'pattern', 'options']
+    example: |
+      type Option func(*Server)
+      func WithPort(port int) Option { return func(s *Server) { s.port = port } }
+      func NewServer(opts ...Option) *Server { ... }
+
+  - id: GO015
+    title: 'Use pointer receivers for mutating methods'
+    description: 'Use pointer receivers (*T) when the method needs to modify the receiver or when the struct is large. Use value receivers (T) for read-only methods on small structs.'
+    category: 'best_practices'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'receiver', 'pointer']
+
+  - id: GO016
+    title: 'Use sync.Once for one-time initialization'
+    description: 'Use sync.Once to ensure initialization code runs exactly once, even across multiple goroutines. Common for lazy singleton initialization.'
+    category: 'concurrency'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'sync', 'initialization']
+
+  - id: GO017
+    title: 'Avoid init() functions when possible'
+    description: 'init() functions run before main() and can make code harder to test and reason about. Prefer explicit initialization in main() or constructor functions.'
+    category: 'best_practices'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'init', 'startup']
+
+  - id: GO018
+    title: 'Use structured logging with slog'
+    description: 'Use Go 1.21+ slog package for structured logging. Prefer structured key-value pairs over string formatting. Use slog.Logger for dependency injection.'
+    category: 'logging'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'logging', 'slog']
+
+  - id: GO019
+    title: 'Use Go modules for dependency management'
+    description: 'Always use Go modules (go.mod) for dependency management. Pin dependency versions. Run go mod tidy regularly. Use go mod vendor for reproducible builds.'
+    category: 'best_practices'
+    severity: 'critical'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'modules', 'dependencies']
+
+  - id: GO020
+    title: 'Handle panics with recover in goroutines'
+    description: 'Use defer/recover to handle panics in goroutines to prevent the entire program from crashing. Log the panic and stack trace for debugging.'
+    category: 'error_handling'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'panic', 'recover']
+
+  - id: GO021
+    title: 'Use io.Reader and io.Writer interfaces'
+    description: 'Design functions to work with io.Reader and io.Writer interfaces instead of concrete types like *os.File or *bytes.Buffer. This enables composability and testability.'
+    category: 'api_design'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'io', 'interface']
+
+  - id: GO022
+    title: 'Use const and iota for enumerations'
+    description: 'Use const blocks with iota for creating enumeration types. Define a custom type and use iota for auto-incrementing values. Implement the Stringer interface for human-readable output.'
+    category: 'type_safety'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'enum', 'iota']
+
+  - id: GO023
+    title: 'Avoid package-level mutable state'
+    description: 'Minimize package-level variables, especially mutable ones. They create hidden dependencies and make testing difficult. Use dependency injection instead.'
+    category: 'maintainability'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'global', 'state']
+
+  - id: GO024
+    title: 'Use errgroup for concurrent error handling'
+    description: 'Use golang.org/x/sync/errgroup for managing groups of goroutines that return errors. It provides context cancellation and error collection.'
+    category: 'concurrency'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'errgroup', 'concurrency']
+
+  - id: GO025
+    title: 'Organize code by domain, not by type'
+    description: "Organize packages by business domain (user, order, payment) not by technical layer (models, handlers, services). Avoid packages named 'util', 'common', or 'helpers'."
+    category: 'architecture'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'package', 'organization']
+
+  - id: GO026
+    title: 'Use generics for type-safe reusable code (Go 1.18+)'
+    description: 'Use Go generics (type parameters) for writing type-safe reusable functions and data structures. Use constraints from the constraints package.'
+    category: 'type_safety'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'generics', 'type-safety']
+
+  - id: GO027
+    title: 'Avoid naked returns in long functions'
+    description: 'Named return values with naked returns are acceptable in short functions but harmful in longer ones. Explicitly return values in functions longer than a few lines.'
+    category: 'code_style'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'return', 'readability']
+
+  - id: GO028
+    title: 'Use select with default for non-blocking channel operations'
+    description: 'Use select with a default case for non-blocking channel sends/receives. Use select with a timeout context for deadline-aware operations.'
+    category: 'concurrency'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'select', 'channel']
+
+  - id: GO029
+    title: 'Close channels from the sender side only'
+    description: 'Only the goroutine that sends on a channel should close it. Never close a channel from the receiver side. Use sync.Once if multiple senders exist.'
+    category: 'concurrency'
+    severity: 'critical'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'channel', 'close']
+
+  - id: GO030
+    title: 'Use middleware pattern for HTTP handlers'
+    description: 'Implement cross-cutting concerns (auth, logging, CORS, rate limiting) as HTTP middleware functions that wrap handlers. This promotes reusability and separation of concerns.'
+    category: 'patterns'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'http', 'middleware']
+
+  - id: GO031
+    title: 'Validate input at API boundaries'
+    description: 'Validate all input at API boundaries (HTTP handlers, gRPC methods). Use struct tags with a validation library or manual validation. Return appropriate error codes.'
+    category: 'security'
+    severity: 'critical'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'validation', 'security']
+
+  - id: GO032
+    title: 'Use dependency injection for testability'
+    description: 'Pass dependencies as interfaces to constructors. Avoid creating dependencies inside functions. This enables mocking and unit testing.'
+    category: 'testing'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'di', 'testing']
+
+  - id: GO033
+    title: 'Use graceful shutdown for servers'
+    description: 'Implement graceful shutdown using os.Signal and context cancellation. Allow in-flight requests to complete before stopping the server.'
+    category: 'best_practices'
+    severity: 'critical'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'shutdown', 'server']
+    example: |
+      ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+      defer stop()
+      srv.Shutdown(ctx)
+
+  - id: GO034
+    title: 'Use struct tags for serialization'
+    description: 'Use json, yaml, or xml struct tags consistently. Use omitempty for optional fields. Use - to exclude fields from serialization.'
+    category: 'data_modeling'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'struct', 'json']
+
+  - id: GO035
+    title: 'Avoid race conditions — use -race flag in tests'
+    description: 'Always run tests with -race flag (go test -race) to detect data races. Fix all race conditions before deployment.'
+    category: 'testing'
+    severity: 'critical'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'race', 'testing']
+
+  - id: GO036
+    title: 'Use database/sql with prepared statements'
+    description: 'Use prepared statements to prevent SQL injection. Use context-aware database methods (QueryContext, ExecContext). Close rows after iteration.'
+    category: 'database'
+    severity: 'critical'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'sql', 'security']
+
+  - id: GO037
+    title: 'Use buffered channels for known-size work'
+    description: 'Use buffered channels when the number of items is known or bounded. Use unbuffered channels for synchronization between goroutines.'
+    category: 'concurrency'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'channel', 'buffer']
+
+  - id: GO038
+    title: 'Document exported types and functions with godoc'
+    description: 'All exported types, functions, methods, and constants should have godoc comments. Comments should start with the name of the entity being documented.'
+    category: 'documentation'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'godoc', 'documentation']
+
+  - id: GO039
+    title: 'Use time.Duration, not int, for time values'
+    description: 'Always use time.Duration for representing time intervals. Never use raw integers for milliseconds or seconds. Use time.Second, time.Millisecond constants.'
+    category: 'type_safety'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'time', 'type-safety']
+
+  - id: GO040
+    title: 'Avoid deeply nested code — use early returns'
+    description: 'Reduce nesting by using early returns, guard clauses, and error checks at the top of functions. Go code should flow linearly.'
+    category: 'code_style'
+    severity: 'recommended'
+    applicability:
+      frameworks: ['golang']
+    tags: ['go', 'nesting', 'readability']
+    example: |
+      // Good: early return
+      func process(data *Data) error {
+          if data == nil { return ErrNilData }
+          if !data.Valid() { return ErrInvalidData }
+          // main logic here
+          return nil
+      }

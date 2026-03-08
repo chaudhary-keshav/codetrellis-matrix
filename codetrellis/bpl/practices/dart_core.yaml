@@ -1,0 +1,608 @@
+# Dart Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.27 - Dart Language Support
+# Practice IDs: DART001-DART050
+# Category: dart
+# Frameworks: dart, flutter
+# Covers: Dart 2.0 through 3.x+, Flutter 1.x through 3.x+, Null Safety,
+#         Class Modifiers, Records, Patterns, Extension Types, Riverpod, Bloc,
+#         Drift, Freezed, Shelf, Dart Frog, Serverpod
+
+practices:
+  # ============================
+  # Type System & Null Safety
+  # ============================
+
+  - id: DART001
+    title: "Use sound null safety throughout the codebase"
+    description: "Enable and enforce sound null safety. Use non-nullable types by default, mark nullable types explicitly with ?, use late only when initialization is guaranteed. Avoid unnecessary null assertions (!)."
+    category: "dart_null_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "null-safety", "type-safety"]
+    example: |
+      // Good
+      String name = 'Dart';
+      String? nickname;
+      late final Database db; // initialized in init()
+      // Bad
+      String name = null!; // avoid null assertions
+
+  - id: DART002
+    title: "Prefer final for local variables and fields that aren't reassigned"
+    description: "Use final for local variables, fields, and top-level variables that are assigned once. Use const for compile-time constants. Avoid var when the type is not obvious from the initializer."
+    category: "dart_immutability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "final", "const", "immutability"]
+
+  - id: DART003
+    title: "Use sealed classes for exhaustive type hierarchies"
+    description: "Use sealed class modifier (Dart 3.0+) when modeling closed hierarchies that must be exhaustively matched. The compiler enforces all subtypes are handled in switch expressions."
+    category: "dart_type_system"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "sealed", "dart3", "exhaustive"]
+    example: |
+      sealed class Shape {}
+      class Circle extends Shape { final double radius; }
+      class Square extends Shape { final double side; }
+      // Compiler enforces exhaustiveness
+      double area(Shape shape) => switch (shape) {
+        Circle(radius: var r) => 3.14 * r * r,
+        Square(side: var s) => s * s,
+      };
+
+  - id: DART004
+    title: "Use class modifiers intentionally (base, interface, final, mixin)"
+    description: "Apply Dart 3.0+ class modifiers to communicate API intent. Use 'base' to allow extension but prevent implementation, 'interface' to allow implementation but prevent extension, 'final' to prevent both, 'mixin class' for dual use."
+    category: "dart_type_system"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "dart3", "class-modifiers", "api-design"]
+
+  - id: DART005
+    title: "Use records for lightweight data aggregation"
+    description: "Use Dart 3.0 records for simple data aggregation instead of creating full classes. Records provide structural equality, destructuring, and named fields."
+    category: "dart_type_system"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "dart3", "records"]
+    example: |
+      // Good: lightweight record
+      (String, int) parseNameAge(String input) => ('Alice', 30);
+      // Named fields
+      ({String name, int age}) getUser() => (name: 'Alice', age: 30);
+
+  - id: DART006
+    title: "Use extension types for zero-cost type wrappers"
+    description: "Use extension types (Dart 3.3+) to create compile-time type wrappers with zero runtime overhead. Useful for ID types, units, and domain-specific types."
+    category: "dart_type_system"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "dart3", "extension-types", "type-safety"]
+    example: |
+      extension type UserId(int value) {
+        UserId.parse(String s) : value = int.parse(s);
+      }
+
+  - id: DART007
+    title: "Use pattern matching with switch expressions"
+    description: "Leverage Dart 3.0+ pattern matching in switch expressions for concise, exhaustive, and type-safe branching. Prefer switch expressions over if-else chains."
+    category: "dart_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "dart3", "patterns", "switch-expression"]
+
+  - id: DART008
+    title: "Use typedefs for complex function signatures and generic types"
+    description: "Define typedefs for callback signatures and complex generic types to improve readability. Prefer inline function types for simple cases."
+    category: "dart_type_system"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "typedef", "function-types"]
+
+  # ============================
+  # Error Handling
+  # ============================
+
+  - id: DART009
+    title: "Use custom exception classes for domain-specific errors"
+    description: "Create custom exception classes implementing Exception for expected errors. Reserve Error subclasses for programming errors. Always provide meaningful messages."
+    category: "dart_error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "exceptions", "error-handling"]
+    example: |
+      class UserNotFoundException implements Exception {
+        final String userId;
+        UserNotFoundException(this.userId);
+        @override
+        String toString() => 'User not found: $userId';
+      }
+
+  - id: DART010
+    title: "Handle errors at the appropriate level"
+    description: "Catch exceptions at the level where they can be meaningfully handled. Avoid empty catch blocks. Use 'on' for specific exception types before catch-all 'catch'."
+    category: "dart_error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "error-handling", "try-catch"]
+
+  # ============================
+  # Async & Concurrency
+  # ============================
+
+  - id: DART011
+    title: "Use async/await for asynchronous code"
+    description: "Prefer async/await over raw Future chains for readability. Use Future.wait for parallel execution. Avoid mixing async/await with .then() chains."
+    category: "dart_async"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "async", "await", "future"]
+
+  - id: DART012
+    title: "Use Stream for reactive data flows"
+    description: "Use Streams for event sequences and reactive data. Prefer async* generator functions for custom streams. Always cancel stream subscriptions to prevent memory leaks."
+    category: "dart_async"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "stream", "reactive", "async-generator"]
+
+  - id: DART013
+    title: "Use Isolates for CPU-intensive work"
+    description: "Offload heavy computation to Isolates using Isolate.run() (Dart 2.19+) or compute() in Flutter. Avoid blocking the main isolate with synchronous heavy operations."
+    category: "dart_concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "isolate", "concurrency", "compute"]
+    example: |
+      // Dart 2.19+
+      final result = await Isolate.run(() => heavyComputation(data));
+      // Flutter
+      final result = await compute(heavyComputation, data);
+
+  # ============================
+  # Flutter Widget Design
+  # ============================
+
+  - id: DART014
+    title: "Keep widgets small and focused"
+    description: "Extract complex widget trees into smaller, focused widget classes. Each widget should have a single responsibility. Avoid deeply nested build methods."
+    category: "flutter_widgets"
+    severity: "recommended"
+    applicability:
+      frameworks: ["flutter", "dart"]
+    tags: ["flutter", "widgets", "composition", "clean-code"]
+
+  - id: DART015
+    title: "Use const constructors for immutable widgets"
+    description: "Mark widget constructors as const when all fields are final and the widget can be compile-time constant. This enables Flutter to skip rebuilds for const widgets."
+    category: "flutter_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["flutter", "dart"]
+    tags: ["flutter", "const", "performance", "widgets"]
+    example: |
+      class MyLabel extends StatelessWidget {
+        const MyLabel({super.key, required this.text});
+        final String text;
+        @override
+        Widget build(BuildContext context) => Text(text);
+      }
+
+  - id: DART016
+    title: "Prefer StatelessWidget when no mutable state is needed"
+    description: "Use StatelessWidget for widgets that only depend on configuration (constructor parameters) and inherited widgets. Use StatefulWidget only when the widget manages local mutable state."
+    category: "flutter_widgets"
+    severity: "recommended"
+    applicability:
+      frameworks: ["flutter", "dart"]
+    tags: ["flutter", "stateless", "stateful", "widgets"]
+
+  - id: DART017
+    title: "Use Keys appropriately in widget lists"
+    description: "Provide ValueKey or ObjectKey when building lists of widgets or when the order/identity of widgets can change. This helps Flutter efficiently diff and update the widget tree."
+    category: "flutter_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["flutter", "dart"]
+    tags: ["flutter", "keys", "lists", "performance"]
+
+  - id: DART018
+    title: "Minimize rebuilds with selective state management"
+    description: "Use fine-grained state management to rebuild only the widgets that depend on changed state. Avoid rebuilding entire subtrees. Use Consumer, BlocBuilder, or Selector for targeted rebuilds."
+    category: "flutter_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["flutter", "dart"]
+    tags: ["flutter", "rebuilds", "performance", "state"]
+
+  # ============================
+  # State Management
+  # ============================
+
+  - id: DART019
+    title: "Use Riverpod providers for dependency injection and state"
+    description: "Define Riverpod providers for shared state and dependencies. Use @riverpod annotation for code generation. Prefer ref.watch in build methods and ref.read for one-time reads."
+    category: "dart_state_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["riverpod", "dart"]
+    tags: ["dart", "riverpod", "state", "provider"]
+    example: |
+      @riverpod
+      Future<List<User>> users(UsersRef ref) async {
+        final api = ref.watch(apiClientProvider);
+        return api.fetchUsers();
+      }
+
+  - id: DART020
+    title: "Separate Bloc events and states into dedicated classes"
+    description: "Define events and states as sealed class hierarchies. Use Freezed or sealed classes for exhaustive pattern matching. Keep Bloc logic in event handlers, not in widgets."
+    category: "dart_state_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bloc", "dart"]
+    tags: ["dart", "bloc", "events", "states"]
+
+  - id: DART021
+    title: "Avoid global mutable state"
+    description: "Do not use global mutable variables for state. Use state management solutions (Riverpod, Bloc, Provider) or InheritedWidget for sharing state. Isolate state per feature."
+    category: "dart_state_management"
+    severity: "critical"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "state", "global", "architecture"]
+
+  # ============================
+  # Data & Serialization
+  # ============================
+
+  - id: DART022
+    title: "Use Freezed for immutable data classes with unions"
+    description: "Use Freezed for data classes that need immutability, copyWith, equality, and JSON serialization. Define union types with Freezed for sealed class hierarchies with code generation."
+    category: "dart_data"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "freezed", "immutable", "data-class"]
+    example: |
+      @freezed
+      class User with _$User {
+        const factory User({
+          required String id,
+          required String name,
+          String? email,
+        }) = _User;
+        factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
+      }
+
+  - id: DART023
+    title: "Use JsonSerializable for JSON mapping"
+    description: "Use json_serializable with json_annotation for type-safe JSON serialization. Define fromJson factory and toJson method. Use @JsonKey for custom field names."
+    category: "dart_data"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "json", "serialization", "codegen"]
+
+  - id: DART024
+    title: "Validate input data at boundaries"
+    description: "Validate external data (API responses, user input, file reads) at the boundary where it enters the application. Use factory constructors or validator methods to enforce invariants."
+    category: "dart_data"
+    severity: "critical"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "validation", "boundaries", "data"]
+
+  # ============================
+  # Database & ORM
+  # ============================
+
+  - id: DART025
+    title: "Use type-safe database abstractions"
+    description: "Use Drift (formerly Moor), Floor, or Isar for type-safe database access. Define tables/entities as Dart classes. Avoid raw SQL queries when ORM methods are available."
+    category: "dart_database"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "database", "drift", "floor", "isar"]
+
+  - id: DART026
+    title: "Implement proper database migration strategies"
+    description: "Define versioned migrations for schema changes. Test migrations with both upgrade and downgrade paths. Never modify existing migrations in production."
+    category: "dart_database"
+    severity: "critical"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "migration", "database", "schema"]
+
+  # ============================
+  # API & Networking
+  # ============================
+
+  - id: DART027
+    title: "Use Dio or http package with interceptors for API calls"
+    description: "Use Dio or http package for HTTP requests. Configure interceptors for authentication, logging, and error handling. Define typed response models for all API endpoints."
+    category: "dart_networking"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "dio", "http", "networking", "api"]
+
+  - id: DART028
+    title: "Handle API errors with typed results"
+    description: "Return typed result objects (Result<T, E> or Either<Failure, Success>) from API calls instead of throwing exceptions. Use Freezed unions for error/success modeling."
+    category: "dart_networking"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "result", "error-handling", "api"]
+
+  - id: DART029
+    title: "Use Shelf or Dart Frog for server-side routing"
+    description: "Use Shelf middleware pipeline or Dart Frog handlers for server-side HTTP APIs. Define routes declaratively. Apply middleware for authentication, CORS, and logging."
+    category: "dart_server"
+    severity: "recommended"
+    applicability:
+      frameworks: ["shelf", "dart"]
+    tags: ["dart", "shelf", "dart-frog", "server", "routing"]
+
+  # ============================
+  # Testing
+  # ============================
+
+  - id: DART030
+    title: "Write unit tests for business logic and data layers"
+    description: "Test business logic, repositories, and data transformations with unit tests. Use mockito for mocking dependencies. Group tests logically with group()."
+    category: "dart_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "testing", "unit-test", "mockito"]
+    example: |
+      void main() {
+        group('UserRepository', () {
+          late MockApiClient mockClient;
+          late UserRepository repository;
+          setUp(() {
+            mockClient = MockApiClient();
+            repository = UserRepository(mockClient);
+          });
+          test('fetchUsers returns list', () async {
+            when(mockClient.get(any)).thenAnswer((_) async => []);
+            final users = await repository.fetchUsers();
+            expect(users, isEmpty);
+          });
+        });
+      }
+
+  - id: DART031
+    title: "Use widget testing for Flutter UI components"
+    description: "Test widgets with flutter_test's testWidgets. Use find and expect matchers. Pump the widget tree and interact with finders. Use golden tests for visual regression."
+    category: "dart_testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["flutter", "dart"]
+    tags: ["flutter", "widget-test", "testing"]
+
+  - id: DART032
+    title: "Test Bloc/Cubit with blocTest"
+    description: "Use bloc_test package for testing Bloc and Cubit state transitions. Define build, act, and expect clearly. Test error states and edge cases."
+    category: "dart_testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["bloc", "dart"]
+    tags: ["dart", "bloc", "testing", "bloc_test"]
+
+  # ============================
+  # Architecture & Code Organization
+  # ============================
+
+  - id: DART033
+    title: "Follow clean architecture or feature-first project structure"
+    description: "Organize code by feature (feature-first) or by layer (clean architecture). Separate presentation, domain, and data layers. Keep business logic independent of UI framework."
+    category: "dart_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "architecture", "clean-code", "project-structure"]
+
+  - id: DART034
+    title: "Use dependency injection for testability"
+    description: "Inject dependencies via constructors or DI frameworks (GetIt, Injectable, Riverpod). Avoid static method calls to services. Define abstractions (interfaces) for external dependencies."
+    category: "dart_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "dependency-injection", "get_it", "testability"]
+
+  - id: DART035
+    title: "Separate business logic from UI code"
+    description: "Keep business rules, data transformations, and validation logic out of Widget build methods. Use Bloc, Cubit, ChangeNotifier, or plain classes for logic."
+    category: "dart_architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "separation-of-concerns", "architecture"]
+
+  - id: DART036
+    title: "Use barrel files (exports) for public API"
+    description: "Define a single entry-point file (barrel) for each package/feature that exports public symbols. Use show/hide to control API surface. Avoid exposing internal implementation."
+    category: "dart_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "exports", "barrel", "api"]
+
+  # ============================
+  # Code Generation & Annotations
+  # ============================
+
+  - id: DART037
+    title: "Use build_runner for code generation"
+    description: "Use build_runner with json_serializable, freezed, injectable, auto_route, and other generators. Run build_runner regularly during development. Configure build.yaml for custom settings."
+    category: "dart_codegen"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "build_runner", "codegen"]
+
+  - id: DART038
+    title: "Keep generated files out of version control when possible"
+    description: "For libraries, check in generated files. For apps, consider adding *.g.dart and *.freezed.dart to .gitignore and generating in CI. Document the generation workflow."
+    category: "dart_codegen"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "codegen", "git", "generated-files"]
+
+  # ============================
+  # Platform Integration
+  # ============================
+
+  - id: DART039
+    title: "Use MethodChannel/EventChannel for platform communication"
+    description: "Communicate with native platforms (iOS, Android) via MethodChannel for request/response and EventChannel for streams. Define clear codec contracts."
+    category: "flutter_platform"
+    severity: "recommended"
+    applicability:
+      frameworks: ["flutter", "dart"]
+    tags: ["flutter", "platform-channel", "method-channel"]
+
+  - id: DART040
+    title: "Handle platform differences with conditional imports"
+    description: "Use conditional imports (dart:io vs dart:html) and kIsWeb for platform-specific code. Isolate platform code behind abstractions."
+    category: "dart_platform"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "platform", "conditional-imports"]
+
+  # ============================
+  # Performance
+  # ============================
+
+  - id: DART041
+    title: "Avoid unnecessary widget rebuilds"
+    description: "Use const widgets, memoize expensive computations, and use shouldRebuild/buildWhen. Profile with Flutter DevTools to identify unnecessary rebuilds."
+    category: "flutter_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["flutter", "dart"]
+    tags: ["flutter", "performance", "rebuild", "optimization"]
+
+  - id: DART042
+    title: "Use lazy initialization for expensive resources"
+    description: "Use late final or lazy initialization patterns for expensive resources (databases, caches, large data structures). Initialize only when first accessed."
+    category: "dart_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "late", "lazy", "performance"]
+
+  - id: DART043
+    title: "Optimize list and collection operations"
+    description: "Use whereType, map, expand instead of manual loops when readable. Prefer const lists for fixed data. Use Iterable methods lazily with generators for large datasets."
+    category: "dart_performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "collections", "performance", "iterable"]
+
+  # ============================
+  # Security
+  # ============================
+
+  - id: DART044
+    title: "Never hardcode secrets or API keys"
+    description: "Store secrets in environment variables, secure storage (flutter_secure_storage), or backend configuration. Use --dart-define for build-time secrets. Never commit secrets to source control."
+    category: "dart_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "security", "secrets", "api-keys"]
+
+  - id: DART045
+    title: "Validate and sanitize all external input"
+    description: "Validate user input, API responses, and file data before use. Prevent injection attacks in database queries. Use parameterized queries with ORMs."
+    category: "dart_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "security", "validation", "injection"]
+
+  # ============================
+  # Documentation & Style
+  # ============================
+
+  - id: DART046
+    title: "Use dartdoc comments for public APIs"
+    description: "Write /// dartdoc comments for all public classes, methods, and properties. Include parameter descriptions, return values, and code examples. Use markdown formatting."
+    category: "dart_documentation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "documentation", "dartdoc", "api"]
+    example: |
+      /// Fetches a user by [id] from the remote API.
+      ///
+      /// Returns the [User] if found, throws [UserNotFoundException] otherwise.
+      ///
+      /// ```dart
+      /// final user = await repository.getUser('abc');
+      /// ```
+      Future<User> getUser(String id) async { ... }
+
+  - id: DART047
+    title: "Follow Effective Dart naming conventions"
+    description: "Use UpperCamelCase for classes/enums/typedefs, lowerCamelCase for variables/functions/parameters, lowercase_with_underscores for libraries/packages/files. Prefix private members with _."
+    category: "dart_style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "naming", "conventions", "style"]
+
+  - id: DART048
+    title: "Use dart analyze and enforce lints"
+    description: "Configure analysis_options.yaml with recommended lints (flutter_lints or very_good_analysis). Run dart analyze in CI. Fix all warnings before merging."
+    category: "dart_quality"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "linting", "analysis", "quality"]
+
+  # ============================
+  # Pubspec & Dependencies
+  # ============================
+
+  - id: DART049
+    title: "Pin dependency versions in pubspec.yaml"
+    description: "Use version constraints that balance stability and updates (e.g., ^1.0.0). Lock versions with pubspec.lock in version control for apps. Keep dependencies minimal and audited."
+    category: "dart_dependencies"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "pubspec", "dependencies", "versioning"]
+
+  - id: DART050
+    title: "Organize code into packages for reusability"
+    description: "Extract shared code into internal packages using path dependencies or monorepo tools (melos). Define clear package boundaries and public APIs. Publish reusable packages to pub.dev."
+    category: "dart_architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["dart"]
+    tags: ["dart", "packages", "pub", "reusability"]

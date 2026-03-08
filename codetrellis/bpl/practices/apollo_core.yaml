@@ -1,0 +1,763 @@
+# Apollo Client GraphQL Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.59 - Apollo Client Framework Support
+# Practice IDs: APOLLO001-APOLLO050
+# Coverage: Queries, Mutations, Cache, Subscriptions, Links, TypeScript,
+#           Performance, Testing, SSR, Patterns, Migration, Integrations
+# Versions: Apollo Client v1.x, v2.x, v3.x (by Apollo GraphQL)
+# Library: https://www.apollographql.com/docs/react
+
+practices:
+  # ============================================================================
+  # APOLLO QUERIES (APOLLO001-APOLLO010) - Query hook best practices
+  # ============================================================================
+
+  - id: APOLLO001
+    title: "Use useQuery for declarative data fetching in components"
+    description: "useQuery is the primary hook for executing GraphQL queries. It handles loading, error, and data states automatically. Always destructure loading, error, and data from the result for proper UI handling."
+    category: "apollo_queries"
+    severity: "critical"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "useQuery", "hooks", "data-fetching"]
+    example: |
+      // ✅ Proper useQuery usage
+      const { loading, error, data } = useQuery(GET_USERS, {
+        variables: { limit: 10 },
+        fetchPolicy: 'cache-first',
+      });
+
+      if (loading) return <Spinner />;
+      if (error) return <ErrorMessage error={error} />;
+      return <UserList users={data.users} />;
+
+  - id: APOLLO002
+    title: "Choose the correct fetchPolicy for your use case"
+    description: "Apollo provides multiple fetch policies: cache-first (default, fastest), cache-and-network (freshness + speed), network-only (skip cache read), no-cache (skip cache entirely), cache-only (offline). Choose based on data freshness requirements."
+    category: "apollo_queries"
+    severity: "critical"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "fetchPolicy", "cache", "performance"]
+    example: |
+      // ✅ Fresh data with cache fallback
+      useQuery(GET_NOTIFICATIONS, { fetchPolicy: 'cache-and-network' });
+
+      // ✅ Always fresh (mutations-sensitive)
+      useQuery(GET_CART, { fetchPolicy: 'network-only' });
+
+      // ✅ Static data, only cache
+      useQuery(GET_FEATURE_FLAGS, { fetchPolicy: 'cache-only' });
+
+  - id: APOLLO003
+    title: "Use useLazyQuery for event-driven or conditional queries"
+    description: "useLazyQuery returns an execute function that triggers the query on demand, unlike useQuery which runs on mount. Use it for search, form submissions, or user-triggered data fetching."
+    category: "apollo_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "useLazyQuery", "conditional", "event-driven"]
+    example: |
+      // ✅ Search triggered by user
+      const [search, { loading, data }] = useLazyQuery(SEARCH_USERS);
+      const handleSearch = (term: string) => search({ variables: { term } });
+
+  - id: APOLLO004
+    title: "Use useSuspenseQuery for Suspense-based data fetching (v3.8+)"
+    description: "useSuspenseQuery integrates with React Suspense for declarative loading states. It throws promises during loading (caught by Suspense boundary) and errors (caught by Error Boundary). Requires Apollo Client 3.8+."
+    category: "apollo_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "react", "apollo-v3"]
+    tags: ["apollo", "suspense", "useSuspenseQuery", "react-18"]
+    example: |
+      // ✅ Suspense-based query
+      function UserProfile({ id }: { id: string }) {
+        const { data } = useSuspenseQuery(GET_USER, { variables: { id } });
+        return <Profile user={data.user} />;
+      }
+      // Parent
+      <Suspense fallback={<Spinner />}>
+        <ErrorBoundary><UserProfile id="1" /></ErrorBoundary>
+      </Suspense>
+
+  - id: APOLLO005
+    title: "Use useBackgroundQuery + useReadQuery for render-as-you-fetch"
+    description: "useBackgroundQuery initiates a query in a parent component and returns a queryRef. useReadQuery in a child component reads the data without re-triggering. This enables the render-as-you-fetch pattern. Requires Apollo Client 3.8+."
+    category: "apollo_queries"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo", "react", "apollo-v3"]
+    tags:
+      ["apollo", "useBackgroundQuery", "useReadQuery", "render-as-you-fetch"]
+    example: |
+      // Parent
+      const [queryRef] = useBackgroundQuery(GET_USERS);
+      return <Suspense fallback={<Spinner />}><UserList queryRef={queryRef} /></Suspense>;
+      // Child
+      const { data } = useReadQuery(queryRef);
+
+  - id: APOLLO006
+    title: "Define GraphQL operations in separate gql-tagged files"
+    description: "Define queries, mutations, and fragments in dedicated files using gql tagged templates. Co-locate operations with their components or group by domain. This enables better IDE support, codegen, and reuse."
+    category: "apollo_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "graphql"]
+    tags: ["apollo", "gql", "operations", "organization"]
+    example: |
+      // queries/users.ts
+      export const GET_USERS = gql`
+        query GetUsers($limit: Int) {
+          users(limit: $limit) { id name email }
+        }
+      `;
+
+  - id: APOLLO007
+    title: "Use fragments for shared field selections"
+    description: "Define fragments for field selections that are reused across multiple queries or mutations. Fragments improve maintainability, reduce duplication, and align with component data requirements."
+    category: "apollo_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "graphql"]
+    tags: ["apollo", "fragments", "reuse", "colocation"]
+    example: |
+      const USER_FIELDS = gql`
+        fragment UserFields on User { id name email avatar }
+      `;
+      const GET_USER = gql`
+        query GetUser($id: ID!) { user(id: $id) { ...UserFields } }
+        ${USER_FIELDS}
+      `;
+
+  - id: APOLLO008
+    title: "Set appropriate errorPolicy based on partial data needs"
+    description: "Apollo's errorPolicy controls how GraphQL errors are handled: 'none' (default, throws on error), 'ignore' (ignores errors, returns data), 'all' (returns both data and errors). Use 'all' when you need partial data with error info."
+    category: "apollo_queries"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "errorPolicy", "error-handling", "partial-data"]
+    example: |
+      // ✅ Get partial data + errors
+      const { data, error } = useQuery(GET_DASHBOARD, { errorPolicy: 'all' });
+
+  - id: APOLLO009
+    title: "Use pollInterval for real-time data polling"
+    description: "For data that needs periodic refreshing (dashboards, feeds), use pollInterval option instead of manual refetching. Stop polling when the component is not visible to save bandwidth."
+    category: "apollo_queries"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "polling", "real-time", "performance"]
+    example: |
+      const { data, startPolling, stopPolling } = useQuery(GET_FEED, {
+        pollInterval: 5000,
+      });
+
+  - id: APOLLO010
+    title: "Use skip option or useLazyQuery to prevent unnecessary queries"
+    description: "When a query depends on data that may not yet be available, use the skip option to prevent execution. This avoids wasted network requests and GraphQL errors from missing variables."
+    category: "apollo_queries"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "skip", "conditional", "optimization"]
+    example: |
+      // ✅ Skip until userId is available
+      const { data } = useQuery(GET_USER_PROFILE, {
+        variables: { id: userId },
+        skip: !userId,
+      });
+
+  # ============================================================================
+  # APOLLO MUTATIONS (APOLLO011-APOLLO018) - Mutation hook best practices
+  # ============================================================================
+
+  - id: APOLLO011
+    title: "Use useMutation with proper loading/error handling"
+    description: "useMutation returns a mutate function and a result object. Always handle loading state to prevent double-submission and error state for user feedback."
+    category: "apollo_mutations"
+    severity: "critical"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "useMutation", "error-handling", "loading"]
+    example: |
+      const [createUser, { loading, error }] = useMutation(CREATE_USER);
+      const handleSubmit = async (input: UserInput) => {
+        try {
+          const { data } = await createUser({ variables: { input } });
+        } catch (err) { /* error is also in error state */ }
+      };
+
+  - id: APOLLO012
+    title: "Use optimisticResponse for instant UI feedback"
+    description: "Provide optimisticResponse to useMutation for instant UI updates before the server responds. Always include __typename and id fields so Apollo can match the response to the cache."
+    category: "apollo_mutations"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "optimisticResponse", "optimistic-ui", "ux"]
+    example: |
+      const [toggleTodo] = useMutation(TOGGLE_TODO, {
+        optimisticResponse: {
+          toggleTodo: { id: todoId, __typename: 'Todo', completed: !completed },
+        },
+      });
+
+  - id: APOLLO013
+    title: "Use refetchQueries to keep related queries in sync"
+    description: "After a mutation, use refetchQueries to re-execute queries that depend on the mutated data. Prefer refetchQueries with query documents over string names for type safety."
+    category: "apollo_mutations"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "refetchQueries", "cache-invalidation", "sync"]
+    example: |
+      const [addTodo] = useMutation(ADD_TODO, {
+        refetchQueries: [{ query: GET_TODOS }, 'GetTodoCount'],
+      });
+
+  - id: APOLLO014
+    title: "Use the update function for manual cache updates after mutations"
+    description: "For mutations that add/remove items from lists, use the update function to directly modify the cache instead of refetching. This provides the fastest UI update and reduces network requests."
+    category: "apollo_mutations"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "update", "cache", "manual-update"]
+    example: |
+      const [addTodo] = useMutation(ADD_TODO, {
+        update(cache, { data: { addTodo } }) {
+          cache.modify({
+            fields: {
+              todos(existing = []) {
+                const newTodoRef = cache.writeFragment({ data: addTodo, fragment: TODO_FRAGMENT });
+                return [...existing, newTodoRef];
+              },
+            },
+          });
+        },
+      });
+
+  - id: APOLLO015
+    title: "Use onCompleted and onError callbacks for side effects"
+    description: "Use onCompleted for navigation, toast notifications, or analytics after successful mutations. Use onError for error-specific handling like form validation or retry logic."
+    category: "apollo_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "callbacks", "side-effects", "navigation"]
+    example: |
+      const [login] = useMutation(LOGIN, {
+        onCompleted: (data) => { router.push('/dashboard'); },
+        onError: (error) => { toast.error(error.message); },
+      });
+
+  - id: APOLLO016
+    title: "Combine optimisticResponse with update for best UX"
+    description: "For list modifications, combine optimisticResponse (instant feedback) with update (cache modification). This provides immediate UI update that automatically corrects when the server responds."
+    category: "apollo_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "optimistic", "update", "cache", "combined"]
+
+  - id: APOLLO017
+    title: "Always include __typename in optimistic responses"
+    description: "Apollo uses __typename for cache normalization. Omitting it from optimistic responses causes cache mismatches. Always include __typename for every object in the optimistic response tree."
+    category: "apollo_mutations"
+    severity: "critical"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "__typename", "optimistic", "cache-normalization"]
+
+  - id: APOLLO018
+    title: "Use awaitRefetchQueries for sequential operations"
+    description: "When subsequent code depends on refetched data, set awaitRefetchQueries: true. This makes the mutation promise wait until all refetch queries complete before resolving."
+    category: "apollo_mutations"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "awaitRefetchQueries", "sequential", "timing"]
+
+  # ============================================================================
+  # APOLLO CACHE (APOLLO019-APOLLO028) - Cache management best practices
+  # ============================================================================
+
+  - id: APOLLO019
+    title: "Configure typePolicies for proper cache normalization"
+    description: "Define typePolicies in InMemoryCache to control how each type is cached. Specify keyFields for custom identity, merge functions for nested objects, and field policies for pagination or computed fields."
+    category: "apollo_cache"
+    severity: "critical"
+    applicability:
+      frameworks: ["apollo", "apollo-v3"]
+    tags: ["apollo", "typePolicies", "cache", "normalization"]
+    example: |
+      const cache = new InMemoryCache({
+        typePolicies: {
+          User: { keyFields: ['email'] },
+          Query: {
+            fields: {
+              feed: { keyArgs: ['type'], merge: (existing = [], incoming) => [...existing, ...incoming] },
+            },
+          },
+        },
+      });
+
+  - id: APOLLO020
+    title: "Use keyFields to define custom cache identity"
+    description: "By default, Apollo uses id or _id as cache keys. For types without id, define keyFields in typePolicies. Use keyFields: false for singleton types. Use compound keys for composite identity."
+    category: "apollo_cache"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "apollo-v3"]
+    tags: ["apollo", "keyFields", "identity", "normalization"]
+    example: |
+      typePolicies: {
+        Product: { keyFields: ['sku', 'warehouse'] },
+        CurrentUser: { keyFields: false },  // singleton
+      }
+
+  - id: APOLLO021
+    title: "Implement field merge functions for paginated data"
+    description: "For paginated queries, define merge functions in field policies to combine incoming pages with existing data. Use keyArgs to distinguish different query parameters."
+    category: "apollo_cache"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "apollo-v3"]
+    tags: ["apollo", "pagination", "merge", "field-policy", "keyArgs"]
+    example: |
+      typePolicies: {
+        Query: {
+          fields: {
+            feed: {
+              keyArgs: ['category'],
+              merge(existing = [], incoming, { args }) {
+                const offset = args?.offset ?? 0;
+                const merged = existing.slice(0);
+                for (let i = 0; i < incoming.length; ++i) merged[offset + i] = incoming[i];
+                return merged;
+              },
+            },
+          },
+        },
+      }
+
+  - id: APOLLO022
+    title: "Use makeVar for reactive local state"
+    description: "Apollo's makeVar creates reactive variables for local state that triggers re-renders in components reading them. Use reactive vars instead of local resolvers (deprecated in v3) for simple local state."
+    category: "apollo_cache"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "apollo-v3"]
+    tags: ["apollo", "makeVar", "reactive-variables", "local-state"]
+    example: |
+      export const cartItemsVar = makeVar<CartItem[]>([]);
+      // Read in component
+      const cartItems = useReactiveVar(cartItemsVar);
+      // Update anywhere
+      cartItemsVar([...cartItemsVar(), newItem]);
+
+  - id: APOLLO023
+    title: "Use cache.modify for precise cache updates"
+    description: "Use cache.modify to directly update cached fields without writing entire objects. It's more efficient than readQuery/writeQuery for targeted updates and avoids the need to specify the full query."
+    category: "apollo_cache"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "apollo-v3"]
+    tags: ["apollo", "cache.modify", "update", "performance"]
+    example: |
+      cache.modify({
+        id: cache.identify(user),
+        fields: {
+          name: () => 'New Name',
+          friends: (existing, { readField }) => existing.filter(ref => readField('id', ref) !== removedId),
+        },
+      });
+
+  - id: APOLLO024
+    title: "Use possibleTypes for union/interface type matching"
+    description: "When your schema uses unions or interfaces, provide possibleTypes to InMemoryCache so Apollo can match fragments correctly. Generate possibleTypes from your schema using introspection."
+    category: "apollo_cache"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "possibleTypes", "unions", "interfaces", "fragments"]
+    example: |
+      const cache = new InMemoryCache({
+        possibleTypes: {
+          SearchResult: ['User', 'Post', 'Comment'],
+          Node: ['User', 'Post'],
+        },
+      });
+
+  - id: APOLLO025
+    title: "Use cache.evict and cache.gc for cache cleanup"
+    description: "Use cache.evict to remove specific objects or fields from the cache. Follow with cache.gc() to garbage collect unreachable normalized objects. Useful after deletions."
+    category: "apollo_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo", "apollo-v3"]
+    tags: ["apollo", "cache.evict", "cache.gc", "cleanup"]
+    example: |
+      cache.evict({ id: cache.identify(deletedUser) });
+      cache.gc();
+
+  - id: APOLLO026
+    title: "Avoid reading/writing cache outside of update or component lifecycle"
+    description: "Cache reads and writes should happen in mutation update functions, component effects, or reactive variable updates. Avoid cache operations in event handlers without proper error handling."
+    category: "apollo_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "cache", "lifecycle", "best-practice"]
+
+  - id: APOLLO027
+    title: "Use @client directive for local-only fields"
+    description: "Mark fields with @client directive to resolve them from the local cache only, without sending them to the server. Use with reactive variables or local field policies."
+    category: "apollo_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo", "apollo-v3"]
+    tags: ["apollo", "@client", "local-state", "directive"]
+    example: |
+      const GET_CART = gql`
+        query GetCart {
+          cartItems @client
+          cartTotal @client
+        }
+      `;
+
+  - id: APOLLO028
+    title: "Use read functions for computed/derived cache fields"
+    description: "Define read functions in field policies for computed fields that derive from other cached data. This avoids storing redundant data and keeps the cache normalized."
+    category: "apollo_cache"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo", "apollo-v3"]
+    tags: ["apollo", "read", "computed", "field-policy", "derived"]
+    example: |
+      typePolicies: {
+        User: {
+          fields: {
+            fullName: {
+              read(_, { readField }) {
+                return `${readField('firstName')} ${readField('lastName')}`;
+              },
+            },
+          },
+        },
+      }
+
+  # ============================================================================
+  # APOLLO SUBSCRIPTIONS (APOLLO029-APOLLO032) - Subscription best practices
+  # ============================================================================
+
+  - id: APOLLO029
+    title: "Use GraphQLWsLink instead of WebSocketLink for new projects"
+    description: "The graphql-ws library (GraphQLWsLink) uses the newer graphql-ws protocol which is actively maintained. The older subscriptions-transport-ws (WebSocketLink) is deprecated. Migrate to graphql-ws for better reliability."
+    category: "apollo_subscriptions"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "apollo-v3"]
+    tags: ["apollo", "GraphQLWsLink", "websocket", "subscriptions"]
+    example: |
+      import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
+      import { createClient } from 'graphql-ws';
+      const wsLink = new GraphQLWsLink(createClient({ url: 'ws://localhost:4000/graphql' }));
+
+  - id: APOLLO030
+    title: "Use split to route between HTTP and WebSocket transports"
+    description: "Use ApolloLink.split or the split utility to route queries/mutations over HTTP and subscriptions over WebSocket. Check the operation type to determine the transport."
+    category: "apollo_subscriptions"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "split", "transport", "routing", "websocket"]
+    example: |
+      import { split, HttpLink } from '@apollo/client';
+      import { getMainDefinition } from '@apollo/client/utilities';
+      const link = split(
+        ({ query }) => {
+          const def = getMainDefinition(query);
+          return def.kind === 'OperationDefinition' && def.operation === 'subscription';
+        },
+        wsLink,
+        httpLink,
+      );
+
+  - id: APOLLO031
+    title: "Use subscribeToMore for query-subscription integration"
+    description: "Use subscribeToMore from useQuery to integrate real-time updates into existing query data. Define updateQuery to merge subscription data into the query result."
+    category: "apollo_subscriptions"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "subscribeToMore", "real-time", "integration"]
+    example: |
+      const { data, subscribeToMore } = useQuery(GET_MESSAGES);
+      useEffect(() => {
+        return subscribeToMore({
+          document: MESSAGE_ADDED,
+          updateQuery: (prev, { subscriptionData }) => ({
+            messages: [...prev.messages, subscriptionData.data.messageAdded],
+          }),
+        });
+      }, [subscribeToMore]);
+
+  - id: APOLLO032
+    title: "Handle WebSocket reconnection and authentication"
+    description: "Configure connectionParams for authentication tokens and implement reconnection logic. Use the graphql-ws client's retryAttempts and connectionAckWaitTimeout for resilience."
+    category: "apollo_subscriptions"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "websocket", "auth", "reconnection", "resilience"]
+
+  # ============================================================================
+  # APOLLO LINKS (APOLLO033-APOLLO036) - Link chain best practices
+  # ============================================================================
+
+  - id: APOLLO033
+    title: "Build a proper link chain with error handling"
+    description: "Compose Apollo Links in order: auth (setContext) → error (onError) → retry → HTTP/WS. The last link must be a terminating link (HttpLink, BatchHttpLink, or split with WebSocket)."
+    category: "apollo_links"
+    severity: "critical"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "link-chain", "composition", "error-handling"]
+    example: |
+      const link = ApolloLink.from([
+        authLink,
+        onError(({ graphQLErrors, networkError }) => { /* handle */ }),
+        retryLink,
+        split(isSubscription, wsLink, httpLink),
+      ]);
+
+  - id: APOLLO034
+    title: "Use onError link for centralized error handling"
+    description: "Add an onError link to handle GraphQL errors (partial data) and network errors (connection issues) centrally. Log errors, refresh tokens on 401, or show global error notifications."
+    category: "apollo_links"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "onError", "error-handling", "centralized"]
+    example: |
+      import { onError } from '@apollo/client/link/error';
+      const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) => {
+        if (graphQLErrors) graphQLErrors.forEach(({ message }) => console.error(message));
+        if (networkError?.statusCode === 401) refreshToken().then(() => forward(operation));
+      });
+
+  - id: APOLLO035
+    title: "Use setContext link for dynamic headers and auth tokens"
+    description: "Use the setContext link to dynamically add authentication headers or other context to every request. Read the token from storage or state at request time, not at link creation time."
+    category: "apollo_links"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "setContext", "auth", "headers", "dynamic"]
+    example: |
+      import { setContext } from '@apollo/client/link/context';
+      const authLink = setContext(async (_, { headers }) => ({
+        headers: { ...headers, authorization: `Bearer ${await getToken()}` },
+      }));
+
+  - id: APOLLO036
+    title: "Configure HttpLink with proper credentials and headers"
+    description: "Set credentials to 'include' for cookie-based auth or 'same-origin' for same-domain. Configure default headers for content type and custom headers."
+    category: "apollo_links"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "HttpLink", "credentials", "headers"]
+
+  # ============================================================================
+  # APOLLO TYPESCRIPT (APOLLO037-APOLLO040) - TypeScript best practices
+  # ============================================================================
+
+  - id: APOLLO037
+    title: "Use TypedDocumentNode for end-to-end type safety"
+    description: "TypedDocumentNode from @graphql-typed-document-node/core provides automatic type inference for query/mutation variables and results. Use with GraphQL Code Generator for zero-runtime type safety."
+    category: "apollo_typescript"
+    severity: "critical"
+    applicability:
+      frameworks: ["apollo", "typescript"]
+    tags: ["apollo", "TypedDocumentNode", "type-safety", "codegen"]
+    example: |
+      // Generated by codegen
+      const GetUsersDocument: TypedDocumentNode<GetUsersQuery, GetUsersQueryVariables> = gql`...`;
+      // Automatically typed!
+      const { data } = useQuery(GetUsersDocument);
+      data?.users; // TypeScript knows the shape
+
+  - id: APOLLO038
+    title: "Type useQuery and useMutation with generic parameters"
+    description: "When not using TypedDocumentNode, provide explicit type parameters to hooks for type-safe data and variables. Define query/mutation result types and variable types separately."
+    category: "apollo_typescript"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "typescript"]
+    tags: ["apollo", "generics", "type-parameters", "hooks"]
+    example: |
+      const { data } = useQuery<GetUsersQuery, GetUsersQueryVariables>(GET_USERS, {
+        variables: { limit: 10 },
+      });
+
+  - id: APOLLO039
+    title: "Set up GraphQL Code Generator for automatic type generation"
+    description: "Use @graphql-codegen with the client preset to generate TypeScript types, typed documents, and fragment masking from your GraphQL schema and operations. This eliminates manual type maintenance."
+    category: "apollo_typescript"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "typescript", "graphql"]
+    tags: ["apollo", "codegen", "graphql-codegen", "automation"]
+
+  - id: APOLLO040
+    title: "Type reactive variables with generic parameter"
+    description: "When creating reactive variables with makeVar, provide the type parameter to ensure type safety when reading and writing the variable."
+    category: "apollo_typescript"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo", "typescript", "apollo-v3"]
+    tags: ["apollo", "makeVar", "typed", "reactive-variables"]
+    example: |
+      interface CartItem { id: string; name: string; quantity: number; }
+      const cartItemsVar = makeVar<CartItem[]>([]);
+
+  # ============================================================================
+  # APOLLO TESTING (APOLLO041-APOLLO043) - Testing best practices
+  # ============================================================================
+
+  - id: APOLLO041
+    title: "Use MockedProvider for component testing"
+    description: "Wrap components under test with MockedProvider and define mocks that match your query variables. Use addTypename: false in tests to simplify mock data. Always await act() for async operations."
+    category: "apollo_testing"
+    severity: "critical"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "MockedProvider", "testing", "mocks"]
+    example: |
+      const mocks = [{ request: { query: GET_USER, variables: { id: '1' } },
+        result: { data: { user: { id: '1', name: 'Alice' } } } }];
+      render(
+        <MockedProvider mocks={mocks} addTypename={false}>
+          <UserProfile id="1" />
+        </MockedProvider>
+      );
+      await screen.findByText('Alice');
+
+  - id: APOLLO042
+    title: "Test error states with MockedProvider error mocks"
+    description: "Define mocks with error field to test error handling. Test both GraphQL errors (partial results) and network errors (complete failure) scenarios."
+    category: "apollo_testing"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "testing", "errors", "MockedProvider"]
+    example: |
+      const errorMock = {
+        request: { query: GET_USER, variables: { id: '1' } },
+        error: new Error('Network error'),
+      };
+
+  - id: APOLLO043
+    title: "Test cache updates and optimistic responses"
+    description: "Verify that mutations correctly update the cache by asserting on re-rendered query data after mutation. Use waitFor to handle async cache updates."
+    category: "apollo_testing"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "testing", "cache", "optimistic", "mutations"]
+
+  # ============================================================================
+  # APOLLO SSR (APOLLO044-APOLLO046) - Server-side rendering best practices
+  # ============================================================================
+
+  - id: APOLLO044
+    title: "Use getDataFromTree or renderToStringWithData for SSR"
+    description: "For server-side rendering, use getDataFromTree to resolve all queries before rendering. Extract the cache state and pass it to the client for hydration."
+    category: "apollo_ssr"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "react", "next"]
+    tags: ["apollo", "SSR", "getDataFromTree", "hydration"]
+
+  - id: APOLLO045
+    title: "Create a new ApolloClient instance per SSR request"
+    description: "On the server, create a new ApolloClient for each request to prevent cache sharing between users. The client should use ssrMode: true and an appropriate link."
+    category: "apollo_ssr"
+    severity: "critical"
+    applicability:
+      frameworks: ["apollo", "next"]
+    tags: ["apollo", "SSR", "per-request", "security"]
+    example: |
+      // In getServerSideProps or API route
+      const client = new ApolloClient({
+        ssrMode: true,
+        link: createHttpLink({ uri: 'http://localhost:4000/graphql' }),
+        cache: new InMemoryCache(),
+      });
+
+  - id: APOLLO046
+    title: "Hydrate the client cache from SSR state"
+    description: "After SSR, extract the cache state with client.extract() and pass it to the client. Use cache.restore() on the client to hydrate the cache, avoiding redundant queries."
+    category: "apollo_ssr"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "next", "react"]
+    tags: ["apollo", "hydration", "cache", "restore", "SSR"]
+
+  # ============================================================================
+  # APOLLO PATTERNS (APOLLO047-APOLLO050) - Patterns and migration
+  # ============================================================================
+
+  - id: APOLLO047
+    title: "Wrap ApolloProvider at the app root"
+    description: "Wrap your application with ApolloProvider and pass the client instance. This makes the client available to all useQuery/useMutation hooks via React context."
+    category: "apollo_patterns"
+    severity: "critical"
+    applicability:
+      frameworks: ["apollo", "react"]
+    tags: ["apollo", "ApolloProvider", "context", "setup"]
+    example: |
+      import { ApolloProvider } from '@apollo/client';
+      function App() {
+        return (
+          <ApolloProvider client={client}>
+            <Router />
+          </ApolloProvider>
+        );
+      }
+
+  - id: APOLLO048
+    title: "Use Apollo DevTools for debugging"
+    description: "Enable connectToDevTools in development for the Apollo Client DevTools browser extension. This provides cache inspection, query/mutation tracking, and GraphiQL integration."
+    category: "apollo_patterns"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo"]
+    tags: ["apollo", "devtools", "debugging", "development"]
+
+  - id: APOLLO049
+    title: "Migrate from v2 class-based to v3 unified @apollo/client"
+    description: "When migrating from Apollo Client v2 to v3: replace separate packages (apollo-boost, @apollo/react-hooks) with @apollo/client, migrate to typePolicies from cacheRedirects, and replace local resolvers with reactive variables."
+    category: "apollo_migration"
+    severity: "high"
+    applicability:
+      frameworks: ["apollo", "apollo-v2"]
+    tags: ["apollo", "migration", "v2-to-v3", "upgrade"]
+
+  - id: APOLLO050
+    title: "Use useFragment for component-level fragment subscriptions (v3.8+)"
+    description: "useFragment subscribes a component to a specific fragment in the cache, enabling fine-grained re-renders. The component only re-renders when the specific fragment data changes, improving performance."
+    category: "apollo_patterns"
+    severity: "medium"
+    applicability:
+      frameworks: ["apollo", "apollo-v3", "react"]
+    tags: ["apollo", "useFragment", "fragment", "performance", "v3.8"]
+    example: |
+      const { data } = useFragment({
+        fragment: USER_FRAGMENT,
+        from: { __typename: 'User', id: userId },
+      });

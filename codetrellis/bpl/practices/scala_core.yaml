@@ -1,0 +1,565 @@
+# Scala Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.25 - Scala Language Support
+# Practice IDs: SCALA001-SCALA050
+# Category: scala
+# Frameworks: scala
+
+practices:
+  - id: SCALA001
+    title: "Prefer immutable val over mutable var"
+    description: "Use 'val' by default for all bindings. Only use 'var' when mutation is truly necessary and contained within a narrow scope. Immutability prevents entire categories of concurrency bugs and makes code easier to reason about."
+    category: "style"
+    severity: "critical"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "immutability", "val-var"]
+    example: |
+      // Good
+      val name: String = "Alice"
+      val users: List[User] = fetchUsers()
+      // Avoid
+      var name: String = "Alice"
+
+  - id: SCALA002
+    title: "Use case classes for immutable data transfer objects"
+    description: "Define data-holding types as case classes. They provide equals, hashCode, copy, toString, and pattern matching support automatically. Use copy() for transformations instead of mutation."
+    category: "type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "case-class", "data"]
+    example: |
+      case class User(name: String, email: String, age: Int)
+      val updated = user.copy(age = user.age + 1)
+
+  - id: SCALA003
+    title: "Use sealed traits/classes for algebraic data types"
+    description: "Model closed type hierarchies with sealed traits or sealed abstract classes. The compiler can check pattern match exhaustiveness, catching missing cases at compile time."
+    category: "type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "sealed", "adt", "pattern-matching"]
+    example: |
+      sealed trait Shape
+      case class Circle(radius: Double) extends Shape
+      case class Rectangle(width: Double, height: Double) extends Shape
+      // Scala 3 enum ADT
+      enum Color:
+        case Red, Green, Blue
+
+  - id: SCALA004
+    title: "Use Option instead of null"
+    description: "Never use null in Scala code. Use Option[T] to represent optional values. Use map/flatMap/getOrElse/fold for safe access. Pattern match on Some/None when appropriate."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "option", "null-safety"]
+    example: |
+      def findUser(id: Long): Option[User] =
+        users.find(_.id == id)
+      val name = findUser(42).map(_.name).getOrElse("unknown")
+
+  - id: SCALA005
+    title: "Use Either for error handling over exceptions"
+    description: "Use Either[Error, Result] for expected error conditions. Reserve exceptions for truly exceptional situations. Left convention holds errors, Right holds success values."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "either", "error-handling"]
+    example: |
+      def parseAge(s: String): Either[String, Int] =
+        s.toIntOption.toRight(s"Invalid age: $s")
+      parseAge("25").map(_ + 1) // Right(26)
+
+  - id: SCALA006
+    title: "Prefer pattern matching over type checks"
+    description: "Use pattern matching instead of isInstanceOf/asInstanceOf. Pattern matching is type-safe, exhaustive (with sealed types), and idiomatic Scala."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "pattern-matching", "style"]
+    example: |
+      shape match
+        case Circle(r)        => math.Pi * r * r
+        case Rectangle(w, h)  => w * h
+
+  - id: SCALA007
+    title: "Use for-comprehensions for monadic composition"
+    description: "Use for-comprehensions (for/yield) to compose operations on Option, Either, Future, IO, and other monadic types. This is cleaner than nested flatMap/map chains."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "for-comprehension", "monadic"]
+    example: |
+      for
+        user  <- findUser(id)
+        email <- user.emailOpt
+        host  <- extractHost(email)
+      yield host
+
+  - id: SCALA008
+    title: "Avoid wildcard imports, use explicit imports"
+    description: "Prefer explicit imports over wildcard imports (import foo._). Wildcard imports pollute the namespace and make it hard to track where names come from. Exception: test files and DSLs."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "imports", "style"]
+
+  - id: SCALA009
+    title: "Use companion objects for factory methods and constants"
+    description: "Place factory methods (apply, from, of), constants, and implicit/given instances in companion objects. This provides a clean namespace and enables apply-syntax construction."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "companion-object", "factory"]
+    example: |
+      case class UserId(value: Long)
+      object UserId:
+        def from(s: String): Either[String, UserId] =
+          s.toLongOption.map(UserId(_)).toRight("Invalid ID")
+
+  - id: SCALA010
+    title: "Use type aliases for complex types"
+    description: "Define type aliases for complex generic types to improve readability. Use opaque types (Scala 3) for zero-cost wrapper types that prevent mixing up values."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "type-alias", "opaque-type"]
+    example: |
+      // Scala 3 opaque type
+      opaque type UserId = Long
+      object UserId:
+        def apply(id: Long): UserId = id
+      // Type alias
+      type Result[A] = Either[AppError, A]
+
+  - id: SCALA011
+    title: "Implement type classes with traits and given instances"
+    description: "Use type class pattern (trait + given instances) for ad-hoc polymorphism. In Scala 3, use given/using. In Scala 2, use implicit val/def. Prefer type classes over inheritance for cross-cutting behavior."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "type-class", "given", "implicit"]
+    example: |
+      // Scala 3
+      trait JsonEncoder[A]:
+        def encode(a: A): Json
+      given JsonEncoder[User] with
+        def encode(u: User): Json = ???
+
+  - id: SCALA012
+    title: "Use extension methods instead of implicit classes"
+    description: "In Scala 3, use extension methods for adding methods to existing types. In Scala 2, use implicit classes but keep them focused and well-documented."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "extension-method", "implicit-class"]
+    example: |
+      extension (s: String)
+        def toSlug: String = s.toLowerCase.replaceAll("\\s+", "-")
+      "Hello World".toSlug // "hello-world"
+
+  - id: SCALA013
+    title: "Prefer immutable collections from scala.collection.immutable"
+    description: "Use immutable collections (List, Vector, Map, Set) by default. Only use mutable collections (ArrayBuffer, HashMap) in performance-critical code paths with local scope."
+    category: "style"
+    severity: "critical"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "collections", "immutable"]
+
+  - id: SCALA014
+    title: "Use higher-order functions over imperative loops"
+    description: "Prefer map, flatMap, filter, fold, collect, groupBy over while/for loops with mutation. Functional collection operations are more readable and less error-prone."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "functional", "higher-order"]
+    example: |
+      // Good
+      val adults = users.filter(_.age >= 18).map(_.name)
+      // Avoid
+      val adults = new ArrayBuffer[String]()
+      for (u <- users) if (u.age >= 18) adults += u.name
+
+  - id: SCALA015
+    title: "Use Try for wrapping exception-throwing code"
+    description: "Wrap calls to Java libraries or other exception-throwing code with scala.util.Try. Convert to Either or Option for further processing. Never let exceptions leak through functional composition."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "try", "exception-wrapping"]
+    example: |
+      import scala.util.Try
+      val result: Try[Int] = Try(riskyJavaCall())
+      result.toEither.left.map(_.getMessage)
+
+  - id: SCALA016
+    title: "Avoid Any, AnyRef, asInstanceOf"
+    description: "Never use Any or AnyRef as parameter or return types except in truly generic code. Avoid asInstanceOf casts. Use pattern matching, type classes, or generics with bounds instead."
+    category: "type_safety"
+    severity: "critical"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "type-safety", "any"]
+
+  - id: SCALA017
+    title: "Use meaningful names for type parameters"
+    description: "For simple containers use A, B. For domain-specific generics, use descriptive names like F[_] for effect type, K/V for key/value, Err for error channel. Avoid single letters beyond two type params."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "naming", "generics"]
+
+  - id: SCALA018
+    title: "Limit implicit scope and use explicit given imports"
+    description: "In Scala 3, import given instances explicitly with 'import foo.given' or 'import foo.{given Bar}'. Avoid polluting implicit scope. In Scala 2, keep implicit vals in companion objects or dedicated objects."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "implicits", "given", "scope"]
+
+  - id: SCALA019
+    title: "Structure packages by domain, not by layer"
+    description: "Organize packages by business domain (users, orders, payments) rather than technical layer (controllers, services, repositories). Co-locate related types to minimize cross-package dependencies."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "package-structure", "architecture"]
+
+  - id: SCALA020
+    title: "Use Scala 3 enums for simple enumerations"
+    description: "In Scala 3, use enum for both simple enumerations and parameterized ADTs. In Scala 2, use sealed trait + case objects. Avoid java.lang.Enum interop unless needed."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "enum", "scala3"]
+    example: |
+      enum Status:
+        case Active, Inactive, Suspended
+      enum Tree[+A]:
+        case Leaf(value: A)
+        case Branch(left: Tree[A], right: Tree[A])
+
+  - id: SCALA021
+    title: "Prefer composition with traits over deep inheritance"
+    description: "Use trait mixins for composing behavior. Limit class hierarchy depth to 2-3 levels. Use self-type annotations for dependency declaration between traits."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "traits", "composition", "mixin"]
+
+  - id: SCALA022
+    title: "Make side effects explicit with IO/Task/ZIO types"
+    description: "Wrap side-effecting operations in effect types (cats.effect.IO, ZIO, monix.Task). Keep pure functions separate from effectful ones. Never perform side effects in def or val initializers silently."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "effects", "io", "referential-transparency"]
+
+  - id: SCALA023
+    title: "Use Resource/Managed for safe resource lifecycle"
+    description: "Use cats.effect.Resource, ZIO.acquireRelease, or scala.util.Using for resources that need cleanup (files, connections, streams). Never rely on finalizers or manual close() calls."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "resource-safety", "bracket"]
+    example: |
+      import cats.effect.{IO, Resource}
+      val dbPool: Resource[IO, Database] =
+        Resource.make(IO(Database.connect()))(db => IO(db.close()))
+
+  - id: SCALA024
+    title: "Use Cats/ZIO type class instances from companion objects"
+    description: "When using Cats or ZIO, derive type class instances using existing derivation macros or place them in companion objects for automatic resolution. Avoid orphan instances."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "cats", "zio", "type-class-instance"]
+
+  - id: SCALA025
+    title: "Use circe/play-json/zio-json for JSON with automatic derivation"
+    description: "Use automatic or semi-automatic JSON codec derivation instead of manual encoder/decoder implementations. Prefer semi-auto for better compile times and explicit control."
+    category: "serialization"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "json", "circe", "serialization"]
+    example: |
+      import io.circe.generic.semiauto.*
+      case class User(name: String, age: Int)
+      object User:
+        given Decoder[User] = deriveDecoder
+        given Encoder[User] = deriveEncoder
+
+  - id: SCALA026
+    title: "Use sbt best practices for build definitions"
+    description: "Keep build.sbt declarative and minimal. Extract complex build logic into project/ plugins. Use ThisBuild scope for shared settings. Pin dependency versions in a single place."
+    category: "build"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "sbt", "build"]
+
+  - id: SCALA027
+    title: "Use ScalaTest, MUnit, or ZIO Test with property-based testing"
+    description: "Choose a test framework and use it consistently. Add property-based tests (ScalaCheck, ZIO Test Gen) for data transformations and codecs. Prefer FunSuite or FlatSpec styles for readability."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "testing", "scalatest", "property-based"]
+
+  - id: SCALA028
+    title: "Use Future.sequence/traverse, never Future in a loop"
+    description: "When processing collections with Future, use Future.sequence or Future.traverse instead of mapping over a collection and creating individual futures. This ensures proper parallelism and error handling."
+    category: "concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "future", "concurrency"]
+    example: |
+      // Good
+      val results: Future[List[User]] = Future.traverse(ids)(fetchUser)
+      // Avoid
+      val results = ids.map(id => fetchUser(id)) // List[Future[User]]
+
+  - id: SCALA029
+    title: "Avoid blocking in Future/IO execution contexts"
+    description: "Never call Await.result, Thread.sleep, or blocking JDBC in the main execution context. Use blocking() wrapper or dedicated blocking thread pools for IO-bound work."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "blocking", "execution-context", "performance"]
+
+  - id: SCALA030
+    title: "Use Scala 3 union and intersection types appropriately"
+    description: "In Scala 3, use union types (A | B) for lightweight sum types without case class overhead. Use intersection types (A & B) for type refinement. Avoid overusing them where sealed traits are clearer."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "scala3", "union-type", "intersection-type"]
+
+  - id: SCALA031
+    title: "Use context functions for dependency injection in Scala 3"
+    description: "In Scala 3, use context functions (T ?=> R) and context parameters (using) for lightweight dependency injection. This replaces many uses of the Reader monad or implicit parameters."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "scala3", "context-function", "di"]
+
+  - id: SCALA032
+    title: "Use LazyList and Iterator for large data processing"
+    description: "For large datasets, use LazyList (formerly Stream) or Iterator to avoid loading everything into memory. Chain transformations lazily and only force evaluation when needed."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "lazy", "streaming", "memory"]
+
+  - id: SCALA033
+    title: "Define clear module boundaries with package objects or exports"
+    description: "In Scala 3, use export clauses to selectively expose members. In Scala 2, use package objects for module-level definitions. Keep internal implementation details private."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "modules", "export", "encapsulation"]
+
+  - id: SCALA034
+    title: "Handle Java interop with explicit conversions"
+    description: "When interfacing with Java, use scala.jdk.CollectionConverters for collection conversion. Wrap nullable Java returns in Option. Use Try for exception-throwing Java methods."
+    category: "interop"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "java-interop", "conversions"]
+    example: |
+      import scala.jdk.CollectionConverters.*
+      val scalaList = javaList.asScala.toList
+      val maybeResult = Option(javaMethodThatMayReturnNull())
+
+  - id: SCALA035
+    title: "Use Cats Effect Ref/Deferred for concurrent state"
+    description: "For shared mutable state in functional programs, use Ref (atomic reference) and Deferred (single-assignment) from Cats Effect or ZIO. Never use shared vars or Java concurrent primitives directly."
+    category: "concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "cats-effect", "concurrent-state", "ref"]
+
+  - id: SCALA036
+    title: "Use Tagless Final or ZIO Layers for effect abstraction"
+    description: "Abstract over effect types using tagless final (F[_]: Sync/Async) or ZIO layers (ZLayer). This enables testing with simulated effects and avoids hard-coupling to a specific effect runtime."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "tagless-final", "zlayer", "abstraction"]
+
+  - id: SCALA037
+    title: "Configure scalac options for maximum safety"
+    description: "Enable strict compiler options: -Werror (warnings as errors), -Wunused, -deprecation, -feature, -unchecked. In Scala 3 use -Xfatal-warnings, -Wvalue-discard, -Wnonunit-statement."
+    category: "build"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "compiler", "scalac", "linting"]
+
+  - id: SCALA038
+    title: "Use http4s/Tapir for type-safe HTTP APIs"
+    description: "Prefer http4s (with Ember or Blaze backend) or Tapir for defining HTTP APIs with type-safe routes, automatic documentation, and functional composition. Avoid stringly-typed routing."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "http4s", "tapir", "api"]
+
+  - id: SCALA039
+    title: "Use Doobie/Skunk for type-safe database access"
+    description: "Use Doobie (JDBC) or Skunk (native PostgreSQL) for type-safe SQL queries integrated with Cats Effect. Prefer these over raw JDBC or ORM-heavy solutions like Slick for new projects."
+    category: "database"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "doobie", "skunk", "database"]
+    example: |
+      import doobie.*
+      import doobie.implicits.*
+      val findUser: Query0[User] =
+        sql"SELECT name, email FROM users WHERE id = $id".query[User]
+
+  - id: SCALA040
+    title: "Use fs2 or ZIO Streams for streaming data pipelines"
+    description: "For streaming data processing, use fs2 (Cats Effect) or ZIO Streams. These provide backpressure, resource safety, and composable stream transformations. Avoid Akka Streams for new projects."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "fs2", "zio-streams", "streaming"]
+
+  - id: SCALA041
+    title: "Minimize use of reflection and runtime type information"
+    description: "Avoid scala.reflect.runtime and ClassTag/TypeTag where possible. Use compile-time type information through generics, type classes, and Scala 3 macros/inline instead."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "reflection", "compile-time"]
+
+  - id: SCALA042
+    title: "Use given/using for contextual abstractions in Scala 3"
+    description: "In Scala 3, replace implicit val/def with given instances, and implicit parameters with using clauses. This is clearer about intent and has better scoping rules."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "scala3", "given", "using", "contextual"]
+    example: |
+      // Scala 3
+      given ordering: Ordering[User] = Ordering.by(_.name)
+      def sorted(users: List[User])(using ord: Ordering[User]) = users.sorted
+
+  - id: SCALA043
+    title: "Use inline and transparent inline for compile-time computation"
+    description: "In Scala 3, use inline def for compile-time evaluation and transparent inline for type-level computation. This replaces many Scala 2 macro use cases with safer, more maintainable code."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "scala3", "inline", "metaprogramming"]
+
+  - id: SCALA044
+    title: "Use Scala 3 derives clause for automatic type class derivation"
+    description: "In Scala 3, use the derives clause on case classes and enums to automatically derive type class instances (Show, Encoder, Decoder, etc.) instead of manual boilerplate."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "scala3", "derives", "derivation"]
+    example: |
+      case class User(name: String, age: Int) derives JsonCodec, Show
+
+  - id: SCALA045
+    title: "Use ZIO or Cats Effect for application entry points"
+    description: "Structure applications around IOApp (Cats Effect) or ZIOAppDefault (ZIO) for proper resource lifecycle, graceful shutdown, and structured concurrency from the start."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "cats-effect", "zio", "app"]
+    example: |
+      // Cats Effect
+      object Main extends IOApp.Simple:
+        def run: IO[Unit] = program
+      // ZIO
+      object Main extends ZIOAppDefault:
+        def run = program
+
+  - id: SCALA046
+    title: "Use Chimney or Ducktape for case class transformations"
+    description: "For mapping between similar case classes (e.g., domain to DTO), use Chimney or Ducktape instead of manual field-by-field copying. These provide compile-time safe transformations."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "chimney", "transformation", "dto"]
+
+  - id: SCALA047
+    title: "Use multi-module sbt builds for large projects"
+    description: "Split large projects into multiple sbt sub-modules (core, api, persistence, etc.) with explicit dependencies. This improves compile times, enforces architectural boundaries, and enables incremental compilation."
+    category: "build"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "sbt", "multi-module", "architecture"]
+
+  - id: SCALA048
+    title: "Log with structured logging (log4cats, ZIO Logging)"
+    description: "Use structured logging libraries (log4cats for Cats Effect, ZIO Logging for ZIO) instead of println or direct SLF4J. Include context fields (request ID, user ID) as structured data, not string interpolation."
+    category: "observability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "logging", "structured", "observability"]
+
+  - id: SCALA049
+    title: "Use Scala CLI for scripts and prototyping"
+    description: "For scripts and quick prototyping, use Scala CLI (scala-cli) with //> using directives for dependencies. This replaces Ammonite scripts and provides a modern scripting experience."
+    category: "tooling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "scala-cli", "scripting", "prototyping"]
+
+  - id: SCALA050
+    title: "Cross-build for Scala 2.13 and 3 during migration"
+    description: "When migrating from Scala 2 to 3, use sbt cross-building (crossScalaVersions) and -Xsource:3 flag in Scala 2.13 to adopt Scala 3 syntax incrementally. Use scala3-migrate tool for automated migration."
+    category: "build"
+    severity: "recommended"
+    applicability:
+      frameworks: ["scala"]
+    tags: ["scala", "migration", "cross-build", "scala3"]

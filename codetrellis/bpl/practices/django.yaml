@@ -1,0 +1,2476 @@
+# Django Best Practices Library
+# Version: 1.0.0
+# Django Version: 4.2+ (with latest features)
+# Total Practices: 30
+# Coverage: Models, Views, Forms, Admin, Middleware, Security, Testing
+
+version: '1.0.0'
+framework: django
+framework_version:
+  min_version: '4.2'
+description: 'Comprehensive Django best practices for web application development'
+
+practices:
+  # ============================================================================
+  # MODELS & DATABASE (DJANGO001-DJANGO008)
+  # ============================================================================
+
+  - id: DJANGO001
+    title: 'Use Django Model Best Practices'
+    category: architecture
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Follow Django model conventions: use verbose names, help texts,
+        proper field types, and implement __str__ method.
+      rationale: |
+        Well-structured models improve admin interface, debugging,
+        and overall code maintainability.
+      good_examples:
+        - |
+          # ✅ Well-structured Django model
+          from django.db import models
+          from django.utils.translation import gettext_lazy as _
+
+          class Article(models.Model):
+              """Published article with author and metadata."""
+
+              class Status(models.TextChoices):
+                  DRAFT = 'draft', _('Draft')
+                  PUBLISHED = 'published', _('Published')
+                  ARCHIVED = 'archived', _('Archived')
+
+              title = models.CharField(
+                  _('title'),
+                  max_length=200,
+                  help_text=_('Article headline'),
+              )
+              slug = models.SlugField(
+                  _('slug'),
+                  max_length=200,
+                  unique=True,
+                  db_index=True,
+              )
+              author = models.ForeignKey(
+                  'auth.User',
+                  on_delete=models.PROTECT,
+                  related_name='articles',
+                  verbose_name=_('author'),
+              )
+              content = models.TextField(_('content'))
+              status = models.CharField(
+                  _('status'),
+                  max_length=20,
+                  choices=Status.choices,
+                  default=Status.DRAFT,
+                  db_index=True,
+              )
+              created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+              updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+
+              class Meta:
+                  verbose_name = _('article')
+                  verbose_name_plural = _('articles')
+                  ordering = ['-created_at']
+                  indexes = [
+                      models.Index(fields=['status', '-created_at']),
+                  ]
+
+              def __str__(self) -> str:
+                  return self.title
+
+              def get_absolute_url(self) -> str:
+                  from django.urls import reverse
+                  return reverse('article_detail', kwargs={'slug': self.slug})
+      bad_examples:
+        - |
+          # ❌ Poorly structured model
+          class Article(models.Model):
+              title = models.CharField(max_length=200)
+              slug = models.SlugField()  # No uniqueness, no index
+              author = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+              content = models.TextField()
+              status = models.CharField(max_length=20)  # No choices defined
+              # No Meta class, no __str__, no timestamps
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/db/models/'
+      tags:
+        - models
+        - database
+        - django
+
+  - id: DJANGO002
+    title: 'Use Custom Model Managers and QuerySets'
+    category: patterns
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Create custom managers and querysets to encapsulate common queries
+        and keep business logic out of views.
+      rationale: |
+        Custom managers make queries reusable, testable, and keep
+        the code DRY. They also improve readability.
+      good_examples:
+        - |
+          # ✅ Custom QuerySet and Manager
+          from django.db import models
+          from django.utils import timezone
+
+          class ArticleQuerySet(models.QuerySet):
+              """Custom queryset for Article model."""
+
+              def published(self):
+                  """Return only published articles."""
+                  return self.filter(
+                      status=Article.Status.PUBLISHED,
+                      published_at__lte=timezone.now(),
+                  )
+
+              def by_author(self, author):
+                  """Filter articles by author."""
+                  return self.filter(author=author)
+
+              def recent(self, days: int = 7):
+                  """Return articles from the last N days."""
+                  cutoff = timezone.now() - timezone.timedelta(days=days)
+                  return self.filter(created_at__gte=cutoff)
+
+              def with_comment_count(self):
+                  """Annotate with comment count."""
+                  return self.annotate(
+                      comment_count=models.Count('comments')
+                  )
+
+          class ArticleManager(models.Manager):
+              """Custom manager using ArticleQuerySet."""
+
+              def get_queryset(self):
+                  return ArticleQuerySet(self.model, using=self._db)
+
+              def published(self):
+                  return self.get_queryset().published()
+
+              def recent_published(self, days: int = 7):
+                  return self.get_queryset().published().recent(days)
+
+          class Article(models.Model):
+              # ... fields ...
+              objects = ArticleManager()
+
+          # Usage:
+          # Article.objects.published()
+          # Article.objects.recent_published(30)
+          # Article.objects.published().by_author(user).with_comment_count()
+      bad_examples:
+        - |
+          # ❌ Query logic scattered in views
+          def article_list(request):
+              articles = Article.objects.filter(
+                  status='published',
+                  published_at__lte=timezone.now(),
+              ).annotate(
+                  comment_count=Count('comments')
+              )  # Repeated everywhere
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/db/managers/'
+      tags:
+        - models
+        - managers
+        - querysets
+
+  - id: DJANGO003
+    title: 'Optimize Database Queries'
+    category: performance
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use select_related, prefetch_related, and only/defer to optimize
+        database queries and avoid N+1 problems.
+      rationale: |
+        Unoptimized queries cause significant performance issues,
+        especially with related objects.
+      good_examples:
+        - |
+          # ✅ Optimized queries
+          from django.db.models import Prefetch
+
+          # select_related for ForeignKey/OneToOne (single JOIN)
+          articles = Article.objects.select_related('author', 'category')
+          for article in articles:
+              print(article.author.name)  # No extra query
+
+          # prefetch_related for ManyToMany/reverse ForeignKey
+          articles = Article.objects.prefetch_related('tags', 'comments')
+          for article in articles:
+              for tag in article.tags.all():  # Already fetched
+                  print(tag.name)
+
+          # Custom Prefetch with filtering
+          recent_comments = Comment.objects.filter(
+              created_at__gte=timezone.now() - timedelta(days=7)
+          ).select_related('author')
+
+          articles = Article.objects.prefetch_related(
+              Prefetch('comments', queryset=recent_comments, to_attr='recent_comments')
+          )
+
+          # Only fetch needed fields
+          articles = Article.objects.only('title', 'slug', 'author_id')
+
+          # Defer large fields
+          articles = Article.objects.defer('content', 'metadata')
+
+          # Bulk operations
+          Article.objects.filter(status='draft').update(status='published')
+          Article.objects.bulk_create([
+              Article(title='A'), Article(title='B')
+          ], batch_size=1000)
+      bad_examples:
+        - |
+          # ❌ N+1 query problem
+          articles = Article.objects.all()
+          for article in articles:
+              print(article.author.name)  # Query per article!
+              for comment in article.comments.all():  # More queries!
+                  print(comment.text)
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/ref/models/querysets/'
+      tags:
+        - performance
+        - queries
+        - optimization
+
+  - id: DJANGO004
+    title: 'Use Database Migrations Properly'
+    category: database
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Create atomic migrations, handle data migrations separately,
+        and ensure migrations are reversible.
+      rationale: |
+        Proper migrations prevent data loss, enable rollbacks,
+        and ensure smooth deployments.
+      good_examples:
+        - |
+          # ✅ Data migration with RunPython
+          from django.db import migrations
+
+          def populate_slug(apps, schema_editor):
+              Article = apps.get_model('blog', 'Article')
+              for article in Article.objects.filter(slug=''):
+                  article.slug = slugify(article.title)
+                  article.save(update_fields=['slug'])
+
+          def reverse_populate_slug(apps, schema_editor):
+              # Reversible - set to empty string
+              Article = apps.get_model('blog', 'Article')
+              Article.objects.all().update(slug='')
+
+          class Migration(migrations.Migration):
+              dependencies = [
+                  ('blog', '0002_add_slug_field'),
+              ]
+
+              operations = [
+                  migrations.RunPython(
+                      populate_slug,
+                      reverse_populate_slug,
+                  ),
+              ]
+
+          # ✅ Schema migration with sensible defaults
+          class Migration(migrations.Migration):
+              operations = [
+                  migrations.AddField(
+                      model_name='article',
+                      name='view_count',
+                      field=models.PositiveIntegerField(default=0),
+                  ),
+                  # Add index in separate migration to avoid locking
+                  migrations.AddIndex(
+                      model_name='article',
+                      index=models.Index(fields=['view_count'], name='article_views_idx'),
+                  ),
+              ]
+      bad_examples:
+        - |
+          # ❌ Non-reversible migration
+          def delete_old_data(apps, schema_editor):
+              Article = apps.get_model('blog', 'Article')
+              Article.objects.filter(status='draft').delete()
+
+          class Migration(migrations.Migration):
+              operations = [
+                  migrations.RunPython(delete_old_data),  # Can't reverse!
+              ]
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/migrations/'
+      tags:
+        - migrations
+        - database
+        - deployment
+
+  - id: DJANGO005
+    title: 'Use Model Signals Sparingly'
+    category: patterns
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use signals only for decoupled functionality. Prefer explicit
+        method calls or model methods for coupled logic.
+      rationale: |
+        Signals create implicit dependencies that are hard to debug
+        and test. Use them only for truly decoupled concerns.
+      good_examples:
+        - |
+          # ✅ Appropriate signal use - decoupled audit logging
+          from django.db.models.signals import post_save, post_delete
+          from django.dispatch import receiver
+
+          @receiver(post_save, sender=Article)
+          def log_article_save(sender, instance, created, **kwargs):
+              """Log article creation/update for audit trail."""
+              action = 'created' if created else 'updated'
+              AuditLog.objects.create(
+                  model_name='Article',
+                  object_id=instance.pk,
+                  action=action,
+              )
+
+          # ✅ Better: explicit method call for coupled logic
+          class Article(models.Model):
+              def publish(self):
+                  """Explicit publish method instead of signal."""
+                  self.status = self.Status.PUBLISHED
+                  self.published_at = timezone.now()
+                  self.save()
+                  # Clear related logic
+                  self.notify_subscribers()
+                  self.update_search_index()
+
+              def notify_subscribers(self):
+                  """Send notifications to subscribers."""
+                  for subscriber in self.author.subscribers.all():
+                      send_notification(subscriber, self)
+      bad_examples:
+        - |
+          # ❌ Overusing signals for coupled logic
+          @receiver(post_save, sender=Article)
+          def on_article_save(sender, instance, created, **kwargs):
+              # Too much logic in signal - hard to test/debug
+              if created:
+                  send_email(instance.author, 'Article created')
+                  update_stats(instance.author)
+                  clear_cache('articles')
+                  index_article(instance)  # What if this fails?
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/signals/'
+      tags:
+        - signals
+        - patterns
+        - architecture
+
+  - id: DJANGO006
+    title: 'Implement Soft Delete Pattern'
+    category: patterns
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use soft deletes for important data. Override delete() and
+        create a custom manager to filter deleted records.
+      rationale: |
+        Soft deletes allow data recovery, maintain audit trails,
+        and preserve referential integrity.
+      good_examples:
+        - |
+          # ✅ Soft delete implementation
+          from django.db import models
+          from django.utils import timezone
+
+          class SoftDeleteQuerySet(models.QuerySet):
+              def delete(self):
+                  """Soft delete all records in queryset."""
+                  return self.update(deleted_at=timezone.now())
+
+              def hard_delete(self):
+                  """Actually delete records."""
+                  return super().delete()
+
+              def alive(self):
+                  """Return non-deleted records."""
+                  return self.filter(deleted_at__isnull=True)
+
+              def dead(self):
+                  """Return deleted records."""
+                  return self.filter(deleted_at__isnull=False)
+
+          class SoftDeleteManager(models.Manager):
+              def get_queryset(self):
+                  return SoftDeleteQuerySet(self.model, using=self._db).alive()
+
+              def all_with_deleted(self):
+                  return SoftDeleteQuerySet(self.model, using=self._db)
+
+              def deleted_only(self):
+                  return SoftDeleteQuerySet(self.model, using=self._db).dead()
+
+          class SoftDeleteModel(models.Model):
+              """Abstract base model with soft delete."""
+              deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+              objects = SoftDeleteManager()
+              all_objects = models.Manager()  # Include deleted
+
+              class Meta:
+                  abstract = True
+
+              def delete(self, using=None, keep_parents=False):
+                  self.deleted_at = timezone.now()
+                  self.save(update_fields=['deleted_at'])
+
+              def hard_delete(self):
+                  super().delete()
+
+              def restore(self):
+                  self.deleted_at = None
+                  self.save(update_fields=['deleted_at'])
+      bad_examples:
+        - |
+          # ❌ Hard delete - data lost forever
+          article.delete()  # Gone!
+
+          # ❌ Manual soft delete without manager filter
+          article.is_deleted = True
+          article.save()
+          # But Article.objects.all() still returns deleted!
+      tags:
+        - soft-delete
+        - patterns
+        - data-integrity
+
+  - id: DJANGO007
+    title: 'Use Database Constraints'
+    category: database
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use database-level constraints (unique_together, CheckConstraint,
+        UniqueConstraint) to ensure data integrity.
+      rationale: |
+        Database constraints provide a safety net that Python code
+        alone cannot guarantee, especially with concurrent requests.
+      good_examples:
+        - |
+          # ✅ Database constraints
+          from django.db import models
+          from django.db.models import Q, F
+
+          class Booking(models.Model):
+              room = models.ForeignKey('Room', on_delete=models.CASCADE)
+              user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+              start_date = models.DateField()
+              end_date = models.DateField()
+              status = models.CharField(max_length=20)
+
+              class Meta:
+                  constraints = [
+                      # Unique constraint with condition
+                      models.UniqueConstraint(
+                          fields=['room', 'start_date'],
+                          condition=Q(status='confirmed'),
+                          name='unique_confirmed_booking',
+                      ),
+                      # Check constraint
+                      models.CheckConstraint(
+                          check=Q(end_date__gt=F('start_date')),
+                          name='booking_end_after_start',
+                      ),
+                      # Composite unique
+                      models.UniqueConstraint(
+                          fields=['user', 'room', 'start_date'],
+                          name='unique_user_room_date',
+                      ),
+                  ]
+
+          class Product(models.Model):
+              name = models.CharField(max_length=100)
+              price = models.DecimalField(max_digits=10, decimal_places=2)
+              discount_price = models.DecimalField(
+                  max_digits=10, decimal_places=2, null=True
+              )
+
+              class Meta:
+                  constraints = [
+                      models.CheckConstraint(
+                          check=Q(price__gt=0),
+                          name='positive_price',
+                      ),
+                      models.CheckConstraint(
+                          check=Q(discount_price__isnull=True) | Q(discount_price__lt=F('price')),
+                          name='discount_less_than_price',
+                      ),
+                  ]
+      bad_examples:
+        - |
+          # ❌ Only Python validation - race condition possible
+          def save(self, *args, **kwargs):
+              if self.end_date <= self.start_date:
+                  raise ValidationError('End must be after start')
+              # Two requests can still create overlapping bookings!
+              super().save(*args, **kwargs)
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/ref/models/constraints/'
+      tags:
+        - constraints
+        - database
+        - data-integrity
+
+  - id: DJANGO008
+    title: 'Use Transactions Properly'
+    category: database
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use atomic transactions for operations that must succeed or
+        fail together. Understand transaction isolation levels.
+      rationale: |
+        Proper transaction handling prevents data corruption and
+        ensures consistency in multi-step operations.
+      good_examples:
+        - |
+          # ✅ Atomic transactions
+          from django.db import transaction
+
+          @transaction.atomic
+          def transfer_funds(from_account, to_account, amount):
+              """Transfer money between accounts atomically."""
+              from_account.balance = F('balance') - amount
+              from_account.save(update_fields=['balance'])
+
+              to_account.balance = F('balance') + amount
+              to_account.save(update_fields=['balance'])
+
+              # Create transaction records
+              Transaction.objects.create(
+                  account=from_account, amount=-amount, type='debit'
+              )
+              Transaction.objects.create(
+                  account=to_account, amount=amount, type='credit'
+              )
+              # If any step fails, all changes are rolled back
+
+          # ✅ Nested transaction with savepoint
+          @transaction.atomic
+          def create_order(user, items):
+              order = Order.objects.create(user=user)
+
+              for item in items:
+                  try:
+                      with transaction.atomic():
+                          # Savepoint - can fail without rolling back order
+                          OrderItem.objects.create(order=order, **item)
+                          update_inventory(item['product_id'], -item['quantity'])
+                  except InsufficientStock:
+                      # This item failed, but order continues
+                      pass
+
+              return order
+
+          # ✅ Select for update to prevent race conditions
+          @transaction.atomic
+          def reserve_seat(event_id, user):
+              seat = Seat.objects.select_for_update().filter(
+                  event_id=event_id, status='available'
+              ).first()
+
+              if not seat:
+                  raise NoSeatsAvailable()
+
+              seat.status = 'reserved'
+              seat.reserved_by = user
+              seat.save()
+              return seat
+      bad_examples:
+        - |
+          # ❌ No transaction - partial failure possible
+          def transfer_funds(from_account, to_account, amount):
+              from_account.balance -= amount
+              from_account.save()  # If next line fails, money is lost!
+              to_account.balance += amount
+              to_account.save()
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/db/transactions/'
+      tags:
+        - transactions
+        - database
+        - atomicity
+
+  # ============================================================================
+  # VIEWS & URL ROUTING (DJANGO009-DJANGO014)
+  # ============================================================================
+
+  - id: DJANGO009
+    title: 'Use Class-Based Views Appropriately'
+    category: architecture
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use CBVs for CRUD operations and standard patterns. Use FBVs
+        for simple or highly custom logic. Prefer generic views.
+      rationale: |
+        CBVs reduce boilerplate for common patterns, while FBVs
+        can be clearer for simple or unusual cases.
+      good_examples:
+        - |
+          # ✅ Generic CBVs for CRUD
+          from django.views.generic import (
+              ListView, DetailView, CreateView, UpdateView, DeleteView
+          )
+          from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+          from django.urls import reverse_lazy
+
+          class ArticleListView(ListView):
+              model = Article
+              template_name = 'articles/list.html'
+              context_object_name = 'articles'
+              paginate_by = 20
+
+              def get_queryset(self):
+                  return Article.objects.published().select_related('author')
+
+          class ArticleDetailView(DetailView):
+              model = Article
+              template_name = 'articles/detail.html'
+              context_object_name = 'article'
+              slug_url_kwarg = 'article_slug'
+
+              def get_queryset(self):
+                  return super().get_queryset().select_related('author')
+
+          class ArticleCreateView(LoginRequiredMixin, CreateView):
+              model = Article
+              form_class = ArticleForm
+              template_name = 'articles/form.html'
+              success_url = reverse_lazy('article_list')
+
+              def form_valid(self, form):
+                  form.instance.author = self.request.user
+                  return super().form_valid(form)
+
+          class ArticleUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+              model = Article
+              form_class = ArticleForm
+              template_name = 'articles/form.html'
+
+              def test_func(self):
+                  return self.get_object().author == self.request.user
+
+          # ✅ FBV for simple custom logic
+          @login_required
+          def toggle_favorite(request, article_id):
+              """Simple toggle - FBV is clearer here."""
+              article = get_object_or_404(Article, pk=article_id)
+              favorite, created = Favorite.objects.get_or_create(
+                  user=request.user, article=article
+              )
+              if not created:
+                  favorite.delete()
+              return JsonResponse({'favorited': created})
+      bad_examples:
+        - |
+          # ❌ Reinventing the wheel
+          class MyListView(View):
+              def get(self, request):
+                  articles = Article.objects.all()
+                  paginator = Paginator(articles, 20)
+                  page = request.GET.get('page')
+                  # ... manual pagination ...
+                  return render(request, 'list.html', {'articles': articles})
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/class-based-views/'
+      tags:
+        - views
+        - cbv
+        - architecture
+
+  - id: DJANGO010
+    title: 'Use Django REST Framework for APIs'
+    category: api_design
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use Django REST Framework (DRF) for building APIs. Use serializers,
+        viewsets, and proper authentication/permissions.
+      rationale: |
+        DRF provides a robust, well-tested foundation for REST APIs
+        with automatic documentation, validation, and authentication.
+      good_examples:
+        - |
+          # ✅ DRF serializers and viewsets
+          from rest_framework import serializers, viewsets, permissions
+          from rest_framework.decorators import action
+          from rest_framework.response import Response
+
+          class ArticleSerializer(serializers.ModelSerializer):
+              author = serializers.StringRelatedField(read_only=True)
+              comment_count = serializers.IntegerField(read_only=True)
+
+              class Meta:
+                  model = Article
+                  fields = ['id', 'title', 'slug', 'content', 'author',
+                           'status', 'comment_count', 'created_at']
+                  read_only_fields = ['slug', 'created_at']
+
+              def create(self, validated_data):
+                  validated_data['author'] = self.context['request'].user
+                  validated_data['slug'] = slugify(validated_data['title'])
+                  return super().create(validated_data)
+
+          class IsAuthorOrReadOnly(permissions.BasePermission):
+              def has_object_permission(self, request, view, obj):
+                  if request.method in permissions.SAFE_METHODS:
+                      return True
+                  return obj.author == request.user
+
+          class ArticleViewSet(viewsets.ModelViewSet):
+              queryset = Article.objects.all()
+              serializer_class = ArticleSerializer
+              permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
+              lookup_field = 'slug'
+
+              def get_queryset(self):
+                  return Article.objects.published().annotate(
+                      comment_count=Count('comments')
+                  ).select_related('author')
+
+              @action(detail=True, methods=['post'])
+              def publish(self, request, slug=None):
+                  article = self.get_object()
+                  article.publish()
+                  return Response({'status': 'published'})
+      bad_examples:
+        - |
+          # ❌ Manual JSON serialization
+          @csrf_exempt
+          def api_articles(request):
+              if request.method == 'GET':
+                  articles = Article.objects.all()
+                  data = [{'id': a.id, 'title': a.title} for a in articles]
+                  return JsonResponse({'articles': data})
+              # No authentication, no validation, no permissions...
+      references:
+        - 'https://www.django-rest-framework.org/'
+      tags:
+        - drf
+        - api
+        - rest
+
+  - id: DJANGO011
+    title: 'Proper URL Configuration'
+    category: routing
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use app-level URL namespaces, path converters, and named URLs.
+        Organize URLs logically by app.
+      rationale: |
+        Good URL structure makes routing maintainable, enables
+        reverse URL resolution, and prevents naming conflicts.
+      good_examples:
+        - |
+          # ✅ App-level urls.py with namespace
+          # blog/urls.py
+          from django.urls import path, include
+          from . import views
+
+          app_name = 'blog'  # Namespace
+
+          urlpatterns = [
+              path('', views.ArticleListView.as_view(), name='article_list'),
+              path('<slug:slug>/', views.ArticleDetailView.as_view(), name='article_detail'),
+              path('<slug:slug>/edit/', views.ArticleUpdateView.as_view(), name='article_edit'),
+              path('create/', views.ArticleCreateView.as_view(), name='article_create'),
+              path('author/<str:username>/', views.AuthorArticlesView.as_view(), name='author_articles'),
+          ]
+
+          # ✅ Project urls.py
+          # project/urls.py
+          from django.urls import path, include
+
+          urlpatterns = [
+              path('admin/', admin.site.urls),
+              path('blog/', include('blog.urls', namespace='blog')),
+              path('api/v1/', include('api.urls', namespace='api_v1')),
+              path('api/v2/', include('api.v2.urls', namespace='api_v2')),
+          ]
+
+          # ✅ Using reverse with namespace
+          from django.urls import reverse
+
+          url = reverse('blog:article_detail', kwargs={'slug': 'my-article'})
+          # In template: {% url 'blog:article_detail' slug=article.slug %}
+      bad_examples:
+        - |
+          # ❌ Flat URLs without namespace
+          urlpatterns = [
+              path('article-list/', article_list),  # No name!
+              path('article/<int:id>/', article_detail),  # Using id instead of slug
+              # Hundreds of URLs in one file...
+          ]
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/http/urls/'
+      tags:
+        - urls
+        - routing
+        - namespaces
+
+  - id: DJANGO012
+    title: 'Handle Form Validation Properly'
+    category: forms
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use Django forms for validation. Implement clean methods for
+        field-level and form-level validation.
+      rationale: |
+        Forms provide consistent validation, CSRF protection,
+        and proper error handling.
+      good_examples:
+        - |
+          # ✅ Form with custom validation
+          from django import forms
+          from django.core.exceptions import ValidationError
+
+          class ArticleForm(forms.ModelForm):
+              class Meta:
+                  model = Article
+                  fields = ['title', 'content', 'category', 'tags']
+                  widgets = {
+                      'content': forms.Textarea(attrs={'rows': 10}),
+                      'tags': forms.CheckboxSelectMultiple(),
+                  }
+
+              def clean_title(self):
+                  """Field-level validation."""
+                  title = self.cleaned_data['title']
+                  if Article.objects.filter(
+                      slug=slugify(title)
+                  ).exclude(pk=self.instance.pk).exists():
+                      raise ValidationError('An article with this title already exists.')
+                  return title
+
+              def clean(self):
+                  """Form-level validation."""
+                  cleaned_data = super().clean()
+                  category = cleaned_data.get('category')
+                  content = cleaned_data.get('content')
+
+                  if category and category.requires_long_content:
+                      if content and len(content) < 500:
+                          raise ValidationError({
+                              'content': 'This category requires at least 500 characters.'
+                          })
+
+                  return cleaned_data
+
+          # ✅ View handling form
+          class ArticleCreateView(LoginRequiredMixin, CreateView):
+              model = Article
+              form_class = ArticleForm
+
+              def form_valid(self, form):
+                  form.instance.author = self.request.user
+                  messages.success(self.request, 'Article created successfully!')
+                  return super().form_valid(form)
+
+              def form_invalid(self, form):
+                  messages.error(self.request, 'Please correct the errors below.')
+                  return super().form_invalid(form)
+      bad_examples:
+        - |
+          # ❌ Manual validation in view
+          def create_article(request):
+              title = request.POST.get('title')
+              if not title:
+                  return HttpResponse('Title required', status=400)
+              if len(title) > 200:
+                  return HttpResponse('Title too long', status=400)
+              # No CSRF protection, no proper error handling...
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/forms/'
+      tags:
+        - forms
+        - validation
+        - security
+
+  - id: DJANGO013
+    title: 'Use Middleware Appropriately'
+    category: patterns
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Create custom middleware for cross-cutting concerns like logging,
+        timing, or request modification. Keep middleware focused.
+      rationale: |
+        Middleware handles concerns that span multiple views without
+        duplicating code, but should be used sparingly.
+      good_examples:
+        - |
+          # ✅ Request timing middleware
+          import time
+          import logging
+
+          logger = logging.getLogger(__name__)
+
+          class RequestTimingMiddleware:
+              """Log request processing time."""
+
+              def __init__(self, get_response):
+                  self.get_response = get_response
+
+              def __call__(self, request):
+                  start_time = time.time()
+
+                  response = self.get_response(request)
+
+                  duration = time.time() - start_time
+                  logger.info(
+                      f'{request.method} {request.path} - {response.status_code} - {duration:.3f}s'
+                  )
+                  response['X-Request-Duration'] = f'{duration:.3f}'
+
+                  return response
+
+          # ✅ Correlation ID middleware
+          import uuid
+
+          class CorrelationIdMiddleware:
+              """Add correlation ID to requests for tracing."""
+
+              def __init__(self, get_response):
+                  self.get_response = get_response
+
+              def __call__(self, request):
+                  correlation_id = request.headers.get(
+                      'X-Correlation-ID',
+                      str(uuid.uuid4())
+                  )
+                  request.correlation_id = correlation_id
+
+                  response = self.get_response(request)
+                  response['X-Correlation-ID'] = correlation_id
+
+                  return response
+
+          # ✅ settings.py
+          MIDDLEWARE = [
+              'django.middleware.security.SecurityMiddleware',
+              'myapp.middleware.CorrelationIdMiddleware',  # Early
+              'django.contrib.sessions.middleware.SessionMiddleware',
+              # ...
+              'myapp.middleware.RequestTimingMiddleware',  # Late
+          ]
+      bad_examples:
+        - |
+          # ❌ Business logic in middleware
+          class ArticleMiddleware:
+              def __call__(self, request):
+                  if request.path.startswith('/articles/'):
+                      # Don't put view logic in middleware!
+                      request.featured_articles = Article.objects.featured()[:5]
+                  return self.get_response(request)
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/http/middleware/'
+      tags:
+        - middleware
+        - patterns
+        - logging
+
+  - id: DJANGO014
+    title: 'Implement Proper Pagination'
+    category: performance
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Always paginate list views. Use Django's built-in pagination
+        or cursor-based pagination for large datasets.
+      rationale: |
+        Pagination prevents loading excessive data, improves response
+        times, and provides better UX.
+      good_examples:
+        - |
+          # ✅ CBV with pagination
+          from django.views.generic import ListView
+
+          class ArticleListView(ListView):
+              model = Article
+              paginate_by = 20
+              template_name = 'articles/list.html'
+
+              def get_queryset(self):
+                  return Article.objects.published().select_related('author')
+
+          # ✅ FBV with pagination
+          from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+          def article_list(request):
+              articles = Article.objects.published()
+              paginator = Paginator(articles, 20)
+
+              page = request.GET.get('page', 1)
+              try:
+                  page_obj = paginator.page(page)
+              except PageNotAnInteger:
+                  page_obj = paginator.page(1)
+              except EmptyPage:
+                  page_obj = paginator.page(paginator.num_pages)
+
+              return render(request, 'articles/list.html', {
+                  'page_obj': page_obj,
+              })
+
+          # ✅ Template with pagination
+          # templates/articles/list.html
+          """
+          {% for article in page_obj %}
+              {{ article.title }}
+          {% endfor %}
+
+          <nav>
+              {% if page_obj.has_previous %}
+                  <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+              {% endif %}
+
+              <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+              {% if page_obj.has_next %}
+                  <a href="?page={{ page_obj.next_page_number }}">Next</a>
+              {% endif %}
+          </nav>
+          """
+      bad_examples:
+        - |
+          # ❌ No pagination - loads everything
+          def article_list(request):
+              articles = Article.objects.all()  # Could be millions!
+              return render(request, 'list.html', {'articles': articles})
+      tags:
+        - pagination
+        - performance
+        - ux
+
+  # ============================================================================
+  # SECURITY (DJANGO015-DJANGO020)
+  # ============================================================================
+
+  - id: DJANGO015
+    title: 'Implement CSRF Protection'
+    category: security
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Always use CSRF protection for state-changing requests.
+        Use {% csrf_token %} in forms and handle AJAX properly.
+      rationale: |
+        CSRF protection prevents attackers from tricking users into
+        performing unwanted actions.
+      good_examples:
+        - |
+          # ✅ CSRF in HTML form
+          """
+          <form method="post" action="{% url 'article_create' %}">
+              {% csrf_token %}
+              {{ form.as_p }}
+              <button type="submit">Create</button>
+          </form>
+          """
+
+          # ✅ CSRF in AJAX requests
+          """
+          // Get CSRF token from cookie
+          function getCookie(name) {
+              let cookieValue = null;
+              if (document.cookie && document.cookie !== '') {
+                  const cookies = document.cookie.split(';');
+                  for (let cookie of cookies) {
+                      cookie = cookie.trim();
+                      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                          break;
+                      }
+                  }
+              }
+              return cookieValue;
+          }
+
+          fetch('/api/articles/', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': getCookie('csrftoken'),
+              },
+              body: JSON.stringify(data),
+          });
+          """
+
+          # ✅ For API views that need CSRF exemption
+          from django.views.decorators.csrf import csrf_exempt
+          from rest_framework.decorators import api_view
+
+          @api_view(['POST'])  # DRF handles CSRF differently
+          def api_endpoint(request):
+              # ...
+              pass
+      bad_examples:
+        - |
+          # ❌ Disabling CSRF globally
+          # settings.py
+          MIDDLEWARE = [
+              # 'django.middleware.csrf.CsrfViewMiddleware',  # DISABLED!
+          ]
+
+          # ❌ Exempting views unnecessarily
+          @csrf_exempt
+          def create_article(request):  # Vulnerable!
+              pass
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/ref/csrf/'
+      tags:
+        - csrf
+        - security
+        - forms
+
+  - id: DJANGO016
+    title: 'Implement Proper Authentication'
+    category: security
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use Django's authentication system. Implement proper password
+        policies, account lockout, and session management.
+      rationale: |
+        Proper authentication prevents unauthorized access and
+        protects user accounts from compromise.
+      good_examples:
+        - |
+          # ✅ Custom user model (do this before first migration!)
+          from django.contrib.auth.models import AbstractUser
+          from django.db import models
+
+          class User(AbstractUser):
+              email = models.EmailField(unique=True)
+              phone = models.CharField(max_length=20, blank=True)
+              email_verified = models.BooleanField(default=False)
+
+              USERNAME_FIELD = 'email'
+              REQUIRED_FIELDS = ['username']
+
+          # settings.py
+          AUTH_USER_MODEL = 'accounts.User'
+
+          # ✅ Password validation settings
+          AUTH_PASSWORD_VALIDATORS = [
+              {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+              {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+               'OPTIONS': {'min_length': 12}},
+              {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+              {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+          ]
+
+          # ✅ Session security settings
+          SESSION_COOKIE_SECURE = True  # HTTPS only
+          SESSION_COOKIE_HTTPONLY = True
+          SESSION_COOKIE_SAMESITE = 'Lax'
+          SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+          # ✅ Account lockout with django-axes
+          # pip install django-axes
+          INSTALLED_APPS += ['axes']
+          AUTHENTICATION_BACKENDS = [
+              'axes.backends.AxesStandaloneBackend',
+              'django.contrib.auth.backends.ModelBackend',
+          ]
+          AXES_FAILURE_LIMIT = 5
+          AXES_COOLOFF_TIME = timedelta(minutes=15)
+      bad_examples:
+        - |
+          # ❌ Weak password policy
+          AUTH_PASSWORD_VALIDATORS = []  # No validation!
+
+          # ❌ Using default User model after migrations
+          # Can't easily change later!
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/auth/'
+      tags:
+        - authentication
+        - security
+        - passwords
+
+  - id: DJANGO017
+    title: 'Implement Authorization with Permissions'
+    category: security
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use Django's permission system for authorization. Implement
+        object-level permissions for fine-grained access control.
+      rationale: |
+        Proper authorization ensures users can only access and modify
+        resources they're permitted to.
+      good_examples:
+        - |
+          # ✅ Model-level permissions
+          class Article(models.Model):
+              # ...
+
+              class Meta:
+                  permissions = [
+                      ('publish_article', 'Can publish articles'),
+                      ('feature_article', 'Can feature articles'),
+                  ]
+
+          # ✅ Permission decorators for FBVs
+          from django.contrib.auth.decorators import login_required, permission_required
+
+          @login_required
+          @permission_required('blog.publish_article', raise_exception=True)
+          def publish_article(request, pk):
+              article = get_object_or_404(Article, pk=pk)
+              article.publish()
+              return redirect('article_detail', pk=pk)
+
+          # ✅ Permission mixins for CBVs
+          from django.contrib.auth.mixins import (
+              LoginRequiredMixin, PermissionRequiredMixin, UserPassesTestMixin
+          )
+
+          class ArticleDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+              model = Article
+
+              def test_func(self):
+                  article = self.get_object()
+                  return (
+                      self.request.user == article.author or
+                      self.request.user.has_perm('blog.delete_any_article')
+                  )
+
+          # ✅ Object-level permissions with django-guardian
+          # pip install django-guardian
+          from guardian.shortcuts import assign_perm, get_objects_for_user
+
+          # Assign permission
+          assign_perm('change_article', user, article)
+
+          # Check permission
+          user.has_perm('change_article', article)
+
+          # Get permitted objects
+          articles = get_objects_for_user(user, 'blog.change_article')
+      bad_examples:
+        - |
+          # ❌ Manual permission checks scattered in views
+          def delete_article(request, pk):
+              article = get_object_or_404(Article, pk=pk)
+              if article.author_id != request.user.id:
+                  return HttpResponseForbidden()  # Easy to forget!
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/auth/default/#permissions-and-authorization'
+      tags:
+        - authorization
+        - permissions
+        - security
+
+  - id: DJANGO018
+    title: 'Prevent SQL Injection'
+    category: security
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Always use Django ORM or parameterized queries. Never
+        interpolate user input directly into SQL.
+      rationale: |
+        SQL injection can lead to data theft, modification,
+        or complete database compromise.
+      good_examples:
+        - |
+          # ✅ Use ORM - automatically safe
+          articles = Article.objects.filter(title__icontains=user_input)
+
+          # ✅ Safe raw queries with parameters
+          articles = Article.objects.raw(
+              'SELECT * FROM blog_article WHERE title LIKE %s',
+              [f'%{search_term}%']
+          )
+
+          # ✅ Extra() with params
+          articles = Article.objects.extra(
+              where=['title LIKE %s'],
+              params=[f'%{search_term}%']
+          )
+
+          # ✅ RawSQL with params
+          from django.db.models.expressions import RawSQL
+
+          Article.objects.annotate(
+              custom_order=RawSQL('LENGTH(%s) - LENGTH(title)', [search_term])
+          )
+
+          # ✅ Using F() and Q() for complex queries
+          from django.db.models import F, Q
+
+          Article.objects.filter(
+              Q(title__icontains=search) | Q(content__icontains=search)
+          ).annotate(
+              relevance=F('view_count') * 2 + F('comment_count')
+          )
+      bad_examples:
+        - |
+          # ❌ SQL injection vulnerability!
+          search = request.GET.get('search')
+          Article.objects.raw(f"SELECT * FROM article WHERE title = '{search}'")
+
+          # ❌ String formatting in extra()
+          Article.objects.extra(where=[f"title = '{user_input}'"])
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/security/#sql-injection-protection'
+      tags:
+        - sql-injection
+        - security
+        - database
+
+  - id: DJANGO019
+    title: 'Configure Security Settings'
+    category: security
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Configure Django's security settings for production: HTTPS,
+        secure cookies, content security policy, etc.
+      rationale: |
+        Proper security configuration protects against common
+        web vulnerabilities like XSS, clickjacking, and MITM.
+      good_examples:
+        - |
+          # ✅ Production security settings
+          # settings/production.py
+
+          # Force HTTPS
+          SECURE_SSL_REDIRECT = True
+          SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+          # HSTS - tell browsers to always use HTTPS
+          SECURE_HSTS_SECONDS = 31536000  # 1 year
+          SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+          SECURE_HSTS_PRELOAD = True
+
+          # Secure cookies
+          SESSION_COOKIE_SECURE = True
+          CSRF_COOKIE_SECURE = True
+          SESSION_COOKIE_HTTPONLY = True
+          CSRF_COOKIE_HTTPONLY = True
+
+          # Content security
+          SECURE_CONTENT_TYPE_NOSNIFF = True
+          SECURE_BROWSER_XSS_FILTER = True
+          X_FRAME_OPTIONS = 'DENY'
+
+          # CSRF trusted origins (Django 4.0+)
+          CSRF_TRUSTED_ORIGINS = [
+              'https://mysite.com',
+              'https://www.mysite.com',
+          ]
+
+          # Allowed hosts
+          ALLOWED_HOSTS = ['mysite.com', 'www.mysite.com']
+
+          # Hide Django version
+          SECURE_REFERRER_POLICY = 'same-origin'
+
+          # ✅ CSP with django-csp
+          # pip install django-csp
+          MIDDLEWARE += ['csp.middleware.CSPMiddleware']
+          CSP_DEFAULT_SRC = ("'self'",)
+          CSP_SCRIPT_SRC = ("'self'", 'cdn.example.com')
+          CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
+          CSP_IMG_SRC = ("'self'", 'data:', 'cdn.example.com')
+      bad_examples:
+        - |
+          # ❌ Insecure production settings
+          DEBUG = True  # NEVER in production!
+          ALLOWED_HOSTS = ['*']  # Too permissive
+          SECRET_KEY = 'hardcoded-secret'  # Must be env var
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/security/'
+      tags:
+        - security
+        - https
+        - headers
+
+  - id: DJANGO020
+    title: 'Protect Sensitive Data'
+    category: security
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use environment variables for secrets. Encrypt sensitive data
+        at rest. Never log sensitive information.
+      rationale: |
+        Exposed secrets and unprotected sensitive data can lead
+        to breaches and compliance violations.
+      good_examples:
+        - |
+          # ✅ Environment-based configuration
+          import os
+          from pathlib import Path
+
+          # Use django-environ or python-decouple
+          # pip install django-environ
+          import environ
+
+          env = environ.Env()
+          environ.Env.read_env()
+
+          SECRET_KEY = env('SECRET_KEY')
+          DEBUG = env.bool('DEBUG', False)
+
+          DATABASES = {
+              'default': env.db('DATABASE_URL'),
+          }
+
+          # ✅ Encrypted model fields
+          # pip install django-encrypted-model-fields
+          from encrypted_model_fields.fields import EncryptedCharField
+
+          class UserProfile(models.Model):
+              user = models.OneToOneField(User, on_delete=models.CASCADE)
+              ssn = EncryptedCharField(max_length=11)  # Encrypted at rest
+
+          # ✅ Mask sensitive data in logs
+          LOGGING = {
+              'filters': {
+                  'mask_sensitive': {
+                      '()': 'myapp.logging.SensitiveDataFilter',
+                  },
+              },
+              'handlers': {
+                  'console': {
+                      'filters': ['mask_sensitive'],
+                  },
+              },
+          }
+
+          class SensitiveDataFilter(logging.Filter):
+              SENSITIVE_FIELDS = ['password', 'token', 'secret', 'ssn']
+
+              def filter(self, record):
+                  message = record.getMessage()
+                  for field in self.SENSITIVE_FIELDS:
+                      message = re.sub(
+                          f'{field}["\']?\\s*[:=]\\s*["\']?[^\\s,}}"\']+',
+                          f'{field}=***REDACTED***',
+                          message,
+                          flags=re.IGNORECASE
+                      )
+                  record.msg = message
+                  return True
+      bad_examples:
+        - |
+          # ❌ Hardcoded secrets
+          SECRET_KEY = 'django-insecure-abc123'
+          DATABASE_PASSWORD = 'mypassword'
+
+          # ❌ Logging sensitive data
+          logger.info(f'User login: {username}, password: {password}')
+      tags:
+        - secrets
+        - encryption
+        - security
+
+  # ============================================================================
+  # TESTING & ADMIN (DJANGO021-DJANGO030)
+  # ============================================================================
+
+  - id: DJANGO021
+    title: 'Write Comprehensive Tests'
+    category: testing
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Write unit tests, integration tests, and use Django's test client.
+        Use factories for test data, fixtures sparingly.
+      rationale: |
+        Comprehensive tests catch regressions, document behavior,
+        and enable confident refactoring.
+      good_examples:
+        - |
+          # ✅ Model tests with factory
+          # pip install factory-boy
+          import factory
+          from django.test import TestCase
+
+          class UserFactory(factory.django.DjangoModelFactory):
+              class Meta:
+                  model = User
+
+              username = factory.Sequence(lambda n: f'user{n}')
+              email = factory.LazyAttribute(lambda o: f'{o.username}@example.com')
+              password = factory.PostGenerationMethodCall('set_password', 'testpass123')
+
+          class ArticleFactory(factory.django.DjangoModelFactory):
+              class Meta:
+                  model = Article
+
+              title = factory.Faker('sentence')
+              content = factory.Faker('paragraphs', nb=3)
+              author = factory.SubFactory(UserFactory)
+              status = Article.Status.DRAFT
+
+          class ArticleModelTest(TestCase):
+              def test_publish_sets_status_and_date(self):
+                  article = ArticleFactory()
+                  article.publish()
+
+                  self.assertEqual(article.status, Article.Status.PUBLISHED)
+                  self.assertIsNotNone(article.published_at)
+
+              def test_slug_generated_from_title(self):
+                  article = ArticleFactory(title='My Test Article')
+                  self.assertEqual(article.slug, 'my-test-article')
+
+          # ✅ View tests with client
+          class ArticleViewTest(TestCase):
+              def setUp(self):
+                  self.user = UserFactory()
+                  self.article = ArticleFactory(author=self.user, status=Article.Status.PUBLISHED)
+
+              def test_article_list_shows_published_only(self):
+                  draft = ArticleFactory(status=Article.Status.DRAFT)
+
+                  response = self.client.get(reverse('blog:article_list'))
+
+                  self.assertEqual(response.status_code, 200)
+                  self.assertContains(response, self.article.title)
+                  self.assertNotContains(response, draft.title)
+
+              def test_create_requires_login(self):
+                  response = self.client.get(reverse('blog:article_create'))
+                  self.assertRedirects(response, '/login/?next=/articles/create/')
+
+              def test_author_can_edit_own_article(self):
+                  self.client.force_login(self.user)
+                  response = self.client.post(
+                      reverse('blog:article_edit', kwargs={'slug': self.article.slug}),
+                      {'title': 'Updated Title', 'content': 'Updated content'}
+                  )
+                  self.article.refresh_from_db()
+                  self.assertEqual(self.article.title, 'Updated Title')
+      bad_examples:
+        - |
+          # ❌ No tests or minimal tests
+          class ArticleTest(TestCase):
+              def test_article(self):
+                  article = Article.objects.create(title='Test')
+                  self.assertIsNotNone(article)  # Useless assertion
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/testing/'
+      tags:
+        - testing
+        - factories
+        - tdd
+
+  - id: DJANGO022
+    title: 'Configure Django Admin Properly'
+    category: maintainability
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Customize admin for usability: list displays, filters, search,
+        inlines, and readonly fields.
+      rationale: |
+        A well-configured admin improves productivity for content
+        managers and reduces support requests.
+      good_examples:
+        - |
+          # ✅ Comprehensive admin configuration
+          from django.contrib import admin
+          from django.utils.html import format_html
+
+          class CommentInline(admin.TabularInline):
+              model = Comment
+              extra = 0
+              readonly_fields = ['author', 'created_at']
+              fields = ['author', 'content', 'is_approved', 'created_at']
+
+          @admin.register(Article)
+          class ArticleAdmin(admin.ModelAdmin):
+              list_display = ['title', 'author', 'status', 'view_count', 'created_at', 'is_featured']
+              list_filter = ['status', 'created_at', 'author', 'category']
+              search_fields = ['title', 'content', 'author__username']
+              prepopulated_fields = {'slug': ('title',)}
+              date_hierarchy = 'created_at'
+              ordering = ['-created_at']
+              readonly_fields = ['view_count', 'created_at', 'updated_at']
+              raw_id_fields = ['author']  # For large user tables
+              autocomplete_fields = ['category', 'tags']
+
+              fieldsets = [
+                  (None, {
+                      'fields': ['title', 'slug', 'author', 'category']
+                  }),
+                  ('Content', {
+                      'fields': ['content', 'excerpt'],
+                      'classes': ['wide'],
+                  }),
+                  ('Publishing', {
+                      'fields': ['status', 'published_at', 'is_featured'],
+                  }),
+                  ('Metadata', {
+                      'fields': ['view_count', 'created_at', 'updated_at'],
+                      'classes': ['collapse'],
+                  }),
+              ]
+
+              inlines = [CommentInline]
+
+              def is_featured(self, obj):
+                  return format_html(
+                      '<span style="color: {};">●</span>',
+                      'green' if obj.is_featured else 'gray'
+                  )
+              is_featured.short_description = 'Featured'
+
+              actions = ['publish_articles', 'unpublish_articles']
+
+              @admin.action(description='Publish selected articles')
+              def publish_articles(self, request, queryset):
+                  count = queryset.update(status=Article.Status.PUBLISHED)
+                  self.message_user(request, f'{count} articles published.')
+      bad_examples:
+        - |
+          # ❌ Basic admin with no customization
+          admin.site.register(Article)  # Hard to use!
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/ref/contrib/admin/'
+      tags:
+        - admin
+        - customization
+        - ux
+
+  - id: DJANGO023
+    title: 'Use Django Caching'
+    category: performance
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Implement caching at multiple levels: per-view, template fragment,
+        and low-level. Use cache invalidation strategies.
+      rationale: |
+        Proper caching dramatically improves response times and
+        reduces database load.
+      good_examples:
+        - |
+          # ✅ Cache configuration
+          # settings.py
+          CACHES = {
+              'default': {
+                  'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                  'LOCATION': 'redis://localhost:6379/1',
+                  'OPTIONS': {
+                      'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                  },
+                  'KEY_PREFIX': 'myapp',
+                  'TIMEOUT': 300,  # 5 minutes default
+              }
+          }
+
+          # ✅ Per-view caching
+          from django.views.decorators.cache import cache_page
+          from django.views.decorators.vary import vary_on_cookie
+
+          @cache_page(60 * 15)  # 15 minutes
+          @vary_on_cookie
+          def article_list(request):
+              # ...
+
+          # ✅ Template fragment caching
+          """
+          {% load cache %}
+          {% cache 300 sidebar request.user.id %}
+              {% include 'sidebar.html' %}
+          {% endcache %}
+          """
+
+          # ✅ Low-level caching with invalidation
+          from django.core.cache import cache
+
+          class ArticleService:
+              CACHE_KEY = 'article:{}'
+              CACHE_TIMEOUT = 60 * 15
+
+              @classmethod
+              def get_article(cls, pk):
+                  cache_key = cls.CACHE_KEY.format(pk)
+                  article = cache.get(cache_key)
+
+                  if article is None:
+                      article = Article.objects.select_related('author').get(pk=pk)
+                      cache.set(cache_key, article, cls.CACHE_TIMEOUT)
+
+                  return article
+
+              @classmethod
+              def invalidate_article(cls, pk):
+                  cache.delete(cls.CACHE_KEY.format(pk))
+
+          # Invalidate on save
+          @receiver(post_save, sender=Article)
+          def invalidate_article_cache(sender, instance, **kwargs):
+              ArticleService.invalidate_article(instance.pk)
+      bad_examples:
+        - |
+          # ❌ No caching strategy - repeated queries
+          def article_detail(request, pk):
+              article = Article.objects.get(pk=pk)  # Every request
+              return render(...)
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/cache/'
+      tags:
+        - caching
+        - performance
+        - redis
+
+  - id: DJANGO024
+    title: 'Implement Async Views (Django 4.1+)'
+    category: performance
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use async views for I/O-bound operations like external API calls.
+        Understand sync/async boundaries.
+      rationale: |
+        Async views improve concurrency for I/O-bound workloads,
+        allowing more simultaneous requests.
+      good_examples:
+        - |
+          # ✅ Async view for external API calls
+          import httpx
+          from django.http import JsonResponse
+
+          async def fetch_weather(request, city):
+              """Async view calling external API."""
+              async with httpx.AsyncClient() as client:
+                  response = await client.get(
+                      f'https://api.weather.com/v1/{city}',
+                      timeout=10.0
+                  )
+                  return JsonResponse(response.json())
+
+          # ✅ Async view with database access
+          from asgiref.sync import sync_to_async
+
+          @sync_to_async
+          def get_article(pk):
+              return Article.objects.select_related('author').get(pk=pk)
+
+          async def article_with_weather(request, pk, city):
+              """Parallel async operations."""
+              async with httpx.AsyncClient() as client:
+                  # Run DB query and API call in parallel
+                  article_task = asyncio.create_task(get_article(pk))
+                  weather_task = asyncio.create_task(
+                      client.get(f'https://api.weather.com/{city}')
+                  )
+
+                  article, weather_response = await asyncio.gather(
+                      article_task, weather_task
+                  )
+
+                  return JsonResponse({
+                      'article': article.title,
+                      'weather': weather_response.json(),
+                  })
+
+          # ✅ Async CBV
+          from django.views import View
+
+          class AsyncArticleView(View):
+              async def get(self, request, pk):
+                  article = await sync_to_async(
+                      Article.objects.select_related('author').get
+                  )(pk=pk)
+                  return JsonResponse({'title': article.title})
+      bad_examples:
+        - |
+          # ❌ Blocking call in async view
+          async def bad_async_view(request):
+              # This blocks the event loop!
+              data = requests.get('https://api.example.com')
+              return JsonResponse(data.json())
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/async/'
+      tags:
+        - async
+        - performance
+        - concurrency
+
+  - id: DJANGO025
+    title: 'Use Django Signals for Decoupling'
+    category: architecture
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use custom signals to decouple application components.
+        Document signal handlers and keep them focused.
+      rationale: |
+        Custom signals enable loose coupling between apps while
+        maintaining clear communication patterns.
+      good_examples:
+        - |
+          # ✅ Custom signals for domain events
+          # signals.py
+          from django.dispatch import Signal
+
+          # Define domain-specific signals
+          article_published = Signal()  # providing_args removed in Django 4.0
+          article_archived = Signal()
+          user_registered = Signal()
+
+          # models.py
+          class Article(models.Model):
+              def publish(self):
+                  self.status = self.Status.PUBLISHED
+                  self.published_at = timezone.now()
+                  self.save()
+
+                  # Emit signal after save
+                  from .signals import article_published
+                  article_published.send(sender=self.__class__, article=self)
+
+          # handlers.py
+          from django.dispatch import receiver
+          from .signals import article_published
+
+          @receiver(article_published)
+          def notify_subscribers(sender, article, **kwargs):
+              """Send email notifications to subscribers."""
+              subscribers = article.author.subscribers.all()
+              for subscriber in subscribers:
+                  send_notification_email.delay(subscriber.id, article.id)
+
+          @receiver(article_published)
+          def update_search_index(sender, article, **kwargs):
+              """Update search index."""
+              index_article.delay(article.id)
+
+          @receiver(article_published)
+          def update_statistics(sender, article, **kwargs):
+              """Update author statistics."""
+              article.author.update_publish_count()
+
+          # apps.py - register handlers
+          class BlogConfig(AppConfig):
+              name = 'blog'
+
+              def ready(self):
+                  import blog.handlers  # noqa: F401
+      bad_examples:
+        - |
+          # ❌ Everything in one signal handler
+          @receiver(post_save, sender=Article)
+          def do_everything(sender, instance, **kwargs):
+              # Too much responsibility in one handler!
+              send_email(...)
+              update_cache(...)
+              update_search(...)
+              update_stats(...)
+              notify_social(...)
+      tags:
+        - signals
+        - decoupling
+        - events
+
+  - id: DJANGO026
+    title: 'Implement Celery for Background Tasks'
+    category: async_patterns
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Use Celery for background processing: email sending, report
+        generation, external API calls. Configure proper retry logic.
+      rationale: |
+        Background tasks improve response times and handle
+        unreliable operations with retry mechanisms.
+      good_examples:
+        - |
+          # ✅ Celery configuration
+          # celery.py
+          import os
+          from celery import Celery
+
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'project.settings')
+
+          app = Celery('project')
+          app.config_from_object('django.conf:settings', namespace='CELERY')
+          app.autodiscover_tasks()
+
+          # settings.py
+          CELERY_BROKER_URL = 'redis://localhost:6379/0'
+          CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+          CELERY_ACCEPT_CONTENT = ['json']
+          CELERY_TASK_SERIALIZER = 'json'
+          CELERY_RESULT_SERIALIZER = 'json'
+
+          # ✅ Well-structured tasks
+          # tasks.py
+          from celery import shared_task
+          from celery.utils.log import get_task_logger
+
+          logger = get_task_logger(__name__)
+
+          @shared_task(
+              bind=True,
+              max_retries=3,
+              default_retry_delay=60,
+              autoretry_for=(ConnectionError, TimeoutError),
+          )
+          def send_welcome_email(self, user_id):
+              """Send welcome email to new user."""
+              try:
+                  user = User.objects.get(id=user_id)
+                  send_mail(
+                      subject='Welcome!',
+                      message=f'Hello {user.username}',
+                      from_email='noreply@example.com',
+                      recipient_list=[user.email],
+                  )
+                  logger.info(f'Welcome email sent to user {user_id}')
+              except User.DoesNotExist:
+                  logger.error(f'User {user_id} not found')
+              except SMTPException as exc:
+                  logger.warning(f'Email failed, retrying: {exc}')
+                  raise self.retry(exc=exc)
+
+          @shared_task(
+              bind=True,
+              time_limit=300,  # 5 minute timeout
+              soft_time_limit=240,
+          )
+          def generate_report(self, report_id):
+              """Generate large report in background."""
+              report = Report.objects.get(id=report_id)
+              try:
+                  data = compile_report_data(report)
+                  report.file = generate_pdf(data)
+                  report.status = 'completed'
+              except SoftTimeLimitExceeded:
+                  report.status = 'timeout'
+              finally:
+                  report.save()
+
+          # Usage
+          send_welcome_email.delay(user.id)
+          generate_report.apply_async(args=[report.id], countdown=10)
+      bad_examples:
+        - |
+          # ❌ Slow operations in request/response cycle
+          def register(request):
+              user = User.objects.create(...)
+              send_mail(...)  # Blocks request for seconds!
+              return redirect('home')
+      references:
+        - 'https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html'
+      tags:
+        - celery
+        - background-tasks
+        - async
+
+  - id: DJANGO027
+    title: 'Implement Health Checks'
+    category: monitoring
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Implement health check endpoints for load balancers and
+        monitoring. Check database, cache, and external dependencies.
+      rationale: |
+        Health checks enable automated failover, monitoring alerts,
+        and zero-downtime deployments.
+      good_examples:
+        - |
+          # ✅ Health check view
+          from django.http import JsonResponse
+          from django.db import connection
+          from django.core.cache import cache
+          import redis
+
+          def health_check(request):
+              """Comprehensive health check endpoint."""
+              checks = {
+                  'database': check_database(),
+                  'cache': check_cache(),
+                  'storage': check_storage(),
+              }
+
+              status = 'healthy' if all(checks.values()) else 'unhealthy'
+              status_code = 200 if status == 'healthy' else 503
+
+              return JsonResponse({
+                  'status': status,
+                  'checks': checks,
+                  'version': settings.VERSION,
+              }, status=status_code)
+
+          def check_database():
+              try:
+                  with connection.cursor() as cursor:
+                      cursor.execute('SELECT 1')
+                  return True
+              except Exception:
+                  return False
+
+          def check_cache():
+              try:
+                  cache.set('health_check', 'ok', 10)
+                  return cache.get('health_check') == 'ok'
+              except Exception:
+                  return False
+
+          def check_storage():
+              try:
+                  from django.core.files.storage import default_storage
+                  default_storage.exists('health_check_test')
+                  return True
+              except Exception:
+                  return False
+
+          # ✅ Kubernetes readiness/liveness probes
+          def liveness(request):
+              """Basic liveness - just respond."""
+              return JsonResponse({'status': 'alive'})
+
+          def readiness(request):
+              """Readiness - check all dependencies."""
+              if not check_database():
+                  return JsonResponse({'status': 'not ready'}, status=503)
+              return JsonResponse({'status': 'ready'})
+
+          # urls.py
+          urlpatterns = [
+              path('health/', health_check, name='health_check'),
+              path('health/live/', liveness, name='liveness'),
+              path('health/ready/', readiness, name='readiness'),
+          ]
+      bad_examples:
+        - |
+          # ❌ No health checks - blind to failures
+          # Load balancer keeps routing to dead instances
+      tags:
+        - health-checks
+        - monitoring
+        - kubernetes
+
+  - id: DJANGO028
+    title: 'Configure Logging Properly'
+    category: monitoring
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Configure structured logging with appropriate levels, formatters,
+        and handlers. Include request context in logs.
+      rationale: |
+        Good logging enables debugging, monitoring, and audit trails
+        without exposing sensitive data.
+      good_examples:
+        - |
+          # ✅ Comprehensive logging configuration
+          LOGGING = {
+              'version': 1,
+              'disable_existing_loggers': False,
+              'formatters': {
+                  'verbose': {
+                      'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+                      'style': '{',
+                  },
+                  'json': {
+                      '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+                      'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
+                  },
+              },
+              'filters': {
+                  'require_debug_false': {
+                      '()': 'django.utils.log.RequireDebugFalse',
+                  },
+                  'require_debug_true': {
+                      '()': 'django.utils.log.RequireDebugTrue',
+                  },
+              },
+              'handlers': {
+                  'console': {
+                      'level': 'INFO',
+                      'class': 'logging.StreamHandler',
+                      'formatter': 'verbose',
+                  },
+                  'file': {
+                      'level': 'WARNING',
+                      'class': 'logging.handlers.RotatingFileHandler',
+                      'filename': '/var/log/django/app.log',
+                      'maxBytes': 10 * 1024 * 1024,  # 10MB
+                      'backupCount': 5,
+                      'formatter': 'json',
+                  },
+                  'mail_admins': {
+                      'level': 'ERROR',
+                      'filters': ['require_debug_false'],
+                      'class': 'django.utils.log.AdminEmailHandler',
+                  },
+              },
+              'loggers': {
+                  'django': {
+                      'handlers': ['console', 'file'],
+                      'level': 'INFO',
+                  },
+                  'django.request': {
+                      'handlers': ['file', 'mail_admins'],
+                      'level': 'WARNING',
+                      'propagate': False,
+                  },
+                  'myapp': {
+                      'handlers': ['console', 'file'],
+                      'level': 'DEBUG',
+                  },
+              },
+          }
+
+          # ✅ Usage in code
+          import logging
+
+          logger = logging.getLogger(__name__)
+
+          def process_order(order_id):
+              logger.info('Processing order', extra={'order_id': order_id})
+              try:
+                  # ... processing ...
+                  logger.info('Order processed successfully', extra={'order_id': order_id})
+              except PaymentError as e:
+                  logger.error('Payment failed', extra={'order_id': order_id, 'error': str(e)})
+                  raise
+      bad_examples:
+        - |
+          # ❌ Using print instead of logging
+          print(f'Processing order {order_id}')
+
+          # ❌ Logging sensitive data
+          logger.info(f'User {email} logged in with password {password}')
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/topics/logging/'
+      tags:
+        - logging
+        - monitoring
+        - debugging
+
+  - id: DJANGO029
+    title: 'Use Django Management Commands'
+    category: maintainability
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Create custom management commands for maintenance tasks,
+        data imports, and scheduled jobs.
+      rationale: |
+        Management commands are testable, documented, and integrate
+        with Django's infrastructure.
+      good_examples:
+        - |
+          # ✅ Custom management command
+          # myapp/management/commands/cleanup_expired.py
+          from django.core.management.base import BaseCommand, CommandError
+          from django.utils import timezone
+          from datetime import timedelta
+
+          class Command(BaseCommand):
+              help = 'Clean up expired sessions and temporary data'
+
+              def add_arguments(self, parser):
+                  parser.add_argument(
+                      '--days',
+                      type=int,
+                      default=30,
+                      help='Delete items older than N days (default: 30)',
+                  )
+                  parser.add_argument(
+                      '--dry-run',
+                      action='store_true',
+                      help='Show what would be deleted without actually deleting',
+                  )
+
+              def handle(self, *args, **options):
+                  days = options['days']
+                  dry_run = options['dry_run']
+                  cutoff = timezone.now() - timedelta(days=days)
+
+                  # Find expired items
+                  expired_sessions = Session.objects.filter(expire_date__lt=cutoff)
+                  expired_tokens = PasswordResetToken.objects.filter(created_at__lt=cutoff)
+
+                  session_count = expired_sessions.count()
+                  token_count = expired_tokens.count()
+
+                  if dry_run:
+                      self.stdout.write(
+                          self.style.WARNING(
+                              f'DRY RUN: Would delete {session_count} sessions, {token_count} tokens'
+                          )
+                      )
+                  else:
+                      expired_sessions.delete()
+                      expired_tokens.delete()
+                      self.stdout.write(
+                          self.style.SUCCESS(
+                              f'Deleted {session_count} sessions, {token_count} tokens'
+                          )
+                      )
+
+              def handle(self, *args, **options):
+                  try:
+                      self._cleanup(options)
+                  except Exception as e:
+                      raise CommandError(f'Cleanup failed: {e}')
+
+          # Usage:
+          # python manage.py cleanup_expired --days=7 --dry-run
+          # python manage.py cleanup_expired --days=7
+      bad_examples:
+        - |
+          # ❌ Raw scripts without Django integration
+          # cleanup.py
+          import psycopg2
+          conn = psycopg2.connect(...)  # Bypasses Django settings!
+          cursor.execute('DELETE FROM sessions WHERE ...')
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/howto/custom-management-commands/'
+      tags:
+        - management-commands
+        - maintenance
+        - automation
+
+  - id: DJANGO030
+    title: 'Follow Django Project Structure'
+    category: architecture
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - django
+    content:
+      description: |
+        Organize project with clear separation: apps, settings, static,
+        templates. Follow Django conventions.
+      rationale: |
+        Consistent structure makes projects navigable, enables
+        code reuse, and follows community standards.
+      good_examples:
+        - |
+          # ✅ Recommended project structure
+          """
+          myproject/
+          ├── config/                    # Project configuration
+          │   ├── __init__.py
+          │   ├── settings/
+          │   │   ├── __init__.py
+          │   │   ├── base.py           # Shared settings
+          │   │   ├── development.py    # Dev overrides
+          │   │   ├── production.py     # Prod overrides
+          │   │   └── testing.py        # Test overrides
+          │   ├── urls.py
+          │   ├── wsgi.py
+          │   └── asgi.py
+          ├── apps/                      # Django apps
+          │   ├── __init__.py
+          │   ├── accounts/             # User management
+          │   │   ├── migrations/
+          │   │   ├── templates/accounts/
+          │   │   ├── admin.py
+          │   │   ├── apps.py
+          │   │   ├── forms.py
+          │   │   ├── models.py
+          │   │   ├── signals.py
+          │   │   ├── tests/
+          │   │   ├── urls.py
+          │   │   └── views.py
+          │   ├── blog/                 # Blog feature
+          │   │   └── ...
+          │   └── api/                  # API app (DRF)
+          │       ├── v1/
+          │       │   ├── serializers.py
+          │       │   ├── views.py
+          │       │   └── urls.py
+          │       └── v2/
+          ├── static/                   # Static files
+          │   ├── css/
+          │   ├── js/
+          │   └── images/
+          ├── templates/                # Project-level templates
+          │   ├── base.html
+          │   ├── 404.html
+          │   └── 500.html
+          ├── media/                    # User uploads (gitignored)
+          ├── locale/                   # Translations
+          ├── requirements/
+          │   ├── base.txt
+          │   ├── development.txt
+          │   └── production.txt
+          ├── manage.py
+          ├── pytest.ini
+          └── docker-compose.yml
+          """
+
+          # ✅ Settings organization
+          # config/settings/base.py
+          INSTALLED_APPS = [
+              # Django apps
+              'django.contrib.admin',
+              'django.contrib.auth',
+              # ...
+
+              # Third-party apps
+              'rest_framework',
+              'django_filters',
+
+              # Local apps
+              'apps.accounts',
+              'apps.blog',
+              'apps.api',
+          ]
+      bad_examples:
+        - |
+          # ❌ Flat structure with everything in one place
+          """
+          myproject/
+          ├── models.py        # All models in one file
+          ├── views.py         # All views in one file
+          ├── settings.py      # Single settings file
+          └── ...
+          """
+      references:
+        - 'https://docs.djangoproject.com/en/4.2/intro/reusable-apps/'
+      tags:
+        - project-structure
+        - organization
+        - best-practices

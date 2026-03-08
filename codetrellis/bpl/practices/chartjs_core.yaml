@@ -1,0 +1,1722 @@
+# Chart.js Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.73 - Chart.js Framework Support
+# Practice IDs: CHARTJS001-CHARTJS050
+# Coverage: Chart Config, Datasets, Scales, Plugins, Animation,
+#           Interaction, Styling, Performance, Advanced, Ecosystem
+# Versions: Chart.js v2-v4+, react-chartjs-2, vue-chartjs, ng2-charts,
+#           svelte-chartjs, chartjs-plugin-datalabels, chartjs-plugin-zoom
+
+practices:
+  # ============================================================================
+  # CHART CONFIG (CHARTJS001-CHARTJS005)
+  # ============================================================================
+
+  - id: CHARTJS001
+    title: "Use declarative config object for chart creation"
+    description: "Chart.js charts are created by passing a config object with type, data, and options keys to the Chart constructor. Keep the config declarative and avoid imperative DOM manipulation. The config object is the single source of truth for chart appearance and behavior."
+    category: "chartjs_chart_config"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "config", "constructor", "declarative", "setup"]
+    example: |
+      // ✅ Declarative config object
+      const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Jan', 'Feb', 'Mar'],
+          datasets: [{
+            label: 'Sales',
+            data: [12, 19, 3],
+            backgroundColor: 'rgba(54, 162, 235, 0.5)'
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'Monthly Sales' }
+          }
+        }
+      });
+
+      // ❌ Building config imperatively
+      const chart = new Chart(ctx, { type: 'bar' });
+      chart.data.labels = ['Jan', 'Feb', 'Mar'];
+      chart.data.datasets.push({ data: [12, 19, 3] });
+      chart.update();
+
+  - id: CHARTJS002
+    title: "Enable responsive mode and maintain aspect ratio"
+    description: "Set responsive: true (default) so charts resize with their container. Use maintainAspectRatio: true to preserve proportions, or false when you need the chart to fill a fixed-height container. Always wrap the canvas in a relatively-positioned container."
+    category: "chartjs_chart_config"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "responsive", "aspect-ratio", "resize", "container"]
+    example: |
+      // ✅ Responsive with container
+      // HTML: <div style="position: relative; width: 100%; height: 400px;">
+      //         <canvas id="myChart"></canvas>
+      //       </div>
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: { ... },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false  // fill container height
+        }
+      });
+
+      // ❌ Fixed canvas dimensions (not responsive)
+      // <canvas id="myChart" width="800" height="400"></canvas>
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: { ... },
+        options: { responsive: false }
+      });
+
+  - id: CHARTJS003
+    title: "Use Chart.register() for tree-shakeable imports (v3+)"
+    description: "Chart.js v3+ supports tree-shaking. Import and register only the components you need (scales, elements, controllers, plugins) instead of importing everything. Use 'chart.js/auto' only for quick prototyping."
+    category: "chartjs_chart_config"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags:
+      ["chartjs", "register", "tree-shaking", "imports", "bundle-size", "v3"]
+    example: |
+      // ✅ Tree-shakeable imports (v3+)
+      import {
+        Chart,
+        BarController,
+        BarElement,
+        CategoryScale,
+        LinearScale,
+        Tooltip,
+        Legend
+      } from 'chart.js';
+
+      Chart.register(
+        BarController,
+        BarElement,
+        CategoryScale,
+        LinearScale,
+        Tooltip,
+        Legend
+      );
+
+      // ⚠️ Auto-register (larger bundle, fine for prototyping)
+      import Chart from 'chart.js/auto';
+
+      // ❌ v2-style global import (not tree-shakeable)
+      import Chart from 'chart.js';
+
+  - id: CHARTJS004
+    title: "Set global defaults via Chart.defaults for consistent styling"
+    description: "Use Chart.defaults to set project-wide defaults for fonts, colors, and plugin options. This avoids repeating the same options in every chart config. Override per-chart when needed."
+    category: "chartjs_chart_config"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "defaults", "global", "theming", "consistency"]
+    example: |
+      // ✅ v3+ global defaults
+      Chart.defaults.font.family = "'Inter', sans-serif";
+      Chart.defaults.font.size = 14;
+      Chart.defaults.color = '#374151';
+      Chart.defaults.plugins.legend.position = 'bottom';
+      Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(0,0,0,0.8)';
+
+      // ✅ v2 global defaults (migration reference)
+      // Chart.defaults.global.defaultFontFamily = "'Inter', sans-serif";
+      // Chart.defaults.global.defaultFontSize = 14;
+
+      // ❌ Repeating font config in every chart
+      const chart1 = new Chart(ctx1, {
+        options: { plugins: { legend: { labels: { font: { family: 'Inter' } } } } }
+      });
+      const chart2 = new Chart(ctx2, {
+        options: { plugins: { legend: { labels: { font: { family: 'Inter' } } } } }
+      });
+
+  - id: CHARTJS005
+    title: "Destroy charts before creating new ones on the same canvas"
+    description: "Chart.js binds to a canvas element. If you recreate a chart on the same canvas without destroying the old one, it causes memory leaks and ghost animations. Always call chart.destroy() before creating a new Chart on the same canvas."
+    category: "chartjs_chart_config"
+    severity: "error"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "destroy", "memory-leak", "canvas", "lifecycle"]
+    example: |
+      // ✅ Destroy before recreate
+      let chart = null;
+
+      function renderChart(data) {
+        if (chart) {
+          chart.destroy();
+        }
+        chart = new Chart(ctx, {
+          type: 'bar',
+          data: data,
+          options: { ... }
+        });
+      }
+
+      // ✅ React cleanup
+      useEffect(() => {
+        const chart = new Chart(canvasRef.current, config);
+        return () => chart.destroy();
+      }, [config]);
+
+      // ❌ Creating without destroying (memory leak + ghost overlays)
+      function renderChart(data) {
+        chart = new Chart(ctx, { type: 'bar', data });
+      }
+
+  # ============================================================================
+  # DATASETS (CHARTJS006-CHARTJS010)
+  # ============================================================================
+
+  - id: CHARTJS006
+    title: "Provide a label for each dataset for legend clarity"
+    description: "Every dataset should have a descriptive label property. This label appears in the legend and tooltips, providing context to users. Without labels, datasets appear as 'undefined' in the legend."
+    category: "chartjs_datasets"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "dataset", "label", "legend", "accessibility"]
+    example: |
+      // ✅ Labeled datasets
+      data: {
+        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+        datasets: [
+          { label: 'Revenue', data: [120, 190, 300, 250], borderColor: '#3b82f6' },
+          { label: 'Expenses', data: [80, 120, 180, 150], borderColor: '#ef4444' }
+        ]
+      }
+
+      // ❌ Missing labels
+      data: {
+        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+        datasets: [
+          { data: [120, 190, 300, 250] },  // legend shows "undefined"
+          { data: [80, 120, 180, 150] }
+        ]
+      }
+
+  - id: CHARTJS007
+    title: "Use per-dataset type overrides for mixed charts"
+    description: "Chart.js supports mixed chart types by setting a type property on individual datasets. The top-level type acts as the default; datasets can override it. Ensure compatible scale types when mixing chart types."
+    category: "chartjs_datasets"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "mixed", "dataset", "type", "combo"]
+    example: |
+      // ✅ Mixed bar + line chart
+      const chart = new Chart(ctx, {
+        type: 'bar',  // default type
+        data: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr'],
+          datasets: [
+            {
+              label: 'Revenue',
+              data: [120, 190, 300, 250],
+              type: 'bar'  // explicit (matches default)
+            },
+            {
+              label: 'Trend',
+              data: [100, 160, 240, 280],
+              type: 'line',  // override to line
+              borderColor: '#ef4444',
+              fill: false
+            }
+          ]
+        }
+      });
+
+  - id: CHARTJS008
+    title: "Use array colors for per-segment styling in bar/pie charts"
+    description: "backgroundColor, borderColor, and other style properties accept arrays to style each data point individually. This is especially useful for bar and pie charts where each segment represents a different category."
+    category: "chartjs_datasets"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "colors", "array", "per-segment", "styling"]
+    example: |
+      // ✅ Array colors for per-bar styling
+      datasets: [{
+        label: 'Votes',
+        data: [12, 19, 3, 5, 2],
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.5)',
+          'rgba(54, 162, 235, 0.5)',
+          'rgba(255, 206, 86, 0.5)',
+          'rgba(75, 192, 192, 0.5)',
+          'rgba(153, 102, 255, 0.5)'
+        ],
+        borderColor: [
+          'rgba(255, 99, 132, 1)',
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(75, 192, 192, 1)',
+          'rgba(153, 102, 255, 1)'
+        ],
+        borderWidth: 1
+      }]
+
+      // ❌ Single color for categorical bar chart
+      datasets: [{
+        data: [12, 19, 3, 5, 2],
+        backgroundColor: 'rgba(54, 162, 235, 0.5)'  // all bars same color
+      }]
+
+  - id: CHARTJS009
+    title: "Set fill and tension properties for line datasets"
+    description: "Use fill: true/false/'origin'/'start'/'end' to control area fill beneath line datasets. Use tension (0-1) to control line smoothness (0 = straight, 0.4 = smooth curves). Defaults changed between v2 and v3."
+    category: "chartjs_datasets"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "fill", "tension", "line", "area", "smooth"]
+    example: |
+      // ✅ Smooth area chart
+      datasets: [{
+        label: 'Temperature',
+        data: [20, 22, 25, 23, 21],
+        fill: 'origin',
+        tension: 0.4,
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgba(54, 162, 235, 1)'
+      }]
+
+      // ✅ Sharp line chart (no fill)
+      datasets: [{
+        label: 'Stock Price',
+        data: [150, 148, 155, 160, 158],
+        fill: false,
+        tension: 0,
+        borderColor: '#10b981'
+      }]
+
+  - id: CHARTJS010
+    title: "Use the data property consistently — arrays or point objects"
+    description: "Chart.js accepts data as plain number arrays (paired with labels) or as arrays of {x, y} objects for scatter/time charts. Don't mix formats within a dataset. For bubble charts, use {x, y, r}."
+    category: "chartjs_datasets"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "data", "format", "point", "scatter", "bubble"]
+    example: |
+      // ✅ Simple number array (with labels)
+      data: {
+        labels: ['Mon', 'Tue', 'Wed'],
+        datasets: [{ data: [10, 20, 30] }]
+      }
+
+      // ✅ Point objects for scatter
+      data: {
+        datasets: [{
+          data: [
+            { x: 10, y: 20 },
+            { x: 15, y: 10 },
+            { x: 25, y: 30 }
+          ]
+        }]
+      }
+
+      // ✅ Bubble chart with radius
+      data: {
+        datasets: [{
+          data: [
+            { x: 10, y: 20, r: 5 },
+            { x: 15, y: 10, r: 10 },
+            { x: 25, y: 30, r: 15 }
+          ]
+        }]
+      }
+
+      // ❌ Mixed formats in one dataset
+      data: [10, { x: 15, y: 20 }, 30]  // inconsistent
+
+  # ============================================================================
+  # SCALES (CHARTJS011-CHARTJS015)
+  # ============================================================================
+
+  - id: CHARTJS011
+    title: "Use the v3+ scales config format with named axes"
+    description: "In Chart.js v3+, scales are configured as a flat object with named keys (e.g., scales: { x: {}, y: {} }). Avoid the v2 xAxes/yAxes array format. Named scales support multiple axes and clearer configuration."
+    category: "chartjs_scales"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "scales", "v3", "axes", "migration"]
+    example: |
+      // ✅ v3+ named scales
+      options: {
+        scales: {
+          x: {
+            type: 'category',
+            title: { display: true, text: 'Month' }
+          },
+          y: {
+            type: 'linear',
+            beginAtZero: true,
+            title: { display: true, text: 'Revenue ($)' }
+          }
+        }
+      }
+
+      // ❌ v2 array format (deprecated in v3+)
+      options: {
+        scales: {
+          xAxes: [{ display: true, scaleLabel: { display: true, labelString: 'Month' } }],
+          yAxes: [{ ticks: { beginAtZero: true } }]
+        }
+      }
+
+  - id: CHARTJS012
+    title: "Set beginAtZero: true for bar charts to avoid misleading visuals"
+    description: "Bar charts should almost always start from zero. Without beginAtZero: true on the value axis, small differences are exaggerated and bars appear disproportionate. Line charts may intentionally omit this to zoom in on data ranges."
+    category: "chartjs_scales"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "scales", "beginAtZero", "bar", "misleading"]
+    example: |
+      // ✅ Bar chart with zero baseline
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+
+      // ❌ Bar chart without zero baseline (misleading)
+      // If data is [98, 99, 100], bars look wildly different
+      options: {
+        scales: {
+          y: {}  // auto-ranges to ~[97.5, 100.5]
+        }
+      }
+
+  - id: CHARTJS013
+    title: "Use suggestedMin/suggestedMax instead of hard min/max when possible"
+    description: "suggestedMin and suggestedMax provide soft boundaries that expand if data exceeds them, while min/max clip data. Use suggested values for flexible scaling that adapts to changing data while maintaining visual context."
+    category: "chartjs_scales"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "scales", "suggested", "min", "max", "range"]
+    example: |
+      // ✅ Suggested bounds (flexible)
+      options: {
+        scales: {
+          y: {
+            suggestedMin: 0,
+            suggestedMax: 100
+            // If data contains 120, scale auto-extends to ~130
+          }
+        }
+      }
+
+      // ⚠️ Hard bounds (clips data beyond range)
+      options: {
+        scales: {
+          y: {
+            min: 0,
+            max: 100
+            // Data point 120 will be clipped / not visible
+          }
+        }
+      }
+
+  - id: CHARTJS014
+    title: "Use a date adapter for time-series scales"
+    description: "Chart.js time scales require a date adapter (date-fns, Luxon, Moment.js, or Day.js). Install and import the adapter package alongside chart.js. Without an adapter, time scales throw errors at runtime."
+    category: "chartjs_scales"
+    severity: "error"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "time", "adapter", "date-fns", "luxon", "moment", "dayjs"]
+    example: |
+      // ✅ date-fns adapter (recommended)
+      import 'chartjs-adapter-date-fns';
+      // or: import 'chartjs-adapter-luxon';
+      // or: import 'chartjs-adapter-moment';
+
+      options: {
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: 'month',
+              displayFormats: { month: 'MMM yyyy' }
+            },
+            title: { display: true, text: 'Date' }
+          }
+        }
+      }
+
+      // ❌ Time scale without adapter
+      // Error: "This method is not implemented: either no adapter ..."
+      options: {
+        scales: {
+          x: { type: 'time' }  // crashes without adapter import
+        }
+      }
+
+  - id: CHARTJS015
+    title: "Configure tick callbacks for custom label formatting"
+    description: "Use the ticks.callback function to format axis labels (currency, percentages, abbreviations). The callback receives the tick value and index. Return a string or array of strings for multi-line labels."
+    category: "chartjs_scales"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "ticks", "callback", "format", "label", "currency"]
+    example: |
+      // ✅ Currency formatting
+      options: {
+        scales: {
+          y: {
+            ticks: {
+              callback: function(value) {
+                return '$' + value.toLocaleString();
+              }
+            }
+          }
+        }
+      }
+
+      // ✅ Percentage formatting
+      options: {
+        scales: {
+          y: {
+            ticks: {
+              callback: (value) => value + '%'
+            }
+          }
+        }
+      }
+
+      // ✅ Multi-line labels
+      options: {
+        scales: {
+          x: {
+            ticks: {
+              callback: function(value) {
+                const label = this.getLabelForValue(value);
+                return label.length > 10 ? label.match(/.{1,10}/g) : label;
+              }
+            }
+          }
+        }
+      }
+
+  # ============================================================================
+  # PLUGINS (CHARTJS016-CHARTJS020)
+  # ============================================================================
+
+  - id: CHARTJS016
+    title: "Configure built-in plugins via options.plugins namespace"
+    description: "Chart.js built-in plugins (tooltip, legend, title, subtitle, decimation, filler) are configured under options.plugins. Each plugin has its own namespace. Use display: true/false to show/hide them."
+    category: "chartjs_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "plugins", "tooltip", "legend", "title", "builtin"]
+    example: |
+      // ✅ Built-in plugin configuration
+      options: {
+        plugins: {
+          title: {
+            display: true,
+            text: 'Monthly Revenue',
+            font: { size: 18, weight: 'bold' }
+          },
+          legend: {
+            position: 'bottom',
+            labels: { usePointStyle: true }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y}`
+            }
+          }
+        }
+      }
+
+  - id: CHARTJS017
+    title: "Use chartjs-plugin-datalabels for inline data labels"
+    description: "The chartjs-plugin-datalabels plugin displays data values directly on chart elements. Register it and configure via options.plugins.datalabels. Control visibility, alignment, formatting, and conditional display."
+    category: "chartjs_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "plugin", "datalabels", "annotation", "label"]
+    example: |
+      // ✅ Data labels plugin
+      import ChartDataLabels from 'chartjs-plugin-datalabels';
+      Chart.register(ChartDataLabels);
+
+      options: {
+        plugins: {
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            formatter: (value) => '$' + value,
+            font: { weight: 'bold' },
+            display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 10
+          }
+        }
+      }
+
+      // ❌ Registering but not configuring (labels show raw numbers)
+      Chart.register(ChartDataLabels);
+      // No datalabels config → default display of all values
+
+  - id: CHARTJS018
+    title: "Use chartjs-plugin-zoom for pan and zoom interactions"
+    description: "The chartjs-plugin-zoom plugin adds pinch-zoom, scroll-zoom, and drag-to-pan. Register it and configure zoom/pan modes, limits, and axis constraints. Useful for large or time-series datasets."
+    category: "chartjs_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "plugin", "zoom", "pan", "interaction", "scroll"]
+    example: |
+      // ✅ Zoom plugin configuration
+      import zoomPlugin from 'chartjs-plugin-zoom';
+      Chart.register(zoomPlugin);
+
+      options: {
+        plugins: {
+          zoom: {
+            zoom: {
+              wheel: { enabled: true },
+              pinch: { enabled: true },
+              mode: 'x'
+            },
+            pan: {
+              enabled: true,
+              mode: 'x'
+            },
+            limits: {
+              x: { min: 'original', max: 'original' }
+            }
+          }
+        }
+      }
+
+  - id: CHARTJS019
+    title: "Write custom inline plugins with lifecycle hooks"
+    description: "Chart.js supports inline plugins defined in the config's plugins array. Use lifecycle hooks (beforeDraw, afterDraw, beforeDatasetsDraw, etc.) to add custom rendering like watermarks, backgrounds, or annotations."
+    category: "chartjs_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "plugin", "custom", "inline", "hooks", "lifecycle"]
+    example: |
+      // ✅ Custom background plugin
+      const backgroundPlugin = {
+        id: 'customBackground',
+        beforeDraw: (chart) => {
+          const { ctx, chartArea: { left, top, width, height } } = chart;
+          ctx.save();
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(left, top, width, height);
+          ctx.restore();
+        }
+      };
+
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: { ... },
+        options: { ... },
+        plugins: [backgroundPlugin]
+      });
+
+      // ✅ Custom crosshair plugin
+      const crosshairPlugin = {
+        id: 'crosshair',
+        afterDatasetsDraw: (chart, args, options) => {
+          const { ctx, tooltip } = chart;
+          if (tooltip && tooltip.getActiveElements().length) {
+            const x = tooltip.caretX;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(x, chart.chartArea.top);
+            ctx.lineTo(x, chart.chartArea.bottom);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#94a3b8';
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+      };
+
+  - id: CHARTJS020
+    title: "Register plugins globally or per-chart appropriately"
+    description: "Use Chart.register() for plugins needed across all charts. Use the plugins array in config for chart-specific plugins. Avoid registering inline plugins globally as they run on every chart instance."
+    category: "chartjs_plugins"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "plugin", "register", "global", "per-chart", "scope"]
+    example: |
+      // ✅ Global registration (all charts get this plugin)
+      import ChartDataLabels from 'chartjs-plugin-datalabels';
+      Chart.register(ChartDataLabels);
+
+      // ✅ Per-chart inline plugin (only this chart)
+      const chart = new Chart(ctx, {
+        type: 'bar',
+        data: { ... },
+        plugins: [{
+          id: 'watermark',
+          afterDraw: (chart) => { /* draw watermark */ }
+        }]
+      });
+
+      // ❌ Registering an inline plugin globally
+      Chart.register({
+        id: 'myInlinePlugin',
+        afterDraw: (chart) => { /* runs on ALL charts */ }
+      });
+
+  # ============================================================================
+  # ANIMATION (CHARTJS021-CHARTJS025)
+  # ============================================================================
+
+  - id: CHARTJS021
+    title: "Disable animations for large datasets or static dashboards"
+    description: "Animations can cause jank with thousands of data points. Set animation: false or animation: { duration: 0 } for performance-critical charts. Consider enabling animations only on initial load."
+    category: "chartjs_animation"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "animation", "performance", "disable", "large-data"]
+    example: |
+      // ✅ Disable all animations
+      options: {
+        animation: false
+      }
+
+      // ✅ Disable only update animations (animate initial load)
+      options: {
+        animation: { duration: 1000 },
+        transitions: {
+          active: { animation: { duration: 0 } }
+        }
+      }
+
+      // ✅ Reduce animation for large datasets
+      const datasetSize = data.length;
+      options: {
+        animation: {
+          duration: datasetSize > 1000 ? 0 : 800
+        }
+      }
+
+  - id: CHARTJS022
+    title: "Use per-property animations for polished effects"
+    description: "Chart.js v3+ supports animating individual properties (x, y, radius, borderWidth) with different durations, easings, and delays. Use the animations config key to define per-property animation behavior."
+    category: "chartjs_animation"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "animation", "per-property", "easing", "delay"]
+    example: |
+      // ✅ Per-property animations
+      options: {
+        animations: {
+          y: {
+            easing: 'easeOutBounce',
+            duration: 1500,
+            from: (ctx) => ctx.chart.chartArea.bottom
+          },
+          radius: {
+            easing: 'linear',
+            duration: 500,
+            from: 0,
+            loop: true
+          }
+        }
+      }
+
+      // ✅ Staggered animation with delay
+      options: {
+        animation: {
+          delay: (ctx) => ctx.dataIndex * 100
+        }
+      }
+
+  - id: CHARTJS023
+    title: "Configure transitions for different update modes"
+    description: "Chart.js supports different animation configs for different update modes: 'active' (hover), 'resize', 'show', 'hide'. Use the transitions config to customize behavior for each mode independently."
+    category: "chartjs_animation"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "transitions", "active", "resize", "show", "hide"]
+    example: |
+      // ✅ Custom transitions per mode
+      options: {
+        transitions: {
+          active: {
+            animation: {
+              duration: 200  // fast hover feedback
+            }
+          },
+          resize: {
+            animation: {
+              duration: 0  // instant on resize
+            }
+          },
+          show: {
+            animations: {
+              y: { from: 0 },
+              opacity: { from: 0, duration: 500 }
+            }
+          }
+        }
+      }
+
+  - id: CHARTJS024
+    title: "Use the onComplete callback for post-animation actions"
+    description: "The animation.onComplete callback fires after all animations finish. Use it to trigger actions like exporting the chart to an image, updating counters, or notifying other components."
+    category: "chartjs_animation"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "animation", "onComplete", "callback", "export"]
+    example: |
+      // ✅ Export to image after animation
+      options: {
+        animation: {
+          onComplete: function(animation) {
+            const image = animation.chart.toBase64Image();
+            document.getElementById('preview').src = image;
+          }
+        }
+      }
+
+      // ✅ Trigger event after initial render
+      options: {
+        animation: {
+          onComplete: function({ initial }) {
+            if (initial) {
+              console.log('Chart fully rendered');
+            }
+          }
+        }
+      }
+
+  - id: CHARTJS025
+    title: "Choose appropriate easing functions for data visualization"
+    description: "Chart.js supports standard easing functions: 'linear', 'easeInQuad', 'easeOutQuad', 'easeInOutQuad', 'easeOutBounce', etc. Use 'easeOutQuart' (default) for smooth entrances. Avoid bouncy easings for serious data visualizations."
+    category: "chartjs_animation"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "animation", "easing", "linear", "bounce", "smooth"]
+    example: |
+      // ✅ Smooth entrance for data chart
+      options: {
+        animation: {
+          easing: 'easeOutQuart',
+          duration: 800
+        }
+      }
+
+      // ✅ Linear for real-time streaming data
+      options: {
+        animation: {
+          easing: 'linear',
+          duration: 0  // or very short for streaming
+        }
+      }
+
+      // ⚠️ Bouncy easing (fun but not for serious dashboards)
+      options: {
+        animation: {
+          easing: 'easeOutBounce'  // distracting for business data
+        }
+      }
+
+  # ============================================================================
+  # INTERACTION (CHARTJS026-CHARTJS030)
+  # ============================================================================
+
+  - id: CHARTJS026
+    title: "Set interaction mode for multi-dataset tooltips"
+    description: "The interaction.mode controls which elements are selected on hover. Use 'index' for vertical slice (all datasets at that index), 'nearest' for closest point, 'point' for exact hit. Set intersect: false for easier targeting."
+    category: "chartjs_interaction"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "interaction", "mode", "tooltip", "hover", "intersect"]
+    example: |
+      // ✅ Show all datasets at hovered index
+      options: {
+        interaction: {
+          mode: 'index',
+          intersect: false
+        }
+      }
+
+      // ✅ Nearest point (good for scatter)
+      options: {
+        interaction: {
+          mode: 'nearest',
+          intersect: true
+        }
+      }
+
+      // ❌ Default (intersect: true) makes tooltips hard to trigger
+      // User must hover exactly on a data point
+
+  - id: CHARTJS027
+    title: "Use onClick for chart element click handling"
+    description: "Handle clicks on chart elements via the onClick callback in options. Use chart.getElementsAtEventForMode() to determine which elements were clicked. Avoid attaching click listeners directly to the canvas."
+    category: "chartjs_interaction"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "click", "onClick", "event", "handler"]
+    example: |
+      // ✅ onClick handler
+      options: {
+        onClick: (event, elements, chart) => {
+          if (elements.length > 0) {
+            const { datasetIndex, index } = elements[0];
+            const label = chart.data.labels[index];
+            const value = chart.data.datasets[datasetIndex].data[index];
+            console.log(`Clicked: ${label} = ${value}`);
+          }
+        }
+      }
+
+      // ✅ Navigate on click
+      options: {
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            window.location.href = `/details/${data[index].id}`;
+          }
+        }
+      }
+
+      // ❌ Direct canvas listener (doesn't know about chart elements)
+      canvas.addEventListener('click', (e) => {
+        // No way to determine which bar/point was clicked
+      });
+
+  - id: CHARTJS028
+    title: "Customize tooltip callbacks for rich content"
+    description: "Use tooltip callbacks (title, label, footer, afterLabel) to customize tooltip content. Return strings or arrays of strings for multi-line tooltips. Access the full data context via the callback parameter."
+    category: "chartjs_interaction"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "tooltip", "callback", "custom", "format"]
+    example: |
+      // ✅ Custom tooltip with formatting
+      options: {
+        plugins: {
+          tooltip: {
+            callbacks: {
+              title: (items) => `Report: ${items[0].label}`,
+              label: (ctx) => {
+                const value = ctx.parsed.y;
+                return `${ctx.dataset.label}: $${value.toLocaleString()}`;
+              },
+              footer: (items) => {
+                const total = items.reduce((sum, item) => sum + item.parsed.y, 0);
+                return `Total: $${total.toLocaleString()}`;
+              }
+            }
+          }
+        }
+      }
+
+  - id: CHARTJS029
+    title: "Use onHover callback for cursor and highlight effects"
+    description: "The onHover callback fires when the mouse moves over the chart. Use it to change cursor style when hovering over clickable elements. Combine with active element highlighting for polished UX."
+    category: "chartjs_interaction"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "hover", "cursor", "highlight", "onHover", "UX"]
+    example: |
+      // ✅ Change cursor on hoverable elements
+      options: {
+        onHover: (event, elements, chart) => {
+          chart.canvas.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+        }
+      }
+
+      // ✅ Highlight active elements
+      options: {
+        hover: {
+          mode: 'nearest',
+          intersect: true
+        },
+        elements: {
+          bar: {
+            hoverBackgroundColor: 'rgba(54, 162, 235, 0.8)',
+            hoverBorderColor: 'rgba(54, 162, 235, 1)',
+            hoverBorderWidth: 2
+          }
+        }
+      }
+
+  - id: CHARTJS030
+    title: "Implement external tooltip for HTML-based tooltips"
+    description: "For rich tooltips with HTML, images, or complex layouts, use the external tooltip callback. Set enabled: false on the default tooltip and render a custom HTML element positioned relative to the canvas."
+    category: "chartjs_interaction"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "tooltip", "external", "HTML", "custom", "rich"]
+    example: |
+      // ✅ External HTML tooltip
+      options: {
+        plugins: {
+          tooltip: {
+            enabled: false,
+            external: function(context) {
+              let tooltipEl = document.getElementById('chartjs-tooltip');
+              if (!tooltipEl) {
+                tooltipEl = document.createElement('div');
+                tooltipEl.id = 'chartjs-tooltip';
+                document.body.appendChild(tooltipEl);
+              }
+
+              const tooltipModel = context.tooltip;
+              if (tooltipModel.opacity === 0) {
+                tooltipEl.style.opacity = '0';
+                return;
+              }
+
+              tooltipEl.innerHTML = `
+                <div class="tooltip-card">
+                  <h3>${tooltipModel.title[0]}</h3>
+                  <p>${tooltipModel.body[0].lines[0]}</p>
+                </div>`;
+
+              const { offsetLeft, offsetTop } = context.chart.canvas;
+              tooltipEl.style.opacity = '1';
+              tooltipEl.style.left = offsetLeft + tooltipModel.caretX + 'px';
+              tooltipEl.style.top = offsetTop + tooltipModel.caretY + 'px';
+            }
+          }
+        }
+      }
+
+  # ============================================================================
+  # STYLING (CHARTJS031-CHARTJS035)
+  # ============================================================================
+
+  - id: CHARTJS031
+    title: "Use consistent color palettes with sufficient contrast"
+    description: "Define a consistent color palette for datasets across your application. Ensure colors have sufficient contrast for accessibility. Use rgba() for transparency on fills while keeping solid borders."
+    category: "chartjs_styling"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "color", "palette", "contrast", "accessibility"]
+    example: |
+      // ✅ Consistent, accessible color palette
+      const CHART_COLORS = {
+        blue: { bg: 'rgba(54, 162, 235, 0.5)', border: 'rgb(54, 162, 235)' },
+        red: { bg: 'rgba(255, 99, 132, 0.5)', border: 'rgb(255, 99, 132)' },
+        green: { bg: 'rgba(75, 192, 192, 0.5)', border: 'rgb(75, 192, 192)' },
+        orange: { bg: 'rgba(255, 159, 64, 0.5)', border: 'rgb(255, 159, 64)' },
+        purple: { bg: 'rgba(153, 102, 255, 0.5)', border: 'rgb(153, 102, 255)' }
+      };
+
+      datasets: [{
+        label: 'Revenue',
+        backgroundColor: CHART_COLORS.blue.bg,
+        borderColor: CHART_COLORS.blue.border,
+        borderWidth: 2
+      }]
+
+      // ❌ Random colors with poor contrast
+      datasets: [{
+        backgroundColor: '#ffff00',  // yellow on white = invisible
+        borderColor: '#ffff66'
+      }]
+
+  - id: CHARTJS032
+    title: "Configure pointStyle for distinguishable data series"
+    description: "When multiple line datasets share a chart, use different pointStyle values (circle, rect, triangle, star, cross, etc.) so series are distinguishable without color alone. This improves accessibility for color-blind users."
+    category: "chartjs_styling"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "pointStyle", "accessibility", "colorblind", "series"]
+    example: |
+      // ✅ Distinct point styles per series
+      datasets: [
+        {
+          label: 'Series A',
+          pointStyle: 'circle',
+          pointRadius: 5,
+          borderColor: '#3b82f6'
+        },
+        {
+          label: 'Series B',
+          pointStyle: 'triangle',
+          pointRadius: 6,
+          borderColor: '#ef4444'
+        },
+        {
+          label: 'Series C',
+          pointStyle: 'rect',
+          pointRadius: 5,
+          borderColor: '#10b981'
+        }
+      ]
+
+      // ✅ Use point styles in legend
+      options: {
+        plugins: {
+          legend: {
+            labels: { usePointStyle: true }
+          }
+        }
+      }
+
+  - id: CHARTJS033
+    title: "Use borderDash for dashed line styles"
+    description: "Use the borderDash property on line datasets to create dashed, dotted, or dash-dot patterns. This adds another visual dimension beyond color and helps distinguish reference lines from data lines."
+    category: "chartjs_styling"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "borderDash", "dashed", "line-style", "pattern"]
+    example: |
+      // ✅ Dashed line for target/reference
+      datasets: [
+        {
+          label: 'Actual',
+          borderDash: [],  // solid line
+          borderColor: '#3b82f6',
+          data: [10, 25, 30, 28, 35]
+        },
+        {
+          label: 'Target',
+          borderDash: [5, 5],  // dashed line
+          borderColor: '#94a3b8',
+          data: [20, 20, 20, 20, 20]
+        },
+        {
+          label: 'Forecast',
+          borderDash: [2, 3],  // dotted line
+          borderColor: '#f59e0b',
+          data: [null, null, null, 28, 40]
+        }
+      ]
+
+  - id: CHARTJS034
+    title: "Configure element-level defaults for consistent chart elements"
+    description: "Use options.elements to set default styles for points, lines, bars, and arcs. This avoids repeating style properties in every dataset and provides a consistent baseline."
+    category: "chartjs_styling"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "elements", "defaults", "point", "line", "bar", "arc"]
+    example: |
+      // ✅ Element-level defaults
+      options: {
+        elements: {
+          point: {
+            radius: 4,
+            hoverRadius: 6,
+            borderWidth: 2
+          },
+          line: {
+            tension: 0.3,
+            borderWidth: 2,
+            fill: false
+          },
+          bar: {
+            borderWidth: 1,
+            borderRadius: 4
+          },
+          arc: {
+            borderWidth: 2
+          }
+        }
+      }
+
+  - id: CHARTJS035
+    title: "Use borderRadius for rounded bar charts (v3+)"
+    description: "Chart.js v3+ supports borderRadius on bar elements for modern, polished bar charts. Set it at the dataset level or in elements.bar for all bars. Supports per-corner radius with an object."
+    category: "chartjs_styling"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "borderRadius", "bar", "rounded", "modern", "v3"]
+    example: |
+      // ✅ Rounded bars
+      datasets: [{
+        label: 'Revenue',
+        data: [12, 19, 3, 5],
+        borderRadius: 8,
+        borderSkipped: false  // round all corners
+      }]
+
+      // ✅ Rounded top corners only
+      datasets: [{
+        label: 'Revenue',
+        data: [12, 19, 3, 5],
+        borderRadius: {
+          topLeft: 8,
+          topRight: 8,
+          bottomLeft: 0,
+          bottomRight: 0
+        }
+      }]
+
+  # ============================================================================
+  # PERFORMANCE (CHARTJS036-CHARTJS040)
+  # ============================================================================
+
+  - id: CHARTJS036
+    title: "Use the decimation plugin for large time-series datasets"
+    description: "The built-in decimation plugin reduces the number of drawn points for line charts with large datasets. Enable it with algorithm: 'lttb' (Largest-Triangle-Three-Buckets) or 'min-max' for visually accurate down-sampling."
+    category: "chartjs_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "decimation", "performance", "lttb", "large-data"]
+    example: |
+      // ✅ LTTB decimation for large datasets
+      options: {
+        parsing: false,  // required for decimation
+        plugins: {
+          decimation: {
+            enabled: true,
+            algorithm: 'lttb',
+            samples: 500,  // target number of points
+            threshold: 1000  // only decimate above this count
+          }
+        },
+        scales: {
+          x: { type: 'time' }  // decimation requires time/linear x-axis
+        }
+      }
+
+      // Data must be sorted by x and in {x, y} format
+      data: {
+        datasets: [{
+          data: largeDataset.map(d => ({ x: d.timestamp, y: d.value }))
+        }]
+      }
+
+  - id: CHARTJS037
+    title: "Reduce point rendering for line charts with many data points"
+    description: "Disable point rendering (pointRadius: 0) for line charts with hundreds or thousands of points. Points are the most expensive rendering element. Show points only on hover with pointHitRadius."
+    category: "chartjs_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "performance", "points", "radius", "large-data"]
+    example: |
+      // ✅ Hide points, show on hover
+      datasets: [{
+        data: largeDataArray,
+        pointRadius: 0,
+        pointHitRadius: 10,  // invisible but hoverable
+        pointHoverRadius: 5
+      }]
+
+      // ✅ Global default for all line charts
+      Chart.defaults.elements.point.radius = 0;
+      Chart.defaults.elements.point.hitRadius = 10;
+      Chart.defaults.elements.point.hoverRadius = 5;
+
+      // ❌ Default points on 10k data points (slow rendering)
+      datasets: [{
+        data: tenThousandPoints,
+        // Default pointRadius: 3 → draws 10k circles
+      }]
+
+  - id: CHARTJS038
+    title: "Use parsing: false for pre-formatted data"
+    description: "If your data is already in the format Chart.js expects ({x, y} objects), set parsing: false to skip the internal parsing step. This improves performance for large datasets. Ensure data format matches the chart type."
+    category: "chartjs_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "parsing", "performance", "optimization", "data"]
+    example: |
+      // ✅ Skip parsing for pre-formatted data
+      const chart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            data: [
+              { x: 10, y: 20 },
+              { x: 15, y: 30 },
+              { x: 20, y: 10 }
+            ]
+          }]
+        },
+        options: {
+          parsing: false  // data already in {x, y} format
+        }
+      });
+
+      // ⚠️ parsing: false with wrong format → broken chart
+      // Requires data in exact expected format
+
+  - id: CHARTJS039
+    title: "Use chart.update('none') to batch data changes without animation"
+    description: "When making multiple data changes, batch them and call chart.update('none') to apply without animation. Use chart.update('active') for partial updates. Avoid calling update() inside loops."
+    category: "chartjs_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "update", "batch", "performance", "none"]
+    example: |
+      // ✅ Batch updates without animation
+      chart.data.datasets[0].data = newData;
+      chart.data.labels = newLabels;
+      chart.options.scales.y.max = newMax;
+      chart.update('none');  // single update, no animation
+
+      // ✅ Partial update with animation
+      chart.data.datasets[0].data[2] = 42;
+      chart.update('active');
+
+      // ❌ Update inside loop (re-renders on each iteration)
+      newData.forEach((value, i) => {
+        chart.data.datasets[0].data[i] = value;
+        chart.update();  // renders n times!
+      });
+
+  - id: CHARTJS040
+    title: "Use spanGaps to handle missing data efficiently"
+    description: "Set spanGaps: true on line datasets to draw lines across null/NaN/undefined values instead of breaking the line. For time series, set a max gap (in ms) to break lines only when data gaps exceed a threshold."
+    category: "chartjs_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "spanGaps", "missing-data", "null", "time-series"]
+    example: |
+      // ✅ Span all gaps
+      datasets: [{
+        data: [10, 20, null, null, 50, 60],
+        spanGaps: true  // draws line from 20 to 50
+      }]
+
+      // ✅ Span gaps up to 1 day (time scale)
+      datasets: [{
+        data: timeSeriesData,
+        spanGaps: 1000 * 60 * 60 * 24  // 1 day in ms
+      }]
+
+      // Default: spanGaps: false → line breaks at null values
+
+  # ============================================================================
+  # ADVANCED (CHARTJS041-CHARTJS045)
+  # ============================================================================
+
+  - id: CHARTJS041
+    title: "Use stacked bar/area charts correctly with the stack property"
+    description: "For stacked charts, set stacked: true on both x and y scales. Use the stack property on datasets to create multiple stacking groups. Ensure data values make sense when summed (percentages, counts, not ratios)."
+    category: "chartjs_advanced"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "stacked", "bar", "area", "stack", "group"]
+    example: |
+      // ✅ Stacked bar chart
+      options: {
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true }
+        }
+      }
+
+      // ✅ Multiple stack groups
+      datasets: [
+        { label: 'Q1 Revenue', data: [100, 200], stack: 'revenue' },
+        { label: 'Q1 Cost', data: [60, 120], stack: 'cost' },
+        { label: 'Q2 Revenue', data: [120, 220], stack: 'revenue' },
+        { label: 'Q2 Cost', data: [70, 130], stack: 'cost' }
+      ]
+
+      // ❌ Stacking percentages (misleading totals)
+      datasets: [
+        { label: 'A', data: [45, 60] },   // %
+        { label: 'B', data: [55, 40] }    // stacked total = 100+100, not 100%
+      ]
+
+  - id: CHARTJS042
+    title: "Use scriptable options for dynamic per-element styling"
+    description: "Most Chart.js options accept scriptable values — functions that receive a context object. Use this to dynamically style elements based on their data value, index, dataset, or chart state."
+    category: "chartjs_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "scriptable", "dynamic", "conditional", "context"]
+    example: |
+      // ✅ Conditional coloring based on value
+      datasets: [{
+        data: [12, -5, 8, -3, 15],
+        backgroundColor: (ctx) => {
+          const value = ctx.dataset.data[ctx.dataIndex];
+          return value >= 0 ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)';
+        },
+        borderColor: (ctx) => {
+          const value = ctx.dataset.data[ctx.dataIndex];
+          return value >= 0 ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)';
+        }
+      }]
+
+      // ✅ Highlight max value
+      datasets: [{
+        data: [12, 19, 3, 5, 2],
+        backgroundColor: (ctx) => {
+          const max = Math.max(...ctx.dataset.data);
+          return ctx.dataset.data[ctx.dataIndex] === max
+            ? 'rgba(59, 130, 246, 0.8)'
+            : 'rgba(59, 130, 246, 0.3)';
+        }
+      }]
+
+  - id: CHARTJS043
+    title: "Use multiple y-axes for dual-axis charts"
+    description: "Create dual-axis charts by defining multiple y scales with unique IDs and assigning datasets to them via yAxisID. Position the second axis on the right. Ensure the two axes represent related but different metrics."
+    category: "chartjs_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "dual-axis", "multiple", "yAxisID", "secondary"]
+    example: |
+      // ✅ Dual y-axis chart
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr'],
+          datasets: [
+            {
+              label: 'Revenue ($)',
+              data: [1200, 1900, 3000, 2500],
+              yAxisID: 'y',
+              borderColor: '#3b82f6'
+            },
+            {
+              label: 'Customers',
+              data: [50, 80, 120, 100],
+              yAxisID: 'y1',
+              borderColor: '#ef4444'
+            }
+          ]
+        },
+        options: {
+          scales: {
+            y: {
+              type: 'linear',
+              position: 'left',
+              title: { display: true, text: 'Revenue ($)' }
+            },
+            y1: {
+              type: 'linear',
+              position: 'right',
+              title: { display: true, text: 'Customers' },
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
+      });
+
+  - id: CHARTJS044
+    title: "Use the chartjs-plugin-annotation for reference lines and regions"
+    description: "The annotation plugin adds lines, boxes, points, ellipses, and labels as overlays on the chart area. Use annotations for thresholds, target values, reference regions, and callouts without modifying the data."
+    category: "chartjs_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "annotation", "reference-line", "threshold", "region"]
+    example: |
+      // ✅ Threshold line and region
+      import annotationPlugin from 'chartjs-plugin-annotation';
+      Chart.register(annotationPlugin);
+
+      options: {
+        plugins: {
+          annotation: {
+            annotations: {
+              targetLine: {
+                type: 'line',
+                yMin: 75,
+                yMax: 75,
+                borderColor: 'rgb(239, 68, 68)',
+                borderDash: [5, 5],
+                borderWidth: 2,
+                label: {
+                  display: true,
+                  content: 'Target: 75',
+                  position: 'end'
+                }
+              },
+              safeZone: {
+                type: 'box',
+                yMin: 60,
+                yMax: 90,
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                borderWidth: 0
+              }
+            }
+          }
+        }
+      }
+
+  - id: CHARTJS045
+    title: "Export charts as images using toBase64Image()"
+    description: "Use chart.toBase64Image() to export the chart as a PNG data URL. Call it after animations complete (use onComplete callback). For server-side rendering, use chartjs-node-canvas."
+    category: "chartjs_advanced"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "export", "image", "base64", "PNG", "download"]
+    example: |
+      // ✅ Download chart as PNG
+      function downloadChart(chart, filename = 'chart.png') {
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = chart.toBase64Image('image/png', 1);
+        link.click();
+      }
+
+      // ✅ Export with specific format and quality
+      const jpegUrl = chart.toBase64Image('image/jpeg', 0.8);
+      const pngUrl = chart.toBase64Image('image/png', 1);
+
+      // ✅ Server-side rendering with chartjs-node-canvas
+      const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+      const chartJSNodeCanvas = new ChartJSNodeCanvas({ width: 800, height: 400 });
+      const buffer = await chartJSNodeCanvas.renderToBuffer(configuration);
+
+  # ============================================================================
+  # ECOSYSTEM (CHARTJS046-CHARTJS050)
+  # ============================================================================
+
+  - id: CHARTJS046
+    title: "Use react-chartjs-2 for React integration with proper refs"
+    description: "react-chartjs-2 provides React components (<Line>, <Bar>, <Pie>, etc.) wrapping Chart.js. Use refs to access the chart instance. Data and options are reactive — pass new objects to trigger updates."
+    category: "chartjs_ecosystem"
+    severity: "warning"
+    applicability:
+      frameworks: ["chartjs", "react"]
+    tags: ["chartjs", "react", "react-chartjs-2", "component", "ref"]
+    example: |
+      // ✅ React integration with react-chartjs-2
+      import { Line } from 'react-chartjs-2';
+      import { Chart, registerables } from 'chart.js';
+      Chart.register(...registerables);
+
+      function RevenueChart({ data }) {
+        const chartRef = useRef(null);
+
+        const chartData = useMemo(() => ({
+          labels: data.map(d => d.month),
+          datasets: [{
+            label: 'Revenue',
+            data: data.map(d => d.value),
+            borderColor: '#3b82f6'
+          }]
+        }), [data]);
+
+        const options = useMemo(() => ({
+          responsive: true,
+          plugins: { legend: { position: 'top' } }
+        }), []);
+
+        return <Line ref={chartRef} data={chartData} options={options} />;
+      }
+
+      // ❌ Inline data/options objects (re-render on every parent render)
+      return <Line data={{ labels: [...], datasets: [...] }} options={{ ... }} />;
+
+  - id: CHARTJS047
+    title: "Use vue-chartjs with reactive data and options"
+    description: "vue-chartjs provides Vue components wrapping Chart.js. In Vue 3, use defineComponent with setup(). Pass data and options as props. The chart re-renders when reactive data changes."
+    category: "chartjs_ecosystem"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs", "vue"]
+    tags: ["chartjs", "vue", "vue-chartjs", "reactive", "component"]
+    example: |
+      // ✅ Vue 3 + vue-chartjs
+      <template>
+        <Bar :data="chartData" :options="chartOptions" />
+      </template>
+
+      <script setup>
+      import { Bar } from 'vue-chartjs'
+      import {
+        Chart as ChartJS,
+        BarElement,
+        CategoryScale,
+        LinearScale,
+        Title,
+        Tooltip,
+        Legend
+      } from 'chart.js'
+
+      ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend)
+
+      const chartData = computed(() => ({
+        labels: props.data.map(d => d.label),
+        datasets: [{
+          label: 'Sales',
+          data: props.data.map(d => d.value),
+          backgroundColor: '#3b82f6'
+        }]
+      }))
+
+      const chartOptions = {
+        responsive: true,
+        plugins: { legend: { position: 'top' } }
+      }
+      </script>
+
+  - id: CHARTJS048
+    title: "Use ng2-charts for Angular with proper module setup"
+    description: "ng2-charts provides Angular directives for Chart.js. Import NgChartsModule in your module. Use the baseChart directive on a canvas element with [type], [data], and [options] bindings."
+    category: "chartjs_ecosystem"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs", "angular"]
+    tags: ["chartjs", "angular", "ng2-charts", "directive", "module"]
+    example: |
+      // ✅ Angular component with ng2-charts
+      // app.module.ts
+      import { NgChartsModule } from 'ng2-charts';
+      @NgModule({
+        imports: [NgChartsModule]
+      })
+
+      // chart.component.ts
+      import { ChartConfiguration, ChartData } from 'chart.js';
+
+      @Component({
+        template: `
+          <canvas baseChart
+            [type]="'bar'"
+            [data]="barChartData"
+            [options]="barChartOptions">
+          </canvas>`
+      })
+      export class ChartComponent {
+        barChartData: ChartData<'bar'> = {
+          labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+          datasets: [{
+            data: [65, 59, 80, 81],
+            label: 'Series A'
+          }]
+        };
+
+        barChartOptions: ChartConfiguration<'bar'>['options'] = {
+          responsive: true,
+          plugins: { legend: { display: true } }
+        };
+      }
+
+  - id: CHARTJS049
+    title: "Use TypeScript types from chart.js for type-safe configs"
+    description: "Chart.js v3+ ships with comprehensive TypeScript types. Use ChartConfiguration, ChartData, ChartOptions, and chart-type-specific generics for type-safe configurations. This catches config errors at compile time."
+    category: "chartjs_ecosystem"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "typescript", "types", "ChartConfiguration", "type-safe"]
+    example: |
+      // ✅ Type-safe configuration
+      import { ChartConfiguration, ChartData, ChartOptions } from 'chart.js';
+
+      const data: ChartData<'bar'> = {
+        labels: ['Jan', 'Feb', 'Mar'],
+        datasets: [{
+          label: 'Revenue',
+          data: [120, 190, 300],
+          backgroundColor: '#3b82f6'
+        }]
+      };
+
+      const options: ChartOptions<'bar'> = {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      };
+
+      const config: ChartConfiguration<'bar'> = {
+        type: 'bar',
+        data,
+        options
+      };
+
+      // ❌ Untyped config (no compile-time safety)
+      const config = {
+        type: 'bar',
+        data: { datasets: [{ data: [1, 2, 3] }] },
+        options: { sacles: { y: {} } }  // typo not caught
+      };
+
+  - id: CHARTJS050
+    title: "Use chartjs-node-canvas for server-side chart rendering"
+    description: "For generating chart images in Node.js (PDFs, emails, APIs), use chartjs-node-canvas. It provides a headless canvas implementation that renders Chart.js charts to Buffer or DataURL without a browser."
+    category: "chartjs_ecosystem"
+    severity: "info"
+    applicability:
+      frameworks: ["chartjs"]
+    tags: ["chartjs", "server-side", "node", "canvas", "PDF", "SSR"]
+    example: |
+      // ✅ Server-side chart rendering
+      const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+
+      const width = 800;
+      const height = 400;
+      const chartJSNodeCanvas = new ChartJSNodeCanvas({
+        width,
+        height,
+        backgroundColour: 'white'
+      });
+
+      async function generateChartImage() {
+        const configuration = {
+          type: 'bar',
+          data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr'],
+            datasets: [{
+              label: 'Revenue',
+              data: [120, 190, 300, 250],
+              backgroundColor: '#3b82f6'
+            }]
+          },
+          options: {
+            plugins: {
+              title: { display: true, text: 'Monthly Revenue' }
+            }
+          }
+        };
+
+        // Render to PNG buffer
+        const buffer = await chartJSNodeCanvas.renderToBuffer(configuration);
+        await fs.writeFile('chart.png', buffer);
+
+        // Or render to data URL
+        const dataUrl = await chartJSNodeCanvas.renderToDataURL(configuration);
+        return dataUrl;
+      }

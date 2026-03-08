@@ -1,0 +1,539 @@
+# ============================================================================
+# Python 3.10 Version-Specific Practices
+# ============================================================================
+# Practices for features introduced in Python 3.10 (Released: October 2021)
+# Key Features: Structural Pattern Matching, Better Error Messages, Type Unions
+# ============================================================================
+
+metadata:
+  id: 'python_3_10'
+  version: '1.0.0'
+  name: 'Python 3.10 Specific Practices'
+  description: 'Best practices for Python 3.10+ features'
+  python_version: '3.10+'
+  category: 'language_version'
+  tags: ['python', '3.10', 'pattern-matching', 'structural-types']
+  updated: '2025-01-20'
+
+practices:
+  # ==========================================================================
+  # Structural Pattern Matching (PEP 634, 635, 636)
+  # ==========================================================================
+  - id: 'PY310-001'
+    title: 'Use match-case for complex conditionals'
+    level: 'intermediate'
+    category: 'code_style'
+    tags: ['pattern-matching', 'match', 'case', 'control-flow']
+    applicability:
+      min_python: '3.10'
+      contexts: ['dispatch', 'parsing', 'state-machines']
+    content:
+      description: |
+        Use structural pattern matching (match-case) instead of complex if-elif chains
+        when dealing with multiple conditions that depend on structure or type.
+        Pattern matching is more readable and less error-prone for dispatch logic.
+      good_examples:
+        - |
+          # Good: Pattern matching for command parsing
+          def handle_command(command: dict) -> str:
+              match command:
+                  case {"action": "create", "name": str(name)}:
+                      return f"Creating {name}"
+                  case {"action": "delete", "id": int(id)}:
+                      return f"Deleting item {id}"
+                  case {"action": "list", "filter": str(f)}:
+                      return f"Listing with filter: {f}"
+                  case _:
+                      return "Unknown command"
+        - |
+          # Good: Pattern matching with guards
+          def categorize_point(point: tuple) -> str:
+              match point:
+                  case (0, 0):
+                      return "origin"
+                  case (x, 0) if x > 0:
+                      return "positive x-axis"
+                  case (0, y) if y > 0:
+                      return "positive y-axis"
+                  case (x, y) if x == y:
+                      return "diagonal"
+                  case _:
+                      return "other"
+      bad_examples:
+        - |
+          # Bad: Complex if-elif chain
+          def handle_command(command: dict) -> str:
+              if "action" in command:
+                  if command["action"] == "create" and "name" in command:
+                      return f"Creating {command['name']}"
+                  elif command["action"] == "delete" and "id" in command:
+                      return f"Deleting item {command['id']}"
+              return "Unknown command"
+    references:
+      - 'https://peps.python.org/pep-0634/'
+      - 'https://peps.python.org/pep-0636/'
+
+  - id: 'PY310-002'
+    title: 'Capture matched values in patterns'
+    level: 'intermediate'
+    category: 'code_style'
+    tags: ['pattern-matching', 'capture', 'binding']
+    applicability:
+      min_python: '3.10'
+    content:
+      description: |
+        Use capture patterns to bind matched values to names. This allows you to
+        use the matched parts in the case body without additional extraction.
+      good_examples:
+        - |
+          # Good: Capture patterns bind values
+          def process_response(response):
+              match response:
+                  case {"status": 200, "data": data}:
+                      return process_data(data)  # data is captured
+                  case {"status": status, "error": error} if status >= 400:
+                      log_error(status, error)  # both captured
+                      return None
+        - |
+          # Good: Capture with sequence unpacking
+          def analyze_coordinates(coords):
+              match coords:
+                  case [x, y]:
+                      return f"2D: ({x}, {y})"
+                  case [x, y, z]:
+                      return f"3D: ({x}, {y}, {z})"
+                  case [first, *rest]:
+                      return f"First: {first}, remaining: {len(rest)}"
+
+  - id: 'PY310-003'
+    title: 'Use class patterns for type-safe matching'
+    level: 'advanced'
+    category: 'type_safety'
+    tags: ['pattern-matching', 'class-pattern', 'type-checking']
+    applicability:
+      min_python: '3.10'
+    content:
+      description: |
+        Use class patterns to match and destructure objects by type.
+        This provides type-safe dispatch without isinstance() checks.
+      good_examples:
+        - |
+          # Good: Class pattern matching
+          from dataclasses import dataclass
+
+          @dataclass
+          class Point:
+              x: float
+              y: float
+
+          @dataclass
+          class Circle:
+              center: Point
+              radius: float
+
+          def describe_shape(shape):
+              match shape:
+                  case Point(x=0, y=0):
+                      return "Origin point"
+                  case Point(x=x, y=y):
+                      return f"Point at ({x}, {y})"
+                  case Circle(center=Point(x=cx, y=cy), radius=r):
+                      return f"Circle at ({cx}, {cy}) with radius {r}"
+        - |
+          # Good: Match with positional patterns using __match_args__
+          class Color:
+              __match_args__ = ("r", "g", "b")
+              def __init__(self, r, g, b):
+                  self.r, self.g, self.b = r, g, b
+
+          def color_name(c):
+              match c:
+                  case Color(255, 0, 0):
+                      return "red"
+                  case Color(0, 255, 0):
+                      return "green"
+                  case Color(0, 0, 255):
+                      return "blue"
+
+  - id: 'PY310-004'
+    title: 'Use OR patterns for alternatives'
+    level: 'intermediate'
+    category: 'code_style'
+    tags: ['pattern-matching', 'or-pattern', 'alternatives']
+    applicability:
+      min_python: '3.10'
+    content:
+      description: |
+        Use the | operator in patterns to match multiple alternatives.
+        This is cleaner than duplicating case blocks with identical bodies.
+      good_examples:
+        - |
+          # Good: OR pattern for alternatives
+          def parse_bool(value):
+              match value:
+                  case "yes" | "true" | "1" | True:
+                      return True
+                  case "no" | "false" | "0" | False:
+                      return False
+                  case _:
+                      raise ValueError(f"Cannot parse {value!r} as bool")
+        - |
+          # Good: OR pattern with capture
+          def handle_status(status):
+              match status:
+                  case 200 | 201 | 204 as code:
+                      return f"Success: {code}"
+                  case 400 | 401 | 403 | 404 as code:
+                      return f"Client error: {code}"
+                  case 500 | 502 | 503 as code:
+                      return f"Server error: {code}"
+
+  # ==========================================================================
+  # Type Union Syntax (PEP 604)
+  # ==========================================================================
+  - id: 'PY310-005'
+    title: 'Use X | Y syntax for type unions'
+    level: 'beginner'
+    category: 'type_safety'
+    tags: ['typing', 'union', 'type-hints']
+    applicability:
+      min_python: '3.10'
+    content:
+      description: |
+        Use the | operator for type unions instead of typing.Union.
+        This is more readable and consistent with pattern matching syntax.
+      good_examples:
+        - |
+          # Good: Union with | operator (3.10+)
+          def process(value: int | str | None) -> str:
+              if value is None:
+                  return "empty"
+              return str(value)
+
+          # Also works with isinstance
+          if isinstance(x, int | str):
+              print("x is an int or str")
+        - |
+          # Good: Optional shorthand with |
+          def greet(name: str | None = None) -> str:
+              return f"Hello, {name or 'World'}!"
+      bad_examples:
+        - |
+          # Outdated: Using typing.Union (pre-3.10)
+          from typing import Union, Optional
+
+          def process(value: Union[int, str, None]) -> str:
+              return str(value)
+
+          def greet(name: Optional[str] = None) -> str:
+              return f"Hello, {name or 'World'}!"
+    references:
+      - 'https://peps.python.org/pep-0604/'
+
+  # ==========================================================================
+  # Parameter Specification Variables (PEP 612)
+  # ==========================================================================
+  - id: 'PY310-006'
+    title: 'Use ParamSpec for typed decorators'
+    level: 'advanced'
+    category: 'type_safety'
+    tags: ['typing', 'paramspec', 'decorators', 'generics']
+    applicability:
+      min_python: '3.10'
+    content:
+      description: |
+        Use ParamSpec to preserve type information through decorators.
+        This allows type checkers to understand decorated function signatures.
+      good_examples:
+        - |
+          # Good: ParamSpec preserves signatures
+          from typing import TypeVar, ParamSpec, Callable
+          import functools
+
+          P = ParamSpec("P")
+          T = TypeVar("T")
+
+          def logged(func: Callable[P, T]) -> Callable[P, T]:
+              @functools.wraps(func)
+              def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+                  print(f"Calling {func.__name__}")
+                  return func(*args, **kwargs)
+              return wrapper
+
+          @logged
+          def add(x: int, y: int) -> int:
+              return x + y
+
+          # Type checker knows: add(1, 2) -> int ✓
+          # Type checker catches: add("a", "b") ✗
+        - |
+          # Good: ParamSpec with async functions
+          from typing import Awaitable
+
+          P = ParamSpec("P")
+          T = TypeVar("T")
+
+          def async_retry(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
+              @functools.wraps(func)
+              async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+                  for attempt in range(3):
+                      try:
+                          return await func(*args, **kwargs)
+                      except Exception:
+                          if attempt == 2:
+                              raise
+                  raise RuntimeError("Unreachable")
+              return wrapper
+    references:
+      - 'https://peps.python.org/pep-0612/'
+
+  # ==========================================================================
+  # Better Error Messages (PEP 634)
+  # ==========================================================================
+  - id: 'PY310-007'
+    title: 'Leverage improved error messages'
+    level: 'beginner'
+    category: 'debugging'
+    tags: ['errors', 'debugging', 'syntax-errors']
+    applicability:
+      min_python: '3.10'
+    content:
+      description: |
+        Python 3.10 provides much better error messages that point to the exact
+        location of issues. Use these improved messages to debug faster.
+        The error messages now show the exact column and provide suggestions.
+      good_examples:
+        - |
+          # Python 3.10+ error messages are more helpful:
+          #
+          # Before (3.9):
+          # SyntaxError: invalid syntax
+          #
+          # After (3.10):
+          # SyntaxError: '{' was never closed
+          #     data = {"name": "John", "age": 30
+          #            ^
+          #
+          # Also:
+          # NameError: name 'pritn' is not defined. Did you mean: 'print'?
+          # AttributeError: module 'collections' has no attribute 'Mapping'. Did you mean: 'abc.Mapping'?
+
+  # ==========================================================================
+  # TypeAlias (PEP 613)
+  # ==========================================================================
+  - id: 'PY310-008'
+    title: 'Explicitly mark type aliases'
+    level: 'intermediate'
+    category: 'type_safety'
+    tags: ['typing', 'type-alias', 'documentation']
+    applicability:
+      min_python: '3.10'
+    content:
+      description: |
+        Use TypeAlias to explicitly mark type aliases. This helps type checkers
+        and readers distinguish between type aliases and regular assignments.
+      good_examples:
+        - |
+          # Good: Explicit TypeAlias annotation (3.10+)
+          from typing import TypeAlias
+
+          UserId: TypeAlias = int
+          Coordinates: TypeAlias = tuple[float, float]
+          JsonDict: TypeAlias = dict[str, "JsonValue"]
+          JsonValue: TypeAlias = str | int | float | bool | None | list["JsonValue"] | JsonDict
+
+          def get_user(user_id: UserId) -> dict:
+              ...
+        - |
+          # Good: Complex recursive type alias
+          from typing import TypeAlias
+
+          TreeNode: TypeAlias = tuple[int, "TreeNode | None", "TreeNode | None"]
+
+          def tree_sum(node: TreeNode | None) -> int:
+              if node is None:
+                  return 0
+              value, left, right = node
+              return value + tree_sum(left) + tree_sum(right)
+      bad_examples:
+        - |
+          # Ambiguous: Is this a type alias or a value?
+          UserId = int  # Could be mistaken for a value assignment
+          Coordinates = tuple[float, float]
+    references:
+      - 'https://peps.python.org/pep-0613/'
+
+  # ==========================================================================
+  # dataclass Slots and KW_ONLY (PEP 681)
+  # ==========================================================================
+  - id: 'PY310-009'
+    title: 'Use dataclass slots for memory efficiency'
+    level: 'advanced'
+    category: 'performance'
+    tags: ['dataclass', 'slots', 'memory', 'optimization']
+    applicability:
+      min_python: '3.10'
+    content:
+      description: |
+        Use slots=True in dataclasses for memory efficiency and faster attribute
+        access. This is especially useful for classes with many instances.
+      good_examples:
+        - |
+          # Good: Dataclass with slots (3.10+)
+          from dataclasses import dataclass
+
+          @dataclass(slots=True)
+          class Point:
+              x: float
+              y: float
+              z: float = 0.0
+
+          # ~30% less memory per instance
+          # Faster attribute access
+          # Cannot add arbitrary attributes (safer)
+        - |
+          # Good: Combine slots with frozen for immutable value objects
+          @dataclass(frozen=True, slots=True)
+          class Money:
+              amount: int  # Store as cents
+              currency: str = "USD"
+
+              def __add__(self, other: "Money") -> "Money":
+                  if self.currency != other.currency:
+                      raise ValueError("Currency mismatch")
+                  return Money(self.amount + other.amount, self.currency)
+    references:
+      - 'https://peps.python.org/pep-0681/'
+
+  - id: 'PY310-010'
+    title: 'Use kw_only for clearer dataclass APIs'
+    level: 'intermediate'
+    category: 'api_design'
+    tags: ['dataclass', 'keyword-only', 'api']
+    applicability:
+      min_python: '3.10'
+    content:
+      description: |
+        Use kw_only=True or the KW_ONLY sentinel in dataclasses to enforce
+        keyword-only arguments. This improves API clarity and prevents errors.
+      good_examples:
+        - |
+          # Good: All fields keyword-only
+          from dataclasses import dataclass
+
+          @dataclass(kw_only=True)
+          class Config:
+              host: str
+              port: int
+              timeout: int = 30
+              retries: int = 3
+
+          # Must use keywords:
+          config = Config(host="localhost", port=8080)
+        - |
+          # Good: Mixed positional and keyword-only
+          from dataclasses import dataclass, field, KW_ONLY
+
+          @dataclass
+          class User:
+              id: int              # Positional
+              name: str            # Positional
+              _: KW_ONLY           # Everything after is keyword-only
+              email: str | None = None
+              active: bool = True
+
+          # Works:
+          user = User(1, "John", email="john@example.com")
+          # Error:
+          user = User(1, "John", "john@example.com")  # Too many positional
+      bad_examples:
+        - |
+          # Fragile: Easy to mix up positional arguments
+          @dataclass
+          class User:
+              id: int
+              name: str
+              email: str
+              active: bool
+
+          # Which is email and which is active?
+          user = User(1, "John", "john@example.com", True)
+
+  # ==========================================================================
+  # Strict Zip (PEP 618)
+  # ==========================================================================
+  - id: 'PY310-011'
+    title: 'Use strict=True with zip for safety'
+    level: 'intermediate'
+    category: 'error_handling'
+    tags: ['zip', 'itertools', 'safety']
+    applicability:
+      min_python: '3.10'
+    content:
+      description: |
+        Use strict=True with zip() when iterables should have equal length.
+        This catches bugs where data might be silently truncated or misaligned.
+      good_examples:
+        - |
+          # Good: Strict zip catches mismatched lengths
+          names = ["Alice", "Bob", "Charlie"]
+          scores = [95, 87, 92]
+
+          # Safe: Will raise ValueError if lengths don't match
+          for name, score in zip(names, scores, strict=True):
+              print(f"{name}: {score}")
+        - |
+          # Good: Use strict when processing related data
+          def process_results(headers: list[str], rows: list[list]) -> list[dict]:
+              return [
+                  dict(zip(headers, row, strict=True))
+                  for row in rows
+              ]
+      bad_examples:
+        - |
+          # Dangerous: Silent truncation
+          names = ["Alice", "Bob", "Charlie"]
+          scores = [95, 87]  # Missing one!
+
+          # This silently ignores Charlie
+          for name, score in zip(names, scores):
+              print(f"{name}: {score}")
+    references:
+      - 'https://peps.python.org/pep-0618/'
+
+  # ==========================================================================
+  # New String Methods
+  # ==========================================================================
+  - id: 'PY310-012'
+    title: 'Use str.removeprefix/removesuffix'
+    level: 'beginner'
+    category: 'code_style'
+    tags: ['string', 'methods', 'clean-code']
+    applicability:
+      min_python: '3.9' # Actually 3.9, but commonly used in 3.10+
+    content:
+      description: |
+        Use removeprefix() and removesuffix() for cleaner string manipulation.
+        These methods are safer than slicing and more readable than replace().
+      good_examples:
+        - |
+          # Good: removeprefix/removesuffix (3.9+)
+          filename = "test_user_service.py"
+
+          # Remove prefix
+          clean_name = filename.removeprefix("test_")  # "user_service.py"
+
+          # Remove suffix
+          module_name = filename.removesuffix(".py")  # "test_user_service"
+
+          # Safe: no-op if prefix/suffix not present
+          x = "hello".removeprefix("world")  # "hello" unchanged
+      bad_examples:
+        - |
+          # Bad: Manual slicing (error-prone)
+          filename = "test_user_service.py"
+          if filename.startswith("test_"):
+              clean_name = filename[5:]  # Magic number 5
+
+          # Bad: replace might affect middle of string
+          clean_name = filename.replace("test_", "", 1)

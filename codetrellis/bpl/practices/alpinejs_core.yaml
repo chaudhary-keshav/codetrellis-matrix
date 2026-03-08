@@ -1,0 +1,1008 @@
+# Alpine.js Core Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v4.66 - Alpine.js Framework Support
+# Practice IDs: ALPINE001-ALPINE050
+# Coverage: Directives, Components, Stores, Plugins, Reactivity,
+#           Events, Transitions, Performance, Security, Patterns
+# Versions: Alpine.js v1.x (legacy), v2.x, v3.x, v3.14+
+# Ecosystem: @alpinejs/*, HTMX, Livewire, Turbo, Tailwind
+
+practices:
+  # ============================================================================
+  # ALPINE DIRECTIVES (ALPINE001-ALPINE010) - Directive best practices
+  # ============================================================================
+
+  - id: ALPINE001
+    title: "Use x-data for component scope initialization"
+    description: "Every Alpine.js component must start with x-data on a root element. The x-data value defines the reactive scope for all child elements. Use an object literal for simple components or reference an Alpine.data() registration for reusable components."
+    category: "alpine_directives"
+    severity: "critical"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-data", "component", "scope"]
+    example: |
+      <!-- ✅ Inline x-data -->
+      <div x-data="{ open: false }">
+        <button @click="open = !open">Toggle</button>
+        <div x-show="open">Content</div>
+      </div>
+
+      <!-- ✅ Named component via Alpine.data() -->
+      <div x-data="dropdown">
+        <button @click="toggle()">Toggle</button>
+      </div>
+
+      <!-- ❌ Missing x-data -->
+      <div>
+        <button @click="open = !open">Broken</button>
+      </div>
+
+  - id: ALPINE002
+    title: "Prefer shorthand syntax for x-bind and x-on"
+    description: "Use : instead of x-bind: and @ instead of x-on: for cleaner, more readable templates. The shorthand is the community standard and reduces visual noise."
+    category: "alpine_directives"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "shorthand", "x-bind", "x-on"]
+    example: |
+      <!-- ✅ Shorthand -->
+      <button :class="active ? 'bg-blue' : ''" @click="toggle()">
+        Click
+      </button>
+
+      <!-- ❌ Verbose (valid but noisy) -->
+      <button x-bind:class="active ? 'bg-blue' : ''" x-on:click="toggle()">
+        Click
+      </button>
+
+  - id: ALPINE003
+    title: "Use x-show for toggling visibility, x-if for conditional rendering"
+    description: "x-show toggles CSS display:none and is faster for frequently toggled elements. x-if adds/removes elements from the DOM entirely and must be used on a <template> tag. Use x-if for elements that rarely change or consume significant resources."
+    category: "alpine_directives"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-show", "x-if", "conditional"]
+    example: |
+      <!-- ✅ x-show for frequent toggles (fast) -->
+      <div x-show="isOpen" x-transition>
+        Dropdown content
+      </div>
+
+      <!-- ✅ x-if for heavy/rare content (on template tag) -->
+      <template x-if="isLoggedIn">
+        <div>Welcome back!</div>
+      </template>
+
+      <!-- ❌ x-if on non-template element -->
+      <div x-if="isLoggedIn">This won't work</div>
+
+  - id: ALPINE004
+    title: "Use x-for on template elements for list rendering"
+    description: "x-for must be placed on a <template> element. It iterates over arrays and creates DOM elements for each item. Always provide a :key binding for efficient DOM diffing."
+    category: "alpine_directives"
+    severity: "critical"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-for", "loop", "iteration"]
+    example: |
+      <!-- ✅ Correct x-for with key -->
+      <template x-for="item in items" :key="item.id">
+        <div x-text="item.name"></div>
+      </template>
+
+      <!-- ✅ With index -->
+      <template x-for="(item, index) in items" :key="index">
+        <div x-text="`${index}: ${item.name}`"></div>
+      </template>
+
+      <!-- ❌ x-for on non-template -->
+      <div x-for="item in items">
+        <span x-text="item.name"></span>
+      </div>
+
+  - id: ALPINE005
+    title: "Use x-model for two-way binding on form inputs"
+    description: "x-model provides two-way data binding between form elements and Alpine data. Use modifiers like .debounce, .throttle, .number, and .lazy to control binding behavior."
+    category: "alpine_directives"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-model", "form", "binding"]
+    example: |
+      <div x-data="{ search: '', count: 0 }">
+        <!-- ✅ Basic text binding -->
+        <input x-model="search" placeholder="Search...">
+
+        <!-- ✅ Debounced binding -->
+        <input x-model.debounce.300ms="search">
+
+        <!-- ✅ Number coercion -->
+        <input type="number" x-model.number="count">
+
+        <!-- ✅ Lazy binding (on change, not input) -->
+        <input x-model.lazy="search">
+      </div>
+
+  - id: ALPINE006
+    title: "Use x-transition for smooth show/hide animations"
+    description: "x-transition adds enter/leave CSS transitions to x-show elements. Use the shorthand for simple opacity+scale transitions, or x-transition:enter/leave classes for custom animations."
+    category: "alpine_transitions"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-transition", "animation", "CSS"]
+    example: |
+      <!-- ✅ Simple transition (opacity + scale) -->
+      <div x-show="open" x-transition>
+        Smooth fade
+      </div>
+
+      <!-- ✅ Custom transition classes -->
+      <div x-show="open"
+           x-transition:enter="transition ease-out duration-300"
+           x-transition:enter-start="opacity-0 transform scale-90"
+           x-transition:enter-end="opacity-100 transform scale-100"
+           x-transition:leave="transition ease-in duration-200"
+           x-transition:leave-start="opacity-100 transform scale-100"
+           x-transition:leave-end="opacity-0 transform scale-90">
+        Custom animation
+      </div>
+
+  - id: ALPINE007
+    title: "Use x-effect for reactive side effects"
+    description: "x-effect (v3+) runs an expression reactively whenever its dependencies change. Use it for logging, syncing with external systems, or derived computations. Avoid putting heavy logic in x-effect."
+    category: "alpine_reactivity"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "x-effect", "reactivity", "v3"]
+    example: |
+      <div x-data="{ count: 0 }">
+        <!-- ✅ Log reactive changes -->
+        <div x-effect="console.log('Count:', count)"></div>
+
+        <!-- ✅ Sync with external API -->
+        <div x-effect="document.title = `Count: ${count}`"></div>
+
+        <button @click="count++">Increment</button>
+      </div>
+
+  - id: ALPINE008
+    title: "Use x-ref and $refs for element references"
+    description: "x-ref names an element for programmatic access via $refs. Use it instead of querySelector. Only access $refs after the component initializes (in x-init or event handlers, not in x-data)."
+    category: "alpine_directives"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-ref", "$refs", "DOM"]
+    example: |
+      <div x-data="{ focusInput() { $refs.input.focus() } }">
+        <input x-ref="input" type="text">
+        <button @click="focusInput()">Focus</button>
+      </div>
+
+  - id: ALPINE009
+    title: "Use x-cloak to prevent flash of unstyled content"
+    description: "x-cloak hides elements until Alpine initializes. Add a CSS rule [x-cloak] { display: none; } to your stylesheet. This prevents the brief flash of template syntax before Alpine processes the page."
+    category: "alpine_directives"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-cloak", "FOUC", "initialization"]
+    example: |
+      <!-- ✅ In CSS -->
+      <style>[x-cloak] { display: none; }</style>
+
+      <!-- ✅ Prevents FOUC -->
+      <div x-data="{ name: 'World' }" x-cloak>
+        <h1 x-text="'Hello ' + name"></h1>
+      </div>
+
+  - id: ALPINE010
+    title: "Use x-teleport to render content outside component scope"
+    description: "x-teleport (v3+) moves content to a different DOM location (like modals to body). It must wrap a <template> tag. Use it for modals, tooltips, and overlays that need to escape parent overflow/z-index constraints."
+    category: "alpine_directives"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "x-teleport", "portal", "modal", "v3"]
+    example: |
+      <div x-data="{ open: false }">
+        <button @click="open = true">Open Modal</button>
+
+        <!-- ✅ Teleport modal to body -->
+        <template x-teleport="body">
+          <div x-show="open" class="modal-overlay">
+            <div class="modal">
+              <p>Modal content</p>
+              <button @click="open = false">Close</button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+  # ============================================================================
+  # ALPINE COMPONENTS (ALPINE011-ALPINE020) - Component patterns
+  # ============================================================================
+
+  - id: ALPINE011
+    title: "Use Alpine.data() for reusable components"
+    description: "Alpine.data() (v3+) registers named component functions that can be referenced by x-data. This promotes code reuse, testability, and separation of logic from markup."
+    category: "alpine_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "Alpine.data", "reusable", "component"]
+    example: |
+      // ✅ Register reusable component
+      Alpine.data('dropdown', () => ({
+        open: false,
+        toggle() { this.open = !this.open },
+        close() { this.open = false },
+      }));
+
+      // In HTML:
+      <div x-data="dropdown">
+        <button @click="toggle()">Menu</button>
+        <ul x-show="open" @click.away="close()">...</ul>
+      </div>
+
+  - id: ALPINE012
+    title: "Use init() for component initialization logic"
+    description: "Define an init() method in your component data for setup logic that runs after the component mounts. This is cleaner than using x-init on the element and keeps logic in JavaScript."
+    category: "alpine_components"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "init", "lifecycle", "setup"]
+    example: |
+      Alpine.data('userList', () => ({
+        users: [],
+        loading: true,
+
+        // ✅ init() runs automatically when component mounts
+        async init() {
+          this.users = await fetch('/api/users').then(r => r.json());
+          this.loading = false;
+        },
+      }));
+
+  - id: ALPINE013
+    title: "Use destroy() for cleanup on component removal"
+    description: "Define a destroy() method for cleanup when the component is removed from DOM. Use it to clear intervals, remove event listeners, or abort fetch requests."
+    category: "alpine_components"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "destroy", "cleanup", "lifecycle"]
+    example: |
+      Alpine.data('timer', () => ({
+        count: 0,
+        interval: null,
+
+        init() {
+          this.interval = setInterval(() => this.count++, 1000);
+        },
+
+        // ✅ Clean up on removal
+        destroy() {
+          clearInterval(this.interval);
+        },
+      }));
+
+  - id: ALPINE014
+    title: "Use getters for derived/computed state"
+    description: "JavaScript getters in Alpine component data provide computed values that automatically react to dependency changes. Use them instead of methods for derived state."
+    category: "alpine_components"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "getter", "computed", "derived"]
+    example: |
+      Alpine.data('cart', () => ({
+        items: [],
+
+        // ✅ Getter for computed value
+        get total() {
+          return this.items.reduce((sum, item) => sum + item.price, 0);
+        },
+
+        get isEmpty() {
+          return this.items.length === 0;
+        },
+      }));
+
+  - id: ALPINE015
+    title: "Keep x-data expressions small"
+    description: "Inline x-data should contain simple state. Extract complex logic to Alpine.data() registrations. Large inline expressions are hard to read and maintain."
+    category: "alpine_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-data", "complexity", "refactor"]
+    example: |
+      <!-- ✅ Simple inline (OK) -->
+      <div x-data="{ open: false }">...</div>
+
+      <!-- ✅ Complex logic extracted -->
+      <div x-data="searchForm">...</div>
+
+      <!-- ❌ Too much inline logic -->
+      <div x-data="{ query: '', results: [], loading: false,
+        async search() { this.loading = true; this.results = await fetch(...) },
+        get hasResults() { return this.results.length > 0 },
+        clear() { this.query = ''; this.results = [] } }">
+      </div>
+
+  - id: ALPINE016
+    title: "Use $dispatch for component communication"
+    description: "$dispatch fires custom DOM events that bubble up. Parent components can listen with @custom-event. This is the standard Alpine pattern for child-to-parent communication."
+    category: "alpine_events"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "$dispatch", "events", "communication"]
+    example: |
+      <!-- Child: dispatches event -->
+      <div x-data="{ select(item) { $dispatch('item-selected', { item }) } }">
+        <button @click="select('apple')">Apple</button>
+      </div>
+
+      <!-- Parent: listens for event -->
+      <div x-data="{ selected: null }" @item-selected.window="selected = $event.detail.item">
+        <p x-text="'Selected: ' + selected"></p>
+      </div>
+
+  - id: ALPINE017
+    title: "Use $watch for observing data changes"
+    description: "$watch observes a property and runs a callback when it changes. Use it in init() for side effects like API calls, localStorage sync, or analytics tracking."
+    category: "alpine_reactivity"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "$watch", "observe", "reactivity"]
+    example: |
+      Alpine.data('settings', () => ({
+        theme: 'light',
+
+        init() {
+          // ✅ Watch for theme changes
+          this.$watch('theme', (value, oldValue) => {
+            document.documentElement.setAttribute('data-theme', value);
+            localStorage.setItem('theme', value);
+          });
+        },
+      }));
+
+  - id: ALPINE018
+    title: "Use $nextTick for post-render DOM access"
+    description: "$nextTick defers execution until Alpine finishes updating the DOM. Use it when you need to access updated DOM state after a reactive change."
+    category: "alpine_reactivity"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "$nextTick", "DOM", "timing"]
+    example: |
+      Alpine.data('tabs', () => ({
+        activeTab: 0,
+
+        async selectTab(index) {
+          this.activeTab = index;
+          // ✅ Wait for DOM to update
+          await this.$nextTick();
+          this.$refs.tabPanel.scrollIntoView();
+        },
+      }));
+
+  - id: ALPINE019
+    title: "Avoid nested x-data when possible"
+    description: "Nested x-data creates a new scope. Inner components cannot access outer data directly. If you need shared state, use Alpine.store() or $dispatch for communication."
+    category: "alpine_components"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "nesting", "scope", "data"]
+    example: |
+      <!-- ❌ Nested x-data with scope confusion -->
+      <div x-data="{ name: 'parent' }">
+        <div x-data="{ name: 'child' }">
+          <!-- 'name' refers to child's 'name', not parent -->
+          <span x-text="name"></span>
+        </div>
+      </div>
+
+      <!-- ✅ Use store for shared state -->
+      <div x-data @click="$store.app.increment()">
+        <span x-text="$store.app.count"></span>
+      </div>
+
+  - id: ALPINE020
+    title: "Use Alpine.bind() for reusable attribute sets"
+    description: "Alpine.bind() (v3.10+) registers reusable sets of attributes/directives. Use it for common patterns like tooltips, modals, or accordions to reduce repetition."
+    category: "alpine_components"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "Alpine.bind", "reusable", "v3.10"]
+    example: |
+      // ✅ Register reusable bindings
+      Alpine.bind('Tooltip', () => ({
+        'x-ref': 'tooltip',
+        ':aria-describedby': '$id("tooltip")',
+        '@mouseenter'() { this.$refs.tooltip.show() },
+        '@mouseleave'() { this.$refs.tooltip.hide() },
+      }));
+
+      // In HTML:
+      <button x-bind="Tooltip">Hover me</button>
+
+  # ============================================================================
+  # ALPINE STORES (ALPINE021-ALPINE027) - Global state management
+  # ============================================================================
+
+  - id: ALPINE021
+    title: "Use Alpine.store() for global shared state"
+    description: "Alpine.store() (v3+) creates globally accessible reactive state. Use it for application-wide data like auth state, theme, notifications, or shopping carts."
+    category: "alpine_stores"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "store", "global", "state"]
+    example: |
+      // ✅ Define a global store
+      Alpine.store('auth', {
+        user: null,
+        isLoggedIn: false,
+
+        login(userData) {
+          this.user = userData;
+          this.isLoggedIn = true;
+        },
+
+        logout() {
+          this.user = null;
+          this.isLoggedIn = false;
+        },
+      });
+
+      // Access in HTML:
+      <span x-text="$store.auth.user?.name"></span>
+
+  - id: ALPINE022
+    title: "Initialize stores before Alpine.start()"
+    description: "Register all stores in the document.addEventListener('alpine:init') callback or before calling Alpine.start(). Stores registered after initialization may cause hydration issues."
+    category: "alpine_stores"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "store", "initialization", "alpine:init"]
+    example: |
+      // ✅ Register in alpine:init
+      document.addEventListener('alpine:init', () => {
+        Alpine.store('notifications', {
+          items: [],
+          add(msg) { this.items.push(msg) },
+        });
+      });
+
+      // Then start Alpine
+      Alpine.start();
+
+  - id: ALPINE023
+    title: "Use $persist for localStorage-backed store state"
+    description: "The @alpinejs/persist plugin provides $persist() to automatically sync store/component state with localStorage. Use it for user preferences, theme settings, or cart data."
+    category: "alpine_stores"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-persist"]
+    tags: ["alpine", "$persist", "localStorage", "plugin"]
+    example: |
+      // ✅ Persisted store
+      Alpine.store('settings', {
+        theme: Alpine.$persist('light').as('app_theme'),
+        language: Alpine.$persist('en').as('app_lang'),
+      });
+
+  - id: ALPINE024
+    title: "Keep stores focused and single-purpose"
+    description: "Each store should manage one concern (auth, cart, notifications). Avoid god-stores with too many unrelated properties. Split into multiple focused stores."
+    category: "alpine_stores"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "store", "separation", "SRP"]
+    example: |
+      // ✅ Focused stores
+      Alpine.store('cart', { items: [], add(item) { ... } });
+      Alpine.store('auth', { user: null, login() { ... } });
+      Alpine.store('ui', { sidebarOpen: false, theme: 'light' });
+
+      // ❌ God store
+      Alpine.store('app', {
+        user: null, cartItems: [], theme: 'light',
+        sidebarOpen: false, notifications: [], ...
+      });
+
+  - id: ALPINE025
+    title: "Minimize store mutations from templates"
+    description: "Encapsulate store mutations in store methods rather than mutating directly from templates. This improves maintainability and makes state changes traceable."
+    category: "alpine_stores"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "store", "mutations", "encapsulation"]
+    example: |
+      // ✅ Encapsulated mutation
+      Alpine.store('cart', {
+        items: [],
+        add(product) { this.items.push(product) },
+        remove(id) { this.items = this.items.filter(i => i.id !== id) },
+      });
+
+      <!-- ✅ Use store method -->
+      <button @click="$store.cart.add(product)">Add</button>
+
+      <!-- ❌ Direct mutation in template -->
+      <button @click="$store.cart.items.push(product)">Add</button>
+
+  - id: ALPINE026
+    title: "Use getters in stores for computed values"
+    description: "Define JavaScript getters in store objects for derived state. They react to dependency changes automatically and keep templates clean."
+    category: "alpine_stores"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "store", "getter", "computed"]
+    example: |
+      Alpine.store('cart', {
+        items: [],
+        get total() { return this.items.reduce((s, i) => s + i.price, 0) },
+        get count() { return this.items.length },
+        get isEmpty() { return this.items.length === 0 },
+      });
+
+  - id: ALPINE027
+    title: "Use init() in stores for async setup"
+    description: "Define an init() method in stores for initialization logic like fetching data from an API. Alpine calls init() automatically when the store is registered."
+    category: "alpine_stores"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "store", "init", "async"]
+    example: |
+      Alpine.store('config', {
+        settings: {},
+
+        async init() {
+          this.settings = await fetch('/api/config').then(r => r.json());
+        },
+      });
+
+  # ============================================================================
+  # ALPINE PLUGINS (ALPINE028-ALPINE033) - Plugin best practices
+  # ============================================================================
+
+  - id: ALPINE028
+    title: "Register plugins with Alpine.plugin()"
+    description: "Use Alpine.plugin() to register official and third-party plugins. Register all plugins before calling Alpine.start()."
+    category: "alpine_plugins"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "plugin", "registration"]
+    example: |
+      import Alpine from 'alpinejs';
+      import mask from '@alpinejs/mask';
+      import intersect from '@alpinejs/intersect';
+      import persist from '@alpinejs/persist';
+
+      // ✅ Register before start
+      Alpine.plugin(mask);
+      Alpine.plugin(intersect);
+      Alpine.plugin(persist);
+
+      Alpine.start();
+
+  - id: ALPINE029
+    title: "Use x-mask for input formatting"
+    description: "The @alpinejs/mask plugin provides x-mask for automatic input formatting (phone numbers, dates, credit cards). Use dynamic masks for complex patterns."
+    category: "alpine_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-mask"]
+    tags: ["alpine", "x-mask", "input", "formatting"]
+    example: |
+      <!-- ✅ Phone number mask -->
+      <input x-mask="(999) 999-9999" placeholder="Phone">
+
+      <!-- ✅ Date mask -->
+      <input x-mask="99/99/9999" placeholder="MM/DD/YYYY">
+
+      <!-- ✅ Dynamic mask -->
+      <input x-mask:dynamic="$input.startsWith('34') ? '9999 999999 99999' : '9999 9999 9999 9999'">
+
+  - id: ALPINE030
+    title: "Use x-intersect for lazy loading and scroll triggers"
+    description: "The @alpinejs/intersect plugin provides x-intersect for IntersectionObserver-based triggers. Use it for lazy loading images, infinite scroll, or scroll-based animations."
+    category: "alpine_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-intersect"]
+    tags: ["alpine", "x-intersect", "lazy", "scroll"]
+    example: |
+      <!-- ✅ Trigger once when visible -->
+      <div x-intersect:enter.once="loadMore()">
+        Loading...
+      </div>
+
+      <!-- ✅ Animate on scroll -->
+      <div x-intersect="visible = true" :class="visible && 'animate-in'">
+        Content
+      </div>
+
+  - id: ALPINE031
+    title: "Use x-trap for focus management in modals"
+    description: "The @alpinejs/focus plugin provides x-trap to trap keyboard focus within an element (modal, dialog, menu). It handles Tab/Shift+Tab cycling and restores focus on release."
+    category: "alpine_plugins"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine", "alpine-focus"]
+    tags: ["alpine", "x-trap", "focus", "accessibility", "modal"]
+    example: |
+      <!-- ✅ Focus trap in modal -->
+      <div x-data="{ open: false }">
+        <button @click="open = true">Open Dialog</button>
+
+        <div x-show="open" x-trap.noscroll="open" role="dialog" aria-modal="true">
+          <h2>Dialog</h2>
+          <input type="text">
+          <button @click="open = false">Close</button>
+        </div>
+      </div>
+
+  - id: ALPINE032
+    title: "Use x-collapse for smooth height transitions"
+    description: "The @alpinejs/collapse plugin provides x-collapse for animating element height between 0 and auto. It's simpler than custom CSS transitions for accordion/collapse patterns."
+    category: "alpine_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-collapse"]
+    tags: ["alpine", "x-collapse", "animation", "accordion"]
+    example: |
+      <!-- ✅ Accordion with collapse -->
+      <div x-data="{ open: false }">
+        <button @click="open = !open">Toggle</button>
+        <div x-show="open" x-collapse>
+          <p>Collapsible content with smooth height animation.</p>
+        </div>
+      </div>
+
+  - id: ALPINE033
+    title: "Create custom directives with Alpine.directive()"
+    description: "Alpine.directive() (v3+) lets you create custom x-* directives. Use it for reusable DOM behaviors. The callback receives (el, directive, utilities) arguments."
+    category: "alpine_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "Alpine.directive", "custom", "v3"]
+    example: |
+      // ✅ Custom tooltip directive
+      Alpine.directive('tooltip', (el, { expression }, { evaluate }) => {
+        const text = evaluate(expression);
+        el.setAttribute('title', text);
+        el.style.cursor = 'help';
+      });
+
+      // Usage:
+      <span x-tooltip="'Click to edit'">Edit</span>
+
+  # ============================================================================
+  # ALPINE PERFORMANCE (ALPINE034-ALPINE039) - Performance patterns
+  # ============================================================================
+
+  - id: ALPINE034
+    title: "Defer Alpine loading with defer attribute"
+    description: "Use the defer attribute on the Alpine script tag to avoid blocking page rendering. For CDN usage, add defer to the <script> tag. For npm, use dynamic import."
+    category: "alpine_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "defer", "performance", "loading"]
+    example: |
+      <!-- ✅ Deferred CDN loading -->
+      <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+      <!-- ✅ Dynamic import (npm) -->
+      <script type="module">
+        const Alpine = (await import('alpinejs')).default;
+        Alpine.start();
+      </script>
+
+  - id: ALPINE035
+    title: "Use x-ignore to skip unnecessary Alpine processing"
+    description: "x-ignore (v3+) tells Alpine to skip initialization on an element and its children. Use it for large static content blocks or third-party widget containers to reduce initialization time."
+    category: "alpine_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "x-ignore", "performance", "skip", "v3"]
+    example: |
+      <!-- ✅ Skip static content -->
+      <div x-ignore>
+        <div class="large-static-content">
+          <!-- Alpine won't process anything here -->
+        </div>
+      </div>
+
+  - id: ALPINE036
+    title: "Debounce expensive reactive computations"
+    description: "Use .debounce modifier on x-model and event handlers to avoid excessive reactive updates. This is crucial for search inputs, resize handlers, and scroll listeners."
+    category: "alpine_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "debounce", "throttle", "performance"]
+    example: |
+      <!-- ✅ Debounced search -->
+      <input x-model.debounce.300ms="searchQuery"
+             @input.debounce.300ms="performSearch()">
+
+      <!-- ✅ Throttled scroll handler -->
+      <div @scroll.throttle.100ms="onScroll()">...</div>
+
+  - id: ALPINE037
+    title: "Use x-id for unique scoped IDs"
+    description: "x-id (v3+) generates unique scoped IDs with $id(). Use it for aria-labelledby, for/id associations, and other ID-based relationships to avoid conflicts."
+    category: "alpine_directives"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "x-id", "$id", "accessibility", "v3"]
+    example: |
+      <!-- ✅ Scoped IDs for accessibility -->
+      <div x-id="['input']">
+        <label :for="$id('input')">Email</label>
+        <input :id="$id('input')" type="email">
+      </div>
+
+  - id: ALPINE038
+    title: "Minimize DOM manipulation in Alpine expressions"
+    description: "Keep Alpine expressions simple. Avoid complex DOM manipulation in x-data, x-init, or event handlers. Use $refs for targeted DOM access instead of querySelector."
+    category: "alpine_performance"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "DOM", "performance", "expressions"]
+    example: |
+      <!-- ✅ Use $refs -->
+      <div x-data="{ focus() { $refs.input.focus() } }">
+        <input x-ref="input">
+        <button @click="focus()">Focus</button>
+      </div>
+
+      <!-- ❌ querySelector in expressions -->
+      <div x-data @click="document.querySelector('.input').focus()">
+        ...
+      </div>
+
+  - id: ALPINE039
+    title: "Lazy-load Alpine.data() components"
+    description: "For large applications, register Alpine.data() components lazily or split them into separate modules. This reduces initial JavaScript bundle size."
+    category: "alpine_performance"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "lazy", "code-splitting", "performance"]
+    example: |
+      // ✅ Lazy registration
+      document.addEventListener('alpine:init', () => {
+        Alpine.data('heavyComponent', () => import('./heavy-component.js')
+          .then(m => m.default()));
+      });
+
+  # ============================================================================
+  # ALPINE PATTERNS & SECURITY (ALPINE040-ALPINE050)
+  # ============================================================================
+
+  - id: ALPINE040
+    title: "Use alpine:init event for setup code"
+    description: "Register all Alpine.data(), Alpine.store(), Alpine.directive(), and Alpine.magic() calls inside the alpine:init event. This ensures they're available before Alpine processes the DOM."
+    category: "alpine_patterns"
+    severity: "critical"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "alpine:init", "setup", "v3"]
+    example: |
+      document.addEventListener('alpine:init', () => {
+        Alpine.data('app', () => ({ ... }));
+        Alpine.store('auth', { ... });
+        Alpine.directive('tooltip', (el, { expression }) => { ... });
+        Alpine.magic('now', () => new Date());
+      });
+
+  - id: ALPINE041
+    title: "Prefer x-text over x-html to prevent XSS"
+    description: "x-html renders raw HTML and is vulnerable to XSS if used with user input. Always prefer x-text for displaying dynamic content. Only use x-html with sanitized/trusted content."
+    category: "alpine_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-html", "x-text", "XSS", "security"]
+    example: |
+      <!-- ✅ Safe: x-text escapes HTML -->
+      <span x-text="userInput"></span>
+
+      <!-- ⚠️ Dangerous: x-html renders raw HTML -->
+      <div x-html="userInput"></div>
+
+      <!-- ✅ OK if sanitized -->
+      <div x-html="DOMPurify.sanitize(richContent)"></div>
+
+  - id: ALPINE042
+    title: "Use CSP build for Content Security Policy compliance"
+    description: "The @alpinejs/csp package provides a CSP-compatible build that doesn't use eval() or Function(). Use it when your application requires strict Content Security Policy headers."
+    category: "alpine_security"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine", "alpine-csp"]
+    tags: ["alpine", "CSP", "security", "eval"]
+    example: |
+      // ✅ CSP-compatible build
+      import Alpine from '@alpinejs/csp';
+      Alpine.start();
+
+      // In CSP header:
+      // Content-Security-Policy: script-src 'self';
+
+  - id: ALPINE043
+    title: "Sanitize dynamic attribute values"
+    description: "When binding user-provided values to attributes with x-bind/:, ensure the values are sanitized. Special care is needed for href, src, and event handler attributes."
+    category: "alpine_security"
+    severity: "critical"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-bind", "sanitize", "security"]
+    example: |
+      <!-- ⚠️ Verify URLs before binding -->
+      <a :href="isValidUrl(link) ? link : '#'">Click</a>
+
+      <!-- ✅ Safe: plain text values -->
+      <span :class="isActive ? 'active' : ''">Status</span>
+
+  - id: ALPINE044
+    title: "Use event modifiers for correct event handling"
+    description: "Alpine provides event modifiers (.prevent, .stop, .window, .document, .once, .self, .away/.outside) to handle common patterns declaratively. Use them instead of manual event methods."
+    category: "alpine_events"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "events", "modifiers", "prevent", "stop"]
+    example: |
+      <!-- ✅ Prevent default -->
+      <form @submit.prevent="handleSubmit()">...</form>
+
+      <!-- ✅ Stop propagation -->
+      <button @click.stop="doSomething()">Click</button>
+
+      <!-- ✅ Listen on window -->
+      <div @keydown.escape.window="close()">...</div>
+
+      <!-- ✅ Close on click outside -->
+      <div @click.outside="open = false">...</div>
+
+      <!-- ✅ Fire only once -->
+      <button @click.once="initialize()">Init</button>
+
+  - id: ALPINE045
+    title: "Use keyboard modifiers for accessibility"
+    description: "Alpine supports keyboard modifiers like .enter, .escape, .space, .tab, .arrow-up, etc. Use them for keyboard navigation and accessibility."
+    category: "alpine_events"
+    severity: "warning"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "keyboard", "a11y", "modifiers"]
+    example: |
+      <div x-data="{ open: false }">
+        <button @keydown.enter="open = true"
+                @keydown.escape="open = false"
+                @keydown.space.prevent="open = !open">
+          Menu
+        </button>
+
+        <ul x-show="open" @keydown.arrow-down="focusNext()"
+            @keydown.arrow-up="focusPrev()">
+          ...
+        </ul>
+      </div>
+
+  - id: ALPINE046
+    title: "Integrate Alpine.js with HTMX properly"
+    description: "When using Alpine.js with HTMX, use hx-swap='innerHTML' to preserve Alpine state, re-initialize Alpine on HTMX swaps with htmx:afterSwap, and avoid conflicting reactive models."
+    category: "alpine_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "htmx"]
+    tags: ["alpine", "htmx", "integration", "hypermedia"]
+    example: |
+      <!-- ✅ HTMX + Alpine.js -->
+      <div x-data="{ loading: false }"
+           hx-get="/api/data"
+           hx-trigger="click"
+           @htmx:before-request="loading = true"
+           @htmx:after-request="loading = false">
+        <span x-show="loading">Loading...</span>
+        <div id="content" hx-target="this">
+          Click to load
+        </div>
+      </div>
+
+  - id: ALPINE047
+    title: "Integrate Alpine.js with Laravel Livewire correctly"
+    description: "When using Alpine.js with Livewire, use @entangle for two-way binding between Alpine and Livewire state. Use $wire to access Livewire component methods."
+    category: "alpine_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "livewire"]
+    tags: ["alpine", "livewire", "laravel", "entangle"]
+    example: |
+      <!-- ✅ Entangle Alpine and Livewire state -->
+      <div x-data="{ open: @entangle('showModal') }">
+        <button @click="open = true">Open</button>
+        <div x-show="open">
+          <button @click="$wire.save()">Save via Livewire</button>
+        </div>
+      </div>
+
+  - id: ALPINE048
+    title: "Use Alpine.magic() for custom magic properties"
+    description: "Alpine.magic() (v3+) creates custom $magic properties available in all components. Use them for utilities, services, or global helpers that need reactive access."
+    category: "alpine_plugins"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine", "alpine-v3"]
+    tags: ["alpine", "Alpine.magic", "custom", "v3"]
+    example: |
+      // ✅ Custom magic for clipboard
+      Alpine.magic('clipboard', () => {
+        return (text) => navigator.clipboard.writeText(text);
+      });
+
+      // Usage:
+      <button @click="$clipboard('Hello!')">Copy</button>
+
+  - id: ALPINE049
+    title: "Avoid using Alpine.js v1 x-spread (deprecated)"
+    description: "x-spread was removed in Alpine.js v3. Migrate to Alpine.bind() (v3.10+) or spread data directly in x-data objects. Check for x-spread usage when upgrading from v1/v2."
+    category: "alpine_patterns"
+    severity: "critical"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "x-spread", "deprecated", "migration"]
+    example: |
+      <!-- ❌ v1/v2 x-spread (removed in v3) -->
+      <div x-data="dropdown()" x-spread="trigger">...</div>
+
+      <!-- ✅ v3+ Alpine.bind() -->
+      <div x-data="dropdown()" x-bind="trigger">...</div>
+
+  - id: ALPINE050
+    title: "Structure Alpine.js projects consistently"
+    description: "Organize Alpine components in a /components directory, stores in /stores, plugins in /plugins, and register everything in a central setup file. Use ES modules for code splitting."
+    category: "alpine_patterns"
+    severity: "info"
+    applicability:
+      frameworks: ["alpine"]
+    tags: ["alpine", "architecture", "structure", "organization"]
+    example: |
+      // src/alpine/index.js — Central setup
+      import Alpine from 'alpinejs';
+      import { registerComponents } from './components';
+      import { registerStores } from './stores';
+      import { registerPlugins } from './plugins';
+
+      registerPlugins(Alpine);
+      registerStores(Alpine);
+      registerComponents(Alpine);
+
+      Alpine.start();
