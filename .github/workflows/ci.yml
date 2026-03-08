@@ -1,10 +1,12 @@
 name: CodeTrellis Quality Gates
 
+# DISABLED - All triggers removed
 on:
-  push:
-    branches: [main, master, batch-2]
-  pull_request:
-    branches: [main, master, batch-2]
+  workflow_dispatch:
+  # push:
+  #   branches: [main, master, batch-2]
+  # pull_request:
+  #   branches: [main, master, batch-2]
 
 env:
   CODETRELLIS_BUILD_TIMESTAMP: "2026-01-01T00:00:00"
