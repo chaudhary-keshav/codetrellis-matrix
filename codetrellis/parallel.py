@@ -172,15 +172,17 @@ class ParallelExtractor:
 
         logger.info(f"Starting parallel extraction of {len(files)} files with {self.worker_count} workers")
 
+        executor = executor_class(max_workers=self.worker_count)
+        timed_out = False
         try:
-            with executor_class(max_workers=self.worker_count) as executor:
-                # Submit all tasks
-                future_to_file = {
-                    executor.submit(_extract_single_file, item): item[0]
-                    for item in work_items
-                }
+            # Submit all tasks
+            future_to_file = {
+                executor.submit(_extract_single_file, item): item[0]
+                for item in work_items
+            }
 
-                # Collect results as they complete
+            # Collect results as they complete
+            try:
                 for future in as_completed(future_to_file, timeout=self.config.timeout_per_file * len(files)):
                     file_path = future_to_file[future]
                     try:
@@ -216,6 +218,23 @@ class ParallelExtractor:
                             file_path=str(file_path),
                             error=str(e)
                         ))
+            except TimeoutError:
+                timed_out = True
+                # as_completed() timed out — record remaining futures as failures
+                for future, file_path in future_to_file.items():
+                    if not future.done():
+                        future.cancel()
+                        error_collector.add_error(
+                            str(file_path),
+                            extractor_name,
+                            Exception(f"Timeout after {self.config.timeout_per_file}s")
+                        )
+                        results.append(ExtractorResult.failure(
+                            extractor_name=extractor_name,
+                            file_path=str(file_path),
+                            error=f"Timeout after {self.config.timeout_per_file}s"
+                        ))
+                logger.warning(f"Parallel extraction timed out for some files")
 
         except Exception as e:
             logger.error(f"Parallel extraction failed: {e}")
@@ -225,6 +244,9 @@ class ParallelExtractor:
                 context={"error": str(e)},
                 cause=e
             )
+        finally:
+            # On timeout, shut down without waiting for stuck workers
+            executor.shutdown(wait=not timed_out, cancel_futures=timed_out)
 
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()

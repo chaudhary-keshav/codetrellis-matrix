@@ -627,6 +627,14 @@ class MatrixMCPServer:
 
     def _tool_get_context_for_file(self, file_path: str) -> MCPToolResult:
         """Get JIT context for a file."""
+        # Path traversal protection: reject paths outside project root
+        resolved = (self._project_root / file_path).resolve()
+        if not str(resolved).startswith(str(self._project_root)):
+            return MCPToolResult(
+                content=[{"type": "text", "text": f"Rejected: path '{file_path}' resolves outside the project root"}],
+                is_error=True,
+            )
+
         from codetrellis.jit_context import JITContextProvider
 
         provider = JITContextProvider(self._sections)

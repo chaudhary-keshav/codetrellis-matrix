@@ -22,7 +22,9 @@ try:
     HAS_WATCHDOG = True
 except ImportError:
     HAS_WATCHDOG = False
-    print("[CodeTrellis] Warning: watchdog not installed. Run: pip install watchdog")
+    Observer = None
+    FileSystemEventHandler = object  # Fallback base so class definition succeeds
+    FileModifiedEvent = None
 
 
 class MatrixSyncHandler(FileSystemEventHandler):

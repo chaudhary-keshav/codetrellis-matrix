@@ -7,7 +7,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from codetrellis.watcher import MatrixSyncHandler
+from codetrellis.watcher import MatrixSyncHandler, HAS_WATCHDOG
+
+pytestmark = pytest.mark.skipif(not HAS_WATCHDOG, reason="watchdog not installed")
 
 
 @pytest.fixture

@@ -288,12 +288,12 @@ class ProgressExtractor:
             r'(\w+)\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{\s*//\s*(?:TODO|FIXME|implement)',
         ],
         "python": [
-            # raise NotImplementedError
-            r'def\s+(\w+)\s*\([^)]*\)\s*(?:->.*)?:\s*(?:#.*\n\s*)?raise\s+NotImplementedError',
-            # pass only
-            r'def\s+(\w+)\s*\([^)]*\)\s*(?:->.*)?:\s*(?:#.*\n\s*)?pass\s*(?:\n|$)',
-            # ... (ellipsis)
-            r'def\s+(\w+)\s*\([^)]*\)\s*(?:->.*)?:\s*(?:#.*\n\s*)?\.\.\.\s*(?:\n|$)',
+            # raise NotImplementedError (exclude dunder methods)
+            r'def\s+(?!__\w+__)\s*(\w+)\s*\([^)]*\)\s*(?:->.*)?:\s*(?:#.*\n\s*)?raise\s+NotImplementedError',
+            # pass only (exclude dunder methods like __init__)
+            r'def\s+(?!__\w+__)\s*(\w+)\s*\([^)]*\)\s*(?:->.*)?:\s*(?:#.*\n\s*)?pass\s*(?:\n|$)',
+            # ... (ellipsis, exclude dunder methods)
+            r'def\s+(?!__\w+__)\s*(\w+)\s*\([^)]*\)\s*(?:->.*)?:\s*(?:#.*\n\s*)?\.\.\.\s*(?:\n|$)',
         ],
     }
 
@@ -463,6 +463,12 @@ class ProgressExtractor:
             for match in pattern.finditer(content):
                 line_num = content[:match.start()].count('\n') + 1
                 name = match.group(1) if match.groups() else "unknown"
+
+                # Skip functions marked as intentional stubs
+                match_start = max(0, match.start() - 200)
+                preceding = content[match_start:match.start()]
+                if 'INTENTIONAL_STUB' in preceding:
+                    continue
 
                 placeholder = PlaceholderImplementation(
                     name=name,

@@ -1,0 +1,192 @@
+{
+  "total_tasks": 22,
+  "passed_tasks": 20,
+  "failed_tasks": 2,
+  "total_latency_ms": 31.1,
+  "avg_improvement_pct": 90.0,
+  "category_scores": {
+    "completeness": 1.0,
+    "accuracy": 1.0,
+    "navigation": 0.5,
+    "compression": 1.0,
+    "cross_language": 1.0
+  },
+  "tasks": [
+    {
+      "task_id": "completeness_overview",
+      "category": "completeness",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 2.09,
+      "details": "Section 'overview' found"
+    },
+    {
+      "task_id": "completeness_architecture",
+      "category": "completeness",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1.8,
+      "details": "Section 'architecture' found"
+    },
+    {
+      "task_id": "completeness_dependencies",
+      "category": "completeness",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1.79,
+      "details": "Section 'dependencies' found"
+    },
+    {
+      "task_id": "completeness_api",
+      "category": "completeness",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1.79,
+      "details": "Section 'api' found"
+    },
+    {
+      "task_id": "completeness_patterns",
+      "category": "completeness",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1.78,
+      "details": "Section 'patterns' found"
+    },
+    {
+      "task_id": "completeness_configuration",
+      "category": "completeness",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1.8,
+      "details": "Section 'configuration' found"
+    },
+    {
+      "task_id": "completeness_testing",
+      "category": "completeness",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1.81,
+      "details": "Section 'testing' found"
+    },
+    {
+      "task_id": "accuracy_functions",
+      "category": "accuracy",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 0.03,
+      "details": "Key 'functions' found in matrix JSON"
+    },
+    {
+      "task_id": "accuracy_classes",
+      "category": "accuracy",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 0.38,
+      "details": "Key 'classes' found in matrix JSON"
+    },
+    {
+      "task_id": "accuracy_imports",
+      "category": "accuracy",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 0.0,
+      "details": "Key 'imports' found in matrix JSON"
+    },
+    {
+      "task_id": "accuracy_exports",
+      "category": "accuracy",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 0.02,
+      "details": "Key 'exports' found in matrix JSON"
+    },
+    {
+      "task_id": "accuracy_types",
+      "category": "accuracy",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 0.0,
+      "details": "Key 'types' found in matrix JSON"
+    },
+    {
+      "task_id": "nav_keyword_match",
+      "category": "navigation",
+      "passed": false,
+      "score": 0.0,
+      "latency_ms": 2.03,
+      "details": "Section 'parser validation' NOT found"
+    },
+    {
+      "task_id": "nav_function_lookup",
+      "category": "navigation",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1.92,
+      "details": "Section 'def scan' found"
+    },
+    {
+      "task_id": "nav_class_lookup",
+      "category": "navigation",
+      "passed": false,
+      "score": 0.0,
+      "latency_ms": 1.83,
+      "details": "Section 'class Builder' NOT found"
+    },
+    {
+      "task_id": "nav_import_chain",
+      "category": "navigation",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1.59,
+      "details": "Section 'import' found"
+    },
+    {
+      "task_id": "compression_prompt_nonempty",
+      "category": "compression",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 0.01,
+      "details": "Prompt length: 656713 chars"
+    },
+    {
+      "task_id": "compression_json_nonempty",
+      "category": "compression",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 0.0,
+      "details": "JSON keys: 86"
+    },
+    {
+      "task_id": "compression_ratio_positive",
+      "category": "compression",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 8.77,
+      "details": "Prompt/JSON ratio: 0.37"
+    },
+    {
+      "task_id": "crosslang_multi_section",
+      "category": "cross_language",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 0.0,
+      "details": "Sections: 86"
+    },
+    {
+      "task_id": "crosslang_type_annotations",
+      "category": "cross_language",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1.67,
+      "details": "Section 'type' found"
+    },
+    {
+      "task_id": "crosslang_dependency_graph",
+      "category": "cross_language",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 0.0,
+      "details": "Key 'imports' found in matrix JSON"
+    }
+  ]
+}

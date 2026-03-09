@@ -1173,6 +1173,43 @@ def show_progress(path: str, detailed: bool = False, by_module: bool = False, as
     print(f"  🚧 Placeholders: {summary.get('placeholders', 0)}")
     print()
 
+    # Per-language breakdown
+    _LANG_MAP = {
+        '.py': 'Python', '.ts': 'TypeScript', '.tsx': 'TypeScript',
+        '.js': 'JavaScript', '.jsx': 'JavaScript', '.mjs': 'JavaScript',
+        '.java': 'Java', '.kt': 'Kotlin', '.cs': 'C#',
+        '.go': 'Go', '.rs': 'Rust', '.rb': 'Ruby', '.php': 'PHP',
+        '.swift': 'Swift', '.dart': 'Dart', '.lua': 'Lua',
+        '.c': 'C', '.cpp': 'C++', '.h': 'C/C++',
+        '.html': 'HTML', '.css': 'CSS', '.scss': 'SCSS',
+        '.sql': 'SQL', '.sh': 'Shell', '.bash': 'Shell',
+        '.r': 'R', '.scala': 'Scala', '.vue': 'Vue',
+    }
+    files = progress.get('files', [])
+    if files:
+        lang_stats = {}
+        for f in files:
+            fp = f.get('file', '')
+            ext = '.' + fp.rsplit('.', 1)[-1] if '.' in fp else ''
+            lang = _LANG_MAP.get(ext.lower(), 'Other')
+            if lang not in lang_stats:
+                lang_stats[lang] = {'files': 0, 'todos': 0, 'fixmes': 0, 'placeholders': 0}
+            lang_stats[lang]['files'] += 1
+            lang_stats[lang]['todos'] += f.get('todos', 0)
+            lang_stats[lang]['fixmes'] += f.get('fixmes', 0)
+            lang_stats[lang]['placeholders'] += f.get('placeholders', 0)
+
+        # Show only languages with issues or multiple files
+        active_langs = {k: v for k, v in lang_stats.items()
+                        if v['todos'] + v['fixmes'] + v['placeholders'] > 0 or v['files'] >= 3}
+        if active_langs:
+            print("🌐 BY LANGUAGE:")
+            for lang, stats in sorted(active_langs.items(), key=lambda x: x[1]['files'], reverse=True):
+                issues = stats['todos'] + stats['fixmes'] + stats['placeholders']
+                issue_str = f" ({stats['todos']}T/{stats['fixmes']}F/{stats['placeholders']}P)" if issues else ""
+                print(f"  • {lang}: {stats['files']} files{issue_str}")
+            print()
+
     # Blockers
     blockers = progress.get('blockers', [])
     if blockers:

@@ -162,7 +162,14 @@ class TestEnhancedASPNetCoreParser:
 
     def test_parse_controller_endpoints(self):
         result = self.parser.parse(SAMPLE_CONTROLLER, "Controllers/ProductsController.cs")
-        assert result.total_endpoints >= 3  # GET/id, PUT, DELETE (extracted per action method)
+        assert result.total_endpoints == 5  # GET, GET/{id}, POST, PUT/{id}, DELETE/{id}
+
+    def test_parse_controller_all_http_methods(self):
+        """Verify bare [HttpGet]/[HttpPost] (no route) and [HttpPut("{id}")] both detected."""
+        result = self.parser.parse(SAMPLE_CONTROLLER, "Controllers/ProductsController.cs")
+        ctrl = result.controllers[0]
+        methods = {ep.method for ep in ctrl.endpoints}
+        assert methods == {'GET', 'POST', 'PUT', 'DELETE'}
 
     def test_parse_minimal_apis(self):
         result = self.parser.parse(SAMPLE_MINIMAL_API, "Program.cs")

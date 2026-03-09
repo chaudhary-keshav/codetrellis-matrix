@@ -157,7 +157,12 @@ class MemoryMonitor:
         self._start_mb = self._get_current_mb()
 
     def _get_current_mb(self) -> float:
-        """Get current memory usage in MB."""
+        """Get peak memory usage in MB (via ru_maxrss).
+
+        Note: ru_maxrss reports peak RSS, not current. Sufficient for
+        limit checks since peak only grows, but should not be used for
+        precise current-memory decisions.
+        """
         import resource
         # Get memory usage in bytes
         usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
@@ -374,11 +379,14 @@ class StreamingExtractor:
                 # Report progress
                 if self.config.progress_callback:
                     current = self.stats.processed_files + self.stats.failed_files + self.stats.skipped_files
-                    self.config.progress_callback(
-                        current,
-                        self.stats.total_files,
-                        str(file_path)
-                    )
+                    try:
+                        self.config.progress_callback(
+                            current,
+                            self.stats.total_files,
+                            str(file_path)
+                        )
+                    except Exception:
+                        pass  # Never let callback errors crash the pipeline
 
             # Memory management after batch
             if self.config.gc_after_batch or self.memory_monitor.should_gc():

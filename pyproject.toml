@@ -40,16 +40,19 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "numpy>=2.0.0",
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
+    "pytest-timeout>=2.3.0",
     "black>=24.0.0",
     "ruff>=0.1.0",
     "mypy>=1.8.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/build-for-test/ns-brain"
-Repository = "https://github.com/build-for-test/ns-brain/tree/main/tools/codetrellis"
+Homepage = "https://github.com/keshavchaudhary/codetrellis"
+Repository = "https://github.com/keshavchaudhary/codetrellis"
+Changelog = "https://github.com/keshavchaudhary/codetrellis/blob/main/CHANGELOG.md"
 
 [project.scripts]
 codetrellis = "codetrellis.cli:main"

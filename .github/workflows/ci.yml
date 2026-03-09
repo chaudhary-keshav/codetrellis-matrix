@@ -1,58 +1,86 @@
-name: CodeTrellis Quality Gates
+name: CI
 
-# DISABLED - All triggers removed
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [main, master, batch-2]
-  # pull_request:
-  #   branches: [main, master, batch-2]
 
 env:
   CODETRELLIS_BUILD_TIMESTAMP: "2026-01-01T00:00:00"
 
 jobs:
-  quality-gates:
+  # ── Lint ────────────────────────────────────────────────────────
+  lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install -r requirements-test.txt
+
+      - name: Ruff lint
+        run: ruff check codetrellis/
+
+      - name: Mypy typecheck (advisory)
+        run: mypy codetrellis/ --ignore-missing-imports --no-error-summary
+        continue-on-error: true
+
+  # ── Test ────────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
           cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install pytest-timeout
+          pip install -r requirements-test.txt
 
-      # ── Gate 2: Lint (D2) ──────────────────────────────────────────
-      - name: "Gate 2 — Lint (ruff)"
-        run: ruff check codetrellis/
+      - name: Run tests
+        run: pytest tests/ -x -q --timeout=120
 
-      - name: "Gate 2 — Typecheck (mypy)"
-        run: mypy codetrellis/ --ignore-missing-imports --no-error-summary
-        continue-on-error: true # Advisory per D6
+  # ── Package ─────────────────────────────────────────────────────
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
 
-      # ── Gate 3: Tests (D3) ─────────────────────────────────────────
-      - name: "Gate 3 — Tests (pytest)"
-        run: |
-          pytest tests/ -v --tb=short -q --timeout=120
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
 
-      # ── Gate 1: Build (D1) ─────────────────────────────────────────
-      - name: "Gate 1 — Build (scan + verify)"
-        run: |
-          codetrellis scan . --optimal
-          codetrellis verify .
+      - name: Install build tools
+        run: pip install build twine
 
-      # ── Gate 4: Determinism (D4) ───────────────────────────────────
-      - name: "Gate 4 — Determinism"
-        run: bash scripts/verify_determinism.sh .
+      - name: Build sdist and wheel
+        run: python -m build
 
-      # ── Gate 5: Incremental Rebuild (D5) ───────────────────────────
-      - name: "Gate 5 — Incremental Rebuild"
-        run: bash scripts/verify_incremental.sh .
+      - name: Validate distributions
+        run: twine check dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

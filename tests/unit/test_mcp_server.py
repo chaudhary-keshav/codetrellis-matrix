@@ -704,3 +704,30 @@ class TestEnhancedCacheStats:
         content = response["result"].get("content", [])
         assert len(content) > 0
         assert "matrix_mtime" in content[0]["text"]
+
+
+# ===== PATH TRAVERSAL PROTECTION =====
+
+
+class TestPathTraversalProtection:
+    """Verify that get_context_for_file rejects paths outside the project root."""
+
+    def test_rejects_parent_traversal(self, server):
+        result = server._tool_get_context_for_file("../../etc/passwd")
+        assert result.is_error is True
+        assert "Rejected" in result.content[0]["text"]
+
+    def test_rejects_absolute_path_outside_project(self, server):
+        result = server._tool_get_context_for_file("/etc/passwd")
+        assert result.is_error is True
+        assert "Rejected" in result.content[0]["text"]
+
+    def test_rejects_dot_dot_in_middle(self, server):
+        result = server._tool_get_context_for_file("src/../../../etc/shadow")
+        assert result.is_error is True
+        assert "Rejected" in result.content[0]["text"]
+
+    def test_accepts_relative_path_within_project(self, server):
+        result = server._tool_get_context_for_file("src/main.py")
+        # Should not be an error (may return no context, but not a path rejection)
+        assert not getattr(result, 'is_error', False) or "Rejected" not in result.content[0]["text"]

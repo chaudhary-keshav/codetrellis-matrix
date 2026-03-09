@@ -532,7 +532,7 @@ pin "@hotwired/turbo-rails", to: "turbo.min.js", preload: true
         content = '''
 import { definitionsFromContext } from "stimulus-webpack-helpers"
 const application = Application.start()
-const context = require.context("./controllers", true, /\.js$/)
+const context = require.context("./controllers", true, /\\.js$/)
 application.load(definitionsFromContext(context))
 '''
         result = self.extractor.extract_integrations(content)

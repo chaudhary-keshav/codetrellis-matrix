@@ -106,15 +106,15 @@ class AspNetCoreControllerExtractor:
         re.MULTILINE
     )
 
-    # HTTP method attributes
+    # HTTP method attributes — matches both [HttpGet] and [HttpGet("route")]
     HTTP_METHOD_PATTERNS = {
-        'GET': re.compile(r'\[HttpGet(?:\(["\']([^"\']*)["\'])?\)\]', re.MULTILINE),
-        'POST': re.compile(r'\[HttpPost(?:\(["\']([^"\']*)["\'])?\)\]', re.MULTILINE),
-        'PUT': re.compile(r'\[HttpPut(?:\(["\']([^"\']*)["\'])?\)\]', re.MULTILINE),
-        'DELETE': re.compile(r'\[HttpDelete(?:\(["\']([^"\']*)["\'])?\)\]', re.MULTILINE),
-        'PATCH': re.compile(r'\[HttpPatch(?:\(["\']([^"\']*)["\'])?\)\]', re.MULTILINE),
-        'HEAD': re.compile(r'\[HttpHead(?:\(["\']([^"\']*)["\'])?\)\]', re.MULTILINE),
-        'OPTIONS': re.compile(r'\[HttpOptions(?:\(["\']([^"\']*)["\'])?\)\]', re.MULTILINE),
+        'GET': re.compile(r'\[HttpGet(?:\(["\']([^"\']*)["\']\))?\]', re.MULTILINE),
+        'POST': re.compile(r'\[HttpPost(?:\(["\']([^"\']*)["\']\))?\]', re.MULTILINE),
+        'PUT': re.compile(r'\[HttpPut(?:\(["\']([^"\']*)["\']\))?\]', re.MULTILINE),
+        'DELETE': re.compile(r'\[HttpDelete(?:\(["\']([^"\']*)["\']\))?\]', re.MULTILINE),
+        'PATCH': re.compile(r'\[HttpPatch(?:\(["\']([^"\']*)["\']\))?\]', re.MULTILINE),
+        'HEAD': re.compile(r'\[HttpHead(?:\(["\']([^"\']*)["\']\))?\]', re.MULTILINE),
+        'OPTIONS': re.compile(r'\[HttpOptions(?:\(["\']([^"\']*)["\']\))?\]', re.MULTILINE),
     }
 
     # Authorize attribute
