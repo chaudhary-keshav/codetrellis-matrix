@@ -1,8 +1,8 @@
 # 🧠 CodeTrellis - Project Self-Awareness System
 
-> **Version:** 4.16.0
+> **Version:** 5.1.0
 > **Created:** 31 January 2026
-> **Updated:** Session 59 — Infrastructure Hardening (Watcher + Builder + Compressor)
+> **Updated:** Session 77 — Git Context, Change-Frequency Sorting, JIT Graph Boosting, Remote Scan
 > **Author:** Keshav Chaudhary
 
 ## What is CodeTrellis?
@@ -36,7 +36,7 @@ CodeTrellis creates a compressed "matrix" of your entire project that:
   | **NEW in v4.16.0:** Auto-compilation pipeline, incremental builds, deterministic output, `codetrellis clean`, `codetrellis verify`, `--incremental`, `--deterministic`, `--ci` flags
   | **NEW in v4.69:** IMPLEMENTATION_LOGIC in default PROMPT tier, BEST_PRACTICES auto-detected for 15+ languages & 20+ frameworks, thread-safe watcher (Lock + 2s debounce + batch callbacks), broken incremental hydration removed
 
-## Features (v4.16.0)
+## Features (v5.1.0)
 
 | Feature                     | Description                                                                     |
 | --------------------------- | ------------------------------------------------------------------------------- |
@@ -93,6 +93,10 @@ CodeTrellis creates a compressed "matrix" of your entire project that:
 | **IMPLEMENTATION_LOGIC**    | Function bodies & control flow in default PROMPT tier (NEW v4.69)               |
 | **Best Practices 15+ Lang** | Auto-detected for 15 languages + 20+ frameworks (NEW v4.69)                     |
 | **Thread-Safe Watcher**     | threading.Lock, 2s debounce, batch callbacks (NEW v4.69)                        |
+| **Git Context Section**     | Recent commits, working diff, file change frequency in matrix (NEW v5.1)        |
+| **Change-Freq Sorting**     | IMPLEMENTATION_LOGIC sorted by git change frequency — hot files last (NEW v5.1) |
+| **JIT Graph Boosting**      | Dependency-graph co-occurrence boosting in JIT context (NEW v5.1)               |
+| **Remote Repo Scan**        | `--remote URL` clones and scans any public git repo (NEW v5.1)                  |
 
 ## How It Works
 
@@ -161,6 +165,9 @@ codetrellis scan /path/to/project --deterministic
 
 # CI/CD mode (deterministic + parallel)
 codetrellis scan /path/to/project --ci
+
+# Scan a remote git repo (shallow clone)
+codetrellis scan --remote https://github.com/user/repo
 
 # View compressed matrix
 codetrellis show

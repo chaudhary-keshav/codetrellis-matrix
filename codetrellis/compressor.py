@@ -4476,6 +4476,31 @@ class MatrixCompressor:
                         lines.append(f"  {f.get('signature', f['name'])[:120]}")
                 lines.append("")
 
+        # v5.1: Git context section (recent commits, working diff, hot files)
+        if getattr(matrix, 'git_context', None):
+            gc = matrix.git_context
+            lines.append("[GIT_CONTEXT]")
+            if gc.get('branch'):
+                lines.append(f"branch={gc['branch']}")
+            commits = gc.get('recent_commits', [])
+            if commits:
+                lines.append(f"# Recent commits ({len(commits)})")
+                for c in commits[:10]:
+                    lines.append(f"  {c['hash']} {c['subject']}")
+            diff_stat = gc.get('diff_stat', '')
+            if diff_stat:
+                lines.append("# Working tree changes")
+                for dl in diff_stat.splitlines()[-5:]:
+                    lines.append(f"  {dl}")
+            # Top 15 most-changed files (hot files)
+            changes = getattr(matrix, 'git_file_changes', {})
+            if changes:
+                top = sorted(changes.items(), key=lambda x: x[1], reverse=True)[:15]
+                lines.append(f"# Hot files (top {len(top)} by change frequency)")
+                for path, count in top:
+                    lines.append(f"  {path}|changes:{count}")
+            lines.append("")
+
         # Best practices based on project type and detected stack
         lines.append("[BEST_PRACTICES]")
         for item in self._get_best_practices(stack, matrix):
@@ -25477,9 +25502,20 @@ class MatrixCompressor:
             ext = '.' + filename.rsplit('.', 1)[-1] if '.' in filename else ''
             is_primary = ext in primary_exts if primary_exts else True
             complex_count = sum(1 for s in snippets if s.get('complexity') == 'complex')
+            # v5.1: Sort most-changed files to the BOTTOM so LLMs see them last
+            # (Anthropic research shows LLMs attend more to end-of-prompt content)
+            change_count = 0
+            git_changes = getattr(matrix, 'git_file_changes', {})
+            if git_changes:
+                # Match by basename because logic_snippets use basenames
+                for git_path, cnt in git_changes.items():
+                    if git_path.endswith(filename) or git_path.split('/')[-1] == filename:
+                        change_count = cnt
+                        break
             return (
                 0 if is_primary else 1,       # Primary language first
                 -complex_count,                # More complex functions first
+                change_count,                  # Most-changed files last (bottom)
                 -len(snippets),                # More functions first
             )
 

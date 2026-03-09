@@ -2360,6 +2360,13 @@ def main():
         action="store_true",
         help="CI mode: deterministic + parallel, suitable for CI/CD pipelines (B4 Phase 3)"
     )
+    scan_parser.add_argument(
+        "--remote",
+        type=str,
+        default=None,
+        metavar="URL",
+        help="Clone a remote git repo (shallow) into a temp dir and scan it (v5.1)"
+    )
 
     # distribute command (NEW!)
     dist_parser = subparsers.add_parser("distribute", help="Generate .codetrellis files in each component folder")
@@ -2591,6 +2598,25 @@ def main():
         # C1.3: CODETRELLIS_CI env var enables CI mode
         if os.environ.get("CODETRELLIS_CI"):
             ci_mode = True
+
+        # v5.1: --remote support — clone into temp dir and redirect scan path
+        remote_url = getattr(args, "remote", None)
+        _remote_tmpdir = None  # prevent GC while scan runs
+        if remote_url:
+            import tempfile
+            import subprocess as _sub
+            _remote_tmpdir = tempfile.TemporaryDirectory()
+            clone_dest = Path(_remote_tmpdir.name) / "repo"
+            print(f"[CodeTrellis] Cloning remote repo: {remote_url}")
+            proc = _sub.run(
+                ["git", "clone", "--depth", "1", remote_url, str(clone_dest)],
+                capture_output=True, text=True, timeout=120,
+            )
+            if proc.returncode != 0:
+                print(f"[CodeTrellis] git clone failed: {proc.stderr.strip()}", file=sys.stderr)
+                sys.exit(3)
+            args.path = str(clone_dest)
+            print(f"[CodeTrellis] Cloned into {clone_dest}")
 
         # Use MatrixBuilder for incremental/deterministic/ci builds
         if incremental or deterministic or ci_mode:

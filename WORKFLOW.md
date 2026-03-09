@@ -1,8 +1,8 @@
 # CodeTrellis — Daily Workflow & Next Steps
 
 > **For:** Keshav Chaudhary  
-> **Date:** 20 February 2026  
-> **Version:** v4.69
+> **Date:** 9 March 2026  
+> **Version:** v5.1.0
 
 ---
 
@@ -24,7 +24,7 @@ Run `codetrellis init . --ai` to automatically scan your project and generate en
 2. **MCP Server** (`.vscode/mcp.json`) — Copilot can call `search_matrix()`, `get_section()`, `get_context_for_file()` directly. Start by clicking "Start" on the MCP server in VS Code's MCP panel, or it starts automatically when Copilot queries it.
 3. **Watch Task** — Set to `runOn: folderOpen`, so the matrix auto-rebuilds when you open the workspace.
 
-> **MCP Data Flow (v4.69):** `codetrellis scan` → `scanner.scan()` → `ProjectMatrix` → `MatrixCompressor.compress()` → `matrix.prompt` → MCP server reads `matrix.prompt` → `_parse_into_sections()` splits on `[SECTION_NAME]` headers → each section served via `get_section(name)` / `search_matrix(query)` / `get_context_for_file(path)`. The default PROMPT tier now includes **IMPLEMENTATION_LOGIC** (function bodies, control flow, ~2,300 lines) and expanded **BEST_PRACTICES** (auto-detected for 15+ languages and 20+ frameworks). **⚠️ Critical: Never round-trip `ProjectMatrix` through JSON without a proper `from_dict()` deserializer — the compressor requires a live object.**
+> **MCP Data Flow (v5.1.0):** `codetrellis scan` → `scanner.scan()` → `ProjectMatrix` (now includes `git_context` and `git_file_changes`) → `MatrixCompressor.compress()` → `matrix.prompt` (now includes `[GIT_CONTEXT]` section with branch, recent commits, diff stats, hot files) → MCP server reads `matrix.prompt` → `_parse_into_sections()` splits on `[SECTION_NAME]` headers → each section served via `get_section(name)` / `search_matrix(query)` / `get_context_for_file(path)`. The default PROMPT tier includes **IMPLEMENTATION_LOGIC** (sorted by git change frequency — most-changed files last for higher LLM attention), **GIT_CONTEXT** (recent commits, working diff, hot files), and expanded **BEST_PRACTICES**. JIT context now uses **dependency-graph boosting** — co-occurring files in IMPLEMENTATION_LOGIC get +2.0 relevance boost. **⚠️ Critical: Never round-trip `ProjectMatrix` through JSON without a proper `from_dict()` deserializer — the compressor requires a live object.**
 
 ### ✅ Claude Code — DONE
 
@@ -85,7 +85,11 @@ Run `codetrellis init . --ai` to automatically scan your project and generate en
    └── Run: codetrellis scan . --optimal
    └── This does a full rescan (not just incremental)
 
-4. Before committing:
+4. To scan a remote/open-source repo without cloning manually:
+   └── Run: codetrellis scan --remote https://github.com/user/repo
+   └── Shallow-clones into a temp dir, scans, and outputs the matrix
+
+5. Before committing:
    └── Run: codetrellis verify .
    └── Ensures matrix quality gates pass
 ```

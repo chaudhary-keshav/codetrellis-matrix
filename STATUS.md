@@ -2,9 +2,9 @@
 
 ## Overview
 
-**CodeTrellis Version**: v4.96 (v4.95 + ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper)
-**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper)
-**Status**: ✅ Session 76 Complete — .NET Ecosystem Framework Parsers (v4.96): 7 .NET framework parsers (ASP.NET Core 2.x-9.x, EF Core 2.x-9.x, MediatR 8.x-12.x, AutoMapper 8.x-13.x, Hangfire 1.7-1.8+, MassTransit 7.x-8.x, Dapper 2.x). 14 extractors in 7 framework directories, 7 parser files, 7 `__init__.py` files. ~95 new ProjectMatrix fields, scanner integration (7 `_parse_*` methods, C# file dispatch wiring), compressor (7 sections: ASPNETCORE, EFCORE, MEDIATR, AUTOMAPPER, HANGFIRE, MASSTRANSIT, DAPPER with 7 `_compress_*` methods). Scanner evaluation on 3 public repos: eShopOnWeb (4 active sections, controllers, EF Core contexts, MediatR handlers, AutoMapper profiles), CleanArchitecture (26 MediatR requests, EF Core interceptors, AutoMapper mappings), ContosoUniversity (54 MediatR requests, 7 DbSets, 16 AutoMapper profiles). 91 new tests (7 test files), 6843 total tests passing, 0 regressions.
+**CodeTrellis Version**: v5.1.0 (v4.96 + Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan)
+**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan)
+**Status**: ✅ Session 77 Complete — AI Context Quality Features (v5.1.0): 4 new features addressing gaps vs Aider/Repomix. (1) Git Context Section — new `git_context.py` module with `GitContextExtractor` (recent commits, working diff, per-file change frequency via `git log --name-only`), 2 new `ProjectMatrix` fields (`git_context`, `git_file_changes`), scanner integration, new `[GIT_CONTEXT]` compressor section (branch, commits, diff, top 15 hot files). (2) Change-Frequency Sorting — `_compress_logic()` sort key updated to push most-changed files to bottom of `[IMPLEMENTATION_LOGIC]` (LLMs attend more to end-of-prompt content per Anthropic research). (3) JIT Dependency-Graph Boosting — `JITContextProvider.resolve_context()` step 3b finds co-occurring files in IMPLEMENTATION_LOGIC blocks (±3 neighbours), boosts related sections by +2.0 relevance. New `_find_co_occurring_files()` method. (4) Remote Repo Support — `--remote URL` flag on `scan` CLI command, shallow-clones into temp dir and scans. 37 new tests (2 test files: `test_git_context.py`, `test_v51_features.py`), 6812 total tests passing, 0 regressions.
 
 ---
 
@@ -4872,70 +4872,70 @@ Seven .NET ecosystem framework-level parsers implemented as supplementary layers
 
 ### Frameworks
 
-| Framework    | Version Range          | Extractors                                                             | Matrix Section   | Tests |
-| ------------ | ---------------------- | ---------------------------------------------------------------------- | ---------------- | ----- |
-| ASP.NET Core | 2.x – 9.x             | 5 (controller, middleware, di, config, auth)                           | `[ASPNETCORE]`   | 15    |
-| EF Core      | 2.x – 9.x             | 3 (context, model, query)                                             | `[EFCORE]`       | 9     |
-| MediatR      | 8.x – 12.x            | 1 (handler — requests, handlers, notifications, behaviors, streams)    | `[MEDIATR]`      | 11    |
-| AutoMapper   | 8.x – 13.x            | 1 (mapping — profiles, CreateMap, resolvers, converters, projections)  | `[AUTOMAPPER]`   | 11    |
-| Hangfire     | 1.7 – 1.8+            | 1 (job — background, recurring, filters, dashboard, storage)           | `[HANGFIRE]`     | 13    |
-| MassTransit  | 7.x – 8.x             | 1 (consumer — consumers, sagas, messages, bus config, middleware)      | `[MASSTRANSIT]`  | 12    |
-| Dapper       | 2.x + Contrib          | 1 (query — queries, repositories, type handlers, multi-maps)           | `[DAPPER]`       | 13    |
+| Framework    | Version Range | Extractors                                                            | Matrix Section  | Tests |
+| ------------ | ------------- | --------------------------------------------------------------------- | --------------- | ----- |
+| ASP.NET Core | 2.x – 9.x     | 5 (controller, middleware, di, config, auth)                          | `[ASPNETCORE]`  | 15    |
+| EF Core      | 2.x – 9.x     | 3 (context, model, query)                                             | `[EFCORE]`      | 9     |
+| MediatR      | 8.x – 12.x    | 1 (handler — requests, handlers, notifications, behaviors, streams)   | `[MEDIATR]`     | 11    |
+| AutoMapper   | 8.x – 13.x    | 1 (mapping — profiles, CreateMap, resolvers, converters, projections) | `[AUTOMAPPER]`  | 11    |
+| Hangfire     | 1.7 – 1.8+    | 1 (job — background, recurring, filters, dashboard, storage)          | `[HANGFIRE]`    | 13    |
+| MassTransit  | 7.x – 8.x     | 1 (consumer — consumers, sagas, messages, bus config, middleware)     | `[MASSTRANSIT]` | 12    |
+| Dapper       | 2.x + Contrib | 1 (query — queries, repositories, type handlers, multi-maps)          | `[DAPPER]`      | 13    |
 
 ### Scanner Evaluation — Round 1
 
-| Repo                              | Active Sections                                | Key Findings                                                                                                   |
-| --------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| dotnet-architecture/eShopOnWeb    | ASPNETCORE, EFCORE, MEDIATR, AUTOMAPPER        | 4 controllers, EF CatalogContext+IdentityContext, MediatR CQRS handlers, AutoMapper profiles, 254 .cs files    |
-| jasontaylordev/CleanArchitecture  | ASPNETCORE, EFCORE, MEDIATR, AUTOMAPPER        | 26 MediatR requests, EF interceptors, ASP.NET Core v6.0 detected, health checks, gRPC, 117 .cs files          |
-| jbogard/ContosoUniversity         | ASPNETCORE, EFCORE, MEDIATR, AUTOMAPPER        | 54 MediatR requests, 7 DbSets, 16 AutoMapper profiles, FluentValidation, 70 .cs files                         |
+| Repo                             | Active Sections                         | Key Findings                                                                                                |
+| -------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| dotnet-architecture/eShopOnWeb   | ASPNETCORE, EFCORE, MEDIATR, AUTOMAPPER | 4 controllers, EF CatalogContext+IdentityContext, MediatR CQRS handlers, AutoMapper profiles, 254 .cs files |
+| jasontaylordev/CleanArchitecture | ASPNETCORE, EFCORE, MEDIATR, AUTOMAPPER | 26 MediatR requests, EF interceptors, ASP.NET Core v6.0 detected, health checks, gRPC, 117 .cs files        |
+| jbogard/ContosoUniversity        | ASPNETCORE, EFCORE, MEDIATR, AUTOMAPPER | 54 MediatR requests, 7 DbSets, 16 AutoMapper profiles, FluentValidation, 70 .cs files                       |
 
 ### Known Limitations
 
-| # | Issue                                                              | Mitigation                                                                    |
-| - | ------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| 1 | ASP.NET Core controller extractor gets 3/5 endpoints in some cases | Regex-based; complex action method signatures may require AST enhancement     |
-| 2 | EF Core `total_db_sets` via context flattening, not direct field   | Scanner flattens db_sets from DbContext objects for ProjectMatrix              |
-| 3 | Hangfire/MassTransit/Dapper not triggered on eval repos            | Repos didn't use these frameworks — correct negative detection                |
+| #   | Issue                                                              | Mitigation                                                                |
+| --- | ------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| 1   | ASP.NET Core controller extractor gets 3/5 endpoints in some cases | Regex-based; complex action method signatures may require AST enhancement |
+| 2   | EF Core `total_db_sets` via context flattening, not direct field   | Scanner flattens db_sets from DbContext objects for ProjectMatrix         |
+| 3   | Hangfire/MassTransit/Dapper not triggered on eval repos            | Repos didn't use these frameworks — correct negative detection            |
 
 ### Files Created
 
-| File                                                     | Description                                                                  | ~Lines |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------- | ------ |
-| `extractors/aspnetcore/__init__.py`                      | Imports from 5 extractors                                                    | ~25    |
-| `extractors/aspnetcore/controller_extractor.py`          | Controllers, endpoints, minimal APIs, filters, route attributes              | ~450   |
-| `extractors/aspnetcore/middleware_extractor.py`           | Middleware pipeline, custom middleware, IMiddleware                           | ~220   |
-| `extractors/aspnetcore/di_extractor.py`                  | DI registrations (singleton/scoped/transient), keyed services                | ~200   |
-| `extractors/aspnetcore/config_extractor.py`              | IOptions pattern, configuration binding, sections                            | ~165   |
-| `extractors/aspnetcore/auth_extractor.py`                | JWT, Cookie, OAuth, policies, roles, claims                                  | ~190   |
-| `aspnetcore_parser_enhanced.py`                          | ASPNetCoreParseResult, 20 FRAMEWORK_PATTERNS, VERSION_FEATURES 2.0-9.0      | ~309   |
-| `extractors/efcore/__init__.py`                          | Imports from 3 extractors                                                    | ~15    |
-| `extractors/efcore/context_extractor.py`                 | DbContext, DbSet, migrations, providers                                      | ~214   |
-| `extractors/efcore/model_extractor.py`                   | Entities, relationships, value conversions, IEntityTypeConfiguration          | ~225   |
-| `extractors/efcore/query_extractor.py`                   | Query filters, interceptors, compiled queries, raw SQL                        | ~155   |
-| `efcore_parser_enhanced.py`                              | EFCoreParseResult, 11 FRAMEWORK_PATTERNS, VERSION_FEATURES 2.0-9.0          | ~183   |
-| `extractors/mediatr/__init__.py`                         | Imports from handler_extractor                                               | ~10    |
-| `extractors/mediatr/handler_extractor.py`                | Requests, handlers, notifications, behaviors, streams, validators            | ~258   |
-| `mediatr_parser_enhanced.py`                             | MediatRParseResult, CQRS detection, VERSION_FEATURES 8.0-12.0               | ~135   |
-| `extractors/automapper/__init__.py`                      | Imports from mapping_extractor                                               | ~10    |
-| `extractors/automapper/mapping_extractor.py`             | Profiles, CreateMap, ForMember, resolvers, converters, projections            | ~280   |
-| `automapper_parser_enhanced.py`                          | AutoMapperParseResult, VERSION_FEATURES 8.0-13.0                             | ~221   |
-| `extractors/hangfire/__init__.py`                        | Imports from job_extractor                                                   | ~10    |
-| `extractors/hangfire/job_extractor.py`                   | BackgroundJob, RecurringJob, filters, dashboard, storage                     | ~260   |
-| `hangfire_parser_enhanced.py`                            | HangfireParseResult, VERSION_FEATURES 1.7-1.8+                              | ~188   |
-| `extractors/masstransit/__init__.py`                     | Imports from consumer_extractor                                              | ~10    |
-| `extractors/masstransit/consumer_extractor.py`           | Consumers, sagas, messages, bus config, middleware                            | ~300   |
-| `masstransit_parser_enhanced.py`                         | MassTransitParseResult, VERSION_FEATURES 7.0-8.x                            | ~197   |
-| `extractors/dapper/__init__.py`                          | Imports from query_extractor                                                 | ~10    |
-| `extractors/dapper/query_extractor.py`                   | Queries, repositories, type handlers, multi-maps, stored procs               | ~294   |
-| `dapper_parser_enhanced.py`                              | DapperParseResult, VERSION_FEATURES 2.0-2.1                                 | ~186   |
+| File                                            | Description                                                            | ~Lines |
+| ----------------------------------------------- | ---------------------------------------------------------------------- | ------ |
+| `extractors/aspnetcore/__init__.py`             | Imports from 5 extractors                                              | ~25    |
+| `extractors/aspnetcore/controller_extractor.py` | Controllers, endpoints, minimal APIs, filters, route attributes        | ~450   |
+| `extractors/aspnetcore/middleware_extractor.py` | Middleware pipeline, custom middleware, IMiddleware                    | ~220   |
+| `extractors/aspnetcore/di_extractor.py`         | DI registrations (singleton/scoped/transient), keyed services          | ~200   |
+| `extractors/aspnetcore/config_extractor.py`     | IOptions pattern, configuration binding, sections                      | ~165   |
+| `extractors/aspnetcore/auth_extractor.py`       | JWT, Cookie, OAuth, policies, roles, claims                            | ~190   |
+| `aspnetcore_parser_enhanced.py`                 | ASPNetCoreParseResult, 20 FRAMEWORK_PATTERNS, VERSION_FEATURES 2.0-9.0 | ~309   |
+| `extractors/efcore/__init__.py`                 | Imports from 3 extractors                                              | ~15    |
+| `extractors/efcore/context_extractor.py`        | DbContext, DbSet, migrations, providers                                | ~214   |
+| `extractors/efcore/model_extractor.py`          | Entities, relationships, value conversions, IEntityTypeConfiguration   | ~225   |
+| `extractors/efcore/query_extractor.py`          | Query filters, interceptors, compiled queries, raw SQL                 | ~155   |
+| `efcore_parser_enhanced.py`                     | EFCoreParseResult, 11 FRAMEWORK_PATTERNS, VERSION_FEATURES 2.0-9.0     | ~183   |
+| `extractors/mediatr/__init__.py`                | Imports from handler_extractor                                         | ~10    |
+| `extractors/mediatr/handler_extractor.py`       | Requests, handlers, notifications, behaviors, streams, validators      | ~258   |
+| `mediatr_parser_enhanced.py`                    | MediatRParseResult, CQRS detection, VERSION_FEATURES 8.0-12.0          | ~135   |
+| `extractors/automapper/__init__.py`             | Imports from mapping_extractor                                         | ~10    |
+| `extractors/automapper/mapping_extractor.py`    | Profiles, CreateMap, ForMember, resolvers, converters, projections     | ~280   |
+| `automapper_parser_enhanced.py`                 | AutoMapperParseResult, VERSION_FEATURES 8.0-13.0                       | ~221   |
+| `extractors/hangfire/__init__.py`               | Imports from job_extractor                                             | ~10    |
+| `extractors/hangfire/job_extractor.py`          | BackgroundJob, RecurringJob, filters, dashboard, storage               | ~260   |
+| `hangfire_parser_enhanced.py`                   | HangfireParseResult, VERSION_FEATURES 1.7-1.8+                         | ~188   |
+| `extractors/masstransit/__init__.py`            | Imports from consumer_extractor                                        | ~10    |
+| `extractors/masstransit/consumer_extractor.py`  | Consumers, sagas, messages, bus config, middleware                     | ~300   |
+| `masstransit_parser_enhanced.py`                | MassTransitParseResult, VERSION_FEATURES 7.0-8.x                       | ~197   |
+| `extractors/dapper/__init__.py`                 | Imports from query_extractor                                           | ~10    |
+| `extractors/dapper/query_extractor.py`          | Queries, repositories, type handlers, multi-maps, stored procs         | ~294   |
+| `dapper_parser_enhanced.py`                     | DapperParseResult, VERSION_FEATURES 2.0-2.1                            | ~186   |
 
 ### Files Modified
 
-| File            | Changes                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------ |
-| `scanner.py`    | 7 imports, 7 parser inits, ~95 ProjectMatrix fields, 7 `_parse_*` methods, C# file dispatch wiring    |
-| `compressor.py` | 7 section dispatch blocks, 7 `_compress_*` methods                                                     |
+| File            | Changes                                                                                            |
+| --------------- | -------------------------------------------------------------------------------------------------- |
+| `scanner.py`    | 7 imports, 7 parser inits, ~95 ProjectMatrix fields, 7 `_parse_*` methods, C# file dispatch wiring |
+| `compressor.py` | 7 section dispatch blocks, 7 `_compress_*` methods                                                 |
 
 ### Test Results
 

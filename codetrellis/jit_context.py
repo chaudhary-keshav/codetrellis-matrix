@@ -403,6 +403,21 @@ class JITContextProvider:
             if file_name in content.lower() or path.stem.lower() in content.lower():
                 candidates[section_name] = candidates.get(section_name, 0) + 4.0
 
+        # 3b. Dependency-graph boosting: find sections containing files
+        #     that co-occur with the target file in IMPLEMENTATION_LOGIC.
+        #     Files that appear near each other in logic sections are likely
+        #     import-related; boost those sections so the AI sees full context.
+        co_occurring = self._find_co_occurring_files(file_name, path.stem.lower())
+        if co_occurring:
+            for section_name, content in self._sections.items():
+                if section_name == "_PREAMBLE":
+                    continue
+                content_lower = content.lower()
+                for co_file in co_occurring:
+                    if co_file in content_lower:
+                        candidates[section_name] = candidates.get(section_name, 0) + 2.0
+                        break  # One co-occurrence per section is enough
+
         # 4. Universal sections
         if include_universal:
             for section_name in UNIVERSAL_SECTIONS:
@@ -478,3 +493,57 @@ class JITContextProvider:
     def get_available_sections(self) -> List[str]:
         """Get list of all available section names."""
         return [s for s in self._sections if s != "_PREAMBLE"]
+
+    def _find_co_occurring_files(
+        self, file_name: str, stem: str, max_results: int = 8,
+    ) -> Set[str]:
+        """
+        Find file names that co-occur with the target in IMPLEMENTATION_LOGIC.
+
+        Implementation logic sections list files as ``# filename.ext (...)``
+        headers. If the target file appears in a block, other files listed
+        nearby are likely import-related. We collect those neighbours.
+        """
+        logic = self._sections.get("IMPLEMENTATION_LOGIC", "")
+        if not logic:
+            return set()
+
+        # Split into per-file blocks (lines starting with ``# filename``)
+        blocks: List[List[str]] = []
+        current: List[str] = []
+        for line in logic.splitlines():
+            if line.startswith("# ") and "(" in line:
+                if current:
+                    blocks.append(current)
+                current = [line]
+            else:
+                current.append(line)
+        if current:
+            blocks.append(current)
+
+        # Find blocks that reference the target file
+        target_blocks: List[int] = []
+        fn_lower = file_name.lower()
+        for idx, block in enumerate(blocks):
+            header = block[0].lower() if block else ""
+            if fn_lower in header or stem in header:
+                target_blocks.append(idx)
+
+        if not target_blocks:
+            return set()
+
+        # Collect neighbour file names (±3 blocks around target)
+        neighbours: Set[str] = set()
+        for tidx in target_blocks:
+            for offset in range(-3, 4):
+                nidx = tidx + offset
+                if 0 <= nidx < len(blocks) and nidx != tidx:
+                    header = blocks[nidx][0]
+                    # Extract filename from ``# filename.ext (...)``
+                    if header.startswith("# "):
+                        fname = header[2:].split("(")[0].strip().lower()
+                        if fname:
+                            neighbours.add(fname)
+                            if len(neighbours) >= max_results:
+                                return neighbours
+        return neighbours

@@ -2388,6 +2388,10 @@ class ProjectMatrix:
     sub_projects: Optional[Dict] = None        # Sub-project / monorepo analysis
     generic_languages: Optional[Dict] = None   # Generic language extraction
 
+    # v5.1: Git context (change history, diff stats, change frequency)
+    git_context: Optional[Dict] = None
+    git_file_changes: Dict[str, int] = field(default_factory=dict)
+
     # File tracking
     files: Dict[str, FileInfo] = field(default_factory=dict)
 
@@ -4363,6 +4367,21 @@ class ProjectScanner:
 
         # v4.8: Build directory summary for PROJECT_STRUCTURE section
         self._build_directory_summary(root, matrix)
+
+        # v5.1: Extract git context (recent commits, diff stats, change frequency)
+        try:
+            from codetrellis.git_context import GitContextExtractor
+            git_extractor = GitContextExtractor()
+            git_ctx = git_extractor.extract(str(root))
+            if git_ctx.is_git_repo:
+                matrix.git_context = {
+                    "branch": git_ctx.active_branch,
+                    "recent_commits": git_ctx.recent_commits,
+                    "diff_stat": git_ctx.diff_stat,
+                }
+                matrix.git_file_changes = git_ctx.file_change_counts
+        except Exception:
+            pass  # Git extraction is best-effort
 
         print(f"[CodeTrellis] Scan complete: {files_scanned} files processed")
         print(f"[CodeTrellis] Found: {len(matrix.schemas)} schemas, {len(matrix.dtos)} DTOs, "
