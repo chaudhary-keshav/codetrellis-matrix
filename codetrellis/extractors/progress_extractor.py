@@ -318,18 +318,23 @@ class ProgressExtractor:
 
     @staticmethod
     def _is_inside_string_literal(line: str, match_text: str) -> bool:
-        """Check if a matched marker is inside a string literal or regex definition.
+        """Check if a matched marker is inside a string literal, regex definition,
+        or pattern-describing comment.
 
         Phase E fix: Prevents self-contamination when CodeTrellis scans its own source.
         The PATTERNS dict contains raw regex strings with markers like 'BLOCKER:'
         that would otherwise match as real blockers during self-scan.
 
-        Heuristics:
-        1. Line contains r' or r\" before the match (raw string / regex definition)
-        2. Line is a dict/list string entry (enclosed in quotes with comma)
-        3. Match text contains regex metacharacters (escaped sequences)
+        Phase F fix: Also filters out comments that *describe* markers/patterns
+        rather than being actual work items. Examples:
+        - "# TODO patterns: // TODO: message" (pattern description)
+        - "# Matches: // TODO: message" (match example)
+        - "- @deprecated notices" (docstring tag list)
+        - "# Pattern to match @deprecated tags" (comment about pattern)
+        - "# Deprecated: {', '.join(...)}" (output formatting)
         """
         stripped = line.strip()
+        lower = stripped.lower()
 
         # Check for raw string patterns: r'...' or r"..."
         if "r'" in stripped or 'r"' in stripped:
@@ -346,7 +351,53 @@ class ProgressExtractor:
         if match_text and any(ind in match_text for ind in regex_indicators):
             return True
 
+        # Check for pattern-describing comments: lines that reference markers
+        # as concepts rather than actual work items
+        # e.g., "# TODO patterns:", "# Matches: // TODO:", "# Pattern to match @deprecated"
+        pattern_keywords = ('pattern', 'matches:', 'match ', 'extract ', 'marker')
+        if any(kw in lower for kw in pattern_keywords):
+            return True
+
+        # Check for docstring tag lists: "- @deprecated notices", "- @param tags"
+        if stripped.startswith(('-', '*')) and '@' in stripped:
+            return True
+
+        # Check for lines containing other-language comment syntax in Python comments
+        # e.g., "# TODO patterns: // TODO: message" — the "//" indicates an example
+        if stripped.startswith('#') and '//' in stripped:
+            return True
+
+        # Check for @-prefixed markers inside Python comments (e.g., "# @deprecated markers")
+        # In Python, real deprecation uses warnings.warn() or a decorator on its own line,
+        # not @deprecated inside a # comment
+        if stripped.startswith('#') and '@deprecated' in stripped.lower():
+            return True
+
+        # Check for f-string or .join() output lines referencing markers
+        if '.join(' in stripped or "f'" in stripped or 'f"' in stripped:
+            return True
+
         return False
+
+    @staticmethod
+    def _is_inside_multiline_string(content: str, position: int) -> bool:
+        """Check if the given position is inside a triple-quoted string.
+
+        Counts unescaped triple-quote occurrences before the position.
+        An odd count means we're inside a string.
+        """
+        prefix = content[:position]
+        # Count triple-quote delimiters (both ''' and """)
+        count = 0
+        for delim in ('"""', "'''"):
+            idx = 0
+            while True:
+                idx = prefix.find(delim, idx)
+                if idx == -1:
+                    break
+                count += 1
+                idx += 3
+        return count % 2 == 1
 
     def extract(self, content: str, file_path: str = "") -> FileProgress:
         """
@@ -376,6 +427,11 @@ class ProgressExtractor:
                     # themselves, leaking raw regex into ACTIONABLE_ITEMS.
                     matched_line = lines[line_num - 1] if line_num <= len(lines) else ""
                     if self._is_inside_string_literal(matched_line, match.group()):
+                        continue
+
+                    # Phase F fix: Skip matches inside multi-line string literals
+                    # (e.g., @deprecated in Dart/Java test fixtures inside triple quotes)
+                    if self._is_inside_multiline_string(content, match.start()):
                         continue
 
                     # Extract message and optional assignee

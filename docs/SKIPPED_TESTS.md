@@ -2,17 +2,20 @@
 
 > Generated as part of the v5.0 Improvement Plan — Phase 1 (Reliability & Test Health)
 > Baseline: 6742 passed, 101 skipped, 0 errors (Python 3.14, macOS)
+> Updated: 6790 passed, 86 skipped, 0 errors, 0 warnings (with venv + watchdog + pytest-timeout)
 
 ## Summary
 
 | Category                                                 | Count | Files                                                                                                           |
 | -------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------- |
-| (a) Missing optional dependency                          | 15    | `tests/test_watcher.py`                                                                                         |
+| (a) Missing optional dependency (watchdog)               | 0\*   | `tests/test_watcher.py` — 15 tests now pass when `watchdog` is installed via venv                               |
 | (a) Missing build artifact (requires `codetrellis scan`) | 86    | `tests/integration/test_advanced_gates.py`, `test_build_contracts_advanced.py`, `test_cross_topic_synergies.py` |
 | (b) Platform-specific                                    | 0     | —                                                                                                               |
 | (c) Broken / needs fix                                   | 0     | —                                                                                                               |
 
-**Total: 101 skipped** (all with documented, valid skip reasons)
+**Total: 86 skipped** (all with documented, valid skip reasons)
+
+\* With `watchdog` installed (included in project dependencies), the 15 watcher tests pass.
 
 ## Category (a): Missing Optional Dependency
 
@@ -60,9 +63,9 @@ and `matrix.prompt`.
 
 ## Conclusion
 
-All 101 skipped tests have valid, documented skip reasons:
+All 86 skipped tests have valid, documented skip reasons:
 
-- **15** require optional `watchdog` dependency (correctly guarded)
+- **0** require optional `watchdog` dependency (now installed in venv; 15 tests pass)
 - **86** require `codetrellis scan` build artifacts (integration tests, correctly guarded)
 - **0** are platform-specific
 - **0** are broken or need fixing

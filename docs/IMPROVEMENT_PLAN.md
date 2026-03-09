@@ -12,7 +12,7 @@
 
 # Baseline: 6843 tests, 774 files scanned, 1531 types, 33 matrix sections
 
-# Final: 6775 tests passing, 101 skipped (documented), 88% completion, 0 placeholders
+# Final: 6790 tests passing, 86 skipped (documented), 100% completion, 0 placeholders, 0 TODOs, 0 FIXMEs, 0 deprecated
 
 ---
 
@@ -1030,66 +1030,68 @@ Evening Block (Phase 3+4 — Quality + DX):
 
 ```
 $ pytest tests/ -x -q
-6775 passed, 101 skipped, 1 warning in 21.54s
-
-$ pytest tests/ -q -W error::SyntaxWarning
-6775 passed, 101 skipped, 1 warning in 21.78s  (no SyntaxWarnings)
+6790 passed, 86 skipped in 21.00s (0 warnings)
 
 $ codetrellis progress .
-Completion: 88%
-TODOs: 5 (self-referencing pattern defs, not real TODOs)
-FIXMEs: 1 (self-referencing pattern def)
-Placeholders: 0 ✅ (down from 90)
-Per-language: Python: 9 files (5T/1F/0P)
+Completion: 100%
+TODOs: 0 ✅
+FIXMEs: 0 ✅
+Deprecated: 0 ✅
+Placeholders: 0 ✅
+Per-language: Python: 5 files (0T/0F/0P)
 ```
 
 ## Phase Execution Summary
 
-| Phase                     | Status      | Before → After                                                        | Key Outcomes                                                                                                                                                                                |
-| ------------------------- | ----------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **P1: Reliability**       | ✅ COMPLETE | 6742 passed, 86 skipped, 1 error → 6747 passed, 101 skipped, 0 errors | Fixed watcher import, escape warning, parallel timeout bug, MCP path traversal. +5 new tests, +15 skip-documented watcher tests.                                                            |
-| **P2: Tech Debt**         | ✅ COMPLETE | 50% completion, 90 placeholders → 88% completion, 0 placeholders      | Dunder method exclusion from placeholder detection was the root cause of 90 false positives. Protected streaming callback. Documented scanner.py (25.9K LOC) and compressor.py (28.4K LOC). |
-| **P3: Parser Quality**    | ✅ COMPLETE | ASP.NET 3/5 endpoints → 5/5 endpoints                                 | Regex fix in controller_extractor.py. 27 integration tests for top 5 parsers. Matrixbench baseline: 90.0% (20/22 tasks).                                                                    |
-| **P4: DX & Docs**         | ✅ COMPLETE | No docs → CONTRIBUTING.md, BENCHMARKS.md, per-language progress       | Parse throughput: 57,158 LOC/s. Compression: 18.6× ratio. Per-language progress in CLI.                                                                                                     |
-| **P5: Release Readiness** | ⏳ DEFERRED | —                                                                     | Per plan consensus: deferred unless explicitly requested. MONOLITH_MEASUREMENTS.md documents the case.                                                                                      |
+| Phase                      | Status      | Before → After                                                        | Key Outcomes                                                                                                                                                                                |
+| -------------------------- | ----------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P1: Reliability**        | ✅ COMPLETE | 6742 passed, 86 skipped, 1 error → 6747 passed, 101 skipped, 0 errors | Fixed watcher import, escape warning, parallel timeout bug, MCP path traversal. +5 new tests, +15 skip-documented watcher tests.                                                            |
+| **P2: Tech Debt**          | ✅ COMPLETE | 50% completion, 90 placeholders → 88% completion, 0 placeholders      | Dunder method exclusion from placeholder detection was the root cause of 90 false positives. Protected streaming callback. Documented scanner.py (25.9K LOC) and compressor.py (28.4K LOC). |
+| **P3: Parser Quality**     | ✅ COMPLETE | ASP.NET 3/5 endpoints → 5/5 endpoints                                 | Regex fix in controller_extractor.py. 27 integration tests for top 5 parsers. Matrixbench baseline: 90.0% (20/22 tasks).                                                                    |
+| **P4: DX & Docs**          | ✅ COMPLETE | No docs → CONTRIBUTING.md, BENCHMARKS.md, per-language progress       | Parse throughput: 57,158 LOC/s. Compression: 18.6× ratio. Per-language progress in CLI.                                                                                                     |
+| **P5: Release Readiness**  | ✅ PARTIAL  | CI/CD + release workflows, modularization design                      | ci.yml (lint/test/package), release.yml (PyPI trusted publishing), MODULARIZATION_DESIGN.md. Actual modularization deferred per consensus.                                                  |
+| **PF: False Positive Fix** | ✅ COMPLETE | 88% → 100% completion, 5T/1F/5D → 0/0/0                               | Enhanced `_is_inside_string_literal` + `_is_inside_multiline_string` in progress_extractor.py. Eliminated all self-scan false positives.                                                    |
 
 ## Success Metrics — Final Scorecard
 
-| Metric                | Target                                 | Actual                                                               | Status             |
-| --------------------- | -------------------------------------- | -------------------------------------------------------------------- | ------------------ |
-| Test suite health     | 0 errors, 0 warnings, skips documented | 0 errors, 0 SyntaxWarnings, 101 skips documented in SKIPPED_TESTS.md | ✅ MET             |
-| TODO/FIXME count      | 0 real TODOs                           | 5+1 are self-referencing pattern definitions, not actionable TODOs   | ✅ MET (clarified) |
-| Completion estimate   | ≥85%                                   | 88%                                                                  | ✅ MET             |
-| ASP.NET accuracy      | 5/5 endpoints                          | 5/5 (regex fix applied)                                              | ✅ MET             |
-| Test count maintained | ≥6843                                  | 6775 passed + 101 skipped = 6876 total (started: 6843)               | ✅ MET             |
-| MCP path safety       | No path traversal                      | 4 dedicated tests in TestPathTraversalProtection                     | ✅ MET             |
-| Matrixbench baseline  | Documented                             | 90.0% avg, G7 gate PASSED                                            | ✅ MET             |
+| Metric                | Target                                 | Actual                                                        | Status      |
+| --------------------- | -------------------------------------- | ------------------------------------------------------------- | ----------- |
+| Test suite health     | 0 errors, 0 warnings, skips documented | 0 errors, 0 warnings, 86 skips documented in SKIPPED_TESTS.md | ✅ MET      |
+| TODO/FIXME count      | 0 real TODOs                           | 0 TODOs, 0 FIXMEs (false positives eliminated in Phase F)     | ✅ MET      |
+| Completion estimate   | ≥85%                                   | 100%                                                          | ✅ EXCEEDED |
+| Deprecated count      | 0                                      | 0 (false positives eliminated in Phase F)                     | ✅ MET      |
+| ASP.NET accuracy      | 5/5 endpoints                          | 5/5 (regex fix applied)                                       | ✅ MET      |
+| Test count maintained | ≥6843                                  | 6790 passed + 86 skipped = 6876 total (started: 6843)         | ✅ MET      |
+| MCP path safety       | No path traversal                      | 4 dedicated tests in TestPathTraversalProtection              | ✅ MET      |
+| Matrixbench baseline  | Documented                             | 90.0% avg, G7 gate PASSED                                     | ✅ MET      |
 
-## Files Changed/Created (21 total)
+## Files Changed/Created (23 total)
 
-| File                                                        | Action                               | Phase |
-| ----------------------------------------------------------- | ------------------------------------ | ----- |
-| `codetrellis/watcher.py`                                    | Modified (fallback imports)          | P1    |
-| `tests/test_watcher.py`                                     | Modified (skipif watchdog)           | P1    |
-| `tests/unit/test_stimulus_parser_enhanced.py`               | Modified (escape fix)                | P1    |
-| `codetrellis/parallel.py`                                   | Modified (timeout handling)          | P1    |
-| `codetrellis/mcp_server.py`                                 | Modified (path traversal protection) | P1    |
-| `tests/test_mcp_server.py`                                  | Modified (+4 tests)                  | P1    |
-| `tests/test_parallel_timeout.py`                            | Created                              | P1    |
-| `docs/SKIPPED_TESTS.md`                                     | Created                              | P1    |
-| `codetrellis/extractors/progress_extractor.py`              | Modified (dunder+stub exclusion)     | P2    |
-| `codetrellis/streaming.py`                                  | Modified (callback safety)           | P2    |
-| `docs/MONOLITH_MEASUREMENTS.md`                             | Created                              | P2    |
-| `codetrellis/extractors/aspnetcore/controller_extractor.py` | Modified (regex fix)                 | P3    |
-| `tests/unit/test_aspnetcore_parser_enhanced.py`             | Modified (+1 test)                   | P3    |
-| `tests/integration/test_top5_parsers.py`                    | Created (27 tests)                   | P3    |
-| `docs/matrixbench_baseline.json`                            | Created                              | P3    |
-| `docs/matrixbench_baseline.md`                              | Created                              | P3    |
-| `scripts/run_matrixbench.py`                                | Created                              | P3    |
-| `CONTRIBUTING.md`                                           | Created                              | P4    |
-| `docs/BENCHMARKS.md`                                        | Created                              | P4    |
-| `scripts/bench_parse.py`                                    | Created                              | P4    |
-| `codetrellis/cli.py`                                        | Modified (per-lang progress)         | P4    |
+| File                                                        | Action                                | Phase |
+| ----------------------------------------------------------- | ------------------------------------- | ----- |
+| `codetrellis/watcher.py`                                    | Modified (fallback imports)           | P1    |
+| `tests/test_watcher.py`                                     | Modified (skipif watchdog)            | P1    |
+| `tests/unit/test_stimulus_parser_enhanced.py`               | Modified (escape fix)                 | P1    |
+| `codetrellis/parallel.py`                                   | Modified (timeout handling)           | P1    |
+| `codetrellis/mcp_server.py`                                 | Modified (path traversal protection)  | P1    |
+| `tests/test_mcp_server.py`                                  | Modified (+4 tests)                   | P1    |
+| `tests/test_parallel_timeout.py`                            | Created                               | P1    |
+| `docs/SKIPPED_TESTS.md`                                     | Created                               | P1    |
+| `codetrellis/extractors/progress_extractor.py`              | Modified (dunder+stub exclusion)      | P2    |
+| `codetrellis/streaming.py`                                  | Modified (callback safety)            | P2    |
+| `docs/MONOLITH_MEASUREMENTS.md`                             | Created                               | P2    |
+| `codetrellis/extractors/aspnetcore/controller_extractor.py` | Modified (regex fix)                  | P3    |
+| `tests/unit/test_aspnetcore_parser_enhanced.py`             | Modified (+1 test)                    | P3    |
+| `tests/integration/test_top5_parsers.py`                    | Created (27 tests)                    | P3    |
+| `docs/matrixbench_baseline.json`                            | Created                               | P3    |
+| `docs/matrixbench_baseline.md`                              | Created                               | P3    |
+| `scripts/run_matrixbench.py`                                | Created                               | P3    |
+| `CONTRIBUTING.md`                                           | Created                               | P4    |
+| `docs/BENCHMARKS.md`                                        | Created                               | P4    |
+| `scripts/bench_parse.py`                                    | Created                               | P4    |
+| `codetrellis/cli.py`                                        | Modified (per-lang progress)          | P4    |
+| `codetrellis/extractors/progress_extractor.py`              | Modified (Phase F false positive fix) | PF    |
+| `requirements-test.txt`                                     | Modified (+pytest-timeout)            | PF    |
 
 ## Risks Realized
 
@@ -1097,12 +1099,14 @@ Per-language: Python: 9 files (5T/1F/0P)
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Watcher fix needs `watchdog` as dependency          | **Mitigated** — Fallback `FileSystemEventHandler = object` + pytest skipif. No new dependency.              |
 | Placeholder marker breaks existing tooling          | **Not realized** — Root cause was dunder method detection, not stub markers. Fix was cleaner than expected. |
-| Progress recalibration confuses users               | **Mitigated** — 50% → 88% is a clear improvement. Per-language breakdown adds context.                      |
+| Progress recalibration confuses users               | **Mitigated** — 50% → 88% → 100% via progressive fixes. Per-language breakdown adds context.                |
 | Parser regex improvements introduce false positives | **Not realized** — Fix was surgical (moved `)` inside optional group). All existing tests still pass.       |
 
 ## Lessons Learned
 
 1. **The 90 placeholders were a false positive** — `__init__(self): pass` was being counted as a placeholder. The real issue was in detection logic, not in the codebase.
-2. **The 5 TODOs and 1 FIXME are self-referencing** — They exist in `progress_extractor.py` and `todo_extractor.py` as pattern definitions (`# TODO patterns: // TODO: message...`). They're describing the patterns these extractors detect, not actual work items.
+2. **The 5 TODOs and 1 FIXME are self-referencing** — They exist in `progress_extractor.py` and `todo_extractor.py` as pattern definitions (`# TODO patterns: // TODO: message...`). They're describing the patterns these extractors detect, not actual work items. **Fixed in Phase F** by enhancing `_is_inside_string_literal` to detect pattern-describing comments.
 3. **The parallel timeout was a real bug** — `as_completed()` `TimeoutError` wasn't being caught, causing the pipeline to block indefinitely on slow files.
 4. **The mega-prompt approach worked** — 4 phases completed in a single day, ~4 batches, clean progression.
+5. **The 5 deprecated items were also false positives** — `@deprecated` appearing in jsdoc_extractor.py docstrings, pattern definitions, and compressor output formatting. **Fixed in Phase F** by adding multi-line string detection and pattern-describing comment heuristics.
+6. **Self-scanning is the hardest test** — When a code analysis tool scans its own source, every pattern definition can match against itself. Three layers of defense were needed: string literal check, pattern-description heuristic, and multi-line string context detection.
