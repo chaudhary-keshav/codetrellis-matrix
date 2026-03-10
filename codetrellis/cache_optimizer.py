@@ -210,6 +210,16 @@ SECTION_STABILITY: Dict[str, Tuple[SectionStability, int]] = {
     "LESS_DEPENDENCIES":    (SectionStability.STRUCTURAL, 1190),
     "POSTCSS_DEPENDENCIES": (SectionStability.STRUCTURAL, 1195),
 
+    # === SEMANTIC: Go Framework sections (v5.2) ===
+    "GO_GIN":               (SectionStability.SEMANTIC, 1196),
+    "GO_ECHO":              (SectionStability.SEMANTIC, 1196),
+    "GO_FIBER":             (SectionStability.SEMANTIC, 1196),
+    "GO_CHI":               (SectionStability.SEMANTIC, 1196),
+    "GO_GRPC":              (SectionStability.SEMANTIC, 1196),
+    "GO_GORM":              (SectionStability.SEMANTIC, 1196),
+    "GO_SQLX":              (SectionStability.SEMANTIC, 1196),
+    "GO_COBRA":             (SectionStability.SEMANTIC, 1196),
+
     # === SEMANTIC: Framework-specific code sections ===
 
     # React ecosystem

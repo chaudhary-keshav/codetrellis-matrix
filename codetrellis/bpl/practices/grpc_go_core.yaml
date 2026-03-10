@@ -1,0 +1,173 @@
+# gRPC-Go Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Go Framework Support
+# Practice IDs: GRPCGO001-GRPCGO015
+# Category: grpc_go
+# Frameworks: grpc_go, golang
+
+practices:
+  - id: GRPCGO001
+    title: "Define clear proto service contracts before implementation"
+    description: "Design .proto files with clear service definitions, well-named RPCs, and appropriate request/response message types. Proto files are the API contract — treat them as the source of truth."
+    category: "api_design"
+    severity: "critical"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "protobuf", "contract"]
+
+  - id: GRPCGO002
+    title: "Embed UnimplementedXxxServer for forward compatibility"
+    description: "Always embed the Unimplemented*Server struct in your service implementations. This ensures forward compatibility when new RPCs are added to the proto definition."
+    category: "best_practices"
+    severity: "critical"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "server", "compatibility"]
+    example: |
+      type userServer struct {
+          pb.UnimplementedUserServiceServer
+      }
+      func (s *userServer) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetUserResponse, error) {
+          // implementation
+      }
+
+  - id: GRPCGO003
+    title: "Use interceptors for cross-cutting concerns"
+    description: "Use unary and stream interceptors for logging, authentication, tracing, metrics, and error handling. Chain multiple interceptors with grpc.ChainUnaryInterceptor() and grpc.ChainStreamInterceptor()."
+    category: "middleware"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "interceptor", "middleware"]
+    example: |
+      srv := grpc.NewServer(
+          grpc.ChainUnaryInterceptor(
+              loggingInterceptor,
+              authInterceptor,
+              recoveryInterceptor,
+          ),
+      )
+
+  - id: GRPCGO004
+    title: "Propagate context for cancellation and deadlines"
+    description: "Always pass the incoming context.Context to downstream calls. Respect client deadlines and cancellation signals. Use ctx.Err() to check for cancellation before expensive operations."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "context", "deadline"]
+
+  - id: GRPCGO005
+    title: "Return proper gRPC status codes"
+    description: "Use status.Errorf() or status.Error() with appropriate gRPC status codes (codes.NotFound, codes.InvalidArgument, codes.Internal). Never return raw Go errors — they become codes.Unknown."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "status", "error"]
+    example: |
+      import "google.golang.org/grpc/status"
+      import "google.golang.org/grpc/codes"
+
+      func (s *srv) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetUserResponse, error) {
+          if req.GetId() == "" {
+              return nil, status.Errorf(codes.InvalidArgument, "user ID required")
+          }
+          user, err := s.repo.Find(ctx, req.GetId())
+          if err != nil {
+              return nil, status.Errorf(codes.Internal, "lookup failed: %v", err)
+          }
+          if user == nil {
+              return nil, status.Errorf(codes.NotFound, "user %s not found", req.GetId())
+          }
+          return toProto(user), nil
+      }
+
+  - id: GRPCGO006
+    title: "Use grpc.WithTransportCredentials for secure connections"
+    description: "Always use TLS for production gRPC connections. Use grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)) for clients and grpc.Creds() for servers. Never use insecure credentials in production."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "tls", "security"]
+
+  - id: GRPCGO007
+    title: "Use keepalive parameters for long-lived connections"
+    description: "Configure keepalive.ClientParameters and keepalive.ServerParameters to detect dead connections and prevent proxy/LB timeouts. Set appropriate Time and Timeout values."
+    category: "reliability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "keepalive", "connection"]
+
+  - id: GRPCGO008
+    title: "Use metadata for request headers and trailers"
+    description: "Use metadata.NewOutgoingContext() on clients and metadata.FromIncomingContext() on servers to pass request-scoped data (auth tokens, trace IDs, request IDs)."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "metadata", "headers"]
+
+  - id: GRPCGO009
+    title: "Enable gRPC reflection for development and debugging"
+    description: "Register the reflection service in development to enable tools like grpcurl and grpcui. Disable reflection in production for security."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "reflection", "debug"]
+
+  - id: GRPCGO010
+    title: "Use health checking protocol for load balancer integration"
+    description: "Implement the gRPC health checking protocol (grpc.health.v1.Health) for proper load balancer integration and Kubernetes readiness probes."
+    category: "reliability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "health", "kubernetes"]
+
+  - id: GRPCGO011
+    title: "Use streaming RPCs appropriately"
+    description: "Use server streaming for large result sets, client streaming for uploads/batches, and bidirectional streaming for real-time communication. Avoid streaming for simple request-response patterns."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "streaming", "design"]
+
+  - id: GRPCGO012
+    title: "Handle stream errors and EOF correctly"
+    description: "Check for io.EOF on Recv() to detect stream completion. Handle transport errors gracefully. Use stream.Context() to detect cancellation."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "stream", "error"]
+
+  - id: GRPCGO013
+    title: "Use grpc.NewServer with max message size options"
+    description: "Configure grpc.MaxRecvMsgSize() and grpc.MaxSendMsgSize() to control maximum message sizes. The default is 4MB which may be too small for some use cases."
+    category: "configuration"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "config", "message-size"]
+
+  - id: GRPCGO014
+    title: "Use graceful stop for server shutdown"
+    description: "Use srv.GracefulStop() instead of srv.Stop() to drain in-flight RPCs before shutting down. Listen for OS signals and trigger graceful shutdown."
+    category: "reliability"
+    severity: "critical"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "shutdown", "graceful"]
+
+  - id: GRPCGO015
+    title: "Use buf or protoc-gen-go-grpc for code generation"
+    description: "Use buf or protoc with protoc-gen-go and protoc-gen-go-grpc for generating Go code from proto files. Pin generator versions for reproducibility."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grpc_go", "golang"]
+    tags: ["grpc", "codegen", "protobuf"]

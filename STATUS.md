@@ -1,10 +1,10 @@
-# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper Language Support — STATUS.md
+# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq Language Support — STATUS.md
 
 ## Overview
 
-**CodeTrellis Version**: v5.1.0 (v4.96 + Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan)
-**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan)
-**Status**: ✅ Session 77 Complete — AI Context Quality Features (v5.1.0): 4 new features addressing gaps vs Aider/Repomix. (1) Git Context Section — new `git_context.py` module with `GitContextExtractor` (recent commits, working diff, per-file change frequency via `git log --name-only`), 2 new `ProjectMatrix` fields (`git_context`, `git_file_changes`), scanner integration, new `[GIT_CONTEXT]` compressor section (branch, commits, diff, top 15 hot files). (2) Change-Frequency Sorting — `_compress_logic()` sort key updated to push most-changed files to bottom of `[IMPLEMENTATION_LOGIC]` (LLMs attend more to end-of-prompt content per Anthropic research). (3) JIT Dependency-Graph Boosting — `JITContextProvider.resolve_context()` step 3b finds co-occurring files in IMPLEMENTATION_LOGIC blocks (±3 neighbours), boosts related sections by +2.0 relevance. New `_find_co_occurring_files()` method. (4) Remote Repo Support — `--remote URL` flag on `scan` CLI command, shallow-clones into temp dir and scans. 37 new tests (2 test files: `test_git_context.py`, `test_v51_features.py`), 6812 total tests passing, 0 regressions.
+**CodeTrellis Version**: v5.3.0 (v5.2.0 + Ruby Framework Parsers)
+**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq)
+**Status**: ✅ Session 79 Complete — Ruby Framework Parsers (v5.3.0): 5 new Ruby framework parsers with full regex-based extraction following the established supplementary parser pattern. (1) **Rails** — routes, controllers, models, migrations, jobs, mailers, channels, configs, 40+ ecosystem patterns, Rails 3.x-8.x version detection. (2) **Sinatra** — routes, filters, helpers, templates, settings, middleware, error handlers, classic vs modular detection. (3) **Hanami** — actions, slices, routes, entities, repositories, views, providers, settings, Hanami 1.x-2.1+ support. (4) **Grape** — endpoints, resources, params, entities, helpers, validators, error handlers, mounts, middleware, versioning strategy detection. (5) **Sidekiq** — workers, queues, schedules, batches, middleware, callbacks, configs, periodic jobs, Pro/Enterprise detection. Scanner integration (5 \_parse methods, ~52 new ProjectMatrix fields), compressor (5 new sections), BPL (5 practice YAML files with 85 practices). 42 new unit tests (1 test file), 3-repo scanner evaluation passed (Discourse: 303 models/92 controllers/1029 routes/2269 migrations, Sinatra: 120 routes/20 helpers, Grape: 1391 endpoints/924 params), 3 bugs fixed, 6927 total tests passing, 0 regressions.
 
 ---
 
@@ -4950,4 +4950,162 @@ pytest tests/ -q
 New tests:  91 (15 + 9 + 11 + 11 + 13 + 12 + 13 + Dapper type handler fix)
 Previous:  6752 (from Session 75 baseline)
 Total:     6843
+```
+
+---
+
+## Session 78 — Go Framework Parsers (v5.2.0)
+
+### Overview
+
+8 new Go framework parsers with full regex-based AST extraction, following the established parser pipeline pattern used by Java, C#, and other language integrations.
+
+### Frameworks
+
+| Framework | Parser File                  | Key Extractions                                                                         | BPL Practices       |
+| --------- | ---------------------------- | --------------------------------------------------------------------------------------- | ------------------- |
+| Gin       | `gin_parser_enhanced.py`     | Routes, groups, middleware, bindings, renders, engine configs                           | GIN001-GIN015       |
+| Echo      | `echo_parser_enhanced.py`    | Routes, groups, middleware (Pre/Use), bindings, renders                                 | ECHO001-ECHO015     |
+| Fiber     | `fiber_parser_enhanced.py`   | Routes, groups, middleware, bindings, configs (fasthttp)                                | FIBER001-FIBER015   |
+| Chi       | `chi_parser_enhanced.py`     | Routes, groups, mounts, middleware (net/http compatible)                                | CHI001-CHI015       |
+| gRPC-Go   | `grpc_go_parser_enhanced.py` | Service impls, RPC methods, interceptors, server options, client conns, proto imports   | GRPCGO001-GRPCGO015 |
+| GORM      | `gorm_parser_enhanced.py`    | Models, hooks, scopes, migrations, queries                                              | GORM001-GORM015     |
+| sqlx      | `sqlx_parser_enhanced.py`    | Queries (Get/Select/Named\*/Context), models, connections, prepared stmts, transactions | SQLX001-SQLX015     |
+| Cobra     | `cobra_parser_enhanced.py`   | Commands, flags (Var/VarP/P variants), sub-commands, groups, Viper bindings             | COBRA001-COBRA015   |
+
+### Files Created
+
+| File                                          | Description                | Lines |
+| --------------------------------------------- | -------------------------- | ----- |
+| `codetrellis/gin_parser_enhanced.py`          | Gin web framework parser   | ~350  |
+| `codetrellis/echo_parser_enhanced.py`         | Echo web framework parser  | ~350  |
+| `codetrellis/fiber_parser_enhanced.py`        | Fiber web framework parser | ~350  |
+| `codetrellis/chi_parser_enhanced.py`          | Chi router parser          | ~330  |
+| `codetrellis/grpc_go_parser_enhanced.py`      | gRPC-Go service parser     | ~380  |
+| `codetrellis/gorm_parser_enhanced.py`         | GORM ORM parser            | ~370  |
+| `codetrellis/sqlx_parser_enhanced.py`         | sqlx database parser       | ~320  |
+| `codetrellis/cobra_parser_enhanced.py`        | Cobra CLI parser           | ~360  |
+| `codetrellis/bpl/practices/gin_core.yaml`     | 15 Gin best practices      | ~200  |
+| `codetrellis/bpl/practices/echo_core.yaml`    | 15 Echo best practices     | ~200  |
+| `codetrellis/bpl/practices/fiber_core.yaml`   | 15 Fiber best practices    | ~200  |
+| `codetrellis/bpl/practices/chi_core.yaml`     | 15 Chi best practices      | ~200  |
+| `codetrellis/bpl/practices/grpc_go_core.yaml` | 15 gRPC-Go best practices  | ~200  |
+| `codetrellis/bpl/practices/gorm_core.yaml`    | 15 GORM best practices     | ~200  |
+| `codetrellis/bpl/practices/sqlx_go_core.yaml` | 15 sqlx best practices     | ~200  |
+| `codetrellis/bpl/practices/cobra_core.yaml`   | 15 Cobra best practices    | ~200  |
+| `tests/unit/test_gin_parser_enhanced.py`      | 10 tests                   | ~150  |
+| `tests/unit/test_echo_parser_enhanced.py`     | 9 tests                    | ~140  |
+| `tests/unit/test_fiber_parser_enhanced.py`    | 9 tests                    | ~140  |
+| `tests/unit/test_chi_parser_enhanced.py`      | 8 tests                    | ~130  |
+| `tests/unit/test_grpc_go_parser_enhanced.py`  | 10 tests                   | ~210  |
+| `tests/unit/test_gorm_parser_enhanced.py`     | 9 tests                    | ~170  |
+| `tests/unit/test_sqlx_parser_enhanced.py`     | 9 tests                    | ~175  |
+| `tests/unit/test_cobra_parser_enhanced.py`    | 9 tests                    | ~175  |
+
+### Files Modified
+
+| File                       | Changes                                                                                                    |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `scanner.py`               | 8 imports, 8 parser inits, ~55 new ProjectMatrix fields, 8 `_parse_*` methods, Go framework dispatch chain |
+| `compressor.py`            | 8 section dispatch blocks, 8 `_compress_*` methods (GO_GIN through GO_COBRA)                               |
+| `cache_optimizer.py`       | 8 SECTION_STABILITY_MAP entries                                                                            |
+| `jit_context.py`           | Updated .go EXTENSION_TO_SECTIONS from 4 to 12                                                             |
+| `mcp_server.py`            | 8 entries in AGGREGATE_RESOURCES["api"]                                                                    |
+| `skills_generator.py`      | Go frameworks added to add-endpoint and add-model detect_sections                                          |
+| `bpl/selector.py`          | go_fw_mapping dict, 8 prefix_framework_map entries, has_golang expanded                                    |
+| `bpl/models.py`            | 8 Go framework PracticeCategory enum values                                                                |
+| `sqlx_parser_enhanced.py`  | GET_PATTERN enhanced for \*Context variants, PREPARE/TX patterns for chained member access                 |
+| `cobra_parser_enhanced.py` | Flag patterns fixed for non-Var variants (String/BoolP/IntP name extraction)                               |
+
+### Scanner Evaluation Results
+
+| Project   | Frameworks    | Results                                                                   |
+| --------- | ------------- | ------------------------------------------------------------------------- |
+| gin-app   | Gin + GORM    | 8 routes, 2 groups, 3 middleware, 2 bindings; 2 models, 2 hooks, 2 scopes |
+| grpc-svc  | gRPC + sqlx   | 2 services, 5 RPC methods, 2 interceptors; 4 queries, postgres driver     |
+| cobra-cli | Cobra + Fiber | 5 commands, 8 flags, 4 sub-commands, 2 groups; 6 routes, 3 configs        |
+
+### Test Results
+
+```
+pytest tests/unit/test_gin_parser_enhanced.py tests/unit/test_echo_parser_enhanced.py tests/unit/test_fiber_parser_enhanced.py tests/unit/test_chi_parser_enhanced.py tests/unit/test_grpc_go_parser_enhanced.py tests/unit/test_gorm_parser_enhanced.py tests/unit/test_sqlx_parser_enhanced.py tests/unit/test_cobra_parser_enhanced.py -v
+73 passed in 0.14s
+
+pytest tests/ -q
+6885 passed, 101 skipped in 22.50s
+✅ ALL TESTS PASSED — 0 failures, 0 regressions
+
+New tests:  73 (10 + 9 + 9 + 8 + 10 + 9 + 9 + 9)
+Previous:  6812 (from Session 77 baseline)
+Total:     6885
+```
+
+## Session 79 — Ruby Framework Parsers (v5.3.0)
+
+### Overview
+
+5 new Ruby framework parsers with full regex-based extraction, following the established supplementary parser pattern. These parsers run after the base Ruby parser (`EnhancedRubyParser`) to extract framework-specific patterns from Rails, Sinatra, Hanami, Grape, and Sidekiq codebases.
+
+### Frameworks
+
+| Framework | Parser File                  | Key Extractions                                                                     | BPL Practices         |
+| --------- | ---------------------------- | ----------------------------------------------------------------------------------- | --------------------- |
+| Rails     | `rails_parser_enhanced.py`   | Routes, controllers, models, migrations, jobs, mailers, channels, configs           | RAILS001-RAILS025     |
+| Sinatra   | `sinatra_parser_enhanced.py` | Routes, filters, helpers, templates, settings, middleware, error handlers           | SINATRA001-SINATRA015 |
+| Hanami    | `hanami_parser_enhanced.py`  | Actions, slices, routes, entities, repositories, views, providers, settings         | HANAMI001-HANAMI015   |
+| Grape     | `grape_parser_enhanced.py`   | Endpoints, resources, params, entities, helpers, validators, error handlers, mounts | GRAPE001-GRAPE015     |
+| Sidekiq   | `sidekiq_parser_enhanced.py` | Workers, queues, schedules, batches, middleware, callbacks, configs, periodic jobs  | SIDEKIQ001-SIDEKIQ015 |
+
+### Files Created
+
+| File                                          | Description                | Lines |
+| --------------------------------------------- | -------------------------- | ----- |
+| `codetrellis/rails_parser_enhanced.py`        | Rails 3.x-8.x parser       | ~530  |
+| `codetrellis/sinatra_parser_enhanced.py`      | Sinatra 1.x-4.x parser     | ~400  |
+| `codetrellis/hanami_parser_enhanced.py`       | Hanami 1.x-2.1+ parser     | ~370  |
+| `codetrellis/grape_parser_enhanced.py`        | Grape 0.x-2.x API parser   | ~420  |
+| `codetrellis/sidekiq_parser_enhanced.py`      | Sidekiq 5.x-7.x job parser | ~430  |
+| `codetrellis/bpl/practices/rails_core.yaml`   | 25 Rails best practices    | ~350  |
+| `codetrellis/bpl/practices/sinatra_core.yaml` | 15 Sinatra best practices  | ~200  |
+| `codetrellis/bpl/practices/hanami_core.yaml`  | 15 Hanami best practices   | ~200  |
+| `codetrellis/bpl/practices/grape_core.yaml`   | 15 Grape best practices    | ~200  |
+| `codetrellis/bpl/practices/sidekiq_core.yaml` | 15 Sidekiq best practices  | ~200  |
+| `tests/unit/test_ruby_framework_parsers.py`   | 42 tests                   | ~650  |
+
+### Files Modified
+
+| File            | Changes                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------ |
+| `scanner.py`    | 5 imports, 5 parser inits, ~52 new ProjectMatrix fields, 5 `_parse_*` methods, Ruby framework dispatch chain |
+| `compressor.py` | 5 section dispatch blocks, 5 `_compress_*` methods (RAILS through SIDEKIQ)                                   |
+
+### Scanner Evaluation Results
+
+| Project             | Frameworks      | Key Results                                                          |
+| ------------------- | --------------- | -------------------------------------------------------------------- |
+| discourse/discourse | Rails + Sidekiq | 303 models, 92 controllers, 1029 routes, 2269 migrations, 12 mailers |
+| sinatra/sinatra     | Sinatra         | 120 routes, 20 helpers, 20 settings, 18 templates, 7 filters         |
+| ruby-grape/grape    | Grape           | 1391 endpoints, 924 params, 67 resources, 13 error handlers          |
+
+### Bugs Fixed
+
+| #   | Bug                                                                   | Fix                                                                              |
+| --- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 1   | Model association test assertion error                                | Changed assertion to use `a.get('type') == 'has_many'` for Dict structure        |
+| 2   | Grape bare endpoint `get do` not matched                              | Added `ENDPOINT_BARE` regex pattern with dedup via `matched_positions`           |
+| 3   | Rails `FRAMEWORK_PATTERNS['rails']` missed `ActiveRecord::Base` files | Added `ActiveRecord::Base/Migration`, `ActionController/Mailer/Cable` to pattern |
+
+### Test Results
+
+```
+pytest tests/unit/test_ruby_framework_parsers.py -v
+42 passed in 0.05s
+
+pytest tests/ -x -q
+6927 passed, 101 skipped, 1 warning in 21.53s
+✅ ALL TESTS PASSED — 0 failures, 0 regressions
+
+New tests:  42 (9 Rails + 7 Sinatra + 8 Hanami + 7 Grape + 10 Sidekiq)
+Previous:  6885 (from Session 78 baseline)
+Total:     6927
 ```

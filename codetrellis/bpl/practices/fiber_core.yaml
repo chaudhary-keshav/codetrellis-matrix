@@ -1,0 +1,169 @@
+# Fiber Framework Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Go Framework Support
+# Practice IDs: FIBER001-FIBER015
+# Category: fiber
+# Frameworks: fiber, golang
+
+practices:
+  - id: FIBER001
+    title: "Configure fiber.Config explicitly for production"
+    description: "Pass fiber.Config{} to fiber.New() with explicit settings for Prefork, ReadTimeout, WriteTimeout, IdleTimeout, BodyLimit, and ServerHeader. Never use defaults in production."
+    category: "configuration"
+    severity: "critical"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "config", "production"]
+    example: |
+      app := fiber.New(fiber.Config{
+          Prefork:      true,
+          ReadTimeout:  10 * time.Second,
+          WriteTimeout: 10 * time.Second,
+          IdleTimeout:  120 * time.Second,
+          BodyLimit:    4 * 1024 * 1024,
+      })
+
+  - id: FIBER002
+    title: "Use fiber.Ctx.BodyParser for request binding"
+    description: "Use c.BodyParser() with struct tags for automatic request body parsing. For query params use c.QueryParser(). For path params use c.ParamsParser()."
+    category: "validation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "binding", "parsing"]
+    example: |
+      type CreateReq struct {
+          Name  string `json:"name" validate:"required"`
+          Email string `json:"email" validate:"required,email"`
+      }
+      func createHandler(c *fiber.Ctx) error {
+          req := new(CreateReq)
+          if err := c.BodyParser(req); err != nil {
+              return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+          }
+          return c.Status(201).JSON(req)
+      }
+
+  - id: FIBER003
+    title: "Understand fasthttp limitations — Fiber is NOT net/http compatible"
+    description: "Fiber uses fasthttp, not net/http. Context values, headers, and body are only valid within the handler. Copy data before passing to goroutines with c.Context() or explicit copies."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "fasthttp", "safety"]
+    example: |
+      func handler(c *fiber.Ctx) error {
+          // Copy data before goroutine — c is reused
+          body := make([]byte, len(c.Body()))
+          copy(body, c.Body())
+          go processAsync(body)
+          return c.SendStatus(202)
+      }
+
+  - id: FIBER004
+    title: "Use route groups for modular API design"
+    description: "Use app.Group() to create route groups with shared prefix and middleware. This enables modular API versioning and role-based route protection."
+    category: "routing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "routing", "groups"]
+
+  - id: FIBER005
+    title: "Use built-in middleware packages from gofiber/fiber"
+    description: "Fiber provides first-party middleware: cors, limiter, logger, recover, cache, compress, helmet. Import from github.com/gofiber/fiber/v2/middleware/. Prefer these over custom implementations."
+    category: "middleware"
+    severity: "recommended"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "middleware", "stdlib"]
+
+  - id: FIBER006
+    title: "Use c.Locals() for request-scoped data"
+    description: "Use c.Locals() to store and retrieve request-scoped data between middleware and handlers. This is the idiomatic way to pass auth info and request metadata."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "locals", "context"]
+
+  - id: FIBER007
+    title: "Return errors from handlers for centralized error handling"
+    description: "Configure app.Config.ErrorHandler for centralized error handling. Return errors from handlers instead of writing responses in error paths. Use fiber.NewError() for HTTP errors."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "error", "handler"]
+
+  - id: FIBER008
+    title: "Use Prefork mode carefully with shared state"
+    description: "Fiber Prefork mode uses SO_REUSEPORT to fork multiple processes. Shared state (in-memory caches, counters) will NOT be shared across forks. Use external stores (Redis) for shared state."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "prefork", "state"]
+
+  - id: FIBER009
+    title: "Use app.ShutdownWithTimeout for graceful shutdown"
+    description: "Use app.ShutdownWithTimeout() to drain in-flight requests before stopping. Listen for OS signals and trigger graceful shutdown with a reasonable timeout."
+    category: "reliability"
+    severity: "critical"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "shutdown", "graceful"]
+
+  - id: FIBER010
+    title: "Use fiber.Map for JSON responses"
+    description: "Use fiber.Map (alias for map[string]interface{}) for simple JSON responses. For structured APIs, define typed response structs with json tags."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "response", "json"]
+
+  - id: FIBER011
+    title: "Configure rate limiting with the limiter middleware"
+    description: "Use the built-in limiter middleware with appropriate Max requests and Expiration window. Configure per-route or per-group limits for different API tiers."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "rate-limit", "security"]
+
+  - id: FIBER012
+    title: "Use the helmet middleware for security headers"
+    description: "Apply the helmet middleware to set security headers (X-XSS-Protection, X-Content-Type-Options, X-Frame-Options). Essential for production deployments."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "security", "headers"]
+
+  - id: FIBER013
+    title: "Use c.SendStatus instead of c.Status().Send(nil)"
+    description: "For responses with no body, use c.SendStatus(code) which is cleaner and more efficient than chaining c.Status(code).Send(nil)."
+    category: "code_style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "response", "style"]
+
+  - id: FIBER014
+    title: "Use c.Context() to bridge to standard context.Context"
+    description: "Use c.Context() to get a fasthttp.RequestCtx, then use adaptor packages to bridge to standard library context.Context when calling code that expects it."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "context", "stdlib"]
+
+  - id: FIBER015
+    title: "Set ReadTimeout and WriteTimeout to prevent slowloris attacks"
+    description: "Always configure ReadTimeout and WriteTimeout in fiber.Config to prevent slow client attacks. Default values of 0 mean no timeout, which is dangerous in production."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["fiber", "golang"]
+    tags: ["fiber", "timeout", "security"]

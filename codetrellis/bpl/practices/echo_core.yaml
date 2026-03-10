@@ -1,0 +1,171 @@
+# Echo Framework Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Go Framework Support
+# Practice IDs: ECHO001-ECHO015
+# Category: echo
+# Frameworks: echo, golang
+
+practices:
+  - id: ECHO001
+    title: "Use echo.New() with explicit middleware registration"
+    description: "Create an Echo instance with echo.New() and explicitly register middleware. Use e.Pre() for pre-router middleware (trailing slash, rewrite) and e.Use() for post-router middleware."
+    category: "configuration"
+    severity: "recommended"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "middleware", "setup"]
+    example: |
+      e := echo.New()
+      e.Pre(middleware.RemoveTrailingSlash())
+      e.Use(middleware.Logger())
+      e.Use(middleware.Recover())
+
+  - id: ECHO002
+    title: "Use echo.Bind and struct validation tags for request parsing"
+    description: "Use c.Bind() with struct tags for automatic request parsing and validation. Register a custom validator (e.g., go-playground/validator) via e.Validator for struct-level validation."
+    category: "validation"
+    severity: "critical"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "binding", "validation"]
+    example: |
+      type CreateUserReq struct {
+          Name  string `json:"name" validate:"required"`
+          Email string `json:"email" validate:"required,email"`
+      }
+      func createUser(c echo.Context) error {
+          req := new(CreateUserReq)
+          if err := c.Bind(req); err != nil {
+              return echo.NewHTTPError(400, err.Error())
+          }
+          if err := c.Validate(req); err != nil {
+              return err
+          }
+          return c.JSON(201, req)
+      }
+
+  - id: ECHO003
+    title: "Return errors instead of writing responses in error paths"
+    description: "Echo handlers should return error values. Use echo.NewHTTPError() for HTTP errors. Register a custom HTTPErrorHandler on the Echo instance for centralized error formatting."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "error", "handler"]
+    example: |
+      e.HTTPErrorHandler = func(err error, c echo.Context) {
+          he, ok := err.(*echo.HTTPError)
+          if !ok {
+              he = echo.NewHTTPError(500, err.Error())
+          }
+          c.JSON(he.Code, map[string]interface{}{
+              "error": he.Message,
+          })
+      }
+
+  - id: ECHO004
+    title: "Use route groups with shared middleware"
+    description: "Organize routes with e.Group() and apply middleware per group. This pattern maps well to API versioning and role-based access control."
+    category: "routing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "routing", "groups"]
+
+  - id: ECHO005
+    title: "Use echo.Context for request-scoped data"
+    description: "Use c.Set() and c.Get() to pass data between middleware and handlers. Echo context is request-scoped and safe for the duration of the request."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "context", "data"]
+
+  - id: ECHO006
+    title: "Use built-in middleware for common concerns"
+    description: "Echo provides production-ready middleware: middleware.CORS(), middleware.RateLimiter(), middleware.Secure(), middleware.RequestID(). Prefer these over custom implementations."
+    category: "middleware"
+    severity: "recommended"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "middleware", "security"]
+
+  - id: ECHO007
+    title: "Use middleware.KeyAuth or middleware.JWT for authentication"
+    description: "Use Echo built-in middleware.KeyAuth() for API key auth or middleware.JWT() with a custom claims struct for JWT authentication. Configure skipper for public routes."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "auth", "jwt"]
+
+  - id: ECHO008
+    title: "Use c.Request().Context() for cancellation propagation"
+    description: "Access the standard context.Context from c.Request().Context() to pass timeouts and cancellation to database queries and external API calls."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "context", "cancellation"]
+
+  - id: ECHO009
+    title: "Use graceful shutdown with e.Shutdown(ctx)"
+    description: "Use e.Shutdown(ctx) in a goroutine listening for OS signals. Set timeouts on context to ensure graceful draining of in-flight requests."
+    category: "reliability"
+    severity: "critical"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "shutdown", "production"]
+
+  - id: ECHO010
+    title: "Use middleware.BodyLimit to restrict request body size"
+    description: "Configure middleware.BodyLimit() to prevent denial-of-service attacks from oversized request bodies. Set appropriate limits per route group if needed."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "security", "limits"]
+
+  - id: ECHO011
+    title: "Use echo.MIMEApplicationJSON for content type checks"
+    description: "Use Echo constants like echo.MIMEApplicationJSON instead of string literals for content type checks and response headers to avoid typos."
+    category: "code_style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "constants", "style"]
+
+  - id: ECHO012
+    title: "Use response commitment checks before writing"
+    description: "Check c.Response().Committed before writing to avoid duplicate response writes. Echo will silently ignore the second write, potentially masking bugs."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "response", "safety"]
+
+  - id: ECHO013
+    title: "Use middleware.Secure for production security headers"
+    description: "Apply middleware.Secure() to add security headers (X-Content-Type-Options, X-Frame-Options, HSTS) automatically in production."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "security", "headers"]
+
+  - id: ECHO014
+    title: "Configure CORS explicitly for API servers"
+    description: "Use middleware.CORSWithConfig() with explicit AllowOrigins, AllowMethods, and AllowHeaders. Never use wildcard origins in production."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "cors", "security"]
+
+  - id: ECHO015
+    title: "Use echo.Map for simple JSON responses"
+    description: "Use echo.Map (alias for map[string]interface{}) for ad-hoc JSON responses. For structured API responses, define typed response structs."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["echo", "golang"]
+    tags: ["echo", "response", "json"]

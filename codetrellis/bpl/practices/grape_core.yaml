@@ -1,0 +1,141 @@
+# Grape Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Ruby Framework Support
+# Practice IDs: GRAPE001-GRAPE020
+# Category: grape
+# Frameworks: grape
+
+practices:
+  - id: GRAPE001
+    title: "Use Grape::Entity for API response serialization"
+    description: "Define Grape::Entity classes for consistent API responses. Expose only the fields clients need, never raw model attributes."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "api", "entity", "serialization"]
+
+  - id: GRAPE002
+    title: "Validate all params with requires/optional DSL"
+    description: "Use requires and optional in params blocks to validate input. Grape auto-returns 400 for missing required params."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "validation", "params", "security"]
+
+  - id: GRAPE003
+    title: "Use type coercion in param declarations"
+    description: "Always specify type: in param declarations (Integer, String, Boolean, Date). Grape coerces and validates automatically."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "params", "type-coercion"]
+
+  - id: GRAPE004
+    title: "Use resource blocks for RESTful grouping"
+    description: "Group related endpoints under resource :name blocks. This creates proper REST URL namespacing and enables shared params/helpers."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "resources", "rest"]
+
+  - id: GRAPE005
+    title: "Mount modular APIs for scalability"
+    description: "Split large APIs into multiple Grape::API classes and mount them in a root API. Each mounted API handles one resource/domain."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "architecture", "modular", "mount"]
+
+  - id: GRAPE006
+    title: "Use rescue_from for centralized error handling"
+    description: "Define rescue_from blocks in the root API for common exceptions. Return consistent error response format across all endpoints."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "error-handling", "rescue"]
+
+  - id: GRAPE007
+    title: "Use API versioning from the start"
+    description: "Add version 'v1', using: :path (or :header) from the beginning. This enables backward-compatible API evolution."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "versioning", "api"]
+
+  - id: GRAPE008
+    title: "Use desc blocks with detail for documentation"
+    description: "Add desc with detail, success, failure, and tags for every endpoint. This generates accurate Swagger/OpenAPI documentation."
+    category: "documentation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "documentation", "swagger"]
+
+  - id: GRAPE009
+    title: "Use helpers for shared authentication logic"
+    description: "Define authentication helpers (current_user, authenticate!) and call them in before blocks. Share across all mounted APIs."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "security", "authentication", "helpers"]
+
+  - id: GRAPE010
+    title: "Use custom validators for complex param validation"
+    description: "Create custom validators (inheriting from Grape::Validations::Validators::Base) for business-specific validation rules."
+    category: "validation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "validation", "custom-validators"]
+
+  - id: GRAPE011
+    title: "Set default_format and content_type explicitly"
+    description: "Set default_format :json and configure content types. This ensures consistent response format across all endpoints."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "format", "content-type"]
+
+  - id: GRAPE012
+    title: "Use present with entity for consistent serialization"
+    description: "Always use present(object, with: EntityClass) instead of manually constructing JSON hashes."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "present", "entity"]
+
+  - id: GRAPE013
+    title: "Use route_param for nested resource routes"
+    description: "Use route_param :id, type: Integer blocks for nested resources. This scopes params and creates clean URLs."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "routing", "nested-resources"]
+
+  - id: GRAPE014
+    title: "Add authentication middleware at the API level"
+    description: "Use before blocks or Grape middleware for authentication rather than checking in each endpoint."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "security", "middleware"]
+
+  - id: GRAPE015
+    title: "Use grape-swagger for auto-generated API docs"
+    description: "Add grape-swagger gem for automatic OpenAPI/Swagger documentation generation from Grape endpoint definitions."
+    category: "documentation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["grape"]
+    tags: ["grape", "swagger", "documentation"]

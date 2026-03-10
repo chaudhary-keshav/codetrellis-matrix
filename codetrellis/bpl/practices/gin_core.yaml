@@ -1,0 +1,187 @@
+# Gin Framework Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Go Framework Support
+# Practice IDs: GIN001-GIN015
+# Category: gin
+# Frameworks: gin, golang
+
+practices:
+  - id: GIN001
+    title: "Use gin.Default() only in development; use gin.New() in production"
+    description: "gin.Default() includes Logger and Recovery middleware that may conflict with production logging setups. Create a bare engine with gin.New() and add only the middleware you need."
+    category: "configuration"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "engine", "production"]
+    example: |
+      // Production
+      r := gin.New()
+      r.Use(customLogger(), gin.Recovery())
+
+  - id: GIN002
+    title: "Organize routes with router groups"
+    description: "Use gin.Group() to organize related routes under a common prefix and apply shared middleware. This improves maintainability and enforces consistent middleware application."
+    category: "routing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "routing", "groups"]
+    example: |
+      api := r.Group("/api/v1")
+      {
+          api.GET("/users", listUsers)
+          api.POST("/users", createUser)
+      }
+      admin := r.Group("/admin", authMiddleware())
+      {
+          admin.GET("/stats", getStats)
+      }
+
+  - id: GIN003
+    title: "Use ShouldBind for request validation instead of manual parsing"
+    description: 'Use c.ShouldBindJSON(), c.ShouldBindQuery(), or c.ShouldBind() with struct tags (binding:"required") for automatic request validation. Avoid manual JSON unmarshaling.'
+    category: "validation"
+    severity: "critical"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "binding", "validation"]
+    example: |
+      type CreateUserReq struct {
+          Name  string `json:"name" binding:"required,min=1,max=100"`
+          Email string `json:"email" binding:"required,email"`
+      }
+      func createUser(c *gin.Context) {
+          var req CreateUserReq
+          if err := c.ShouldBindJSON(&req); err != nil {
+              c.JSON(400, gin.H{"error": err.Error()})
+              return
+          }
+      }
+
+  - id: GIN004
+    title: "Use custom middleware for cross-cutting concerns"
+    description: "Implement middleware using gin.HandlerFunc for authentication, logging, CORS, rate limiting, and other cross-cutting concerns. Call c.Next() to continue the chain or c.Abort() to stop."
+    category: "middleware"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "middleware", "auth"]
+    example: |
+      func AuthMiddleware() gin.HandlerFunc {
+          return func(c *gin.Context) {
+              token := c.GetHeader("Authorization")
+              if token == "" {
+                  c.AbortWithStatusJSON(401, gin.H{"error": "unauthorized"})
+                  return
+              }
+              c.Next()
+          }
+      }
+
+  - id: GIN005
+    title: "Return consistent error responses with gin.H"
+    description: "Use gin.H{} maps or typed response structs for consistent JSON error responses. Standardize error format across all endpoints with error code, message, and optional details."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "error", "response"]
+
+  - id: GIN006
+    title: "Use c.Set/c.Get for request-scoped values"
+    description: "Pass request-scoped data (authenticated user, request ID, trace context) between middleware and handlers using c.Set() and c.Get(). Avoid global state."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "context", "middleware"]
+
+  - id: GIN007
+    title: "Set gin.SetMode(gin.ReleaseMode) in production"
+    description: "Gin runs in debug mode by default, which outputs extra logging. Set gin.SetMode(gin.ReleaseMode) in production for performance and cleaner logs."
+    category: "configuration"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "mode", "production"]
+
+  - id: GIN008
+    title: "Use gin.Context.Request.Context() for cancellation propagation"
+    description: "Access the underlying context.Context via c.Request.Context() to propagate cancellation and timeouts to downstream services and database calls."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "context", "cancellation"]
+
+  - id: GIN009
+    title: "Avoid blocking the gin.Context after response is sent"
+    description: "Do not use gin.Context after the handler returns. For async work, copy needed values (c.Copy()) and pass them to goroutines. The context is reused by the pool."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "concurrency", "goroutine"]
+    example: |
+      func handler(c *gin.Context) {
+          cp := c.Copy()
+          go func() {
+              // Safe to use cp, NOT c
+              log.Println(cp.Request.URL.Path)
+          }()
+          c.JSON(200, gin.H{"status": "accepted"})
+      }
+
+  - id: GIN010
+    title: "Use trusted proxies configuration for security"
+    description: "Configure r.SetTrustedProxies() to prevent IP spoofing through X-Forwarded-For headers when running behind a reverse proxy or load balancer."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "security", "proxy"]
+
+  - id: GIN011
+    title: "Use NoRoute and NoMethod handlers for 404/405 responses"
+    description: "Register custom NoRoute() and NoMethod() handlers to return structured JSON error responses instead of default HTML for API servers."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "routing", "error"]
+
+  - id: GIN012
+    title: "Use c.ShouldBindUri for path parameters with validation"
+    description: "For path parameters that need validation, bind them to a struct with uri tags using c.ShouldBindUri() instead of using c.Param() with manual validation."
+    category: "validation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "binding", "uri"]
+
+  - id: GIN013
+    title: "Use graceful shutdown with http.Server"
+    description: "Wrap the Gin engine in an http.Server and use srv.Shutdown(ctx) for graceful shutdown. Listen for OS signals (SIGINT, SIGTERM) to trigger clean shutdown."
+    category: "reliability"
+    severity: "critical"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "shutdown", "production"]
+
+  - id: GIN014
+    title: "Limit request body size to prevent abuse"
+    description: "Use c.Request.Body = http.MaxBytesReader() or middleware to limit request body size. Prevents memory exhaustion from oversized payloads."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "security", "limits"]
+
+  - id: GIN015
+    title: "Use gin.BasicAuth or JWT middleware for authentication"
+    description: "Use gin.BasicAuth() for simple auth or implement JWT middleware for token-based auth. Never roll your own authentication logic without established libraries."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gin", "golang"]
+    tags: ["gin", "auth", "jwt"]

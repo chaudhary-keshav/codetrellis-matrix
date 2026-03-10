@@ -68,7 +68,9 @@ EXTENSION_TO_SECTIONS: Dict[str, List[str]] = {
     ".mjs": ["JS_TYPES", "JS_FUNCTIONS", "JS_API", "JS_MODELS"],
     ".cjs": ["JS_TYPES", "JS_FUNCTIONS", "JS_API", "JS_MODELS"],
     # Go
-    ".go": ["GO_TYPES", "GO_API", "GO_FUNCTIONS", "GO_DEPENDENCIES"],
+    ".go": ["GO_TYPES", "GO_API", "GO_FUNCTIONS", "GO_DEPENDENCIES",
+            "GO_GIN", "GO_ECHO", "GO_FIBER", "GO_CHI",
+            "GO_GRPC", "GO_GORM", "GO_SQLX", "GO_COBRA"],
     # Java
     ".java": ["JAVA_TYPES", "JAVA_API", "JAVA_FUNCTIONS", "JAVA_MODELS",
               "JAVA_DEPENDENCIES"],

@@ -1,0 +1,187 @@
+# Chi Router Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Go Framework Support
+# Practice IDs: CHI001-CHI015
+# Category: chi
+# Frameworks: chi, golang
+
+practices:
+  - id: CHI001
+    title: "Use chi.NewRouter() as the base and compose with Mount"
+    description: "Create a base router with chi.NewRouter() and mount sub-routers for modular route organization. Each sub-router can have its own middleware stack."
+    category: "routing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "router", "mount"]
+    example: |
+      r := chi.NewRouter()
+      r.Mount("/api/v1", apiRouter())
+      r.Mount("/admin", adminRouter())
+
+      func apiRouter() http.Handler {
+          r := chi.NewRouter()
+          r.Get("/users", listUsers)
+          return r
+      }
+
+  - id: CHI002
+    title: "Use chi middleware chain with r.Use()"
+    description: "Apply middleware with r.Use() for router-wide middleware. Use r.With() for inline per-route middleware. Chi provides a rich set of built-in middleware in the middleware package."
+    category: "middleware"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "middleware", "chain"]
+    example: |
+      r := chi.NewRouter()
+      r.Use(middleware.Logger)
+      r.Use(middleware.Recoverer)
+      r.Use(middleware.RequestID)
+      // Per-route middleware
+      r.With(authMiddleware).Get("/admin", adminHandler)
+
+  - id: CHI003
+    title: "Use chi.URLParam for type-safe path parameter extraction"
+    description: 'Use chi.URLParam(r, "name") to extract path parameters. Chi stores them in the request context. Validate and convert types explicitly before use.'
+    category: "routing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "params", "routing"]
+    example: |
+      r.Get("/users/{userID}", func(w http.ResponseWriter, r *http.Request) {
+          userID := chi.URLParam(r, "userID")
+          id, err := strconv.Atoi(userID)
+          if err != nil {
+              http.Error(w, "invalid user ID", 400)
+              return
+          }
+      })
+
+  - id: CHI004
+    title: "Chi is net/http compatible — leverage the standard library"
+    description: "Chi handlers are standard http.HandlerFunc. Middleware are standard http.Handler wrappers. Leverage any net/http compatible library, middleware, or handler without adapters."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "net-http", "compatibility"]
+
+  - id: CHI005
+    title: "Use r.Route() for nested route definitions"
+    description: "Use r.Route() for grouping related routes under a prefix with inline middleware. This creates a sub-router scoped to the pattern."
+    category: "routing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "routing", "nested"]
+    example: |
+      r.Route("/articles/{articleID}", func(r chi.Router) {
+          r.Use(articleCtx)
+          r.Get("/", getArticle)
+          r.Put("/", updateArticle)
+          r.Delete("/", deleteArticle)
+      })
+
+  - id: CHI006
+    title: "Use middleware.Timeout to enforce request timeouts"
+    description: "Apply middleware.Timeout() to enforce maximum request processing time. This prevents long-running requests from consuming resources indefinitely."
+    category: "reliability"
+    severity: "critical"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "timeout", "middleware"]
+
+  - id: CHI007
+    title: "Use context middleware pattern for resource loading"
+    description: "Create middleware that loads resources (user, article) into context using context.WithValue and provides type-safe accessor functions. This centralizes DB lookups and 404 handling."
+    category: "design_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "context", "middleware"]
+    example: |
+      func ArticleCtx(next http.Handler) http.Handler {
+          return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+              articleID := chi.URLParam(r, "articleID")
+              article, err := dbGetArticle(articleID)
+              if err != nil {
+                  http.Error(w, http.StatusText(404), 404)
+                  return
+              }
+              ctx := context.WithValue(r.Context(), "article", article)
+              next.ServeHTTP(w, r.WithContext(ctx))
+          })
+      }
+
+  - id: CHI008
+    title: "Use middleware.Compress for response compression"
+    description: "Apply middleware.Compress() to enable gzip compression for responses. Set appropriate compression level (5 is a good default) and exclude already-compressed content types."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "compression", "performance"]
+
+  - id: CHI009
+    title: "Use middleware.RealIP behind reverse proxies"
+    description: "Apply middleware.RealIP to correctly extract the client IP from X-Forwarded-For or X-Real-IP headers when running behind a reverse proxy."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "proxy", "ip"]
+
+  - id: CHI010
+    title: "Use middleware.AllowContentType to restrict content types"
+    description: "Apply middleware.AllowContentType() to restrict accepted content types per route group. Reject unexpected content types early to prevent parsing errors."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "content-type", "security"]
+
+  - id: CHI011
+    title: "Use chi.Walk for route introspection and documentation"
+    description: "Use chi.Walk() to iterate over all registered routes for API documentation generation, health checks, or debugging. This enables auto-generated API docs."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "walk", "documentation"]
+
+  - id: CHI012
+    title: "Use middleware.Heartbeat for health check endpoints"
+    description: 'Use middleware.Heartbeat("/ping") to add a lightweight health check endpoint that bypasses all other middleware and returns 200 OK.'
+    category: "reliability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "health", "monitoring"]
+
+  - id: CHI013
+    title: "Use middleware.StripSlashes or middleware.RedirectSlashes"
+    description: "Apply middleware.StripSlashes() to normalize URLs and avoid duplicate route registrations for paths with and without trailing slashes."
+    category: "routing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "routing", "normalize"]
+
+  - id: CHI014
+    title: "Use middleware.Throttle for concurrency limiting"
+    description: "Apply middleware.Throttle() to limit the number of concurrent requests being processed. This protects against resource exhaustion under high load."
+    category: "reliability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "throttle", "concurrency"]
+
+  - id: CHI015
+    title: "Use http.Server with chi for production deployments"
+    description: "Wrap the chi router in http.Server with explicit ReadTimeout, WriteTimeout, and IdleTimeout. Use srv.Shutdown(ctx) for graceful shutdown."
+    category: "reliability"
+    severity: "critical"
+    applicability:
+      frameworks: ["chi", "golang"]
+    tags: ["chi", "server", "production"]

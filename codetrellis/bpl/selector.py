@@ -385,6 +385,32 @@ class ProjectContext:
         if go_is_significant:
             context.frameworks.add("golang")
 
+        # Detect Go frameworks from detected_frameworks lists (v5.2)
+        if go_is_significant:
+            go_fw_mapping = {
+                'gin': 'gin',
+                'echo': 'echo',
+                'fiber': 'fiber',
+                'chi': 'chi',
+                'grpc-go': 'grpc_go',
+                'gorm': 'gorm',
+                'gorm_v2': 'gorm',
+                'gorm_v1': 'gorm',
+                'sqlx': 'sqlx_go',
+                'cobra': 'cobra',
+            }
+            go_fw_attrs = [
+                'go_gin_detected_frameworks', 'go_echo_detected_frameworks',
+                'go_fiber_detected_frameworks', 'go_chi_detected_frameworks',
+                'go_grpc_detected_frameworks', 'go_gorm_detected_frameworks',
+                'go_sqlx_detected_frameworks', 'go_cobra_detected_frameworks',
+            ]
+            for attr in go_fw_attrs:
+                for fw in getattr(matrix, attr, []):
+                    mapped = go_fw_mapping.get(fw)
+                    if mapped:
+                        context.frameworks.add(mapped)
+
         # ==== Java artifact counts (v4.12) ====
         java_count = 0
         java_artifacts = [
@@ -4284,9 +4310,14 @@ class PracticeSelector:
             "FAST": {"fastapi", "python"},
             "DB": set(),  # Database practices are generic
             "DEVOPS": set(),  # DevOps practices are generic
+            "GORM": {"gorm", "golang"},    # GORM ORM (v5.2) — must precede GO
+            "GRPCGO": {"grpc_go", "golang"},  # gRPC-Go framework (v5.2)
             "GO": {"golang"},  # Go language practices (G-17)
             "GIN": {"gin", "golang"},  # Gin framework
             "ECHO": {"echo", "golang"},  # Echo framework
+            "FIBER": {"fiber", "golang"},  # Fiber framework (v5.2)
+            "CHI": {"chi", "golang"},      # Chi router (v5.2)
+            "COBRA": {"cobra", "golang"},  # Cobra CLI framework (v5.2)
             "JAVA": {"java"},  # Java language practices (v4.12)
             "SPRING": {"spring", "java"},  # Spring framework
             "JPA": {"jpa", "java"},  # JPA/Hibernate practices
@@ -4306,6 +4337,7 @@ class PracticeSelector:
             "TOKIO": {"tokio", "rust"},    # Tokio async runtime
             "DIESEL": {"diesel", "rust"},  # Diesel ORM
             "TONIC": {"tonic", "rust"},    # Tonic gRPC
+            "SQLX": {"sqlx_go", "golang"},   # sqlx Go SQL extensions (v5.2) — must precede SQL
             "SQL": {"sql"},                # SQL language practices (v4.15)
             "PG": {"postgresql", "sql"},   # PostgreSQL-specific
             "MYSQL": {"mysql", "sql"},     # MySQL-specific
@@ -4453,7 +4485,7 @@ class PracticeSelector:
         has_angular = "angular" in context_frameworks
         has_nestjs = "nestjs" in context_frameworks
         has_react = "react" in context_frameworks
-        has_golang = any(f in context_frameworks for f in ["golang", "gin", "echo"])
+        has_golang = any(f in context_frameworks for f in ["golang", "gin", "echo", "fiber", "chi", "grpc_go", "gorm", "sqlx_go", "cobra"])
         has_java = any(f in context_frameworks for f in ["java", "spring", "quarkus", "micronaut", "jpa", "hibernate"])
         has_csharp = any(f in context_frameworks for f in ["csharp", "aspnet", "efcore", "blazor", "signalr", "maui"])
         has_rust = any(f in context_frameworks for f in ["rust", "actix", "rocket", "axum", "warp", "tokio", "tonic", "diesel", "sea_orm", "sqlx"])

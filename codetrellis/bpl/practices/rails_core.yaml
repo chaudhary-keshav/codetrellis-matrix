@@ -1,0 +1,235 @@
+# Rails Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Ruby Framework Support
+# Practice IDs: RAILS001-RAILS030
+# Category: rails
+# Frameworks: rails
+
+practices:
+  - id: RAILS001
+    title: "Use strong parameters for mass assignment protection"
+    description: "Always use permit() in controller params to whitelist allowed attributes. Never use params.permit! or disable strong parameters."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "security", "strong-params"]
+
+  - id: RAILS002
+    title: "Avoid N+1 queries — use includes/eager_load/preload"
+    description: "Use includes(), eager_load(), or preload() to avoid N+1 query problems. Use bullet gem in development to detect them automatically."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "performance", "n-plus-one", "activerecord"]
+
+  - id: RAILS003
+    title: "Use database-level constraints alongside ActiveRecord validations"
+    description: "Add NOT NULL, unique indexes, and foreign keys at the database level. ActiveRecord validations alone are not race-condition-safe."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "database", "migrations", "validations"]
+
+  - id: RAILS004
+    title: "Keep controllers thin — move business logic to models or service objects"
+    description: "Controllers should only handle request/response flow. Extract complex business logic into model methods, service objects, or interactors."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "architecture", "controller", "service-objects"]
+
+  - id: RAILS005
+    title: "Use scopes for reusable query logic"
+    description: "Define named scopes on models for commonly used queries. Scopes are composable, tested, and keep query logic out of controllers."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "activerecord", "scopes"]
+    example: |
+      scope :active, -> { where(active: true) }
+      scope :recent, -> { order(created_at: :desc) }
+
+  - id: RAILS006
+    title: "Use ActiveJob for background processing"
+    description: "Use ActiveJob with a backend (Sidekiq, Resque) for long-running tasks. Never perform heavy operations in the request cycle."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "background-jobs", "activejob"]
+
+  - id: RAILS007
+    title: "Use database transactions for multi-step operations"
+    description: "Wrap operations that modify multiple records in ActiveRecord::Base.transaction to ensure atomicity."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "transactions", "activerecord"]
+
+  - id: RAILS008
+    title: "Add indexes for foreign keys and frequently queried columns"
+    description: "Always add database indexes for foreign keys, columns used in WHERE clauses, and columns used in ORDER BY. Use add_index in migrations."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "database", "indexes", "performance"]
+
+  - id: RAILS009
+    title: "Use concerns for shared model/controller behavior"
+    description: "Extract shared behavior into concerns (ActiveSupport::Concern) instead of copying code. Place in app/models/concerns/ or app/controllers/concerns/."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "concerns", "dry"]
+
+  - id: RAILS010
+    title: "Prefer render with status codes in API controllers"
+    description: "Always include HTTP status codes when rendering JSON responses. Use Rails status symbols (:ok, :created, :unprocessable_entity)."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "api", "status-codes"]
+
+  - id: RAILS011
+    title: "Never store secrets in source code — use Rails credentials or environment variables"
+    description: "Use Rails.application.credentials or ENV variables for API keys, passwords, and secrets. Never commit secrets to version control."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "security", "credentials"]
+
+  - id: RAILS012
+    title: "Use enum for status-like fields"
+    description: "Use ActiveRecord enum for columns with a fixed set of values (status, role, state). Enums provide scopes, predicates, and bang methods automatically."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "activerecord", "enum"]
+
+  - id: RAILS013
+    title: "Use before_action for shared controller logic"
+    description: "Use before_action callbacks for authentication, authorization, and loading shared resources. Use only: and except: to limit scope."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "controller", "callbacks"]
+
+  - id: RAILS014
+    title: "Protect against CSRF in non-API controllers"
+    description: "Keep protect_from_forgery enabled in ApplicationController. For API-only controllers, use protect_from_forgery with: :null_session."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "security", "csrf"]
+
+  - id: RAILS015
+    title: "Use Rails.cache for expensive computations"
+    description: "Use Rails.cache.fetch with expiration for expensive queries or computations. Configure cache store (Redis, Memcached) for production."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "caching", "performance"]
+
+  - id: RAILS016
+    title: "Write reversible migrations"
+    description: "Always write reversible migrations using change method or explicit up/down. Never use irreversible operations without a down method."
+    category: "data_integrity"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "migrations", "reversible"]
+
+  - id: RAILS017
+    title: "Use serializers or presenters for API response shaping"
+    description: "Use ActiveModelSerializers, Blueprinter, or jbuilder to shape API responses. Never expose raw model attributes directly."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "api", "serializers"]
+
+  - id: RAILS018
+    title: "Use content_security_policy for XSS protection"
+    description: "Configure Content-Security-Policy headers in Rails to prevent XSS attacks. Use the built-in CSP DSL in initializers."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "security", "csp", "xss"]
+
+  - id: RAILS019
+    title: "Prefer find_each for large batch processing"
+    description: "Use find_each or find_in_batches instead of all.each for large record sets. Default batch size is 1000."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "activerecord", "batch-processing"]
+
+  - id: RAILS020
+    title: "Use rescue_from in controllers for centralized error handling"
+    description: "Use rescue_from in ApplicationController to handle common exceptions (ActiveRecord::RecordNotFound, ActionController::ParameterMissing) consistently."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "error-handling", "controller"]
+
+  - id: RAILS021
+    title: "Enable strict_loading to prevent lazy loading in production"
+    description: "Use strict_loading on associations or globally to raise errors when lazy loading occurs, preventing N+1 queries."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+      min_version: "6.1"
+    tags: ["rails", "strict-loading", "performance"]
+
+  - id: RAILS022
+    title: "Use ActionCable with authentication"
+    description: "Always authenticate WebSocket connections in ApplicationCable::Connection. Reject unauthorized connections immediately."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "actioncable", "websocket", "security"]
+
+  - id: RAILS023
+    title: "Use counter_cache for count-dependent views"
+    description: "Add counter_cache: true to belongs_to associations when you frequently display counts. Avoids COUNT queries on every page load."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "activerecord", "counter-cache"]
+
+  - id: RAILS024
+    title: "Use Rack::Attack for API rate limiting"
+    description: "Add rack-attack gem and configure throttling rules to protect against DoS and brute-force attacks."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "security", "rate-limiting"]
+
+  - id: RAILS025
+    title: "Test with factories, not fixtures"
+    description: "Use FactoryBot for test data creation instead of YAML fixtures. Factories are more flexible, explicit, and maintainable."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rails"]
+    tags: ["rails", "testing", "factory-bot"]

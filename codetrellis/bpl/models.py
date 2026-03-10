@@ -103,6 +103,16 @@ class PracticeCategory(Enum):
     MESSAGING = "messaging"
     PROJECT_STRUCTURE = "project_structure"
 
+    # Go Framework-Specific Categories (v5.2)
+    GIN = "gin"
+    ECHO = "echo"
+    FIBER = "fiber"
+    CHI = "chi"
+    GRPC_GO = "grpc_go"
+    GORM = "gorm"
+    SQLX_GO = "sqlx_go"
+    COBRA = "cobra"
+
     # React-Specific Categories
     ACCESSIBILITY = "accessibility"
     USER_EXPERIENCE = "user_experience"

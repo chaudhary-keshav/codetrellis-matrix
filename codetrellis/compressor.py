@@ -845,6 +845,66 @@ class MatrixCompressor:
             lines.append("")
 
         # ============================================
+        # v5.2: Go Framework Support
+        # ============================================
+
+        # Go Gin Framework
+        go_gin_lines = self._compress_go_gin(matrix)
+        if go_gin_lines:
+            lines.append("[GO_GIN]")
+            lines.extend(go_gin_lines)
+            lines.append("")
+
+        # Go Echo Framework
+        go_echo_lines = self._compress_go_echo(matrix)
+        if go_echo_lines:
+            lines.append("[GO_ECHO]")
+            lines.extend(go_echo_lines)
+            lines.append("")
+
+        # Go Fiber Framework
+        go_fiber_lines = self._compress_go_fiber(matrix)
+        if go_fiber_lines:
+            lines.append("[GO_FIBER]")
+            lines.extend(go_fiber_lines)
+            lines.append("")
+
+        # Go Chi Router
+        go_chi_lines = self._compress_go_chi(matrix)
+        if go_chi_lines:
+            lines.append("[GO_CHI]")
+            lines.extend(go_chi_lines)
+            lines.append("")
+
+        # Go gRPC
+        go_grpc_lines = self._compress_go_grpc(matrix)
+        if go_grpc_lines:
+            lines.append("[GO_GRPC]")
+            lines.extend(go_grpc_lines)
+            lines.append("")
+
+        # Go GORM
+        go_gorm_lines = self._compress_go_gorm(matrix)
+        if go_gorm_lines:
+            lines.append("[GO_GORM]")
+            lines.extend(go_gorm_lines)
+            lines.append("")
+
+        # Go sqlx
+        go_sqlx_lines = self._compress_go_sqlx(matrix)
+        if go_sqlx_lines:
+            lines.append("[GO_SQLX]")
+            lines.extend(go_sqlx_lines)
+            lines.append("")
+
+        # Go Cobra CLI
+        go_cobra_lines = self._compress_go_cobra(matrix)
+        if go_cobra_lines:
+            lines.append("[GO_COBRA]")
+            lines.extend(go_cobra_lines)
+            lines.append("")
+
+        # ============================================
         # v4.12: Java Language Support
         # ============================================
 
@@ -1756,6 +1816,45 @@ class MatrixCompressor:
             lines.append("[RUBY_DEPENDENCIES]")
             lines.append("# Gemfile dependencies, detected frameworks, concerns, workers, callbacks")
             lines.extend(ruby_dep_lines)
+            lines.append("")
+
+        # ============================================
+        # v5.2: Ruby Framework Support (Rails, Sinatra, Hanami, Grape, Sidekiq)
+        # ============================================
+
+        # Rails Framework
+        rails_lines = self._compress_rails(matrix)
+        if rails_lines:
+            lines.append("[RAILS]")
+            lines.extend(rails_lines)
+            lines.append("")
+
+        # Sinatra Framework
+        sinatra_lines = self._compress_sinatra(matrix)
+        if sinatra_lines:
+            lines.append("[SINATRA]")
+            lines.extend(sinatra_lines)
+            lines.append("")
+
+        # Hanami Framework
+        hanami_lines = self._compress_hanami(matrix)
+        if hanami_lines:
+            lines.append("[HANAMI]")
+            lines.extend(hanami_lines)
+            lines.append("")
+
+        # Grape API Framework
+        grape_lines = self._compress_grape(matrix)
+        if grape_lines:
+            lines.append("[GRAPE]")
+            lines.extend(grape_lines)
+            lines.append("")
+
+        # Sidekiq Background Jobs
+        sidekiq_lines = self._compress_sidekiq(matrix)
+        if sidekiq_lines:
+            lines.append("[SIDEKIQ]")
+            lines.extend(sidekiq_lines)
             lines.append("")
 
         # ============================================
@@ -7146,6 +7245,282 @@ class MatrixCompressor:
         return lines
 
     # ============================================
+    # v5.2: Go Framework Compression Methods
+    # ============================================
+
+    def _compress_go_gin(self, matrix) -> List[str]:
+        """Compress Gin framework data (routes, middleware, groups, bindings, renders)."""
+        lines = []
+        routes = getattr(matrix, 'go_gin_routes', [])
+        groups = getattr(matrix, 'go_gin_route_groups', [])
+        middleware = getattr(matrix, 'go_gin_middleware', [])
+        bindings = getattr(matrix, 'go_gin_bindings', [])
+        renders = getattr(matrix, 'go_gin_renders', [])
+        if not routes and not middleware:
+            return lines
+        frameworks = getattr(matrix, 'go_gin_detected_frameworks', [])
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                group = f"|group:{r['group']}" if r.get('group') else ""
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}{group}|{r.get('handler', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if groups:
+            lines.append(f"## Route Groups ({len(groups)})")
+            for g in groups[:20]:
+                lines.append(f"  {g.get('prefix', '/')}|mw:{','.join(g.get('middleware', [])[:3])}")
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for m in middleware[:20]:
+                scope = f"|scope:{m['scope']}" if m.get('scope') else ""
+                lines.append(f"  {m.get('name', '?')}{scope}")
+        if bindings:
+            lines.append(f"## Bindings ({len(bindings)})")
+            for b in bindings[:15]:
+                lines.append(f"  {b.get('binding_type', '?')}|{b.get('target_type', '?')}")
+        if renders:
+            lines.append(f"## Renders ({len(renders)})")
+            for r in renders[:15]:
+                lines.append(f"  {r.get('render_type', '?')}")
+        return lines
+
+    def _compress_go_echo(self, matrix) -> List[str]:
+        """Compress Echo framework data."""
+        lines = []
+        routes = getattr(matrix, 'go_echo_routes', [])
+        middleware = getattr(matrix, 'go_echo_middleware', [])
+        if not routes and not middleware:
+            return lines
+        frameworks = getattr(matrix, 'go_echo_detected_frameworks', [])
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{r.get('handler', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for m in middleware[:20]:
+                lines.append(f"  {m.get('name', '?')}|{m.get('middleware_type', '')}")
+        return lines
+
+    def _compress_go_fiber(self, matrix) -> List[str]:
+        """Compress Fiber framework data."""
+        lines = []
+        routes = getattr(matrix, 'go_fiber_routes', [])
+        middleware = getattr(matrix, 'go_fiber_middleware', [])
+        if not routes and not middleware:
+            return lines
+        frameworks = getattr(matrix, 'go_fiber_detected_frameworks', [])
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{r.get('handler', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for m in middleware[:20]:
+                lines.append(f"  {m.get('name', '?')}")
+        return lines
+
+    def _compress_go_chi(self, matrix) -> List[str]:
+        """Compress Chi router data."""
+        lines = []
+        routes = getattr(matrix, 'go_chi_routes', [])
+        mounts = getattr(matrix, 'go_chi_mounts', [])
+        middleware = getattr(matrix, 'go_chi_middleware', [])
+        if not routes and not mounts and not middleware:
+            return lines
+        frameworks = getattr(matrix, 'go_chi_detected_frameworks', [])
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{r.get('handler', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if mounts:
+            lines.append(f"## Mounts ({len(mounts)})")
+            for mt in mounts[:10]:
+                lines.append(f"  {mt.get('pattern', '/')}→{mt.get('handler', '?')}")
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for m in middleware[:20]:
+                lines.append(f"  {m.get('name', '?')}")
+        return lines
+
+    def _compress_go_grpc(self, matrix) -> List[str]:
+        """Compress gRPC-Go data (services, interceptors, options, clients)."""
+        lines = []
+        impls = getattr(matrix, 'go_grpc_service_impls', [])
+        methods = getattr(matrix, 'go_grpc_rpc_methods', [])
+        interceptors = getattr(matrix, 'go_grpc_interceptors', [])
+        clients = getattr(matrix, 'go_grpc_client_connections', [])
+        if not impls and not methods and not interceptors:
+            return lines
+        frameworks = getattr(matrix, 'go_grpc_detected_frameworks', [])
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if impls:
+            lines.append(f"## Service Implementations ({len(impls)})")
+            for s in impls[:20]:
+                f = s.get('file', '').split('/')[-1]
+                meths = s.get('methods', [])
+                meth_str = f"|methods:{','.join(meths[:5])}" if meths else ""
+                lines.append(f"  {s.get('name', '?')}→{s.get('server_interface', '?')}{meth_str}|{f}")
+        if methods:
+            lines.append(f"## RPC Methods ({len(methods)})")
+            for m in methods[:40]:
+                f = m.get('file', '').split('/')[-1]
+                stream = f"|{m['stream_type']}" if m.get('stream_type') != 'unary' else ""
+                lines.append(f"  {m.get('service', '?')}.{m.get('name', '?')}{stream}|{f}")
+            if len(methods) > 40:
+                lines.append(f"  # ... and {len(methods) - 40} more methods")
+        if interceptors:
+            lines.append(f"## Interceptors ({len(interceptors)})")
+            for i in interceptors[:15]:
+                lines.append(f"  {i.get('name', '?')}|{i.get('interceptor_type', '')}")
+        if clients:
+            lines.append(f"## Client Connections ({len(clients)})")
+            for c in clients[:10]:
+                secure = "|TLS" if c.get('is_secure') else ""
+                lines.append(f"  {c.get('variable_name', '?')}→{c.get('target', '?')}{secure}")
+        return lines
+
+    def _compress_go_gorm(self, matrix) -> List[str]:
+        """Compress GORM data (models, hooks, scopes, migrations)."""
+        lines = []
+        models = getattr(matrix, 'go_gorm_models', [])
+        hooks = getattr(matrix, 'go_gorm_hooks', [])
+        scopes = getattr(matrix, 'go_gorm_scopes', [])
+        migrations = getattr(matrix, 'go_gorm_migrations', [])
+        if not models and not hooks and not migrations:
+            return lines
+        version = getattr(matrix, 'go_gorm_version', '')
+        driver = getattr(matrix, 'go_gorm_driver', '')
+        if version:
+            lines.append(f"# GORM {version}")
+        if driver:
+            lines.append(f"# Driver: {driver}")
+        frameworks = getattr(matrix, 'go_gorm_detected_frameworks', [])
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if models:
+            lines.append(f"## Models ({len(models)})")
+            for m in models[:30]:
+                f = m.get('file', '').split('/')[-1]
+                table = f"|table:{m['table_name']}" if m.get('table_name') else ""
+                soft = "|soft_delete" if m.get('has_soft_delete') else ""
+                assocs = m.get('associations', [])
+                assoc_str = f"|assoc:{','.join(a.get('type','') for a in assocs[:3])}" if assocs else ""
+                lines.append(f"  {m.get('name', '?')}{table}{soft}{assoc_str}|{f}")
+            if len(models) > 30:
+                lines.append(f"  # ... and {len(models) - 30} more models")
+        if hooks:
+            lines.append(f"## Hooks ({len(hooks)})")
+            for h in hooks[:20]:
+                lines.append(f"  {h.get('model', '?')}.{h.get('hook_type', '?')}")
+        if scopes:
+            lines.append(f"## Scopes ({len(scopes)})")
+            for s in scopes[:15]:
+                lines.append(f"  {s.get('name', '?')}")
+        if migrations:
+            lines.append(f"## Migrations ({len(migrations)})")
+            for mg in migrations[:10]:
+                models_list = mg.get('models', [])
+                lines.append(f"  {mg.get('migration_type', '?')}|models:{','.join(models_list[:5])}")
+        return lines
+
+    def _compress_go_sqlx(self, matrix) -> List[str]:
+        """Compress sqlx data (queries, models, connections)."""
+        lines = []
+        queries = getattr(matrix, 'go_sqlx_queries', [])
+        models = getattr(matrix, 'go_sqlx_models', [])
+        connections = getattr(matrix, 'go_sqlx_connections', [])
+        if not queries and not models:
+            return lines
+        driver = getattr(matrix, 'go_sqlx_driver', '')
+        if driver:
+            lines.append(f"# Driver: {driver}")
+        frameworks = getattr(matrix, 'go_sqlx_detected_frameworks', [])
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if models:
+            lines.append(f"## Models ({len(models)})")
+            for m in models[:20]:
+                f = m.get('file', '').split('/')[-1]
+                fields = m.get('fields', [])
+                field_str = f"|fields:{len(fields)}" if fields else ""
+                lines.append(f"  {m.get('name', '?')}{field_str}|{f}")
+        if queries:
+            lines.append(f"## Queries ({len(queries)})")
+            for q in queries[:30]:
+                f = q.get('file', '').split('/')[-1]
+                named = "|named" if q.get('has_named_params') else ""
+                sql = f"|{q['query'][:60]}" if q.get('query') else ""
+                lines.append(f"  {q.get('method', '?')}{named}{sql}|{f}")
+            if len(queries) > 30:
+                lines.append(f"  # ... and {len(queries) - 30} more queries")
+        if connections:
+            lines.append(f"## Connections ({len(connections)})")
+            for c in connections[:5]:
+                lines.append(f"  {c.get('method', '?')}|driver:{c.get('driver', '?')}")
+        return lines
+
+    def _compress_go_cobra(self, matrix) -> List[str]:
+        """Compress Cobra CLI data (commands, flags, sub-commands)."""
+        lines = []
+        commands = getattr(matrix, 'go_cobra_commands', [])
+        flags = getattr(matrix, 'go_cobra_flags', [])
+        sub_cmds = getattr(matrix, 'go_cobra_sub_commands', [])
+        viper = getattr(matrix, 'go_cobra_viper_bindings', [])
+        if not commands and not flags:
+            return lines
+        frameworks = getattr(matrix, 'go_cobra_detected_frameworks', [])
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if commands:
+            lines.append(f"## Commands ({len(commands)})")
+            for cmd in commands[:30]:
+                f = cmd.get('file', '').split('/')[-1]
+                root = "|ROOT" if cmd.get('is_root') else ""
+                run_type = "|RunE" if cmd.get('has_run_e') else ("|Run" if cmd.get('has_run') else "")
+                short = f"|{cmd['short'][:40]}" if cmd.get('short') else ""
+                lines.append(f"  {cmd.get('use', cmd.get('name', '?'))}{root}{run_type}{short}|{f}")
+            if len(commands) > 30:
+                lines.append(f"  # ... and {len(commands) - 30} more commands")
+        if sub_cmds:
+            lines.append(f"## Sub-commands ({len(sub_cmds)})")
+            for sc in sub_cmds[:20]:
+                lines.append(f"  {sc.get('parent', '?')}→{sc.get('child', '?')}")
+        if flags:
+            lines.append(f"## Flags ({len(flags)})")
+            for fl in flags[:30]:
+                persistent = "|persistent" if fl.get('is_persistent') else ""
+                required = "|required" if fl.get('is_required') else ""
+                lines.append(f"  --{fl.get('name', '?')}|{fl.get('flag_type', '?')}{persistent}{required}")
+            if len(flags) > 30:
+                lines.append(f"  # ... and {len(flags) - 30} more flags")
+        if viper:
+            lines.append(f"## Viper Bindings ({len(viper)})")
+            for v in viper[:10]:
+                lines.append(f"  {v.get('flag_name', '?')}→{v.get('config_key', '?')}")
+        return lines
+
+    # ============================================
     # v4.12: Java Language Compression Methods
     # ============================================
 
@@ -12223,6 +12598,257 @@ class MatrixCompressor:
         if hasattr(matrix, 'ruby_imports') and matrix.ruby_imports:
             lines.append(f"# Requires ({len(matrix.ruby_imports)}): {', '.join(matrix.ruby_imports[:20])}")
 
+        return lines
+
+    # ============================================
+    # v5.2: Ruby Framework Compression Methods
+    # ============================================
+
+    def _compress_rails(self, matrix) -> List[str]:
+        """Compress Rails framework data (routes, controllers, models, migrations, jobs, mailers)."""
+        lines = []
+        routes = getattr(matrix, 'rails_routes', [])
+        controllers = getattr(matrix, 'rails_controllers', [])
+        models = getattr(matrix, 'rails_models', [])
+        if not routes and not controllers and not models:
+            return lines
+        frameworks = getattr(matrix, 'rails_detected_frameworks', [])
+        version = getattr(matrix, 'rails_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Rails version: {version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                scope = f"|scope:{r['scope']}" if r.get('scope') else ""
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}{scope}|{r.get('action', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if controllers:
+            lines.append(f"## Controllers ({len(controllers)})")
+            for c in controllers[:30]:
+                f = c.get('file', '').split('/')[-1]
+                actions = ','.join(c.get('actions', [])[:5])
+                lines.append(f"  {c.get('name', '?')}|actions:{actions}|{f}")
+        if models:
+            lines.append(f"## Models ({len(models)})")
+            for m in models[:30]:
+                f = m.get('file', '').split('/')[-1]
+                assoc = ','.join(m.get('associations', [])[:3])
+                lines.append(f"  {m.get('name', '?')}|assoc:{assoc}|{f}")
+        migrations = getattr(matrix, 'rails_migrations', [])
+        if migrations:
+            lines.append(f"## Migrations ({len(migrations)})")
+            for mg in migrations[:20]:
+                lines.append(f"  {mg.get('name', '?')}|{mg.get('version', '')}")
+        jobs = getattr(matrix, 'rails_jobs', [])
+        if jobs:
+            lines.append(f"## Jobs ({len(jobs)})")
+            for j in jobs[:15]:
+                lines.append(f"  {j.get('name', '?')}|queue:{j.get('queue', 'default')}")
+        mailers = getattr(matrix, 'rails_mailers', [])
+        if mailers:
+            lines.append(f"## Mailers ({len(mailers)})")
+            for ml in mailers[:10]:
+                lines.append(f"  {ml.get('name', '?')}")
+        channels = getattr(matrix, 'rails_channels', [])
+        if channels:
+            lines.append(f"## Channels ({len(channels)})")
+            for ch in channels[:10]:
+                lines.append(f"  {ch.get('name', '?')}")
+        return lines
+
+    def _compress_sinatra(self, matrix) -> List[str]:
+        """Compress Sinatra framework data (routes, filters, helpers, middleware)."""
+        lines = []
+        routes = getattr(matrix, 'sinatra_routes', [])
+        middleware = getattr(matrix, 'sinatra_middleware', [])
+        if not routes and not middleware:
+            return lines
+        frameworks = getattr(matrix, 'sinatra_detected_frameworks', [])
+        version = getattr(matrix, 'sinatra_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Sinatra version: {version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        filters = getattr(matrix, 'sinatra_filters', [])
+        if filters:
+            lines.append(f"## Filters ({len(filters)})")
+            for fl in filters[:15]:
+                lines.append(f"  {fl.get('filter_type', '?')} {fl.get('path', '*')}")
+        helpers = getattr(matrix, 'sinatra_helpers', [])
+        if helpers:
+            lines.append(f"## Helpers ({len(helpers)})")
+            for h in helpers[:15]:
+                lines.append(f"  {h.get('name', '?')}")
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for m in middleware[:15]:
+                lines.append(f"  {m.get('name', '?')}")
+        err_handlers = getattr(matrix, 'sinatra_error_handlers', [])
+        if err_handlers:
+            lines.append(f"## Error Handlers ({len(err_handlers)})")
+            for e in err_handlers[:10]:
+                lines.append(f"  {e.get('error_class', '?')}|{e.get('status_code', '')}")
+        return lines
+
+    def _compress_hanami(self, matrix) -> List[str]:
+        """Compress Hanami framework data (actions, slices, routes, entities, repos)."""
+        lines = []
+        actions = getattr(matrix, 'hanami_actions', [])
+        routes = getattr(matrix, 'hanami_routes', [])
+        if not actions and not routes:
+            return lines
+        frameworks = getattr(matrix, 'hanami_detected_frameworks', [])
+        version = getattr(matrix, 'hanami_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Hanami version: {version}")
+        if actions:
+            lines.append(f"## Actions ({len(actions)})")
+            for a in actions[:30]:
+                f = a.get('file', '').split('/')[-1]
+                lines.append(f"  {a.get('name', '?')}|{f}")
+        slices = getattr(matrix, 'hanami_slices', [])
+        if slices:
+            lines.append(f"## Slices ({len(slices)})")
+            for s in slices[:10]:
+                lines.append(f"  {s.get('name', '?')}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:30]:
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{r.get('action', '?')}")
+        entities = getattr(matrix, 'hanami_entities', [])
+        if entities:
+            lines.append(f"## Entities ({len(entities)})")
+            for e in entities[:20]:
+                attrs = ','.join(e.get('attributes', [])[:5])
+                lines.append(f"  {e.get('name', '?')}|{attrs}")
+        repos = getattr(matrix, 'hanami_repositories', [])
+        if repos:
+            lines.append(f"## Repositories ({len(repos)})")
+            for rp in repos[:20]:
+                lines.append(f"  {rp.get('name', '?')}")
+        views = getattr(matrix, 'hanami_views', [])
+        if views:
+            lines.append(f"## Views ({len(views)})")
+            for v in views[:15]:
+                lines.append(f"  {v.get('name', '?')}")
+        providers = getattr(matrix, 'hanami_providers', [])
+        if providers:
+            lines.append(f"## Providers ({len(providers)})")
+            for p in providers[:10]:
+                lines.append(f"  {p.get('name', '?')}")
+        return lines
+
+    def _compress_grape(self, matrix) -> List[str]:
+        """Compress Grape API framework data (endpoints, resources, params, entities)."""
+        lines = []
+        endpoints = getattr(matrix, 'grape_endpoints', [])
+        resources = getattr(matrix, 'grape_resources', [])
+        if not endpoints and not resources:
+            return lines
+        frameworks = getattr(matrix, 'grape_detected_frameworks', [])
+        version = getattr(matrix, 'grape_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Grape version: {version}")
+        if endpoints:
+            lines.append(f"## Endpoints ({len(endpoints)})")
+            for ep in endpoints[:40]:
+                f = ep.get('file', '').split('/')[-1]
+                lines.append(f"  {ep.get('method', 'ANY')} {ep.get('path', '/')}|{f}")
+            if len(endpoints) > 40:
+                lines.append(f"  # ... and {len(endpoints) - 40} more endpoints")
+        if resources:
+            lines.append(f"## Resources ({len(resources)})")
+            for rs in resources[:20]:
+                lines.append(f"  {rs.get('name', '?')}")
+        entities = getattr(matrix, 'grape_entities', [])
+        if entities:
+            lines.append(f"## Entities ({len(entities)})")
+            for e in entities[:20]:
+                exp = ','.join(e.get('exposures', [])[:5])
+                lines.append(f"  {e.get('name', '?')}|expose:{exp}")
+        mounts = getattr(matrix, 'grape_mounts', [])
+        if mounts:
+            lines.append(f"## Mounts ({len(mounts)})")
+            for mt in mounts[:15]:
+                lines.append(f"  {mt.get('mounted_class', '?')}")
+        middleware = getattr(matrix, 'grape_middleware', [])
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for m in middleware[:10]:
+                lines.append(f"  {m.get('name', '?')}")
+        err = getattr(matrix, 'grape_error_handlers', [])
+        if err:
+            lines.append(f"## Error Handlers ({len(err)})")
+            for e in err[:10]:
+                lines.append(f"  rescue_from {e.get('exception', '?')}")
+        return lines
+
+    def _compress_sidekiq(self, matrix) -> List[str]:
+        """Compress Sidekiq background job data (workers, queues, schedules, batches)."""
+        lines = []
+        workers = getattr(matrix, 'sidekiq_workers', [])
+        queues = getattr(matrix, 'sidekiq_queues', [])
+        if not workers and not queues:
+            return lines
+        frameworks = getattr(matrix, 'sidekiq_detected_frameworks', [])
+        version = getattr(matrix, 'sidekiq_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Sidekiq version: {version}")
+        has_pro = getattr(matrix, 'sidekiq_has_pro', False)
+        has_ent = getattr(matrix, 'sidekiq_has_enterprise', False)
+        if has_pro:
+            lines.append("# Edition: Pro")
+        if has_ent:
+            lines.append("# Edition: Enterprise")
+        if workers:
+            lines.append(f"## Workers ({len(workers)})")
+            for w in workers[:30]:
+                f = w.get('file', '').split('/')[-1]
+                q = f"|queue:{w['queue']}" if w.get('queue', 'default') != 'default' else ""
+                retry = f"|retry:{w['retry_count']}" if w.get('retry_count') else ""
+                lines.append(f"  {w.get('name', '?')}{q}{retry}|{f}")
+        if queues:
+            lines.append(f"## Queues ({len(queues)})")
+            for q in queues[:20]:
+                wt = f"|weight:{q['weight']}" if q.get('weight') else ""
+                lines.append(f"  {q.get('name', '?')}{wt}")
+        schedules = getattr(matrix, 'sidekiq_schedules', [])
+        if schedules:
+            lines.append(f"## Schedules ({len(schedules)})")
+            for s in schedules[:15]:
+                lines.append(f"  {s.get('worker', '?')}|{s.get('schedule_type', '')}:{s.get('schedule_value', '')}")
+        batches = getattr(matrix, 'sidekiq_batches', [])
+        if batches:
+            lines.append(f"## Batches ({len(batches)})")
+            for b in batches[:10]:
+                lines.append(f"  batch|complete:{b.get('on_complete', '?')}")
+        middleware = getattr(matrix, 'sidekiq_middleware', [])
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for m in middleware[:10]:
+                lines.append(f"  {m.get('name', '?')}|chain:{m.get('chain', '')}")
+        periodic = getattr(matrix, 'sidekiq_periodic_jobs', [])
+        if periodic:
+            lines.append(f"## Periodic Jobs ({len(periodic)})")
+            for pj in periodic[:10]:
+                lines.append(f"  {pj.get('name', '?')}|cron:{pj.get('cron', '')}")
         return lines
 
     # ============================================

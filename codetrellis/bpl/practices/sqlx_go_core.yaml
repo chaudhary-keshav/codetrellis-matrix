@@ -1,0 +1,196 @@
+# sqlx Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Go Framework Support
+# Practice IDs: SQLX001-SQLX015
+# Category: sqlx_go
+# Frameworks: sqlx_go, golang
+
+practices:
+  - id: SQLX001
+    title: "Use sqlx.DB as a drop-in replacement for sql.DB"
+    description: "sqlx.DB embeds *sql.DB and adds Get, Select, NamedExec, NamedQuery. Use sqlx.Connect() or sqlx.Open() instead of sql.Open() to get the enhanced connection."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "connection", "setup"]
+    example: |
+      db, err := sqlx.Connect("postgres", dsn)
+      if err != nil {
+          log.Fatalf("connect: %v", err)
+      }
+      db.SetMaxOpenConns(25)
+      db.SetMaxIdleConns(10)
+
+  - id: SQLX002
+    title: 'Use db:"" struct tags for column mapping'
+    description: 'Define struct fields with db:"column_name" tags for explicit column-to-field mapping. sqlx uses these tags for scanning query results into structs.'
+    category: "data_modeling"
+    severity: "critical"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "struct", "mapping"]
+    example: |
+      type User struct {
+          ID        int       `db:"id"`
+          Name      string    `db:"name"`
+          Email     string    `db:"email"`
+          CreatedAt time.Time `db:"created_at"`
+      }
+
+  - id: SQLX003
+    title: "Use Get for single-row queries and Select for multi-row"
+    description: "Use db.Get() to scan a single row into a struct and db.Select() to scan multiple rows into a slice. These methods handle scanning automatically based on struct tags."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "query", "scan"]
+    example: |
+      // Single row
+      var user User
+      err := db.Get(&user, "SELECT * FROM users WHERE id = $1", id)
+
+      // Multiple rows
+      var users []User
+      err := db.Select(&users, "SELECT * FROM users WHERE active = $1", true)
+
+  - id: SQLX004
+    title: "Use named queries for readability and safety"
+    description: "Use db.NamedExec() and db.NamedQuery() with named parameters (:name) instead of positional ($1, ?). This improves readability especially for INSERT/UPDATE statements with many columns."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "named", "query"]
+    example: |
+      _, err := db.NamedExec(
+          `INSERT INTO users (name, email) VALUES (:name, :email)`,
+          user,
+      )
+
+  - id: SQLX005
+    title: "Always use parameterized queries — never concatenate SQL"
+    description: "Always use parameterized queries ($1, ?, :name) to prevent SQL injection. Never use fmt.Sprintf or string concatenation to build SQL queries with user input."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "injection", "security"]
+
+  - id: SQLX006
+    title: "Use sqlx.In for dynamic IN clause queries"
+    description: "Use sqlx.In() to expand slice parameters into IN clauses. Remember to call db.Rebind() on the resulting query for the correct placeholder format."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "in-clause", "dynamic"]
+    example: |
+      query, args, err := sqlx.In("SELECT * FROM users WHERE id IN (?)", ids)
+      query = db.Rebind(query)
+      var users []User
+      err = db.Select(&users, query, args...)
+
+  - id: SQLX007
+    title: "Use transactions with sqlx.Tx"
+    description: "Use db.Beginx() to start a transaction. Use tx.Commit() or tx.Rollback() explicitly, or use a helper that commits on nil error and rolls back otherwise."
+    category: "database"
+    severity: "critical"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "transaction", "atomicity"]
+    example: |
+      tx, err := db.Beginx()
+      if err != nil {
+          return err
+      }
+      defer tx.Rollback()
+
+      if _, err := tx.NamedExec(`INSERT INTO users (name) VALUES (:name)`, user); err != nil {
+          return err
+      }
+      return tx.Commit()
+
+  - id: SQLX008
+    title: "Use context-aware methods for cancellation support"
+    description: "Use context-aware variants (GetContext, SelectContext, ExecContext, NamedExecContext) to propagate context for timeout and cancellation. This is essential for HTTP request-scoped queries."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "context", "cancellation"]
+    example: |
+      var user User
+      err := db.GetContext(ctx, &user, "SELECT * FROM users WHERE id = $1", id)
+
+  - id: SQLX009
+    title: "Use prepared statements for frequently executed queries"
+    description: "Use db.Preparex() or db.PrepareNamed() for queries executed in hot paths. Prepared statements are cached by the database and reduce parsing overhead."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "prepared", "performance"]
+
+  - id: SQLX010
+    title: "Configure connection pool settings appropriately"
+    description: "Set MaxOpenConns, MaxIdleConns, and ConnMaxLifetime on the sqlx.DB. Tune based on workload and database limits. Close the DB when the application shuts down."
+    category: "configuration"
+    severity: "critical"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "pool", "connection"]
+
+  - id: SQLX011
+    title: "Use sqlx.Named for building named parameter queries"
+    description: "Use sqlx.Named() to convert named parameter queries to positional parameters when you need to compose queries dynamically before execution."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "named", "dynamic"]
+
+  - id: SQLX012
+    title: "Handle sql.ErrNoRows explicitly"
+    description: "Check for sql.ErrNoRows from Get() and QueryRowx().StructScan() calls. Select() returns an empty slice for no results — it does not return ErrNoRows."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "error", "no-rows"]
+    example: |
+      var user User
+      err := db.Get(&user, "SELECT * FROM users WHERE id = $1", id)
+      if errors.Is(err, sql.ErrNoRows) {
+          return nil, ErrUserNotFound
+      }
+      if err != nil {
+          return nil, fmt.Errorf("get user: %w", err)
+      }
+
+  - id: SQLX013
+    title: "Use db.Rebind for cross-database placeholder compatibility"
+    description: "Use db.Rebind() to convert ? placeholders to the dialect-specific format ($1 for Postgres, ? for MySQL). This enables writing database-agnostic queries."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "rebind", "portable"]
+
+  - id: SQLX014
+    title: "Use sqlx.MapScan or sqlx.SliceScan for dynamic results"
+    description: "When the result schema is not known at compile time, use MapScan (map[string]interface{}) or SliceScan ([]interface{}) instead of struct scanning."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "dynamic", "scan"]
+
+  - id: SQLX015
+    title: "Prefer sqlx over database/sql for all new code"
+    description: "sqlx is a superset of database/sql with zero overhead for standard operations. Use sqlx for all new code to benefit from struct scanning, named parameters, and convenience methods."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sqlx_go", "golang"]
+    tags: ["sqlx", "migration", "recommendation"]

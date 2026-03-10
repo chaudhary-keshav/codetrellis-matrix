@@ -63,6 +63,16 @@ from codetrellis.extractors import DockerExtractor, TerraformExtractor, CICDExtr
 # Import v4.5 Go language support (addresses G-17)
 from codetrellis.go_parser_enhanced import EnhancedGoParser
 
+# Import v5.2 Go framework parsers (framework-level, runs on .go files after base Go parser)
+from codetrellis.gin_parser_enhanced import EnhancedGinParser
+from codetrellis.echo_parser_enhanced import EnhancedEchoParser
+from codetrellis.fiber_parser_enhanced import EnhancedFiberParser
+from codetrellis.chi_parser_enhanced import EnhancedChiParser
+from codetrellis.grpc_go_parser_enhanced import EnhancedGrpcGoParser
+from codetrellis.gorm_parser_enhanced import EnhancedGormParser
+from codetrellis.sqlx_parser_enhanced import EnhancedSqlxParser
+from codetrellis.cobra_parser_enhanced import EnhancedCobraParser
+
 # Import v4.12 Java language support
 from codetrellis.java_parser_enhanced import EnhancedJavaParser
 from codetrellis.kotlin_parser_enhanced import EnhancedKotlinParser
@@ -94,6 +104,13 @@ from codetrellis.swift_parser_enhanced import EnhancedSwiftParser
 
 # Import v4.23 Ruby language support
 from codetrellis.ruby_parser_enhanced import EnhancedRubyParser
+
+# Import v5.2 Ruby framework parsers (framework-level, runs on .rb files after base Ruby parser)
+from codetrellis.rails_parser_enhanced import EnhancedRailsParser
+from codetrellis.sinatra_parser_enhanced import EnhancedSinatraParser
+from codetrellis.hanami_parser_enhanced import EnhancedHanamiParser
+from codetrellis.grape_parser_enhanced import EnhancedGrapeParser
+from codetrellis.sidekiq_parser_enhanced import EnhancedSidekiqParser
 
 # Import v4.24 PHP language support
 from codetrellis.php_parser_enhanced import EnhancedPhpParser
@@ -559,6 +576,64 @@ class ProjectMatrix:
     go_grpc_services: List[Dict] = field(default_factory=list)
     go_packages: List[str] = field(default_factory=list)
     go_dependencies: Dict[str, str] = field(default_factory=dict)
+
+    # v5.2: Go Framework Support (Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra)
+    # Gin
+    go_gin_routes: List[Dict] = field(default_factory=list)
+    go_gin_route_groups: List[Dict] = field(default_factory=list)
+    go_gin_middleware: List[Dict] = field(default_factory=list)
+    go_gin_bindings: List[Dict] = field(default_factory=list)
+    go_gin_renders: List[Dict] = field(default_factory=list)
+    go_gin_engine_configs: List[Dict] = field(default_factory=list)
+    go_gin_detected_frameworks: List[str] = field(default_factory=list)
+    # Echo
+    go_echo_routes: List[Dict] = field(default_factory=list)
+    go_echo_route_groups: List[Dict] = field(default_factory=list)
+    go_echo_middleware: List[Dict] = field(default_factory=list)
+    go_echo_bindings: List[Dict] = field(default_factory=list)
+    go_echo_renders: List[Dict] = field(default_factory=list)
+    go_echo_detected_frameworks: List[str] = field(default_factory=list)
+    # Fiber
+    go_fiber_routes: List[Dict] = field(default_factory=list)
+    go_fiber_route_groups: List[Dict] = field(default_factory=list)
+    go_fiber_middleware: List[Dict] = field(default_factory=list)
+    go_fiber_bindings: List[Dict] = field(default_factory=list)
+    go_fiber_configs: List[Dict] = field(default_factory=list)
+    go_fiber_detected_frameworks: List[str] = field(default_factory=list)
+    # Chi
+    go_chi_routes: List[Dict] = field(default_factory=list)
+    go_chi_route_groups: List[Dict] = field(default_factory=list)
+    go_chi_mounts: List[Dict] = field(default_factory=list)
+    go_chi_middleware: List[Dict] = field(default_factory=list)
+    go_chi_detected_frameworks: List[str] = field(default_factory=list)
+    # gRPC-Go
+    go_grpc_service_impls: List[Dict] = field(default_factory=list)
+    go_grpc_rpc_methods: List[Dict] = field(default_factory=list)
+    go_grpc_interceptors: List[Dict] = field(default_factory=list)
+    go_grpc_server_options: List[Dict] = field(default_factory=list)
+    go_grpc_client_connections: List[Dict] = field(default_factory=list)
+    go_grpc_detected_frameworks: List[str] = field(default_factory=list)
+    # GORM
+    go_gorm_models: List[Dict] = field(default_factory=list)
+    go_gorm_hooks: List[Dict] = field(default_factory=list)
+    go_gorm_scopes: List[Dict] = field(default_factory=list)
+    go_gorm_migrations: List[Dict] = field(default_factory=list)
+    go_gorm_detected_frameworks: List[str] = field(default_factory=list)
+    go_gorm_driver: str = ""
+    go_gorm_version: str = ""
+    # sqlx
+    go_sqlx_queries: List[Dict] = field(default_factory=list)
+    go_sqlx_models: List[Dict] = field(default_factory=list)
+    go_sqlx_connections: List[Dict] = field(default_factory=list)
+    go_sqlx_prepared_stmts: List[Dict] = field(default_factory=list)
+    go_sqlx_detected_frameworks: List[str] = field(default_factory=list)
+    go_sqlx_driver: str = ""
+    # Cobra
+    go_cobra_commands: List[Dict] = field(default_factory=list)
+    go_cobra_flags: List[Dict] = field(default_factory=list)
+    go_cobra_sub_commands: List[Dict] = field(default_factory=list)
+    go_cobra_viper_bindings: List[Dict] = field(default_factory=list)
+    go_cobra_detected_frameworks: List[str] = field(default_factory=list)
 
     # NEW: v4.12 Java Language Support (full AST + LSP)
     java_classes: List[Dict] = field(default_factory=list)
@@ -1600,6 +1675,63 @@ class ProjectMatrix:
     ruby_dependencies: Dict[str, Any] = field(default_factory=dict)
     ruby_version: str = ""
 
+    # v5.2: Ruby Framework Support (Rails, Sinatra, Hanami, Grape, Sidekiq)
+    # Rails
+    rails_routes: List[Dict] = field(default_factory=list)
+    rails_controllers: List[Dict] = field(default_factory=list)
+    rails_models: List[Dict] = field(default_factory=list)
+    rails_migrations: List[Dict] = field(default_factory=list)
+    rails_jobs: List[Dict] = field(default_factory=list)
+    rails_mailers: List[Dict] = field(default_factory=list)
+    rails_channels: List[Dict] = field(default_factory=list)
+    rails_configs: List[Dict] = field(default_factory=list)
+    rails_detected_frameworks: List[str] = field(default_factory=list)
+    rails_version: str = ""
+    # Sinatra
+    sinatra_routes: List[Dict] = field(default_factory=list)
+    sinatra_filters: List[Dict] = field(default_factory=list)
+    sinatra_helpers: List[Dict] = field(default_factory=list)
+    sinatra_templates: List[Dict] = field(default_factory=list)
+    sinatra_settings: List[Dict] = field(default_factory=list)
+    sinatra_middleware: List[Dict] = field(default_factory=list)
+    sinatra_error_handlers: List[Dict] = field(default_factory=list)
+    sinatra_detected_frameworks: List[str] = field(default_factory=list)
+    sinatra_version: str = ""
+    # Hanami
+    hanami_actions: List[Dict] = field(default_factory=list)
+    hanami_slices: List[Dict] = field(default_factory=list)
+    hanami_routes: List[Dict] = field(default_factory=list)
+    hanami_entities: List[Dict] = field(default_factory=list)
+    hanami_repositories: List[Dict] = field(default_factory=list)
+    hanami_views: List[Dict] = field(default_factory=list)
+    hanami_providers: List[Dict] = field(default_factory=list)
+    hanami_settings: List[Dict] = field(default_factory=list)
+    hanami_detected_frameworks: List[str] = field(default_factory=list)
+    hanami_version: str = ""
+    # Grape
+    grape_endpoints: List[Dict] = field(default_factory=list)
+    grape_resources: List[Dict] = field(default_factory=list)
+    grape_params: List[Dict] = field(default_factory=list)
+    grape_entities: List[Dict] = field(default_factory=list)
+    grape_helpers: List[Dict] = field(default_factory=list)
+    grape_validators: List[Dict] = field(default_factory=list)
+    grape_error_handlers: List[Dict] = field(default_factory=list)
+    grape_mounts: List[Dict] = field(default_factory=list)
+    grape_middleware: List[Dict] = field(default_factory=list)
+    grape_detected_frameworks: List[str] = field(default_factory=list)
+    grape_version: str = ""
+    # Sidekiq
+    sidekiq_workers: List[Dict] = field(default_factory=list)
+    sidekiq_queues: List[Dict] = field(default_factory=list)
+    sidekiq_schedules: List[Dict] = field(default_factory=list)
+    sidekiq_batches: List[Dict] = field(default_factory=list)
+    sidekiq_middleware: List[Dict] = field(default_factory=list)
+    sidekiq_callbacks: List[Dict] = field(default_factory=list)
+    sidekiq_configs: List[Dict] = field(default_factory=list)
+    sidekiq_periodic_jobs: List[Dict] = field(default_factory=list)
+    sidekiq_detected_frameworks: List[str] = field(default_factory=list)
+    sidekiq_version: str = ""
+
     # v4.24: PHP Language Support (full AST + LSP)
     php_classes: List[Dict] = field(default_factory=list)
     php_interfaces: List[Dict] = field(default_factory=list)
@@ -2431,6 +2563,16 @@ class ProjectMatrix:
                 "go_functions": len(self.go_functions),
                 "go_methods": len(self.go_methods),
                 "go_routes": len(self.go_routes),
+                # v5.2: Go framework stats
+                "go_gin_routes": len(self.go_gin_routes),
+                "go_echo_routes": len(self.go_echo_routes),
+                "go_fiber_routes": len(self.go_fiber_routes),
+                "go_chi_routes": len(self.go_chi_routes),
+                "go_grpc_service_impls": len(self.go_grpc_service_impls),
+                "go_grpc_rpc_methods": len(self.go_grpc_rpc_methods),
+                "go_gorm_models": len(self.go_gorm_models),
+                "go_sqlx_queries": len(self.go_sqlx_queries),
+                "go_cobra_commands": len(self.go_cobra_commands),
                 # v4.12: Java stats
                 "java_classes": len(self.java_classes),
                 "java_interfaces": len(self.java_interfaces),
@@ -2900,6 +3042,55 @@ class ProjectMatrix:
                 "grpc_services": self.go_grpc_services,
                 "packages": self.go_packages,
                 "dependencies": self.go_dependencies,
+                # v5.2: Go Framework Data
+                "gin_routes": self.go_gin_routes,
+                "gin_route_groups": self.go_gin_route_groups,
+                "gin_middleware": self.go_gin_middleware,
+                "gin_bindings": self.go_gin_bindings,
+                "gin_renders": self.go_gin_renders,
+                "gin_engine_configs": self.go_gin_engine_configs,
+                "gin_detected_frameworks": self.go_gin_detected_frameworks,
+                "echo_routes": self.go_echo_routes,
+                "echo_route_groups": self.go_echo_route_groups,
+                "echo_middleware": self.go_echo_middleware,
+                "echo_bindings": self.go_echo_bindings,
+                "echo_renders": self.go_echo_renders,
+                "echo_detected_frameworks": self.go_echo_detected_frameworks,
+                "fiber_routes": self.go_fiber_routes,
+                "fiber_route_groups": self.go_fiber_route_groups,
+                "fiber_middleware": self.go_fiber_middleware,
+                "fiber_bindings": self.go_fiber_bindings,
+                "fiber_configs": self.go_fiber_configs,
+                "fiber_detected_frameworks": self.go_fiber_detected_frameworks,
+                "chi_routes": self.go_chi_routes,
+                "chi_route_groups": self.go_chi_route_groups,
+                "chi_mounts": self.go_chi_mounts,
+                "chi_middleware": self.go_chi_middleware,
+                "chi_detected_frameworks": self.go_chi_detected_frameworks,
+                "grpc_service_impls": self.go_grpc_service_impls,
+                "grpc_rpc_methods": self.go_grpc_rpc_methods,
+                "grpc_interceptors": self.go_grpc_interceptors,
+                "grpc_server_options": self.go_grpc_server_options,
+                "grpc_client_connections": self.go_grpc_client_connections,
+                "grpc_detected_frameworks": self.go_grpc_detected_frameworks,
+                "gorm_models": self.go_gorm_models,
+                "gorm_hooks": self.go_gorm_hooks,
+                "gorm_scopes": self.go_gorm_scopes,
+                "gorm_migrations": self.go_gorm_migrations,
+                "gorm_detected_frameworks": self.go_gorm_detected_frameworks,
+                "gorm_driver": self.go_gorm_driver,
+                "gorm_version": self.go_gorm_version,
+                "sqlx_queries": self.go_sqlx_queries,
+                "sqlx_models": self.go_sqlx_models,
+                "sqlx_connections": self.go_sqlx_connections,
+                "sqlx_prepared_stmts": self.go_sqlx_prepared_stmts,
+                "sqlx_detected_frameworks": self.go_sqlx_detected_frameworks,
+                "sqlx_driver": self.go_sqlx_driver,
+                "cobra_commands": self.go_cobra_commands,
+                "cobra_flags": self.go_cobra_flags,
+                "cobra_sub_commands": self.go_cobra_sub_commands,
+                "cobra_viper_bindings": self.go_cobra_viper_bindings,
+                "cobra_detected_frameworks": self.go_cobra_detected_frameworks,
             },
             # v4.12: Java Language Support
             "java": {
@@ -4016,6 +4207,16 @@ class ProjectScanner:
         # v4.5 (G-17): Go parser with all extractors
         self.go_parser = EnhancedGoParser()
 
+        # v5.2: Go framework parsers (framework-level, runs on .go files after base Go parser)
+        self.gin_parser = EnhancedGinParser()
+        self.echo_parser = EnhancedEchoParser()
+        self.fiber_parser = EnhancedFiberParser()
+        self.chi_parser = EnhancedChiParser()
+        self.grpc_go_parser = EnhancedGrpcGoParser()
+        self.gorm_parser = EnhancedGormParser()
+        self.sqlx_parser = EnhancedSqlxParser()
+        self.cobra_parser = EnhancedCobraParser()
+
         # v4.12: Java parser with all extractors (AST + LSP)
         self.java_parser = EnhancedJavaParser()
 
@@ -4051,6 +4252,13 @@ class ProjectScanner:
 
         # v4.23: Ruby parser with all extractors (AST + LSP)
         self.ruby_parser = EnhancedRubyParser()
+
+        # v5.2: Ruby framework parsers
+        self.rails_parser = EnhancedRailsParser()
+        self.sinatra_parser = EnhancedSinatraParser()
+        self.hanami_parser = EnhancedHanamiParser()
+        self.grape_parser = EnhancedGrapeParser()
+        self.sidekiq_parser = EnhancedSidekiqParser()
 
         # v4.24: PHP parser with all extractors (AST + LSP)
         self.php_parser = EnhancedPhpParser()
@@ -4951,6 +5159,15 @@ class ProjectScanner:
             self._parse_python(file_path, matrix)
         elif file_info.file_type == "go":
             self._parse_go(file_path, matrix)
+            # v5.2: Go framework-level parsers (supplementary, run after base Go parser)
+            self._parse_gin(file_path, matrix)
+            self._parse_echo(file_path, matrix)
+            self._parse_fiber(file_path, matrix)
+            self._parse_chi(file_path, matrix)
+            self._parse_grpc_go(file_path, matrix)
+            self._parse_gorm(file_path, matrix)
+            self._parse_sqlx(file_path, matrix)
+            self._parse_cobra(file_path, matrix)
         elif file_info.file_type == "java":
             self._parse_java(file_path, matrix)
             # v4.94: Java framework-level parsers (supplementary, run after base Java parser)
@@ -5058,6 +5275,12 @@ class ProjectScanner:
             self._parse_swift(file_path, matrix)
         elif file_info.file_type == "ruby":
             self._parse_ruby(file_path, matrix)
+            # v5.2: Ruby framework-level parsers (supplementary, run after base Ruby parser)
+            self._parse_rails(file_path, matrix)
+            self._parse_sinatra(file_path, matrix)
+            self._parse_hanami(file_path, matrix)
+            self._parse_grape(file_path, matrix)
+            self._parse_sidekiq(file_path, matrix)
         elif file_info.file_type == "php":
             self._parse_php(file_path, matrix)
         elif file_info.file_type == "scala":
@@ -6905,6 +7128,206 @@ class ProjectScanner:
 
         except Exception as e:
             # Silently skip files that can't be parsed (binary, encoding issues, etc.)
+            pass
+
+    def _parse_gin(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Gin framework patterns from Go file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.gin_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.go_gin_detected_frameworks:
+                    matrix.go_gin_detected_frameworks.append(fw)
+            for r in result.routes:
+                matrix.go_gin_routes.append(r if isinstance(r, dict) else vars(r))
+            for g in result.route_groups:
+                matrix.go_gin_route_groups.append(g if isinstance(g, dict) else vars(g))
+            for m in result.middleware:
+                matrix.go_gin_middleware.append(m if isinstance(m, dict) else vars(m))
+            for b in result.bindings:
+                matrix.go_gin_bindings.append(b if isinstance(b, dict) else vars(b))
+            for r in result.renders:
+                matrix.go_gin_renders.append(r if isinstance(r, dict) else vars(r))
+            for c in result.engine_configs:
+                matrix.go_gin_engine_configs.append(c if isinstance(c, dict) else vars(c))
+        except Exception:
+            pass
+
+    def _parse_echo(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Echo framework patterns from Go file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.echo_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.go_echo_detected_frameworks:
+                    matrix.go_echo_detected_frameworks.append(fw)
+            for r in result.routes:
+                matrix.go_echo_routes.append(r if isinstance(r, dict) else vars(r))
+            for g in result.route_groups:
+                matrix.go_echo_route_groups.append(g if isinstance(g, dict) else vars(g))
+            for m in result.middleware:
+                matrix.go_echo_middleware.append(m if isinstance(m, dict) else vars(m))
+            for b in result.bindings:
+                matrix.go_echo_bindings.append(b if isinstance(b, dict) else vars(b))
+            for r in result.renders:
+                matrix.go_echo_renders.append(r if isinstance(r, dict) else vars(r))
+        except Exception:
+            pass
+
+    def _parse_fiber(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Fiber framework patterns from Go file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.fiber_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.go_fiber_detected_frameworks:
+                    matrix.go_fiber_detected_frameworks.append(fw)
+            for r in result.routes:
+                matrix.go_fiber_routes.append(r if isinstance(r, dict) else vars(r))
+            for g in result.route_groups:
+                matrix.go_fiber_route_groups.append(g if isinstance(g, dict) else vars(g))
+            for m in result.middleware:
+                matrix.go_fiber_middleware.append(m if isinstance(m, dict) else vars(m))
+            for b in result.bindings:
+                matrix.go_fiber_bindings.append(b if isinstance(b, dict) else vars(b))
+            for c in result.configs:
+                matrix.go_fiber_configs.append(c if isinstance(c, dict) else vars(c))
+        except Exception:
+            pass
+
+    def _parse_chi(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Chi router patterns from Go file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.chi_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.go_chi_detected_frameworks:
+                    matrix.go_chi_detected_frameworks.append(fw)
+            for r in result.routes:
+                matrix.go_chi_routes.append(r if isinstance(r, dict) else vars(r))
+            for g in result.route_groups:
+                matrix.go_chi_route_groups.append(g if isinstance(g, dict) else vars(g))
+            for mt in result.mounts:
+                matrix.go_chi_mounts.append(mt if isinstance(mt, dict) else vars(mt))
+            for m in result.middleware:
+                matrix.go_chi_middleware.append(m if isinstance(m, dict) else vars(m))
+        except Exception:
+            pass
+
+    def _parse_grpc_go(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse gRPC-Go patterns from Go file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.grpc_go_parser.parse(content, str(file_path))
+            if not result.service_impls and not result.rpc_methods and not result.interceptors and not result.has_grpc_server and not result.has_grpc_client:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.go_grpc_detected_frameworks:
+                    matrix.go_grpc_detected_frameworks.append(fw)
+            for s in result.service_impls:
+                matrix.go_grpc_service_impls.append(s if isinstance(s, dict) else vars(s))
+            for r in result.rpc_methods:
+                matrix.go_grpc_rpc_methods.append(r if isinstance(r, dict) else vars(r))
+            for i in result.interceptors:
+                matrix.go_grpc_interceptors.append(i if isinstance(i, dict) else vars(i))
+            for o in result.server_options:
+                matrix.go_grpc_server_options.append(o if isinstance(o, dict) else vars(o))
+            for c in result.client_connections:
+                matrix.go_grpc_client_connections.append(c if isinstance(c, dict) else vars(c))
+        except Exception:
+            pass
+
+    def _parse_gorm(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse GORM patterns from Go file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.gorm_parser.parse(content, str(file_path))
+            if not result.models and not result.hooks and not result.migrations:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.go_gorm_detected_frameworks:
+                    matrix.go_gorm_detected_frameworks.append(fw)
+            if result.detected_driver and not matrix.go_gorm_driver:
+                matrix.go_gorm_driver = result.detected_driver
+            if result.gorm_version and not matrix.go_gorm_version:
+                matrix.go_gorm_version = result.gorm_version
+            for m in result.models:
+                matrix.go_gorm_models.append(m if isinstance(m, dict) else vars(m))
+            for h in result.hooks:
+                matrix.go_gorm_hooks.append(h if isinstance(h, dict) else vars(h))
+            for s in result.scopes:
+                matrix.go_gorm_scopes.append(s if isinstance(s, dict) else vars(s))
+            for mg in result.migrations:
+                matrix.go_gorm_migrations.append(mg if isinstance(mg, dict) else vars(mg))
+        except Exception:
+            pass
+
+    def _parse_sqlx(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse sqlx patterns from Go file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.sqlx_parser.parse(content, str(file_path))
+            if not result.queries and not result.models and not result.connections:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.go_sqlx_detected_frameworks:
+                    matrix.go_sqlx_detected_frameworks.append(fw)
+            if result.detected_driver and not matrix.go_sqlx_driver:
+                matrix.go_sqlx_driver = result.detected_driver
+            for q in result.queries:
+                matrix.go_sqlx_queries.append(q if isinstance(q, dict) else vars(q))
+            for m in result.models:
+                matrix.go_sqlx_models.append(m if isinstance(m, dict) else vars(m))
+            for c in result.connections:
+                matrix.go_sqlx_connections.append(c if isinstance(c, dict) else vars(c))
+            for p in result.prepared_stmts:
+                matrix.go_sqlx_prepared_stmts.append(p if isinstance(p, dict) else vars(p))
+        except Exception:
+            pass
+
+    def _parse_cobra(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Cobra CLI patterns from Go file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.cobra_parser.parse(content, str(file_path))
+            if not result.commands and not result.flags:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.go_cobra_detected_frameworks:
+                    matrix.go_cobra_detected_frameworks.append(fw)
+            for cmd in result.commands:
+                matrix.go_cobra_commands.append(cmd if isinstance(cmd, dict) else vars(cmd))
+            for f in result.flags:
+                matrix.go_cobra_flags.append(f if isinstance(f, dict) else vars(f))
+            for sc in result.sub_commands:
+                matrix.go_cobra_sub_commands.append(sc if isinstance(sc, dict) else vars(sc))
+            for v in result.viper_bindings:
+                matrix.go_cobra_viper_bindings.append(v if isinstance(v, dict) else vars(v))
+        except Exception:
             pass
 
     def _parse_java(self, file_path: Path, matrix: ProjectMatrix):
@@ -17932,6 +18355,171 @@ class ProjectScanner:
         except Exception as e:
             import logging
             logging.getLogger('codetrellis').debug(f"Ruby parse failed for {file_path}: {e}")
+
+    def _parse_rails(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Rails framework patterns from Ruby file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.rails_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.rails_detected_frameworks:
+                    matrix.rails_detected_frameworks.append(fw)
+            if result.rails_version and not matrix.rails_version:
+                matrix.rails_version = result.rails_version
+            for r in result.routes:
+                matrix.rails_routes.append(r if isinstance(r, dict) else vars(r))
+            for c in result.controllers:
+                matrix.rails_controllers.append(c if isinstance(c, dict) else vars(c))
+            for m in result.models:
+                matrix.rails_models.append(m if isinstance(m, dict) else vars(m))
+            for mg in result.migrations:
+                matrix.rails_migrations.append(mg if isinstance(mg, dict) else vars(mg))
+            for j in result.jobs:
+                matrix.rails_jobs.append(j if isinstance(j, dict) else vars(j))
+            for ml in result.mailers:
+                matrix.rails_mailers.append(ml if isinstance(ml, dict) else vars(ml))
+            for ch in result.channels:
+                matrix.rails_channels.append(ch if isinstance(ch, dict) else vars(ch))
+            for cfg in result.configs:
+                matrix.rails_configs.append(cfg if isinstance(cfg, dict) else vars(cfg))
+        except Exception:
+            pass
+
+    def _parse_sinatra(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Sinatra framework patterns from Ruby file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.sinatra_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.sinatra_detected_frameworks:
+                    matrix.sinatra_detected_frameworks.append(fw)
+            if result.sinatra_version and not matrix.sinatra_version:
+                matrix.sinatra_version = result.sinatra_version
+            for r in result.routes:
+                matrix.sinatra_routes.append(r if isinstance(r, dict) else vars(r))
+            for f in result.filters:
+                matrix.sinatra_filters.append(f if isinstance(f, dict) else vars(f))
+            for h in result.helpers:
+                matrix.sinatra_helpers.append(h if isinstance(h, dict) else vars(h))
+            for t in result.templates:
+                matrix.sinatra_templates.append(t if isinstance(t, dict) else vars(t))
+            for s in result.settings:
+                matrix.sinatra_settings.append(s if isinstance(s, dict) else vars(s))
+            for m in result.middleware:
+                matrix.sinatra_middleware.append(m if isinstance(m, dict) else vars(m))
+            for e in result.error_handlers:
+                matrix.sinatra_error_handlers.append(e if isinstance(e, dict) else vars(e))
+        except Exception:
+            pass
+
+    def _parse_hanami(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Hanami framework patterns from Ruby file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.hanami_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.hanami_detected_frameworks:
+                    matrix.hanami_detected_frameworks.append(fw)
+            if result.hanami_version and not matrix.hanami_version:
+                matrix.hanami_version = result.hanami_version
+            for a in result.actions:
+                matrix.hanami_actions.append(a if isinstance(a, dict) else vars(a))
+            for s in result.slices:
+                matrix.hanami_slices.append(s if isinstance(s, dict) else vars(s))
+            for r in result.routes:
+                matrix.hanami_routes.append(r if isinstance(r, dict) else vars(r))
+            for e in result.entities:
+                matrix.hanami_entities.append(e if isinstance(e, dict) else vars(e))
+            for rp in result.repositories:
+                matrix.hanami_repositories.append(rp if isinstance(rp, dict) else vars(rp))
+            for v in result.views:
+                matrix.hanami_views.append(v if isinstance(v, dict) else vars(v))
+            for p in result.providers:
+                matrix.hanami_providers.append(p if isinstance(p, dict) else vars(p))
+            for st in result.settings:
+                matrix.hanami_settings.append(st if isinstance(st, dict) else vars(st))
+        except Exception:
+            pass
+
+    def _parse_grape(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Grape API framework patterns from Ruby file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.grape_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.grape_detected_frameworks:
+                    matrix.grape_detected_frameworks.append(fw)
+            if result.grape_version and not matrix.grape_version:
+                matrix.grape_version = result.grape_version
+            for ep in result.endpoints:
+                matrix.grape_endpoints.append(ep if isinstance(ep, dict) else vars(ep))
+            for rs in result.resources:
+                matrix.grape_resources.append(rs if isinstance(rs, dict) else vars(rs))
+            for p in result.params:
+                matrix.grape_params.append(p if isinstance(p, dict) else vars(p))
+            for e in result.entities:
+                matrix.grape_entities.append(e if isinstance(e, dict) else vars(e))
+            for h in result.helpers:
+                matrix.grape_helpers.append(h if isinstance(h, dict) else vars(h))
+            for v in result.validators:
+                matrix.grape_validators.append(v if isinstance(v, dict) else vars(v))
+            for eh in result.error_handlers:
+                matrix.grape_error_handlers.append(eh if isinstance(eh, dict) else vars(eh))
+            for mt in result.mounts:
+                matrix.grape_mounts.append(mt if isinstance(mt, dict) else vars(mt))
+            for mw in result.middleware:
+                matrix.grape_middleware.append(mw if isinstance(mw, dict) else vars(mw))
+        except Exception:
+            pass
+
+    def _parse_sidekiq(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Sidekiq background job patterns from Ruby file. v5.2."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.sidekiq_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.sidekiq_detected_frameworks:
+                    matrix.sidekiq_detected_frameworks.append(fw)
+            if result.sidekiq_version and not matrix.sidekiq_version:
+                matrix.sidekiq_version = result.sidekiq_version
+            for w in result.workers:
+                matrix.sidekiq_workers.append(w if isinstance(w, dict) else vars(w))
+            for q in result.queues:
+                matrix.sidekiq_queues.append(q if isinstance(q, dict) else vars(q))
+            for s in result.schedules:
+                matrix.sidekiq_schedules.append(s if isinstance(s, dict) else vars(s))
+            for b in result.batches:
+                matrix.sidekiq_batches.append(b if isinstance(b, dict) else vars(b))
+            for m in result.middleware:
+                matrix.sidekiq_middleware.append(m if isinstance(m, dict) else vars(m))
+            for cb in result.callbacks:
+                matrix.sidekiq_callbacks.append(cb if isinstance(cb, dict) else vars(cb))
+            for cfg in result.configs:
+                matrix.sidekiq_configs.append(cfg if isinstance(cfg, dict) else vars(cfg))
+            for pj in result.periodic_jobs:
+                matrix.sidekiq_periodic_jobs.append(pj if isinstance(pj, dict) else vars(pj))
+        except Exception:
+            pass
 
     def _parse_php(self, file_path: Path, matrix: ProjectMatrix):
         """

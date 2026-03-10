@@ -94,6 +94,7 @@ SKILL_TEMPLATES: List[Dict[str, any]] = [
             "SOLIDJS_API", "QWIK_API", "PREACT_API", "LIT_API",
             "ALPINE_API", "HTMX_API", "STIMULUS_API",
             "STORYBOOK_API",
+            "GO_GIN", "GO_ECHO", "GO_FIBER", "GO_CHI", "GO_GRPC",
         ],
         "context_sections": [
             "PROJECT", "SCHEMAS", "CONTROLLERS", "HTTP_API",
@@ -136,7 +137,7 @@ SKILL_TEMPLATES: List[Dict[str, any]] = [
             "SQL_TABLES", "DART_MODELS", "LUA_MODELS",
             "SWIFT_MODELS", "SCALA_MODELS", "GO_TYPES",
             "C_TYPES", "CPP_TYPES", "POWERSHELL_MODELS",
-            "R_MODELS",
+            "R_MODELS", "GO_GORM", "GO_SQLX",
         ],
         "context_sections": [
             "PROJECT", "SCHEMAS", "DATABASE", "BEST_PRACTICES",

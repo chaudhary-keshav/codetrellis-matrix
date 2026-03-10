@@ -1,0 +1,141 @@
+# Sinatra Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Ruby Framework Support
+# Practice IDs: SINATRA001-SINATRA020
+# Category: sinatra
+# Frameworks: sinatra
+
+practices:
+  - id: SINATRA001
+    title: "Prefer modular style over classic for production apps"
+    description: "Use class MyApp < Sinatra::Base (modular) instead of the classic top-level DSL for production applications. Modular allows namespacing, mounting, and better testing."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "architecture", "modular"]
+
+  - id: SINATRA002
+    title: "Use Rack::Protection for security middleware"
+    description: "Sinatra includes rack-protection by default. Ensure it is not disabled. Add additional protections for CSRF, XSS, and clickjacking."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "security", "rack-protection"]
+
+  - id: SINATRA003
+    title: "Validate and sanitize all user input"
+    description: "Sinatra does not auto-sanitize params. Use explicit validation (dry-validation or manual) and escape output to prevent injection attacks."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "security", "input-validation"]
+
+  - id: SINATRA004
+    title: "Use halt for early request termination"
+    description: "Use halt(status, body) to terminate request processing early. This is cleaner than returning from nested conditionals."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "api", "halt"]
+
+  - id: SINATRA005
+    title: "Use before/after filters for cross-cutting concerns"
+    description: "Use before and after blocks for authentication, logging, CORS headers, and other cross-cutting concerns instead of repeating logic in each route."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "filters", "dry"]
+
+  - id: SINATRA006
+    title: "Set proper content types for API responses"
+    description: "Always set content_type explicitly for JSON APIs. Use content_type :json before rendering JSON responses."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "api", "content-type"]
+
+  - id: SINATRA007
+    title: "Use Sinatra::Namespace for route organization"
+    description: "Use sinatra-contrib's namespace extension to group related routes under a common prefix with shared filters and helpers."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "namespace", "organization"]
+
+  - id: SINATRA008
+    title: "Configure session secret securely"
+    description: "Set a strong, random session secret. Never use default or hardcoded secrets. Use environment variables for production."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "security", "sessions"]
+
+  - id: SINATRA009
+    title: "Use error blocks for consistent error handling"
+    description: "Define error blocks for HTTP status codes (not_found, error 500) and exception types to provide consistent error responses."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "error-handling"]
+
+  - id: SINATRA010
+    title: "Use helpers for shared route logic"
+    description: "Extract shared logic into helper methods. Helpers are available in routes, templates, and filters."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "helpers", "dry"]
+
+  - id: SINATRA011
+    title: "Enable logging with Rack::CommonLogger"
+    description: "Use Rack::CommonLogger or a custom logger middleware for request logging. Configure different log levels per environment."
+    category: "observability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "logging", "observability"]
+
+  - id: SINATRA012
+    title: "Use config_file for environment-specific settings"
+    description: "Use sinatra-contrib's config_file extension or dotenv gem for environment-specific configuration. Never hardcode environment-specific values."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "configuration", "environment"]
+
+  - id: SINATRA013
+    title: "Mount Sinatra apps in Rack for composition"
+    description: "Use config.ru and Rack::URLMap to mount multiple Sinatra apps. This enables microservice-like composition within a single process."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "rack", "composition"]
+
+  - id: SINATRA014
+    title: "Use streaming for large responses"
+    description: "Use Sinatra's stream helper for large file downloads or Server-Sent Events instead of loading entire response into memory."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "streaming", "performance"]
+
+  - id: SINATRA015
+    title: "Test with Rack::Test for integration tests"
+    description: "Use rack-test gem for testing Sinatra routes. It provides get, post, etc. methods and last_response for assertions."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sinatra"]
+    tags: ["sinatra", "testing", "rack-test"]

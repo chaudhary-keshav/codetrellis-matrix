@@ -1,0 +1,142 @@
+# Sidekiq Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Ruby Framework Support
+# Practice IDs: SIDEKIQ001-SIDEKIQ020
+# Category: sidekiq
+# Frameworks: sidekiq
+
+practices:
+  - id: SIDEKIQ001
+    title: "Keep job arguments simple and serializable"
+    description: "Only pass primitive types (String, Integer, Float, Boolean, nil) and simple arrays/hashes as job arguments. Never pass ActiveRecord objects — pass IDs instead."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "arguments", "serialization"]
+
+  - id: SIDEKIQ002
+    title: "Make jobs idempotent"
+    description: "Design jobs to be safely retried. Use unique constraints, upserts, or idempotency keys to handle duplicate execution."
+    category: "reliability"
+    severity: "critical"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "idempotency", "reliability"]
+
+  - id: SIDEKIQ003
+    title: "Set appropriate retry counts per job"
+    description: "Override the default 25 retries with sidekiq_options retry: N based on the job's nature. Use retry: false for non-critical jobs."
+    category: "reliability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "retry", "configuration"]
+
+  - id: SIDEKIQ004
+    title: "Handle sidekiq_retries_exhausted"
+    description: "Define sidekiq_retries_exhausted blocks to handle permanently failed jobs. Log failures, notify operators, or move to a dead letter queue."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "error-handling", "dead-jobs"]
+
+  - id: SIDEKIQ005
+    title: "Use separate queues for different job priorities"
+    description: "Define separate queues (critical, default, low) and assign jobs accordingly. Configure queue weights in sidekiq.yml."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "queues", "priority"]
+
+  - id: SIDEKIQ006
+    title: "Keep jobs small and focused"
+    description: "Each job should do one thing. Break complex workflows into multiple jobs chained together or use Sidekiq Batches (Pro)."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "single-responsibility", "architecture"]
+
+  - id: SIDEKIQ007
+    title: "Use Sidekiq::Job instead of Sidekiq::Worker (7.x+)"
+    description: "Use include Sidekiq::Job in Sidekiq 7.x+. Worker is deprecated in favor of Job for clarity."
+    category: "style"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+      min_version: "7.0"
+    tags: ["sidekiq", "migration", "naming"]
+
+  - id: SIDEKIQ008
+    title: "Monitor failed jobs and queue depths"
+    description: "Set up monitoring for queue depths, failed job counts, and processing latency. Use Sidekiq Web UI, Datadog, or custom metrics."
+    category: "observability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "monitoring", "observability"]
+
+  - id: SIDEKIQ009
+    title: "Use perform_in/perform_at instead of sleep in jobs"
+    description: "Never use sleep() in a job. Instead, re-enqueue the job with perform_in(delay) for delayed execution."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "scheduling", "performance"]
+
+  - id: SIDEKIQ010
+    title: "Set concurrency based on job I/O profile"
+    description: "Configure concurrency based on whether jobs are I/O-bound or CPU-bound. I/O-bound jobs can use higher concurrency (25+). CPU-bound jobs should match core count."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "concurrency", "performance"]
+
+  - id: SIDEKIQ011
+    title: "Use Redis connection pool sizing correctly"
+    description: "Set Redis connection pool size to at least concurrency + 5. Each Sidekiq thread needs its own Redis connection."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "redis", "connection-pool"]
+
+  - id: SIDEKIQ012
+    title: "Wrap database operations in transactions within jobs"
+    description: "Use database transactions for jobs that modify multiple records. This ensures atomicity even if the job fails midway."
+    category: "data_integrity"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "transactions", "data-integrity"]
+
+  - id: SIDEKIQ013
+    title: "Use Sidekiq testing modes appropriately"
+    description: "Use Sidekiq::Testing.fake! for unit tests (jobs pushed to array), Sidekiq::Testing.inline! for integration tests (jobs run immediately)."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "testing"]
+
+  - id: SIDEKIQ014
+    title: "Avoid long-running jobs — break into batches"
+    description: "Jobs should complete within minutes, not hours. For large datasets, break work into smaller jobs with Sidekiq Batches or manual chunking."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "batches", "performance"]
+
+  - id: SIDEKIQ015
+    title: "Protect Sidekiq Web UI with authentication"
+    description: "Always mount Sidekiq::Web with authentication middleware. Never expose it publicly without access control."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["sidekiq"]
+    tags: ["sidekiq", "security", "web-ui"]

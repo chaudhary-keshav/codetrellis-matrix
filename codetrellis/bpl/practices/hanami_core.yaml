@@ -1,0 +1,145 @@
+# Hanami Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Ruby Framework Support
+# Practice IDs: HANAMI001-HANAMI020
+# Category: hanami
+# Frameworks: hanami
+
+practices:
+  - id: HANAMI001
+    title: "Use slices for domain boundary separation (Hanami 2.x)"
+    description: "Organize code into slices (Hanami::Slice subclasses) to enforce domain boundaries. Each slice has its own actions, repos, and dependencies."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+      min_version: "2.0"
+    tags: ["hanami", "architecture", "slices", "ddd"]
+
+  - id: HANAMI002
+    title: "Use Deps mixin for dependency injection"
+    description: "Use include Deps['repo.users'] for dependency injection instead of manual instantiation. This enables testability and loose coupling."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+      min_version: "2.0"
+    tags: ["hanami", "dependency-injection", "dry-system"]
+
+  - id: HANAMI003
+    title: "Validate params in actions"
+    description: "Use the params block in Hanami::Action classes to validate and coerce request parameters before processing."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "validation", "params", "security"]
+
+  - id: HANAMI004
+    title: "Use ROM repositories for data access"
+    description: "Use ROM repositories for all database queries. Repositories provide a clean boundary between domain logic and persistence."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "rom", "repository", "persistence"]
+
+  - id: HANAMI005
+    title: "Keep actions single-purpose"
+    description: "Hanami actions map 1:1 to HTTP endpoints. Keep each action focused on a single purpose — don't add multiple responsibilities."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "actions", "single-responsibility"]
+
+  - id: HANAMI006
+    title: "Use Dry::Monads for operation results"
+    description: "Return Success/Failure monads from interactors and operations. Pattern match on results in actions for clean error handling."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "dry-monads", "error-handling"]
+
+  - id: HANAMI007
+    title: "Use providers for external service configuration"
+    description: "Register external services (Redis, HTTP clients, mailers) as providers. This centralizes configuration and enables testing with stubs."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+      min_version: "2.0"
+    tags: ["hanami", "providers", "configuration"]
+
+  - id: HANAMI008
+    title: "Use Dry::Types for strict attribute typing"
+    description: "Define entity attributes with Dry::Types for runtime type checking. Use strict types (Types::Strict::String) for critical data."
+    category: "type_safety"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "dry-types", "type-safety"]
+
+  - id: HANAMI009
+    title: "Define settings with types and defaults"
+    description: "Use the setting DSL with type constraints and default values for application and slice settings. Fail fast on invalid configuration."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+      min_version: "2.0"
+    tags: ["hanami", "settings", "configuration"]
+
+  - id: HANAMI010
+    title: "Use Hanami::View with exposures for template data"
+    description: "Expose data to templates through view exposures. This keeps views declarative and testable without rendering HTML."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "views", "exposures"]
+
+  - id: HANAMI011
+    title: "Use ROM relations for custom queries"
+    description: "Define custom query methods on ROM relations instead of writing raw SQL in repositories. Relations are composable and testable."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "rom", "relations"]
+
+  - id: HANAMI012
+    title: "Use Dry::Validation contracts for complex validation"
+    description: "For validation beyond simple params, use Dry::Validation::Contract. Contracts support cross-field validation, custom predicates, and external dependencies."
+    category: "validation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "dry-validation", "contracts"]
+
+  - id: HANAMI013
+    title: "Prefer halt() over raising exceptions in actions"
+    description: "Use self.halt(status, body) in actions for expected error cases. Reserve exceptions for unexpected failures."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "actions", "error-handling"]
+
+  - id: HANAMI014
+    title: "Use ROM changesets for insert/update operations"
+    description: "Use ROM changesets for data modifications instead of raw SQL. Changesets provide type coercion, mapping, and association handling."
+    category: "data_integrity"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "rom", "changesets"]
+
+  - id: HANAMI015
+    title: "Test actions with isolated unit tests"
+    description: "Test Hanami actions as plain Ruby objects by injecting dependencies. Actions are designed for testability without HTTP overhead."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["hanami"]
+    tags: ["hanami", "testing", "actions"]

@@ -1,0 +1,192 @@
+# GORM Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Go Framework Support
+# Practice IDs: GORM001-GORM015
+# Category: gorm
+# Frameworks: gorm, golang
+
+practices:
+  - id: GORM001
+    title: "Define models with proper gorm struct tags"
+    description: "Use gorm struct tags (column, primaryKey, autoIncrement, type, not null, default, index, uniqueIndex) to precisely control table schema. Define table name with TableName() method."
+    category: "data_modeling"
+    severity: "critical"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "model", "schema"]
+    example: |
+      type User struct {
+          ID        uint           `gorm:"primaryKey;autoIncrement"`
+          Name      string         `gorm:"type:varchar(100);not null;index"`
+          Email     string         `gorm:"type:varchar(255);uniqueIndex"`
+          CreatedAt time.Time
+          UpdatedAt time.Time
+          DeletedAt gorm.DeletedAt `gorm:"index"`
+      }
+
+  - id: GORM002
+    title: "Use gorm.Model for standard fields or define custom base"
+    description: "Embed gorm.Model for standard ID/CreatedAt/UpdatedAt/DeletedAt fields, or define a custom base model. Be explicit about which fields you need."
+    category: "data_modeling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "model", "base"]
+
+  - id: GORM003
+    title: "Use transactions for multi-step operations"
+    description: "Wrap related database operations in db.Transaction() for atomicity. Use the callback pattern which handles commit/rollback automatically based on the returned error."
+    category: "database"
+    severity: "critical"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "transaction", "atomicity"]
+    example: |
+      err := db.Transaction(func(tx *gorm.DB) error {
+          if err := tx.Create(&user).Error; err != nil {
+              return err  // Rollback
+          }
+          if err := tx.Create(&profile).Error; err != nil {
+              return err  // Rollback
+          }
+          return nil  // Commit
+      })
+
+  - id: GORM004
+    title: "Always check .Error after GORM operations"
+    description: "GORM chains return *gorm.DB with an Error field. Always check result.Error after Create, Save, Update, Delete, and query operations. Also check result.RowsAffected for update/delete."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "error", "safety"]
+    example: |
+      result := db.Create(&user)
+      if result.Error != nil {
+          return fmt.Errorf("create user: %w", result.Error)
+      }
+
+  - id: GORM005
+    title: "Use Preload and Joins for eager loading associations"
+    description: "Use db.Preload() for eager loading or db.Joins() for join-based loading. Avoid N+1 queries by explicitly loading associations. Use Preload with conditions to filter associated records."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "preload", "n+1"]
+    example: |
+      // Good: Eager load
+      db.Preload("Orders").Preload("Orders.Items").Find(&users)
+      // Bad: N+1 queries
+      db.Find(&users)
+      for _, u := range users {
+          db.Where("user_id = ?", u.ID).Find(&u.Orders)
+      }
+
+  - id: GORM006
+    title: "Use scopes for reusable query conditions"
+    description: "Define scopes as functions with signature func(*gorm.DB) *gorm.DB for reusable query conditions (pagination, soft delete filters, tenant isolation). Compose scopes with db.Scopes()."
+    category: "design_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "scope", "reuse"]
+    example: |
+      func Paginate(page, pageSize int) func(db *gorm.DB) *gorm.DB {
+          return func(db *gorm.DB) *gorm.DB {
+              offset := (page - 1) * pageSize
+              return db.Offset(offset).Limit(pageSize)
+          }
+      }
+      db.Scopes(Paginate(1, 20)).Find(&users)
+
+  - id: GORM007
+    title: "Use hooks sparingly and document side effects"
+    description: "GORM hooks (BeforeCreate, AfterCreate, etc.) run implicitly. Use them only for model-level invariants (UUID generation, audit timestamps). Avoid complex business logic in hooks."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "hooks", "lifecycle"]
+
+  - id: GORM008
+    title: "Use AutoMigrate only in development"
+    description: "AutoMigrate is useful for development but should not be used in production. Use a proper migration tool (golang-migrate, goose, atlas) for production schema changes."
+    category: "database"
+    severity: "critical"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "migration", "production"]
+
+  - id: GORM009
+    title: "Pass context.Context through WithContext for cancellation"
+    description: "Use db.WithContext(ctx) to propagate context for timeout and cancellation support. This enables query cancellation when the HTTP request is cancelled."
+    category: "concurrency"
+    severity: "critical"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "context", "cancellation"]
+    example: |
+      func GetUser(ctx context.Context, db *gorm.DB, id uint) (*User, error) {
+          var user User
+          err := db.WithContext(ctx).First(&user, id).Error
+          return &user, err
+      }
+
+  - id: GORM010
+    title: "Configure connection pool settings"
+    description: "Set MaxOpenConns, MaxIdleConns, and ConnMaxLifetime on the underlying *sql.DB. Tune based on your database and workload to prevent connection exhaustion."
+    category: "configuration"
+    severity: "critical"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "pool", "connection"]
+    example: |
+      sqlDB, _ := db.DB()
+      sqlDB.SetMaxOpenConns(25)
+      sqlDB.SetMaxIdleConns(10)
+      sqlDB.SetConnMaxLifetime(5 * time.Minute)
+
+  - id: GORM011
+    title: "Use Select to limit queried columns"
+    description: "Use db.Select() to query only needed columns instead of SELECT *. This reduces data transfer and memory usage, especially for models with large text or blob fields."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "select", "performance"]
+
+  - id: GORM012
+    title: "Use soft deletes with DeletedAt for data retention"
+    description: "Include gorm.DeletedAt field for soft deletes. GORM automatically filters deleted records on queries. Use db.Unscoped() when you need to query deleted records."
+    category: "data_modeling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "soft-delete", "data"]
+
+  - id: GORM013
+    title: "Use batch operations for bulk inserts and updates"
+    description: "Use db.CreateInBatches() for bulk inserts to reduce database round trips. Configure batch size based on the number of columns and database limits."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "batch", "performance"]
+
+  - id: GORM014
+    title: "Use db.Session for session-specific configuration"
+    description: "Use db.Session(&gorm.Session{}) to create sessions with specific settings (DryRun, PrepareStmt, NewDB, SkipHooks). Avoid modifying the global db instance."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "session", "config"]
+
+  - id: GORM015
+    title: "Use prepared statements for repeated queries"
+    description: "Enable prepared statements with db.Session(&gorm.Session{PrepareStmt: true}) for queries executed repeatedly. This caches the prepared statement plan for better performance."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["gorm", "golang"]
+    tags: ["gorm", "prepared", "performance"]

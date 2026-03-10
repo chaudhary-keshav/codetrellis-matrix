@@ -1,0 +1,190 @@
+# Cobra CLI Framework Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.2 - Go Framework Support
+# Practice IDs: COBRA001-COBRA015
+# Category: cobra
+# Frameworks: cobra, golang
+
+practices:
+  - id: COBRA001
+    title: "Organize commands in a cmd/ package with one file per command"
+    description: "Place each command in its own file under cmd/ (e.g., cmd/root.go, cmd/serve.go, cmd/init.go). Keep main.go minimal — it should only call cmd.Execute()."
+    category: "project_structure"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "structure", "organization"]
+    example: |
+      // main.go
+      func main() {
+          cmd.Execute()
+      }
+      // cmd/root.go
+      var rootCmd = &cobra.Command{
+          Use:   "myapp",
+          Short: "My application",
+      }
+      func Execute() {
+          if err := rootCmd.Execute(); err != nil {
+              os.Exit(1)
+          }
+      }
+
+  - id: COBRA002
+    title: "Use RunE instead of Run for error propagation"
+    description: "Prefer RunE (returns error) over Run (returns nothing) for command functions. This enables proper error handling and non-zero exit codes on failure."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "error", "RunE"]
+    example: |
+      var serveCmd = &cobra.Command{
+          Use:   "serve",
+          Short: "Start the server",
+          RunE: func(cmd *cobra.Command, args []string) error {
+              port, _ := cmd.Flags().GetInt("port")
+              return startServer(port)
+          },
+      }
+
+  - id: COBRA003
+    title: "Use PersistentFlags for flags shared across subcommands"
+    description: "Use PersistentFlags() on the root or parent command for flags that apply to all subcommands (verbose, config, output format). Use Flags() for command-specific flags."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "flags", "persistent"]
+    example: |
+      func init() {
+          rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
+          rootCmd.PersistentFlags().String("config", "", "config file path")
+          serveCmd.Flags().IntP("port", "p", 8080, "server port")
+      }
+
+  - id: COBRA004
+    title: "Use Viper for configuration binding with Cobra flags"
+    description: "Bind Cobra flags to Viper with viper.BindPFlag() for a unified config system that reads from flags, environment variables, and config files with proper precedence."
+    category: "configuration"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "viper", "config"]
+    example: |
+      func init() {
+          rootCmd.PersistentFlags().String("log-level", "info", "log level")
+          viper.BindPFlag("log_level", rootCmd.PersistentFlags().Lookup("log-level"))
+          viper.SetEnvPrefix("MYAPP")
+          viper.AutomaticEnv()
+      }
+
+  - id: COBRA005
+    title: "Mark required flags explicitly"
+    description: "Use cmd.MarkFlagRequired() for mandatory flags. Cobra will automatically show an error if the flag is missing, providing consistent UX."
+    category: "validation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "flags", "required"]
+
+  - id: COBRA006
+    title: "Use Args validators for positional argument validation"
+    description: "Set cmd.Args to validate positional arguments: cobra.ExactArgs(n), cobra.MinimumNArgs(n), cobra.MaximumNArgs(n), cobra.NoArgs, cobra.ArbitraryArgs."
+    category: "validation"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "args", "validation"]
+    example: |
+      var deployCmd = &cobra.Command{
+          Use:   "deploy [environment]",
+          Args:  cobra.ExactArgs(1),
+          RunE:  runDeploy,
+      }
+
+  - id: COBRA007
+    title: "Implement shell completion for better UX"
+    description: "Use RegisterFlagCompletionFunc() for custom flag completions and ValidArgsFunction for argument completions. Cobra auto-generates bash/zsh/fish/powershell completion scripts."
+    category: "user_experience"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "completion", "ux"]
+
+  - id: COBRA008
+    title: "Use PersistentPreRunE for shared setup logic"
+    description: "Use PersistentPreRunE on the root command for shared initialization (load config, setup logger, connect to DB). This runs before any subcommand."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "lifecycle", "setup"]
+    example: |
+      var rootCmd = &cobra.Command{
+          PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+              return initConfig()
+          },
+      }
+
+  - id: COBRA009
+    title: "Use cobra.Command.Context() for cancellation propagation"
+    description: "Use cmd.Context() to access the command context. Set up signal handling to cancel the context on SIGINT/SIGTERM for graceful shutdown of long-running commands."
+    category: "concurrency"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "context", "signal"]
+
+  - id: COBRA010
+    title: "Write clear Use, Short, Long, and Example fields"
+    description: "Always provide Use (syntax), Short (one-line), Long (detailed), and Example fields for every command. This generates professional help output automatically."
+    category: "user_experience"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "documentation", "help"]
+
+  - id: COBRA011
+    title: "Use cobra.Command groups for organized help output"
+    description: "Use AddGroup() to organize subcommands into logical groups in help output. This improves discoverability for CLIs with many subcommands."
+    category: "user_experience"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "groups", "help"]
+
+  - id: COBRA012
+    title: "Use SilenceUsage and SilenceErrors on root command"
+    description: "Set SilenceUsage: true on the root command to prevent printing usage on every error. Set SilenceErrors: true if you handle error display yourself in main()."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "error", "output"]
+
+  - id: COBRA013
+    title: "Use cobra-cli or cobra.AddCommand for extensibility"
+    description: "Structure commands with init() + cobra.AddCommand() for clean registration. This enables plugin-like extensibility where commands self-register."
+    category: "design_patterns"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "extensibility", "plugin"]
+
+  - id: COBRA014
+    title: "Return meaningful exit codes"
+    description: "Map different error types to specific exit codes. Use os.Exit() in main() based on the error returned from Execute(). Follow Unix convention: 0 for success, 1 for general error, 2 for usage error."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "exit-code", "unix"]
+
+  - id: COBRA015
+    title: "Generate documentation from commands automatically"
+    description: "Use cobra/doc package to generate Markdown, man pages, or REST docs from command definitions. Keep documentation in sync with code automatically."
+    category: "best_practices"
+    severity: "recommended"
+    applicability:
+      frameworks: ["cobra", "golang"]
+    tags: ["cobra", "documentation", "generation"]

@@ -151,6 +151,9 @@ class MatrixMCPServer:
             "RECOIL_API", "REMIX_API", "SC_API", "SHADCN_API",
             "SOLIDJS_API", "STIMULUS_API", "STORYBOOK_API", "SWR_API", "TANSTACK_QUERY_API",
             "VALTIO_API", "XSTATE_API", "ZUSTAND_API",
+            # Go framework APIs (v5.2)
+            "GO_GIN", "GO_ECHO", "GO_FIBER", "GO_CHI",
+            "GO_GRPC", "GO_GORM", "GO_SQLX", "GO_COBRA",
         ],
         "overview": [
             "PROJECT", "OVERVIEW", "PROJECT_STRUCTURE", "PROJECT_PROFILE",
