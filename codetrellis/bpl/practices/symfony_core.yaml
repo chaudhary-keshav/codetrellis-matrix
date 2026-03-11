@@ -1,0 +1,276 @@
+# Symfony Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.3 - PHP Framework Support
+# Practice IDs: SYMFONY001-SYMFONY030
+# Category: symfony
+# Frameworks: symfony
+
+practices:
+  - id: SYMFONY001
+    title: "Use attributes for routing instead of YAML/XML config"
+    description: "Use PHP 8 #[Route] attributes directly on controller methods. Attributes are co-located with code, type-safe, and IDE-friendly."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "routing", "attributes"]
+
+  - id: SYMFONY002
+    title: "Use Doctrine repositories for query logic"
+    description: "Create custom repository classes for complex queries instead of putting DQL in controllers. Use QueryBuilder for type-safe dynamic queries."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "doctrine", "repository"]
+
+  - id: SYMFONY003
+    title: "Use autowiring and autoconfiguration for DI"
+    description: "Let Symfony autowire services by type-hinting constructor parameters. Avoid manual service registration unless configuration is needed."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "dependency-injection", "autowiring"]
+
+  - id: SYMFONY004
+    title: "Use voters for authorization logic"
+    description: "Create Voter classes for fine-grained authorization instead of inline security checks. Use #[IsGranted] attribute on controllers."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "security", "voters", "authorization"]
+
+  - id: SYMFONY005
+    title: "Use Doctrine migrations for schema changes"
+    description: "Generate and review migrations with make:migration. Never modify production schema manually. Always test migrations both up and down."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "doctrine", "migrations"]
+
+  - id: SYMFONY006
+    title: "Use Messenger for async message processing"
+    description: "Use Symfony Messenger for background jobs, async events, and CQRS patterns. Configure transports for different message priorities."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "messenger", "async", "queues"]
+
+  - id: SYMFONY007
+    title: "Use form types for input handling"
+    description: "Create FormType classes for form handling and validation. Forms provide CSRF protection, type coercion, and validation out of the box."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "forms", "validation"]
+
+  - id: SYMFONY008
+    title: "Use events and event subscribers for decoupling"
+    description: "Create EventSubscriber classes for cross-cutting concerns. Prefer subscribers over listeners for multi-event handling."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "events", "subscribers", "decoupling"]
+
+  - id: SYMFONY009
+    title: "Use environment variables for configuration"
+    description: "Store secrets in .env.local (not committed) and use %env()% syntax in config. Use Symfony Secrets vault for production."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "configuration", "security", "environment"]
+
+  - id: SYMFONY010
+    title: "Use validation constraints on DTOs and entities"
+    description: "Apply validation constraints via PHP 8 attributes (#[Assert\\NotBlank]) or annotations. Validate at the form/controller level with $validator->validate()."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "validation", "constraints"]
+
+  - id: SYMFONY011
+    title: "Use HTTP cache headers for performance"
+    description: "Set Cache-Control, ETag, and Last-Modified headers on responses. Use Symfony's built-in HTTP cache or Varnish for reverse proxy caching."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "caching", "http-cache", "performance"]
+
+  - id: SYMFONY012
+    title: "Use Twig for templating — never echo HTML in PHP"
+    description: "Use Twig templates with auto-escaping enabled. Never concatenate HTML strings in controllers. Use Twig extensions for custom functions."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "twig", "templating", "xss"]
+
+  - id: SYMFONY013
+    title: "Use param converters for automatic entity resolution"
+    description: "Use #[MapEntity] or SensioFrameworkExtraBundle's @ParamConverter for automatic entity fetching from route parameters."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "routing", "param-converter"]
+
+  - id: SYMFONY014
+    title: "Use Doctrine lifecycle callbacks sparingly"
+    description: "Prefer entity listeners or event subscribers over lifecycle callbacks for complex logic. Callbacks should only handle simple state changes."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "doctrine", "lifecycle"]
+
+  - id: SYMFONY015
+    title: "Use CSRF protection on all forms"
+    description: "Enable CSRF protection on all Symfony forms (enabled by default). For API endpoints, use token-based authentication instead."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "csrf", "security", "forms"]
+
+  - id: SYMFONY016
+    title: "Use the Serializer component for API responses"
+    description: "Use Symfony Serializer with normalization groups to control API output shape. Define serialization groups on entity properties with #[Groups]."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "serializer", "api"]
+
+  - id: SYMFONY017
+    title: "Use make:command for CLI operations"
+    description: "Create Console Commands for maintenance tasks, data imports, and scheduled operations. Use SymfonyStyle for consistent CLI output."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "console", "commands"]
+
+  - id: SYMFONY018
+    title: "Use data transfer objects for API input"
+    description: "Create DTO classes for API request payloads. Use #[MapRequestPayload] attribute for automatic deserialization and validation."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "dto", "api", "validation"]
+
+  - id: SYMFONY019
+    title: "Use Doctrine query result caching"
+    description: "Use Doctrine result cache for expensive queries. Configure cache pools per query type. Invalidate caches when data changes."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "doctrine", "caching", "performance"]
+
+  - id: SYMFONY020
+    title: "Use rate limiting with RateLimiter component"
+    description: "Configure rate limiters for API endpoints and login attempts. Use #[IsGranted] patterns or custom event listeners for rate limiting."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "rate-limiting", "security"]
+
+  - id: SYMFONY021
+    title: "Use PHPUnit with Symfony test utilities"
+    description: "Use WebTestCase for functional tests, KernelTestCase for service tests. Use Foundry or Fixtures for test data."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "testing", "phpunit"]
+
+  - id: SYMFONY022
+    title: "Use Monolog for structured logging"
+    description: "Configure Monolog handlers and channels. Log business events, not just errors. Use structured context arrays for searchable logs."
+    category: "observability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "logging", "monolog"]
+
+  - id: SYMFONY023
+    title: "Use bundles only for reusable cross-project features"
+    description: "Create bundles only for truly reusable packages. For application-specific code, use src/ directly without creating bundles."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "bundles", "architecture"]
+
+  - id: SYMFONY024
+    title: "Use database transactions for multi-entity operations"
+    description: "Use EntityManager transactional() for operations spanning multiple entities. Handle Doctrine flush strategically — not after every persist."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "doctrine", "transactions"]
+
+  - id: SYMFONY025
+    title: "Use API Platform for REST/GraphQL APIs"
+    description: "Use API Platform for rapid API development with OpenAPI docs, pagination, filtering, and validation built-in."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "api-platform", "rest", "graphql"]
+
+  - id: SYMFONY026
+    title: "Use proper HTTP status codes in responses"
+    description: "Return correct status codes (201 Created, 204 No Content, 422 Unprocessable). Use Symfony's Response constants."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "http", "status-codes"]
+
+  - id: SYMFONY027
+    title: "Use security firewalls for different auth strategies"
+    description: "Configure separate firewalls for web (session) and API (JWT/token) authentication. Use stateless: true for API firewalls."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "security", "firewalls", "authentication"]
+
+  - id: SYMFONY028
+    title: "Use Doctrine indexes on frequently queried columns"
+    description: "Add #[ORM\\Index] on entity columns used in WHERE, ORDER BY, and JOIN clauses. Use composite indexes for multi-column queries."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "doctrine", "indexes", "database"]
+
+  - id: SYMFONY029
+    title: "Use Flex recipes for consistent package setup"
+    description: "Use Symfony Flex for installing and configuring bundles. Keep composer.json clean and let Flex manage config files."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "flex", "composer"]
+
+  - id: SYMFONY030
+    title: "Use health checks and profiler in development"
+    description: "Use Symfony Profiler and Web Debug Toolbar in dev. Implement health check endpoints for production monitoring."
+    category: "observability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["symfony"]
+    tags: ["symfony", "profiler", "monitoring"]

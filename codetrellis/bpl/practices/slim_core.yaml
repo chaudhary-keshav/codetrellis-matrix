@@ -1,0 +1,186 @@
+# Slim Framework Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.3 - PHP Framework Support
+# Practice IDs: SLIM001-SLIM020
+# Category: slim
+# Frameworks: slim
+
+practices:
+  - id: SLIM001
+    title: "Use PSR-7 request/response objects correctly"
+    description: "Always return Response objects from route handlers. Use withHeader(), withStatus(), and getBody()->write() — Response is immutable."
+    category: "api_design"
+    severity: "critical"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "psr-7", "request", "response"]
+
+  - id: SLIM002
+    title: "Use dependency injection container for services"
+    description: "Configure PHP-DI or Pimple for dependency injection. Define factory functions for services. Use autowiring when possible."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "di", "php-di", "container"]
+
+  - id: SLIM003
+    title: "Use PSR-15 middleware for cross-cutting concerns"
+    description: "Create middleware implementing MiddlewareInterface. Use $app->add() for global and $route->add() for route-specific middleware."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "middleware", "psr-15"]
+
+  - id: SLIM004
+    title: "Use route groups for organized API structure"
+    description: "Group related routes with $app->group(). Apply shared middleware to groups. Use for API versioning (/api/v1, /api/v2)."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "routing", "groups", "api"]
+
+  - id: SLIM005
+    title: "Use error middleware for consistent error handling"
+    description: "Add Slim's ErrorMiddleware with custom error handlers. Return JSON errors for APIs. Never expose stack traces in production."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "error-handling", "security"]
+
+  - id: SLIM006
+    title: "Validate all input from requests"
+    description: "Use a validation library (Respect, Valitron) to validate $request->getParsedBody() and query params before processing."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "validation", "security", "input"]
+
+  - id: SLIM007
+    title: "Use invokable action classes instead of closures"
+    description: "Create invokable controller classes with __invoke() for route handlers. Closures are fine for simple routes, but classes are testable."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "controllers", "actions", "testing"]
+
+  - id: SLIM008
+    title: "Use CORS middleware for cross-origin requests"
+    description: "Add CORS middleware that sets Access-Control-Allow-Origin, Methods, and Headers. Handle preflight OPTIONS requests correctly."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "cors", "security", "api"]
+
+  - id: SLIM009
+    title: "Use logging middleware with PSR-3 logger"
+    description: "Use Monolog or another PSR-3 logger. Add logging middleware to capture request/response details for debugging."
+    category: "observability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "logging", "psr-3", "monolog"]
+
+  - id: SLIM010
+    title: "Use JSON body parsing middleware"
+    description: "Add BodyParsingMiddleware for automatic JSON/form parsing. Access parsed data with $request->getParsedBody()."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "json", "body-parsing", "middleware"]
+
+  - id: SLIM011
+    title: "Use environment variables for configuration"
+    description: "Use vlucas/phpdotenv for .env file support. Never hardcode secrets. Access config via DI container."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "configuration", "environment", "security"]
+
+  - id: SLIM012
+    title: "Use JWT or OAuth for API authentication"
+    description: "Use tuupola/slim-jwt-auth or league/oauth2-server for API authentication. Validate tokens in middleware."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "authentication", "jwt", "oauth"]
+
+  - id: SLIM013
+    title: "Use content type negotiation"
+    description: "Check Accept header with $request->getHeaderLine('Accept'). Return appropriate content types (JSON, XML, HTML) based on client preference."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "content-negotiation", "api"]
+
+  - id: SLIM014
+    title: "Use response factories for consistent output"
+    description: "Create response helper functions or a ResponseFactory for consistent JSON responses with status codes and envelope patterns."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "response", "factory", "json"]
+
+  - id: SLIM015
+    title: "Use rate limiting middleware"
+    description: "Implement or use a rate limiting middleware to protect API endpoints. Use Redis or APCu for token bucket storage."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "rate-limiting", "security"]
+
+  - id: SLIM016
+    title: "Use Twig or Plates for HTML rendering"
+    description: "Use slim/twig-view for Twig integration or league/plates for native PHP templates. Both provide auto-escaping by default."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "twig", "templates", "xss"]
+
+  - id: SLIM017
+    title: "Use doctrine/dbal or Eloquent for database access"
+    description: "Use Doctrine DBAL, Eloquent (illuminate/database), or Atlas.Orm for database operations. Never write raw SQL with user input."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "database", "orm", "sql-injection"]
+
+  - id: SLIM018
+    title: "Use PHPUnit with Slim test utilities"
+    description: "Create test classes that build Slim App instances. Use SlimPHP testing patterns to make HTTP requests in tests."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "testing", "phpunit"]
+
+  - id: SLIM019
+    title: "Use named routes for URL generation"
+    description: "Name all routes and use $routeParser->urlFor() for URL generation. Avoids hardcoded URLs that break on route changes."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "routing", "named-routes"]
+
+  - id: SLIM020
+    title: "Use response caching for GET endpoints"
+    description: "Implement Cache-Control, ETag, and Last-Modified headers for cacheable GET endpoints. Use HTTP caching middleware."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["slim"]
+    tags: ["slim", "caching", "http-cache", "performance"]

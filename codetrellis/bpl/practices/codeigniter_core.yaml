@@ -1,0 +1,186 @@
+# CodeIgniter Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.3 - PHP Framework Support
+# Practice IDs: CI001-CI020
+# Category: codeigniter
+# Frameworks: codeigniter
+
+practices:
+  - id: CI001
+    title: "Use CodeIgniter 4 namespaced structure"
+    description: "Use CI4's PSR-4 autoloading with App\\ namespace. Migrate from CI3's auto-loading to proper namespace imports."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "namespaces", "psr-4"]
+
+  - id: CI002
+    title: "Use Query Builder for database queries"
+    description: "Use CI4's Query Builder for safe, parameterized queries. Never concatenate user input into SQL strings."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "database", "query-builder", "sql-injection"]
+
+  - id: CI003
+    title: "Use Models with validation rules"
+    description: "Define $validationRules and $validationMessages in Model classes. Use $allowedFields to prevent mass assignment."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "models", "validation"]
+
+  - id: CI004
+    title: "Use Filters for cross-cutting middleware"
+    description: "Create Filter classes implementing FilterInterface for authentication, CORS, rate limiting, and logging."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "filters", "middleware"]
+
+  - id: CI005
+    title: "Use Migrations for database schema management"
+    description: "Create and version migrations for all schema changes. Use spark migrate for applying and spark migrate:rollback for reverting."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "migrations", "database"]
+
+  - id: CI006
+    title: "Use Entities for data encapsulation"
+    description: "Create Entity classes to encapsulate model data with typed properties, getters/setters, and data transformation."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "entities", "data"]
+
+  - id: CI007
+    title: "Use CSRF protection on all forms"
+    description: "Enable CSRF protection in app/Config/Filters.php. Use csrf_field() in forms. Configure token regeneration per request."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "csrf", "security"]
+
+  - id: CI008
+    title: "Use Services for dependency injection"
+    description: "Register services in app/Config/Services.php. Use service() helper or dependency injection for accessing shared services."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "services", "dependency-injection"]
+
+  - id: CI009
+    title: "Use RESTful resource controllers"
+    description: "Extend ResourceController for API endpoints. Implement index, show, create, update, delete methods with proper HTTP verbs."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "rest", "controllers"]
+
+  - id: CI010
+    title: "Use environment-based configuration"
+    description: "Use .env file for environment-specific config. Access with env() helper. Never commit .env to version control."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "configuration", "environment"]
+
+  - id: CI011
+    title: "Use Spark commands for CLI tasks"
+    description: "Create custom Spark commands for maintenance, imports, and scheduled tasks. Extend BaseCommand."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "cli", "spark", "commands"]
+
+  - id: CI012
+    title: "Use proper route grouping and naming"
+    description: "Group routes by feature and apply shared filters. Use named routes for URL generation with route_to()."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "routing", "groups"]
+
+  - id: CI013
+    title: "Use CodeIgniter logging for debugging"
+    description: "Use log_message() with appropriate levels (emergency, alert, critical, error, warning, notice, info, debug). Configure handlers in Logger config."
+    category: "observability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "logging", "debugging"]
+
+  - id: CI014
+    title: "Use database transactions for data integrity"
+    description: "Wrap multi-table operations in $db->transStart() / $db->transComplete(). Check $db->transStatus() for success."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "database", "transactions"]
+
+  - id: CI015
+    title: "Use the Validation library for input validation"
+    description: "Use \\Config\\Services::validation() with rule sets. Define reusable validation rule groups in app/Config/Validation.php."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "validation", "security"]
+
+  - id: CI016
+    title: "Use caching for expensive operations"
+    description: "Use CI4's Cache library with file, Redis, or Memcached handlers. Cache database results and computed values with TTLs."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "caching", "performance"]
+
+  - id: CI017
+    title: "Use testing support with CIUnitTestCase"
+    description: "Extend CIUnitTestCase for unit tests and FeatureTestCase for HTTP tests. Use DatabaseTestTrait for database testing."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "testing", "phpunit"]
+
+  - id: CI018
+    title: "Use Content Security Policy headers"
+    description: "Configure CSP in app/Config/ContentSecurityPolicy.php. Set proper script-src, style-src, and img-src directives."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "csp", "security", "headers"]
+
+  - id: CI019
+    title: "Use Honeypot for spam prevention"
+    description: "Enable CI4's Honeypot filter for form spam prevention. Configure hidden field names in Honeypot config."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "honeypot", "spam", "security"]
+
+  - id: CI020
+    title: "Use pagination for large result sets"
+    description: "Use Model's paginate() method with Pager service. Configure per-page limits and pagination templates."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["codeigniter"]
+    tags: ["codeigniter", "pagination", "performance"]

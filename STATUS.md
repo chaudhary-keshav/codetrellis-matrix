@@ -1,10 +1,10 @@
-# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq Language Support — STATUS.md
+# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq, Laravel, Symfony, CodeIgniter, Slim, WordPress Language Support — STATUS.md
 
 ## Overview
 
-**CodeTrellis Version**: v5.3.0 (v5.2.0 + Ruby Framework Parsers)
-**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq)
-**Status**: ✅ Session 79 Complete — Ruby Framework Parsers (v5.3.0): 5 new Ruby framework parsers with full regex-based extraction following the established supplementary parser pattern. (1) **Rails** — routes, controllers, models, migrations, jobs, mailers, channels, configs, 40+ ecosystem patterns, Rails 3.x-8.x version detection. (2) **Sinatra** — routes, filters, helpers, templates, settings, middleware, error handlers, classic vs modular detection. (3) **Hanami** — actions, slices, routes, entities, repositories, views, providers, settings, Hanami 1.x-2.1+ support. (4) **Grape** — endpoints, resources, params, entities, helpers, validators, error handlers, mounts, middleware, versioning strategy detection. (5) **Sidekiq** — workers, queues, schedules, batches, middleware, callbacks, configs, periodic jobs, Pro/Enterprise detection. Scanner integration (5 \_parse methods, ~52 new ProjectMatrix fields), compressor (5 new sections), BPL (5 practice YAML files with 85 practices). 42 new unit tests (1 test file), 3-repo scanner evaluation passed (Discourse: 303 models/92 controllers/1029 routes/2269 migrations, Sinatra: 120 routes/20 helpers, Grape: 1391 endpoints/924 params), 3 bugs fixed, 6927 total tests passing, 0 regressions.
+**CodeTrellis Version**: v5.4.0 (v5.3.0 + PHP Framework Parsers)
+**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq), Session 80 (PHP Frameworks: Laravel + Symfony + CodeIgniter + Slim + WordPress)
+**Status**: ✅ Session 80 Complete — PHP Framework Parsers (v5.4.0): 5 new PHP framework parsers with full regex-based extraction following the established supplementary parser pattern. (1) **Laravel** — routes, controllers, models, migrations, middleware, jobs, events, notifications, commands, service providers, policies, observers, form requests, resources, Blade templates, configs, 22 ecosystem patterns (Livewire, Inertia, Jetstream, etc.), Laravel 5.x-11.x version detection. (2) **Symfony** — routes, controllers, entities, services, commands, form types, event subscribers, voters, PHP 8 attributes + legacy annotations, 14 ecosystem patterns (Doctrine, Twig, Messenger, API Platform, etc.), Symfony 3.x-7.x version detection. (3) **CodeIgniter** — routes, controllers, models, entities, filters, libraries, helpers, commands, configs, CI3+CI4 dual support, 5 ecosystem patterns, CI 3.x-4.x version detection. (4) **Slim** — routes, middleware, controllers, DI bindings, error handlers, route groups, configs, PSR-7/PSR-15 support, 8 ecosystem patterns (PHP-DI, Twig, Monolog, etc.), Slim 3.x-4.x version detection. (5) **WordPress** — hooks/actions/filters, custom post types, taxonomies, shortcodes, REST routes, Gutenberg blocks, widgets, admin pages, enqueues, cron, AJAX handlers, meta boxes, settings, plugin/theme detection, 11 ecosystem patterns (WooCommerce, ACF, Elementor, etc.). Scanner integration (5 \_parse methods, ~90 new ProjectMatrix fields), compressor (5 new sections), BPL (5 practice YAML files with 130 practices). 58 new unit tests (1 test file), 15-project scanner evaluation passed (laravel/laravel, koel, monica; symfony-demo, api-platform-demo, wallabag; ci4-appstarter, ci4-shield, bonfire2; slim-skeleton, slim4-skeleton, slim-framework; 3 WP sample projects), 6985 total tests passing, 0 regressions.
 
 ---
 
@@ -5108,4 +5108,91 @@ pytest tests/ -x -q
 New tests:  42 (9 Rails + 7 Sinatra + 8 Hanami + 7 Grape + 10 Sidekiq)
 Previous:  6885 (from Session 78 baseline)
 Total:     6927
+```
+
+## Session 80 — PHP Framework Parsers (v5.4.0)
+
+### Overview
+
+5 new PHP framework parsers following the established supplementary parser pattern (same as Ruby framework parsers in Session 79). Each parser complements the existing base PHP parser with deep framework-specific extraction.
+
+### Parsers Created
+
+| Parser                           | Framework              | Dataclasses | Ecosystem Patterns                                                                                                                          | Version Detection            |
+| -------------------------------- | ---------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `laravel_parser_enhanced.py`     | Laravel 5.x-11.x       | 18          | 22 (Livewire, Inertia, Jetstream, Breeze, Nova, Horizon, Telescope, Sanctum, Passport, Scout, Spatie, Pulse, Pennant, Reverb, Folio, Vapor) | 5.x through 11.x             |
+| `symfony_parser_enhanced.py`     | Symfony 3.x-7.x        | 14          | 14 (Doctrine, Twig, Messenger, Security, API Platform, Mercure, Flex, Webpack Encore, UX, Maker Bundle, Monolog)                            | 3.x through 7.x              |
+| `codeigniter_parser_enhanced.py` | CodeIgniter 3.x-4.x    | 11          | 5 (Shield, Myth:Auth, CI3, CI4)                                                                                                             | 3.x and 4.x (dual support)   |
+| `slim_parser_enhanced.py`        | Slim 3.x-4.x           | 8           | 8 (PHP-DI, Twig, Monolog, Slim3, Slim4)                                                                                                     | 3.x and 4.x                  |
+| `wordpress_parser_enhanced.py`   | WordPress Plugin/Theme | 14          | 11 (WooCommerce, ACF, Elementor, WPML, Yoast, BuddyPress)                                                                                   | N/A (plugin/theme detection) |
+
+### Extraction Capabilities
+
+**Laravel**: routes, controllers, models, migrations, middleware, jobs, events, notifications, commands, service providers, policies, observers, form requests, resources, Blade components, configs. Livewire/Inertia/Jetstream ecosystem detection. API-only detection.
+
+**Symfony**: routes (PHP 8 #[Route] attributes + legacy @Route annotations), controllers, entities (#[ORM\Entity] + @ORM annotations), services (#[Autoconfigure]), commands (#[AsCommand]), form types, event subscribers, voters. Doctrine/Twig/Messenger/API Platform ecosystem.
+
+**CodeIgniter**: routes (CI3 `$route['key']` + CI4 `$routes->get()`), controllers (CI_Controller + BaseController), models (CI_Model + CodeIgniter\Model), entities, filters, libraries, helpers, commands, configs. Dual CI3/CI4 architecture support.
+
+**Slim**: routes ($app->get/post/etc), middleware (PSR-15 + $app->add), controllers, DI container bindings (PHP-DI), error handlers, route groups, configs. PSR-7/PSR-15 support throughout.
+
+**WordPress**: hooks (add_action/add_filter), custom post types (register_post_type), taxonomies (register_taxonomy), shortcodes, REST API routes (register_rest_route), Gutenberg blocks (register_block_type), widgets (WP_Widget), admin pages, enqueue scripts/styles, cron events, AJAX handlers, meta boxes, settings. Plugin Name/Theme Name header detection.
+
+### Files Created
+
+| File                                              | Description                   | ~Lines |
+| ------------------------------------------------- | ----------------------------- | ------ |
+| `codetrellis/laravel_parser_enhanced.py`          | Laravel 5.x-11.x parser       | ~750   |
+| `codetrellis/symfony_parser_enhanced.py`          | Symfony 3.x-7.x parser        | ~600   |
+| `codetrellis/codeigniter_parser_enhanced.py`      | CodeIgniter 3.x-4.x parser    | ~450   |
+| `codetrellis/slim_parser_enhanced.py`             | Slim 3.x-4.x parser           | ~400   |
+| `codetrellis/wordpress_parser_enhanced.py`        | WordPress Plugin/Theme parser | ~550   |
+| `codetrellis/bpl/practices/laravel_core.yaml`     | 30 Laravel best practices     | ~400   |
+| `codetrellis/bpl/practices/symfony_core.yaml`     | 30 Symfony best practices     | ~400   |
+| `codetrellis/bpl/practices/codeigniter_core.yaml` | 20 CodeIgniter best practices | ~280   |
+| `codetrellis/bpl/practices/slim_core.yaml`        | 20 Slim best practices        | ~280   |
+| `codetrellis/bpl/practices/wordpress_core.yaml`   | 30 WordPress best practices   | ~400   |
+| `tests/unit/test_php_framework_parsers.py`        | 58 tests (5 test classes)     | ~1000  |
+
+### Files Modified
+
+| File              | Changes                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| `scanner.py`      | 5 imports, 5 parser inits, ~90 new ProjectMatrix fields, 5 `_parse_*` methods, PHP framework dispatch chain |
+| `compressor.py`   | 5 section dispatch blocks (LARAVEL through WORDPRESS), 5 `_compress_*` methods                              |
+| `bpl/selector.py` | Sub-framework practice filtering for CI/Slim/WP, detected_frameworks loop for all 5 frameworks              |
+
+### Scanner Evaluation Results
+
+| Project               | Framework   | Key Results                                                                                                    |
+| --------------------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
+| laravel/laravel       | Laravel     | 1 route, 1 model, 1 service provider, detected: [laravel]                                                      |
+| koel/koel             | Laravel     | 26 migrations, 2 events, 12 service providers, detected: [laravel, sanctum, scout, spatie]                     |
+| monicahq/monica       | Laravel     | 17 controllers, 1 job, 5 events, detected: [inertia, jetstream, laravel, pulse, sanctum]                       |
+| symfony-demo          | Symfony     | 21 routes, 4 controllers, 2 entities, 3 commands, 6 form types, 4 event subscribers, 1 voter                   |
+| api-platform-demo     | Symfony     | 4 entities, 1 command, 1 voter, detected: [api_platform, doctrine, mercure, security]                          |
+| wallabag              | Symfony     | 7 form types, detected: [doctrine, maker_bundle, monolog, security, symfony, twig]                             |
+| ci4-appstarter        | CodeIgniter | 1 route, 3 controllers, 1 model, detected: [codeigniter, codeigniter4]                                         |
+| ci4-shield            | CodeIgniter | 14 routes, 6 controllers, 1 model, 8 filters, detected: [codeigniter4, shield]                                 |
+| bonfire2              | CodeIgniter | 44 routes, 4 controllers, 2 models, 3 filters, detected: [codeigniter4, shield]                                |
+| slim-skeleton         | Slim        | 4 routes, 1 middleware, 2 DI bindings, detected: [monolog, php_di, slim, slim4]                                |
+| slim4-skeleton        | Slim        | 2 routes, 3 middleware, detected: [monolog, php_di, slim, slim4]                                               |
+| slim-framework        | Slim        | 30 routes, 13 middleware, 7 DI bindings, detected: [monolog, slim, slim3, slim4]                               |
+| wp-sample-plugin      | WordPress   | 9 hooks, 2 CPTs, 1 taxonomy, 1 shortcode, 2 REST routes, 1 block, 1 widget, 2 admin pages, 2 enqueues, 2 AJAX  |
+| wp-sample-theme       | WordPress   | 5 hooks, 1 CPT, 1 taxonomy, 1 shortcode, 2 enqueues, 2 AJAX                                                    |
+| wp-woocommerce-plugin | WordPress   | 7 hooks, 1 CPT, 1 shortcode, 1 REST route, 1 widget, 1 admin page, 2 enqueues, 2 AJAX, detected: [woocommerce] |
+
+### Test Results
+
+```
+pytest tests/unit/test_php_framework_parsers.py -v
+58 passed in 0.08s
+
+pytest tests/ -x -q
+6985 passed, 101 skipped, 1 warning in 23.76s
+✅ ALL TESTS PASSED — 0 failures, 0 regressions
+
+New tests:  58 (14 Laravel + 12 Symfony + 10 CodeIgniter + 8 Slim + 14 WordPress)
+Previous:  6927 (from Session 79 baseline)
+Total:     6985
 ```

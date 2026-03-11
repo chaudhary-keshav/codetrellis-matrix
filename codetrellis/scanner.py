@@ -115,6 +115,13 @@ from codetrellis.sidekiq_parser_enhanced import EnhancedSidekiqParser
 # Import v4.24 PHP language support
 from codetrellis.php_parser_enhanced import EnhancedPhpParser
 
+# Import v5.3 PHP framework parsers (supplementary, run after base PHP parser)
+from codetrellis.laravel_parser_enhanced import EnhancedLaravelParser
+from codetrellis.symfony_parser_enhanced import EnhancedSymfonyParser
+from codetrellis.codeigniter_parser_enhanced import EnhancedCodeIgniterParser
+from codetrellis.slim_parser_enhanced import EnhancedSlimParser
+from codetrellis.wordpress_parser_enhanced import EnhancedWordPressParser
+
 # Import v4.25 Scala language support
 from codetrellis.scala_parser_enhanced import EnhancedScalaParser
 
@@ -1757,6 +1764,88 @@ class ProjectMatrix:
     php_detected_frameworks: List[str] = field(default_factory=list)
     php_dependencies: Dict[str, Any] = field(default_factory=dict)
     php_version: str = ""
+
+    # v5.3: Laravel Framework Support
+    laravel_routes: List[Dict] = field(default_factory=list)
+    laravel_controllers: List[Dict] = field(default_factory=list)
+    laravel_models: List[Dict] = field(default_factory=list)
+    laravel_migrations: List[Dict] = field(default_factory=list)
+    laravel_middleware: List[Dict] = field(default_factory=list)
+    laravel_service_providers: List[Dict] = field(default_factory=list)
+    laravel_jobs: List[Dict] = field(default_factory=list)
+    laravel_events: List[Dict] = field(default_factory=list)
+    laravel_notifications: List[Dict] = field(default_factory=list)
+    laravel_mail: List[Dict] = field(default_factory=list)
+    laravel_policies: List[Dict] = field(default_factory=list)
+    laravel_commands: List[Dict] = field(default_factory=list)
+    laravel_observers: List[Dict] = field(default_factory=list)
+    laravel_form_requests: List[Dict] = field(default_factory=list)
+    laravel_resources: List[Dict] = field(default_factory=list)
+    laravel_blade_components: List[Dict] = field(default_factory=list)
+    laravel_configs: List[Dict] = field(default_factory=list)
+    laravel_detected_frameworks: List[str] = field(default_factory=list)
+    laravel_version: str = ""
+
+    # v5.3: Symfony Framework Support
+    symfony_routes: List[Dict] = field(default_factory=list)
+    symfony_controllers: List[Dict] = field(default_factory=list)
+    symfony_entities: List[Dict] = field(default_factory=list)
+    symfony_services: List[Dict] = field(default_factory=list)
+    symfony_commands: List[Dict] = field(default_factory=list)
+    symfony_event_subscribers: List[Dict] = field(default_factory=list)
+    symfony_form_types: List[Dict] = field(default_factory=list)
+    symfony_voters: List[Dict] = field(default_factory=list)
+    symfony_message_handlers: List[Dict] = field(default_factory=list)
+    symfony_validators: List[Dict] = field(default_factory=list)
+    symfony_twig_extensions: List[Dict] = field(default_factory=list)
+    symfony_bundles: List[Dict] = field(default_factory=list)
+    symfony_configs: List[Dict] = field(default_factory=list)
+    symfony_detected_frameworks: List[str] = field(default_factory=list)
+    symfony_version: str = ""
+
+    # v5.3: CodeIgniter Framework Support
+    codeigniter_routes: List[Dict] = field(default_factory=list)
+    codeigniter_controllers: List[Dict] = field(default_factory=list)
+    codeigniter_models: List[Dict] = field(default_factory=list)
+    codeigniter_entities: List[Dict] = field(default_factory=list)
+    codeigniter_migrations: List[Dict] = field(default_factory=list)
+    codeigniter_filters: List[Dict] = field(default_factory=list)
+    codeigniter_libraries: List[Dict] = field(default_factory=list)
+    codeigniter_helpers: List[Dict] = field(default_factory=list)
+    codeigniter_commands: List[Dict] = field(default_factory=list)
+    codeigniter_configs: List[Dict] = field(default_factory=list)
+    codeigniter_detected_frameworks: List[str] = field(default_factory=list)
+    codeigniter_version: str = ""
+
+    # v5.3: Slim Framework Support
+    slim_routes: List[Dict] = field(default_factory=list)
+    slim_middleware: List[Dict] = field(default_factory=list)
+    slim_controllers: List[Dict] = field(default_factory=list)
+    slim_di_bindings: List[Dict] = field(default_factory=list)
+    slim_error_handlers: List[Dict] = field(default_factory=list)
+    slim_route_groups: List[Dict] = field(default_factory=list)
+    slim_configs: List[Dict] = field(default_factory=list)
+    slim_detected_frameworks: List[str] = field(default_factory=list)
+    slim_version: str = ""
+
+    # v5.3: WordPress Plugin/Theme Support
+    wordpress_hooks: List[Dict] = field(default_factory=list)
+    wordpress_post_types: List[Dict] = field(default_factory=list)
+    wordpress_taxonomies: List[Dict] = field(default_factory=list)
+    wordpress_shortcodes: List[Dict] = field(default_factory=list)
+    wordpress_rest_routes: List[Dict] = field(default_factory=list)
+    wordpress_blocks: List[Dict] = field(default_factory=list)
+    wordpress_widgets: List[Dict] = field(default_factory=list)
+    wordpress_admin_pages: List[Dict] = field(default_factory=list)
+    wordpress_enqueues: List[Dict] = field(default_factory=list)
+    wordpress_cron_events: List[Dict] = field(default_factory=list)
+    wordpress_ajax_handlers: List[Dict] = field(default_factory=list)
+    wordpress_meta_boxes: List[Dict] = field(default_factory=list)
+    wordpress_settings: List[Dict] = field(default_factory=list)
+    wordpress_detected_frameworks: List[str] = field(default_factory=list)
+    wordpress_version: str = ""
+    wordpress_is_plugin: bool = False
+    wordpress_is_theme: bool = False
 
     # v4.25: Scala Language Support (full AST + LSP)
     scala_classes: List[Dict] = field(default_factory=list)
@@ -4263,6 +4352,13 @@ class ProjectScanner:
         # v4.24: PHP parser with all extractors (AST + LSP)
         self.php_parser = EnhancedPhpParser()
 
+        # v5.3: PHP framework parsers
+        self.laravel_parser = EnhancedLaravelParser()
+        self.symfony_parser = EnhancedSymfonyParser()
+        self.codeigniter_parser = EnhancedCodeIgniterParser()
+        self.slim_parser = EnhancedSlimParser()
+        self.wordpress_parser = EnhancedWordPressParser()
+
         # v4.25: Scala parser with all extractors (AST + LSP)
         self.scala_parser = EnhancedScalaParser()
 
@@ -5283,6 +5379,12 @@ class ProjectScanner:
             self._parse_sidekiq(file_path, matrix)
         elif file_info.file_type == "php":
             self._parse_php(file_path, matrix)
+            # v5.3: PHP framework-level parsers (supplementary, run after base PHP parser)
+            self._parse_laravel(file_path, matrix)
+            self._parse_symfony(file_path, matrix)
+            self._parse_codeigniter(file_path, matrix)
+            self._parse_slim(file_path, matrix)
+            self._parse_wordpress(file_path, matrix)
         elif file_info.file_type == "scala":
             self._parse_scala(file_path, matrix)
             # v4.95: Akka is heavily used in Scala projects
@@ -18824,6 +18926,215 @@ class ProjectScanner:
         except Exception as e:
             import logging
             logging.getLogger('codetrellis').debug(f"PHP parse failed for {file_path}: {e}")
+
+    def _parse_laravel(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Laravel framework patterns from PHP file. v5.3."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.laravel_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.laravel_detected_frameworks:
+                    matrix.laravel_detected_frameworks.append(fw)
+            if result.laravel_version and not matrix.laravel_version:
+                matrix.laravel_version = result.laravel_version
+            for r in result.routes:
+                matrix.laravel_routes.append(r if isinstance(r, dict) else vars(r))
+            for c in result.controllers:
+                matrix.laravel_controllers.append(c if isinstance(c, dict) else vars(c))
+            for m in result.models:
+                matrix.laravel_models.append(m if isinstance(m, dict) else vars(m))
+            for mg in result.migrations:
+                matrix.laravel_migrations.append(mg if isinstance(mg, dict) else vars(mg))
+            for mw in result.middleware:
+                matrix.laravel_middleware.append(mw if isinstance(mw, dict) else vars(mw))
+            for sp in result.service_providers:
+                matrix.laravel_service_providers.append(sp if isinstance(sp, dict) else vars(sp))
+            for j in result.jobs:
+                matrix.laravel_jobs.append(j if isinstance(j, dict) else vars(j))
+            for e in result.events:
+                matrix.laravel_events.append(e if isinstance(e, dict) else vars(e))
+            for n in result.notifications:
+                matrix.laravel_notifications.append(n if isinstance(n, dict) else vars(n))
+            for ml in result.mail:
+                matrix.laravel_mail.append(ml if isinstance(ml, dict) else vars(ml))
+            for p in result.policies:
+                matrix.laravel_policies.append(p if isinstance(p, dict) else vars(p))
+            for cmd in result.commands:
+                matrix.laravel_commands.append(cmd if isinstance(cmd, dict) else vars(cmd))
+            for o in result.observers:
+                matrix.laravel_observers.append(o if isinstance(o, dict) else vars(o))
+            for fr in result.form_requests:
+                matrix.laravel_form_requests.append(fr if isinstance(fr, dict) else vars(fr))
+            for res in result.resources:
+                matrix.laravel_resources.append(res if isinstance(res, dict) else vars(res))
+            for b in result.blade_components:
+                matrix.laravel_blade_components.append(b if isinstance(b, dict) else vars(b))
+            for cfg in result.configs:
+                matrix.laravel_configs.append(cfg if isinstance(cfg, dict) else vars(cfg))
+        except Exception:
+            pass
+
+    def _parse_symfony(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Symfony framework patterns from PHP file. v5.3."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.symfony_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.symfony_detected_frameworks:
+                    matrix.symfony_detected_frameworks.append(fw)
+            if result.symfony_version and not matrix.symfony_version:
+                matrix.symfony_version = result.symfony_version
+            for r in result.routes:
+                matrix.symfony_routes.append(r if isinstance(r, dict) else vars(r))
+            for c in result.controllers:
+                matrix.symfony_controllers.append(c if isinstance(c, dict) else vars(c))
+            for e in result.entities:
+                matrix.symfony_entities.append(e if isinstance(e, dict) else vars(e))
+            for s in result.services:
+                matrix.symfony_services.append(s if isinstance(s, dict) else vars(s))
+            for cmd in result.commands:
+                matrix.symfony_commands.append(cmd if isinstance(cmd, dict) else vars(cmd))
+            for es in result.event_subscribers:
+                matrix.symfony_event_subscribers.append(es if isinstance(es, dict) else vars(es))
+            for ft in result.form_types:
+                matrix.symfony_form_types.append(ft if isinstance(ft, dict) else vars(ft))
+            for v in result.voters:
+                matrix.symfony_voters.append(v if isinstance(v, dict) else vars(v))
+            for mh in result.message_handlers:
+                matrix.symfony_message_handlers.append(mh if isinstance(mh, dict) else vars(mh))
+            for val in result.validators:
+                matrix.symfony_validators.append(val if isinstance(val, dict) else vars(val))
+            for te in result.twig_extensions:
+                matrix.symfony_twig_extensions.append(te if isinstance(te, dict) else vars(te))
+            for b in result.bundles:
+                matrix.symfony_bundles.append(b if isinstance(b, dict) else vars(b))
+            for cfg in result.configs:
+                matrix.symfony_configs.append(cfg if isinstance(cfg, dict) else vars(cfg))
+        except Exception:
+            pass
+
+    def _parse_codeigniter(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse CodeIgniter framework patterns from PHP file. v5.3."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.codeigniter_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.codeigniter_detected_frameworks:
+                    matrix.codeigniter_detected_frameworks.append(fw)
+            if result.codeigniter_version and not matrix.codeigniter_version:
+                matrix.codeigniter_version = result.codeigniter_version
+            for r in result.routes:
+                matrix.codeigniter_routes.append(r if isinstance(r, dict) else vars(r))
+            for c in result.controllers:
+                matrix.codeigniter_controllers.append(c if isinstance(c, dict) else vars(c))
+            for m in result.models:
+                matrix.codeigniter_models.append(m if isinstance(m, dict) else vars(m))
+            for e in result.entities:
+                matrix.codeigniter_entities.append(e if isinstance(e, dict) else vars(e))
+            for mg in result.migrations:
+                matrix.codeigniter_migrations.append(mg if isinstance(mg, dict) else vars(mg))
+            for f in result.filters:
+                matrix.codeigniter_filters.append(f if isinstance(f, dict) else vars(f))
+            for lib in result.libraries:
+                matrix.codeigniter_libraries.append(lib if isinstance(lib, dict) else vars(lib))
+            for h in result.helpers:
+                matrix.codeigniter_helpers.append(h if isinstance(h, dict) else vars(h))
+            for cmd in result.commands:
+                matrix.codeigniter_commands.append(cmd if isinstance(cmd, dict) else vars(cmd))
+            for cfg in result.configs:
+                matrix.codeigniter_configs.append(cfg if isinstance(cfg, dict) else vars(cfg))
+        except Exception:
+            pass
+
+    def _parse_slim(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Slim framework patterns from PHP file. v5.3."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.slim_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.slim_detected_frameworks:
+                    matrix.slim_detected_frameworks.append(fw)
+            if result.slim_version and not matrix.slim_version:
+                matrix.slim_version = result.slim_version
+            for r in result.routes:
+                matrix.slim_routes.append(r if isinstance(r, dict) else vars(r))
+            for mw in result.middleware:
+                matrix.slim_middleware.append(mw if isinstance(mw, dict) else vars(mw))
+            for c in result.controllers:
+                matrix.slim_controllers.append(c if isinstance(c, dict) else vars(c))
+            for di in result.di_bindings:
+                matrix.slim_di_bindings.append(di if isinstance(di, dict) else vars(di))
+            for eh in result.error_handlers:
+                matrix.slim_error_handlers.append(eh if isinstance(eh, dict) else vars(eh))
+            for rg in result.route_groups:
+                matrix.slim_route_groups.append(rg if isinstance(rg, dict) else vars(rg))
+            for cfg in result.configs:
+                matrix.slim_configs.append(cfg if isinstance(cfg, dict) else vars(cfg))
+        except Exception:
+            pass
+
+    def _parse_wordpress(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse WordPress Plugin/Theme patterns from PHP file. v5.3."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.wordpress_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.wordpress_detected_frameworks:
+                    matrix.wordpress_detected_frameworks.append(fw)
+            if result.wordpress_version and not matrix.wordpress_version:
+                matrix.wordpress_version = result.wordpress_version
+            if result.is_plugin:
+                matrix.wordpress_is_plugin = True
+            if result.is_theme:
+                matrix.wordpress_is_theme = True
+            for h in result.hooks:
+                matrix.wordpress_hooks.append(h if isinstance(h, dict) else vars(h))
+            for pt in result.post_types:
+                matrix.wordpress_post_types.append(pt if isinstance(pt, dict) else vars(pt))
+            for t in result.taxonomies:
+                matrix.wordpress_taxonomies.append(t if isinstance(t, dict) else vars(t))
+            for sc in result.shortcodes:
+                matrix.wordpress_shortcodes.append(sc if isinstance(sc, dict) else vars(sc))
+            for rr in result.rest_routes:
+                matrix.wordpress_rest_routes.append(rr if isinstance(rr, dict) else vars(rr))
+            for b in result.blocks:
+                matrix.wordpress_blocks.append(b if isinstance(b, dict) else vars(b))
+            for w in result.widgets:
+                matrix.wordpress_widgets.append(w if isinstance(w, dict) else vars(w))
+            for ap in result.admin_pages:
+                matrix.wordpress_admin_pages.append(ap if isinstance(ap, dict) else vars(ap))
+            for e in result.enqueues:
+                matrix.wordpress_enqueues.append(e if isinstance(e, dict) else vars(e))
+            for cr in result.cron_events:
+                matrix.wordpress_cron_events.append(cr if isinstance(cr, dict) else vars(cr))
+            for aj in result.ajax_handlers:
+                matrix.wordpress_ajax_handlers.append(aj if isinstance(aj, dict) else vars(aj))
+            for mb in result.meta_boxes:
+                matrix.wordpress_meta_boxes.append(mb if isinstance(mb, dict) else vars(mb))
+            for s in result.settings:
+                matrix.wordpress_settings.append(s if isinstance(s, dict) else vars(s))
+        except Exception:
+            pass
 
     def _parse_scala(self, file_path: Path, matrix: ProjectMatrix):
         """

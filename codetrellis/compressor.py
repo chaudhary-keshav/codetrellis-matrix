@@ -1902,6 +1902,45 @@ class MatrixCompressor:
             lines.append("")
 
         # ============================================
+        # v5.3: PHP Framework Support
+        # ============================================
+
+        # Laravel Framework
+        laravel_lines = self._compress_laravel(matrix)
+        if laravel_lines:
+            lines.append("[LARAVEL]")
+            lines.extend(laravel_lines)
+            lines.append("")
+
+        # Symfony Framework
+        symfony_lines = self._compress_symfony(matrix)
+        if symfony_lines:
+            lines.append("[SYMFONY]")
+            lines.extend(symfony_lines)
+            lines.append("")
+
+        # CodeIgniter Framework
+        codeigniter_lines = self._compress_codeigniter(matrix)
+        if codeigniter_lines:
+            lines.append("[CODEIGNITER]")
+            lines.extend(codeigniter_lines)
+            lines.append("")
+
+        # Slim Framework
+        slim_lines = self._compress_slim(matrix)
+        if slim_lines:
+            lines.append("[SLIM]")
+            lines.extend(slim_lines)
+            lines.append("")
+
+        # WordPress Plugin/Theme
+        wordpress_lines = self._compress_wordpress(matrix)
+        if wordpress_lines:
+            lines.append("[WORDPRESS]")
+            lines.extend(wordpress_lines)
+            lines.append("")
+
+        # ============================================
         # v4.25: Scala Language Support
         # ============================================
 
@@ -13207,6 +13246,330 @@ class MatrixCompressor:
         if hasattr(matrix, 'php_imports') and matrix.php_imports:
             lines.append(f"# Use statements ({len(matrix.php_imports)}): {', '.join(matrix.php_imports[:20])}")
 
+        return lines
+
+    # ============================================
+    # v5.3: PHP Framework Compression Methods
+    # ============================================
+
+    def _compress_laravel(self, matrix) -> List[str]:
+        """Compress Laravel framework data (routes, controllers, models, migrations, etc.)."""
+        lines = []
+        routes = getattr(matrix, 'laravel_routes', [])
+        controllers = getattr(matrix, 'laravel_controllers', [])
+        models = getattr(matrix, 'laravel_models', [])
+        if not routes and not controllers and not models:
+            return lines
+        frameworks = getattr(matrix, 'laravel_detected_frameworks', [])
+        version = getattr(matrix, 'laravel_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:15])}")
+        if version:
+            lines.append(f"# Laravel version: {version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                mw = f"|mw:{','.join(r.get('middleware', [])[:3])}" if r.get('middleware') else ""
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('uri', '/')}{mw}|{r.get('action', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if controllers:
+            lines.append(f"## Controllers ({len(controllers)})")
+            for c in controllers[:30]:
+                f = c.get('file', '').split('/')[-1]
+                methods = ','.join(c.get('methods', [])[:5])
+                lines.append(f"  {c.get('name', '?')}|methods:{methods}|{f}")
+        if models:
+            lines.append(f"## Models ({len(models)})")
+            for m in models[:30]:
+                f = m.get('file', '').split('/')[-1]
+                rels = ','.join(m.get('relationships', [])[:3])
+                lines.append(f"  {m.get('name', '?')}|table:{m.get('table', '?')}|rels:{rels}|{f}")
+        migrations = getattr(matrix, 'laravel_migrations', [])
+        if migrations:
+            lines.append(f"## Migrations ({len(migrations)})")
+            for mg in migrations[:20]:
+                lines.append(f"  {mg.get('table', '?')}|{mg.get('operation', '?')}")
+        middleware = getattr(matrix, 'laravel_middleware', [])
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for mw in middleware[:15]:
+                lines.append(f"  {mw.get('name', '?')}")
+        jobs = getattr(matrix, 'laravel_jobs', [])
+        if jobs:
+            lines.append(f"## Jobs ({len(jobs)})")
+            for j in jobs[:15]:
+                lines.append(f"  {j.get('name', '?')}|queue:{j.get('queue', 'default')}")
+        events = getattr(matrix, 'laravel_events', [])
+        if events:
+            lines.append(f"## Events ({len(events)})")
+            for e in events[:15]:
+                lines.append(f"  {e.get('name', '?')}")
+        commands = getattr(matrix, 'laravel_commands', [])
+        if commands:
+            lines.append(f"## Commands ({len(commands)})")
+            for cmd in commands[:15]:
+                lines.append(f"  {cmd.get('signature', cmd.get('name', '?'))}")
+        policies = getattr(matrix, 'laravel_policies', [])
+        if policies:
+            lines.append(f"## Policies ({len(policies)})")
+            for p in policies[:10]:
+                lines.append(f"  {p.get('name', '?')}|model:{p.get('model', '?')}")
+        form_requests = getattr(matrix, 'laravel_form_requests', [])
+        if form_requests:
+            lines.append(f"## FormRequests ({len(form_requests)})")
+            for fr in form_requests[:10]:
+                lines.append(f"  {fr.get('name', '?')}")
+        resources = getattr(matrix, 'laravel_resources', [])
+        if resources:
+            lines.append(f"## Resources ({len(resources)})")
+            for res in resources[:10]:
+                lines.append(f"  {res.get('name', '?')}")
+        return lines
+
+    def _compress_symfony(self, matrix) -> List[str]:
+        """Compress Symfony framework data (routes, controllers, entities, services, etc.)."""
+        lines = []
+        routes = getattr(matrix, 'symfony_routes', [])
+        controllers = getattr(matrix, 'symfony_controllers', [])
+        entities = getattr(matrix, 'symfony_entities', [])
+        if not routes and not controllers and not entities:
+            return lines
+        frameworks = getattr(matrix, 'symfony_detected_frameworks', [])
+        version = getattr(matrix, 'symfony_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:15])}")
+        if version:
+            lines.append(f"# Symfony version: {version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {','.join(r.get('methods', ['ANY']))} {r.get('path', '/')}|{r.get('name', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if controllers:
+            lines.append(f"## Controllers ({len(controllers)})")
+            for c in controllers[:30]:
+                f = c.get('file', '').split('/')[-1]
+                actions = ','.join(c.get('actions', [])[:5])
+                lines.append(f"  {c.get('name', '?')}|actions:{actions}|{f}")
+        if entities:
+            lines.append(f"## Entities ({len(entities)})")
+            for e in entities[:30]:
+                f = e.get('file', '').split('/')[-1]
+                cols = ','.join(e.get('columns', [])[:5])
+                lines.append(f"  {e.get('name', '?')}|table:{e.get('table', '?')}|cols:{cols}|{f}")
+        services = getattr(matrix, 'symfony_services', [])
+        if services:
+            lines.append(f"## Services ({len(services)})")
+            for s in services[:20]:
+                lines.append(f"  {s.get('id', '?')}|class:{s.get('class_name', '?')}")
+        commands = getattr(matrix, 'symfony_commands', [])
+        if commands:
+            lines.append(f"## Commands ({len(commands)})")
+            for cmd in commands[:15]:
+                lines.append(f"  {cmd.get('name', '?')}")
+        event_subs = getattr(matrix, 'symfony_event_subscribers', [])
+        if event_subs:
+            lines.append(f"## EventSubscribers ({len(event_subs)})")
+            for es in event_subs[:10]:
+                lines.append(f"  {es.get('name', '?')}")
+        form_types = getattr(matrix, 'symfony_form_types', [])
+        if form_types:
+            lines.append(f"## FormTypes ({len(form_types)})")
+            for ft in form_types[:10]:
+                lines.append(f"  {ft.get('name', '?')}")
+        voters = getattr(matrix, 'symfony_voters', [])
+        if voters:
+            lines.append(f"## Voters ({len(voters)})")
+            for v in voters[:10]:
+                lines.append(f"  {v.get('name', '?')}|subject:{v.get('subject', '?')}")
+        msg_handlers = getattr(matrix, 'symfony_message_handlers', [])
+        if msg_handlers:
+            lines.append(f"## MessageHandlers ({len(msg_handlers)})")
+            for mh in msg_handlers[:10]:
+                lines.append(f"  {mh.get('name', '?')}|handles:{mh.get('handles', '?')}")
+        return lines
+
+    def _compress_codeigniter(self, matrix) -> List[str]:
+        """Compress CodeIgniter framework data (routes, controllers, models, etc.)."""
+        lines = []
+        routes = getattr(matrix, 'codeigniter_routes', [])
+        controllers = getattr(matrix, 'codeigniter_controllers', [])
+        models = getattr(matrix, 'codeigniter_models', [])
+        if not routes and not controllers and not models:
+            return lines
+        frameworks = getattr(matrix, 'codeigniter_detected_frameworks', [])
+        version = getattr(matrix, 'codeigniter_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# CodeIgniter version: {version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{r.get('handler', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if controllers:
+            lines.append(f"## Controllers ({len(controllers)})")
+            for c in controllers[:30]:
+                f = c.get('file', '').split('/')[-1]
+                methods = ','.join(c.get('methods', [])[:5])
+                lines.append(f"  {c.get('name', '?')}|methods:{methods}|{f}")
+        if models:
+            lines.append(f"## Models ({len(models)})")
+            for m in models[:30]:
+                f = m.get('file', '').split('/')[-1]
+                lines.append(f"  {m.get('name', '?')}|table:{m.get('table', '?')}|{f}")
+        migrations = getattr(matrix, 'codeigniter_migrations', [])
+        if migrations:
+            lines.append(f"## Migrations ({len(migrations)})")
+            for mg in migrations[:20]:
+                lines.append(f"  {mg.get('table', mg.get('name', '?'))}")
+        filters = getattr(matrix, 'codeigniter_filters', [])
+        if filters:
+            lines.append(f"## Filters ({len(filters)})")
+            for fl in filters[:15]:
+                lines.append(f"  {fl.get('name', '?')}")
+        libraries = getattr(matrix, 'codeigniter_libraries', [])
+        if libraries:
+            lines.append(f"## Libraries ({len(libraries)})")
+            for lib in libraries[:15]:
+                lines.append(f"  {lib.get('name', '?')}")
+        return lines
+
+    def _compress_slim(self, matrix) -> List[str]:
+        """Compress Slim framework data (routes, middleware, controllers, DI)."""
+        lines = []
+        routes = getattr(matrix, 'slim_routes', [])
+        middleware = getattr(matrix, 'slim_middleware', [])
+        if not routes and not middleware:
+            return lines
+        frameworks = getattr(matrix, 'slim_detected_frameworks', [])
+        version = getattr(matrix, 'slim_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Slim version: {version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{r.get('handler', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for mw in middleware[:15]:
+                lines.append(f"  {mw.get('name', '?')}")
+        controllers = getattr(matrix, 'slim_controllers', [])
+        if controllers:
+            lines.append(f"## Controllers ({len(controllers)})")
+            for c in controllers[:20]:
+                f = c.get('file', '').split('/')[-1]
+                lines.append(f"  {c.get('name', '?')}|{f}")
+        di_bindings = getattr(matrix, 'slim_di_bindings', [])
+        if di_bindings:
+            lines.append(f"## DI Bindings ({len(di_bindings)})")
+            for di in di_bindings[:15]:
+                lines.append(f"  {di.get('name', '?')}|factory:{di.get('is_factory', False)}")
+        route_groups = getattr(matrix, 'slim_route_groups', [])
+        if route_groups:
+            lines.append(f"## RouteGroups ({len(route_groups)})")
+            for rg in route_groups[:10]:
+                lines.append(f"  {rg.get('prefix', '/')}")
+        return lines
+
+    def _compress_wordpress(self, matrix) -> List[str]:
+        """Compress WordPress framework data (hooks, post types, REST, blocks, etc.)."""
+        lines = []
+        hooks = getattr(matrix, 'wordpress_hooks', [])
+        post_types = getattr(matrix, 'wordpress_post_types', [])
+        rest_routes = getattr(matrix, 'wordpress_rest_routes', [])
+        if not hooks and not post_types and not rest_routes:
+            return lines
+        frameworks = getattr(matrix, 'wordpress_detected_frameworks', [])
+        version = getattr(matrix, 'wordpress_version', '')
+        is_plugin = getattr(matrix, 'wordpress_is_plugin', False)
+        is_theme = getattr(matrix, 'wordpress_is_theme', False)
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:15])}")
+        if version:
+            lines.append(f"# WordPress version: {version}")
+        if is_plugin:
+            lines.append("# Type: Plugin")
+        if is_theme:
+            lines.append("# Type: Theme")
+        if hooks:
+            actions = [h for h in hooks if h.get('kind') == 'action']
+            filters = [h for h in hooks if h.get('kind') == 'filter']
+            if actions:
+                lines.append(f"## Actions ({len(actions)})")
+                for a in actions[:30]:
+                    f = a.get('file', '').split('/')[-1]
+                    lines.append(f"  {a.get('name', '?')}|cb:{a.get('callback', '?')}|pri:{a.get('priority', 10)}|{f}")
+                if len(actions) > 30:
+                    lines.append(f"  # ... and {len(actions) - 30} more actions")
+            if filters:
+                lines.append(f"## Filters ({len(filters)})")
+                for fl in filters[:30]:
+                    f = fl.get('file', '').split('/')[-1]
+                    lines.append(f"  {fl.get('name', '?')}|cb:{fl.get('callback', '?')}|{f}")
+                if len(filters) > 30:
+                    lines.append(f"  # ... and {len(filters) - 30} more filters")
+        if post_types:
+            lines.append(f"## CustomPostTypes ({len(post_types)})")
+            for pt in post_types[:15]:
+                rest = "|rest" if pt.get('show_in_rest') else ""
+                lines.append(f"  {pt.get('name', '?')}|label:{pt.get('label', '?')}{rest}")
+        taxonomies = getattr(matrix, 'wordpress_taxonomies', [])
+        if taxonomies:
+            lines.append(f"## Taxonomies ({len(taxonomies)})")
+            for t in taxonomies[:15]:
+                lines.append(f"  {t.get('name', '?')}|types:{','.join(t.get('post_types', [])[:3])}")
+        shortcodes = getattr(matrix, 'wordpress_shortcodes', [])
+        if shortcodes:
+            lines.append(f"## Shortcodes ({len(shortcodes)})")
+            for sc in shortcodes[:15]:
+                lines.append(f"  [{sc.get('tag', '?')}]|cb:{sc.get('callback', '?')}")
+        if rest_routes:
+            lines.append(f"## REST Routes ({len(rest_routes)})")
+            for rr in rest_routes[:30]:
+                f = rr.get('file', '').split('/')[-1]
+                lines.append(f"  {rr.get('method', 'GET')} /{rr.get('namespace', '')}{rr.get('route', '')}|{f}")
+            if len(rest_routes) > 30:
+                lines.append(f"  # ... and {len(rest_routes) - 30} more REST routes")
+        blocks = getattr(matrix, 'wordpress_blocks', [])
+        if blocks:
+            lines.append(f"## Blocks ({len(blocks)})")
+            for b in blocks[:15]:
+                dyn = "|dynamic" if b.get('is_dynamic') else ""
+                lines.append(f"  {b.get('name', '?')}{dyn}")
+        widgets = getattr(matrix, 'wordpress_widgets', [])
+        if widgets:
+            lines.append(f"## Widgets ({len(widgets)})")
+            for w in widgets[:10]:
+                lines.append(f"  {w.get('name', '?')}")
+        admin_pages = getattr(matrix, 'wordpress_admin_pages', [])
+        if admin_pages:
+            lines.append(f"## AdminPages ({len(admin_pages)})")
+            for ap in admin_pages[:10]:
+                lines.append(f"  {ap.get('title', '?')}|slug:{ap.get('slug', '?')}")
+        ajax = getattr(matrix, 'wordpress_ajax_handlers', [])
+        if ajax:
+            lines.append(f"## AJAX ({len(ajax)})")
+            for aj in ajax[:15]:
+                nopriv = "|nopriv" if aj.get('is_nopriv') else ""
+                lines.append(f"  {aj.get('action', '?')}{nopriv}|cb:{aj.get('callback', '?')}")
+        cron = getattr(matrix, 'wordpress_cron_events', [])
+        if cron:
+            lines.append(f"## Cron ({len(cron)})")
+            for cr in cron[:10]:
+                lines.append(f"  {cr.get('hook', '?')}|{cr.get('recurrence', '?')}")
         return lines
 
     # ============================================

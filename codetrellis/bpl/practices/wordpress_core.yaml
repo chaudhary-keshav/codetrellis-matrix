@@ -1,0 +1,276 @@
+# WordPress Plugin/Theme Development Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.3 - PHP Framework Support
+# Practice IDs: WP001-WP030
+# Category: wordpress
+# Frameworks: wordpress
+
+practices:
+  - id: WP001
+    title: "Sanitize all input and escape all output"
+    description: "Use sanitize_text_field(), sanitize_email(), absint() for input. Use esc_html(), esc_attr(), esc_url(), wp_kses() for output. Never trust user data."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "security", "sanitization", "escaping"]
+
+  - id: WP002
+    title: "Use nonces for form and AJAX security"
+    description: "Generate nonces with wp_nonce_field() and wp_create_nonce(). Verify with wp_verify_nonce() and check_ajax_referer(). Nonces prevent CSRF attacks."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "security", "nonces", "csrf"]
+
+  - id: WP003
+    title: "Use $wpdb->prepare() for all database queries"
+    description: "Always use $wpdb->prepare() with placeholders (%s, %d, %f) for custom queries. Never concatenate variables into SQL. Use WP_Query for post queries."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "security", "database", "sql-injection"]
+
+  - id: WP004
+    title: "Use hooks (actions and filters) for extensibility"
+    description: "Use do_action() and apply_filters() to make your plugin extensible. Follow WordPress naming: {plugin_prefix}_{hook_name}."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "hooks", "actions", "filters"]
+
+  - id: WP005
+    title: "Prefix all global functions, classes, and constants"
+    description: "Prefix everything with your plugin/theme slug to avoid naming collisions. Use namespaces (PHP 5.6+) or unique prefixes (myplugin_function_name)."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "naming", "prefix", "collisions"]
+
+  - id: WP006
+    title: "Use wp_enqueue_script/style for asset loading"
+    description: "Always use wp_enqueue_script() and wp_enqueue_style() with proper dependencies. Use wp_localize_script() or wp_add_inline_script() for JS data."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "assets", "enqueue", "scripts"]
+
+  - id: WP007
+    title: "Use capabilities and current_user_can() for authorization"
+    description: "Check user capabilities before performing privileged operations. Use current_user_can('manage_options') not is_admin(). Define custom capabilities."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "security", "capabilities", "authorization"]
+
+  - id: WP008
+    title: "Use the Settings API for options pages"
+    description: "Use register_setting(), add_settings_section(), add_settings_field() for admin options. Data is validated, sanitized, and CSRF-protected automatically."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "settings-api", "admin", "options"]
+
+  - id: WP009
+    title: "Use register_post_type with show_in_rest for Gutenberg"
+    description: "Register custom post types with 'show_in_rest' => true for block editor support. Define proper supports, labels, and capabilities."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "custom-post-types", "gutenberg", "rest"]
+
+  - id: WP010
+    title: "Use WordPress REST API for AJAX operations"
+    description: "Use register_rest_route() for new AJAX endpoints instead of admin-ajax.php. REST routes are RESTful, cached, and support authentication."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "rest-api", "ajax"]
+
+  - id: WP011
+    title: "Use transients for caching expensive operations"
+    description: "Use set_transient()/get_transient() for caching API calls, complex queries, and computed data. Set appropriate expiration times."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "transients", "caching", "performance"]
+
+  - id: WP012
+    title: "Use WP_Query for post retrieval"
+    description: "Use WP_Query or get_posts() instead of direct database queries for posts. Supports caching, filters, and is future-proof."
+    category: "api_design"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "wp-query", "database", "posts"]
+
+  - id: WP013
+    title: "Use text domain for internationalization"
+    description: "Wrap all user-facing strings in __(), _e(), esc_html__(), etc. Load text domain with load_plugin_textdomain(). Use proper text domain matching slug."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "i18n", "internationalization", "text-domain"]
+
+  - id: WP014
+    title: "Use activation and deactivation hooks"
+    description: "Use register_activation_hook() for setup (create tables, add options). Use register_deactivation_hook() for cleanup. Use uninstall.php for removal."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "activation", "deactivation", "lifecycle"]
+
+  - id: WP015
+    title: "Use WP-Cron for scheduled tasks"
+    description: "Use wp_schedule_event() for recurring tasks. Define custom intervals with cron_schedules filter. Check wp_next_scheduled() before scheduling."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "cron", "scheduling"]
+
+  - id: WP016
+    title: "Validate and sanitize REST API input"
+    description: "Define args with 'validate_callback' and 'sanitize_callback' in register_rest_route(). Use WP_REST_Request methods for safe access."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "rest-api", "validation", "security"]
+
+  - id: WP017
+    title: "Use permission_callback in REST routes"
+    description: "Always set 'permission_callback' in REST route registration. Return true for public, or check capabilities/nonces for protected endpoints."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "rest-api", "permissions", "security"]
+
+  - id: WP018
+    title: "Use block.json for Gutenberg block registration"
+    description: "Register blocks with block.json metadata file. Declare dependencies, attributes, and supports declaratively for better tooling."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "gutenberg", "blocks", "block-json"]
+
+  - id: WP019
+    title: "Use dbDelta for custom table creation"
+    description: "Use dbDelta() in activation hooks for creating/updating custom tables. Follow WordPress table naming conventions ($wpdb->prefix)."
+    category: "data_integrity"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "database", "dbdelta", "tables"]
+
+  - id: WP020
+    title: "Use add_meta_box for custom post editing fields"
+    description: "Register meta boxes with add_meta_box(). Save data with save_post hook. Use wp_nonce_field() for security. Check autosave and permissions."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "meta-boxes", "admin"]
+
+  - id: WP021
+    title: "Use WordPress coding standards"
+    description: "Follow WordPress PHP, CSS, HTML, and JS coding standards. Use PHPCS with WordPress ruleset. Use Yoda conditions for comparisons."
+    category: "code_quality"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "coding-standards", "phpcs"]
+
+  - id: WP022
+    title: "Use admin notices for user communication"
+    description: "Use admin_notices hook with notice-success, notice-error, notice-warning, notice-info classes. Make notices dismissible with is-dismissible."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "admin-notices", "ui"]
+
+  - id: WP023
+    title: "Use wp_remote_get/post for external HTTP requests"
+    description: "Use wp_remote_get(), wp_remote_post() for HTTP requests. Handle errors with is_wp_error(). Set timeouts. Never use file_get_contents() or curl directly."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "http", "api", "security"]
+
+  - id: WP024
+    title: "Use update_option with autoload=false for large data"
+    description: "Set autoload to 'no' for large options not needed on every page load. This reduces memory usage and query time."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "options", "performance", "autoload"]
+
+  - id: WP025
+    title: "Use late static binding and OOP patterns"
+    description: "Structure plugin code with classes, interfaces, and traits. Use singleton for main plugin class. Follow PSR-4 for autoloading."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "oop", "architecture", "autoloading"]
+
+  - id: WP026
+    title: "Use WordPress PHPUnit test framework"
+    description: "Use WP_UnitTestCase for integration tests. Use wp scaffold plugin-tests for setup. Test hooks, filters, and REST endpoints."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "testing", "phpunit"]
+
+  - id: WP027
+    title: "Use the Customizer API for theme options"
+    description: "Use customize_register hook with WP_Customize_Manager for theme settings. Supports live preview, sections, controls, and settings."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "customizer", "theme", "options"]
+
+  - id: WP028
+    title: "Handle plugin updates gracefully"
+    description: "Check plugin version on admin_init. Run upgrade routines for schema/data changes. Use update_option() to track version."
+    category: "data_integrity"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "updates", "upgrade", "versioning"]
+
+  - id: WP029
+    title: "Use post meta and term meta for custom field storage"
+    description: "Use update_post_meta/get_post_meta for custom data. Register meta with register_meta() for REST API exposure and type validation."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "post-meta", "custom-fields"]
+
+  - id: WP030
+    title: "Use wp_kses for HTML whitelist filtering"
+    description: "Use wp_kses_post() for post content and wp_kses() with custom allowed HTML for user-generated content. Never use html_entity_decode() on untrusted input."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["wordpress"]
+    tags: ["wordpress", "kses", "html", "security"]

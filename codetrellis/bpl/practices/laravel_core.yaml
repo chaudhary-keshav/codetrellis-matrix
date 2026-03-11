@@ -1,0 +1,276 @@
+# Laravel Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.3 - PHP Framework Support
+# Practice IDs: LARAVEL001-LARAVEL030
+# Category: laravel
+# Frameworks: laravel
+
+practices:
+  - id: LARAVEL001
+    title: "Use form requests for validation instead of inline rules"
+    description: "Create dedicated FormRequest classes for complex validation logic. This keeps controllers thin and makes validation reusable and testable."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "validation", "form-request"]
+
+  - id: LARAVEL002
+    title: "Use Eloquent relationships with eager loading"
+    description: "Define relationships on models and use with() for eager loading to prevent N+1 query problems. Use preventLazyLoading() in AppServiceProvider for strict mode."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "eloquent", "performance", "n-plus-one"]
+
+  - id: LARAVEL003
+    title: "Never store secrets in config files — use .env"
+    description: "Use env() in config files, never hardcode API keys, passwords, or secrets. Add sensitive keys to .env.example with empty values."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "security", "environment"]
+
+  - id: LARAVEL004
+    title: "Use policies for authorization logic"
+    description: "Create Policy classes for authorization instead of inline Gate checks or manual if statements. Register policies in AuthServiceProvider."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "authorization", "policies"]
+
+  - id: LARAVEL005
+    title: "Use database transactions for multi-model operations"
+    description: "Wrap operations that touch multiple tables in DB::transaction() to ensure atomicity and data consistency."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "database", "transactions"]
+
+  - id: LARAVEL006
+    title: "Use jobs and queues for long-running tasks"
+    description: "Dispatch jobs to queues for email sending, file processing, API calls, and other I/O-bound tasks. Never block the HTTP request cycle."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "queues", "jobs", "performance"]
+
+  - id: LARAVEL007
+    title: "Use route model binding for cleaner controllers"
+    description: "Use implicit and explicit route model binding instead of manual Model::findOrFail() calls. Customize resolution with resolveRouteBinding()."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "routing", "model-binding"]
+
+  - id: LARAVEL008
+    title: "Use API resources for response transformation"
+    description: "Create JsonResource and ResourceCollection classes to control JSON output shape. Never return Eloquent models directly from API endpoints."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "api", "resources"]
+
+  - id: LARAVEL009
+    title: "Use middleware for cross-cutting concerns"
+    description: "Create middleware for authentication, rate limiting, CORS, request logging, and header manipulation. Register globally or per-route."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "middleware", "architecture"]
+
+  - id: LARAVEL010
+    title: "Use migrations with proper column types and indexes"
+    description: "Define schema with correct column types, nullable constraints, foreign keys, and indexes. Never edit existing migrations — create new ones."
+    category: "data_integrity"
+    severity: "critical"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "migrations", "database", "indexes"]
+
+  - id: LARAVEL011
+    title: "Use events and listeners for decoupled side effects"
+    description: "Dispatch events for significant domain actions (OrderPlaced, UserRegistered). Attach listeners for email, logging, analytics — keeps models lean."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "events", "listeners", "decoupling"]
+
+  - id: LARAVEL012
+    title: "Use config caching in production"
+    description: "Run php artisan config:cache and route:cache in production deployments. Never use env() outside config files — it returns null when cached."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "config", "performance", "deployment"]
+
+  - id: LARAVEL013
+    title: "Use Sanctum or Passport for API authentication"
+    description: "Use Laravel Sanctum for SPA/mobile token auth, or Passport for full OAuth2. Never roll custom token authentication."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "authentication", "sanctum", "passport"]
+
+  - id: LARAVEL014
+    title: "Use service providers for dependency registration"
+    description: "Register bindings, singletons, and service configuration in service providers. Use deferred providers for heavy services."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "service-provider", "dependency-injection"]
+
+  - id: LARAVEL015
+    title: "Use mass assignment protection with $fillable"
+    description: "Define $fillable or $guarded on every Eloquent model. Prefer $fillable for explicit whitelisting of mass-assignable attributes."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "eloquent", "mass-assignment", "security"]
+
+  - id: LARAVEL016
+    title: "Use query scopes for reusable query logic"
+    description: "Define local and global scopes on Eloquent models for common query patterns. Scopes are composable and testable."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "eloquent", "scopes"]
+
+  - id: LARAVEL017
+    title: "Use Blade components instead of @include"
+    description: "Create Blade components (class-based or anonymous) for reusable UI chunks. Components support slots, attributes, and are more composable than @include."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "blade", "components", "views"]
+
+  - id: LARAVEL018
+    title: "Use observers for model lifecycle hooks"
+    description: "Create Observer classes for complex model event handling (creating, updating, deleting). Register in AppServiceProvider or use ObservedBy attribute in Laravel 11."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "eloquent", "observers"]
+
+  - id: LARAVEL019
+    title: "Use rate limiting on API routes"
+    description: "Configure rate limiting in RouteServiceProvider using RateLimiter::for(). Apply throttle middleware to API routes to prevent abuse."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "rate-limiting", "api", "security"]
+
+  - id: LARAVEL020
+    title: "Use chunking for large dataset processing"
+    description: "Use chunk(), chunkById(), lazy(), or cursor() when processing large result sets. Never load thousands of records into memory at once."
+    category: "performance"
+    severity: "critical"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "eloquent", "performance", "memory"]
+
+  - id: LARAVEL021
+    title: "Use CSRF protection on all state-changing routes"
+    description: "Laravel includes CSRF middleware by default. Never disable it. Use @csrf in forms and ensure SPA requests include the X-XSRF-TOKEN header."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "csrf", "security"]
+
+  - id: LARAVEL022
+    title: "Use named routes for URL generation"
+    description: "Always name routes and use route() helper for URL generation. Avoid hardcoded URLs — named routes survive route changes."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "routing", "named-routes"]
+
+  - id: LARAVEL023
+    title: "Use testing with factories and seeders"
+    description: "Use model factories to generate test data. Write feature tests for HTTP endpoints and unit tests for business logic."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "testing", "factories"]
+
+  - id: LARAVEL024
+    title: "Use Artisan commands for one-off operations"
+    description: "Create Artisan commands for data migrations, imports, and maintenance tasks. Never modify production data via tinker."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "artisan", "commands"]
+
+  - id: LARAVEL025
+    title: "Use notifications for multi-channel messaging"
+    description: "Use Laravel Notifications for email, SMS, Slack, and database notifications. Implement toMail(), toSlack(), etc. for each channel."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "notifications", "multi-channel"]
+
+  - id: LARAVEL026
+    title: "Use caching strategically for expensive operations"
+    description: "Use Cache::remember() for expensive queries and API calls. Set appropriate TTLs and use cache tags for group invalidation."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "caching", "performance"]
+
+  - id: LARAVEL027
+    title: "Use accessors and mutators for data transformation"
+    description: "Use Attribute casts and accessors/mutators (Laravel 9+ attribute methods) for consistent data transformation at the model level."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "eloquent", "accessors", "mutators"]
+
+  - id: LARAVEL028
+    title: "Use signed URLs for secure temporary access"
+    description: "Use URL::signedRoute() and URL::temporarySignedRoute() for email verification, download links, and unsubscribe links."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "signed-urls", "security"]
+
+  - id: LARAVEL029
+    title: "Use action classes for complex business operations"
+    description: "Extract complex multi-step operations into invokable Action classes. Actions are single-responsibility, testable, and reusable across controllers."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "actions", "architecture", "solid"]
+
+  - id: LARAVEL030
+    title: "Use database seeders for reproducible test data"
+    description: "Create seeders for development and testing environments. Use factories inside seeders. Never run seeders in production."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["laravel"]
+    tags: ["laravel", "seeders", "testing", "database"]

@@ -1300,6 +1300,20 @@ class ProjectContext:
                 if mapped:
                     context.frameworks.add(mapped)
 
+        # v5.3: Also detect frameworks from framework-specific detected lists
+        for fw_prefix, fw_name in [
+            ('laravel', 'laravel'), ('symfony', 'symfony'),
+            ('codeigniter', 'codeigniter'), ('slim', 'slim'),
+            ('wordpress', 'wordpress'),
+        ]:
+            fw_detected = getattr(matrix, f'{fw_prefix}_detected_frameworks', [])
+            if fw_detected:
+                context.frameworks.add(fw_name)
+                for fw in fw_detected:
+                    mapped = php_fw_mapping.get(fw)
+                    if mapped:
+                        context.frameworks.add(mapped)
+
         logger.debug(f"PHP artifact count: {php_count}")
 
         # ==== Scala artifact counts (v4.25) ====
@@ -4759,7 +4773,7 @@ class PracticeSelector:
                 continue
 
             # PHP practices: require php in context (v4.24)
-            # Sub-framework checks: Laravel, Symfony
+            # Sub-framework checks: Laravel, Symfony, CodeIgniter, Slim, WordPress (v5.3)
             if "php" in practice_frameworks:
                 if not has_php:
                     continue
@@ -4768,6 +4782,15 @@ class PracticeSelector:
                         continue
                 if "symfony" in practice_frameworks:
                     if "symfony" not in context_frameworks:
+                        continue
+                if "codeigniter" in practice_frameworks:
+                    if "codeigniter" not in context_frameworks:
+                        continue
+                if "slim" in practice_frameworks:
+                    if "slim" not in context_frameworks:
+                        continue
+                if "wordpress" in practice_frameworks:
+                    if "wordpress" not in context_frameworks:
                         continue
                 result.append(practice)
                 continue
