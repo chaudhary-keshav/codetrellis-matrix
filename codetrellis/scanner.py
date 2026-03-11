@@ -81,6 +81,15 @@ from codetrellis.csharp_parser_enhanced import EnhancedCSharpParser
 # Import v4.14 Rust language support
 from codetrellis.rust_parser_enhanced import EnhancedRustParser
 
+# Import v5.4 Rust framework parsers (framework-level, runs on .rs files after base Rust parser)
+from codetrellis.actix_parser_enhanced import EnhancedActixParser
+from codetrellis.axum_parser_enhanced import EnhancedAxumParser
+from codetrellis.rocket_parser_enhanced import EnhancedRocketParser
+from codetrellis.warp_parser_enhanced import EnhancedWarpParser
+from codetrellis.diesel_parser_enhanced import EnhancedDieselParser
+from codetrellis.seaorm_parser_enhanced import EnhancedSeaORMParser
+from codetrellis.tauri_parser_enhanced import EnhancedTauriParser
+
 # Import v4.15 SQL language support
 from codetrellis.sql_parser_enhanced import EnhancedSQLParser
 
@@ -733,6 +742,79 @@ class ProjectMatrix:
     rust_modules: List[str] = field(default_factory=list)
     rust_dependencies: Dict[str, Any] = field(default_factory=dict)
     rust_detected_frameworks: List[str] = field(default_factory=list)
+
+    # v5.4: Rust Framework Support (Actix Web, Axum, Rocket, Warp, Diesel, SeaORM, Tauri)
+    # Actix Web
+    actix_routes: List[Dict] = field(default_factory=list)
+    actix_scopes: List[Dict] = field(default_factory=list)
+    actix_middleware: List[Dict] = field(default_factory=list)
+    actix_extractors: List[Dict] = field(default_factory=list)
+    actix_app_state: List[Dict] = field(default_factory=list)
+    actix_error_handlers: List[Dict] = field(default_factory=list)
+    actix_websockets: List[Dict] = field(default_factory=list)
+    actix_configs: List[Dict] = field(default_factory=list)
+    actix_tests: List[Dict] = field(default_factory=list)
+    actix_detected_frameworks: List[str] = field(default_factory=list)
+    actix_version: str = ""
+    # Axum
+    axum_routes: List[Dict] = field(default_factory=list)
+    axum_layers: List[Dict] = field(default_factory=list)
+    axum_extractors: List[Dict] = field(default_factory=list)
+    axum_state: List[Dict] = field(default_factory=list)
+    axum_errors: List[Dict] = field(default_factory=list)
+    axum_websockets: List[Dict] = field(default_factory=list)
+    axum_nests: List[Dict] = field(default_factory=list)
+    axum_detected_frameworks: List[str] = field(default_factory=list)
+    axum_version: str = ""
+    # Rocket
+    rocket_routes: List[Dict] = field(default_factory=list)
+    rocket_catchers: List[Dict] = field(default_factory=list)
+    rocket_fairings: List[Dict] = field(default_factory=list)
+    rocket_guards: List[Dict] = field(default_factory=list)
+    rocket_state: List[Dict] = field(default_factory=list)
+    rocket_responders: List[Dict] = field(default_factory=list)
+    rocket_mounts: List[Dict] = field(default_factory=list)
+    rocket_detected_frameworks: List[str] = field(default_factory=list)
+    rocket_version: str = ""
+    # Warp
+    warp_routes: List[Dict] = field(default_factory=list)
+    warp_filters: List[Dict] = field(default_factory=list)
+    warp_rejections: List[Dict] = field(default_factory=list)
+    warp_replies: List[Dict] = field(default_factory=list)
+    warp_websockets: List[Dict] = field(default_factory=list)
+    warp_configs: List[Dict] = field(default_factory=list)
+    warp_detected_frameworks: List[str] = field(default_factory=list)
+    warp_version: str = ""
+    # Diesel
+    diesel_tables: List[Dict] = field(default_factory=list)
+    diesel_models: List[Dict] = field(default_factory=list)
+    diesel_queries: List[Dict] = field(default_factory=list)
+    diesel_migrations: List[Dict] = field(default_factory=list)
+    diesel_connections: List[Dict] = field(default_factory=list)
+    diesel_associations: List[Dict] = field(default_factory=list)
+    diesel_custom_types: List[Dict] = field(default_factory=list)
+    diesel_detected_frameworks: List[str] = field(default_factory=list)
+    diesel_version: str = ""
+    # SeaORM
+    seaorm_entities: List[Dict] = field(default_factory=list)
+    seaorm_relations: List[Dict] = field(default_factory=list)
+    seaorm_queries: List[Dict] = field(default_factory=list)
+    seaorm_migrations: List[Dict] = field(default_factory=list)
+    seaorm_connections: List[Dict] = field(default_factory=list)
+    seaorm_active_models: List[Dict] = field(default_factory=list)
+    seaorm_columns: List[Dict] = field(default_factory=list)
+    seaorm_detected_frameworks: List[str] = field(default_factory=list)
+    seaorm_version: str = ""
+    # Tauri
+    tauri_commands: List[Dict] = field(default_factory=list)
+    tauri_state: List[Dict] = field(default_factory=list)
+    tauri_events: List[Dict] = field(default_factory=list)
+    tauri_plugins: List[Dict] = field(default_factory=list)
+    tauri_windows: List[Dict] = field(default_factory=list)
+    tauri_menus: List[Dict] = field(default_factory=list)
+    tauri_configs: List[Dict] = field(default_factory=list)
+    tauri_detected_frameworks: List[str] = field(default_factory=list)
+    tauri_version: str = ""
 
     # v4.15: SQL Language Support (full AST + LSP)
     sql_tables: List[Dict] = field(default_factory=list)
@@ -4318,6 +4400,15 @@ class ProjectScanner:
         # v4.14: Rust parser with all extractors (AST + LSP)
         self.rust_parser = EnhancedRustParser()
 
+        # v5.4: Rust framework parsers
+        self.actix_parser = EnhancedActixParser()
+        self.axum_parser = EnhancedAxumParser()
+        self.rocket_parser = EnhancedRocketParser()
+        self.warp_parser = EnhancedWarpParser()
+        self.diesel_parser = EnhancedDieselParser()
+        self.seaorm_parser = EnhancedSeaORMParser()
+        self.tauri_parser = EnhancedTauriParser()
+
         # v4.15: SQL parser with all extractors (AST + LSP)
         self.sql_parser = EnhancedSQLParser()
 
@@ -5294,6 +5385,14 @@ class ProjectScanner:
             self._parse_dapper(file_path, matrix)
         elif file_info.file_type == "rust":
             self._parse_rust(file_path, matrix)
+            # v5.4: Rust framework-level parsers (supplementary, run after base Rust parser)
+            self._parse_actix(file_path, matrix)
+            self._parse_axum(file_path, matrix)
+            self._parse_rocket(file_path, matrix)
+            self._parse_warp(file_path, matrix)
+            self._parse_diesel(file_path, matrix)
+            self._parse_seaorm(file_path, matrix)
+            self._parse_tauri(file_path, matrix)
         elif file_info.file_type == "sql":
             self._parse_sql(file_path, matrix)
         elif file_info.file_type == "html":
@@ -19133,6 +19232,229 @@ class ProjectScanner:
                 matrix.wordpress_meta_boxes.append(mb if isinstance(mb, dict) else vars(mb))
             for s in result.settings:
                 matrix.wordpress_settings.append(s if isinstance(s, dict) else vars(s))
+        except Exception:
+            pass
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # v5.4: Rust Framework Parsers (Actix Web, Axum, Rocket, Warp, Diesel, SeaORM, Tauri)
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    def _parse_actix(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Actix Web framework patterns from Rust file. v5.4."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.actix_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.actix_detected_frameworks:
+                    matrix.actix_detected_frameworks.append(fw)
+            if result.actix_version and not matrix.actix_version:
+                matrix.actix_version = result.actix_version
+            for r in result.routes:
+                matrix.actix_routes.append(r if isinstance(r, dict) else vars(r))
+            for s in result.scopes:
+                matrix.actix_scopes.append(s if isinstance(s, dict) else vars(s))
+            for m in result.middleware:
+                matrix.actix_middleware.append(m if isinstance(m, dict) else vars(m))
+            for e in result.extractors:
+                matrix.actix_extractors.append(e if isinstance(e, dict) else vars(e))
+            for a in result.app_state:
+                matrix.actix_app_state.append(a if isinstance(a, dict) else vars(a))
+            for eh in result.error_handlers:
+                matrix.actix_error_handlers.append(eh if isinstance(eh, dict) else vars(eh))
+            for ws in result.websockets:
+                matrix.actix_websockets.append(ws if isinstance(ws, dict) else vars(ws))
+            for cfg in result.configs:
+                matrix.actix_configs.append(cfg if isinstance(cfg, dict) else vars(cfg))
+            for t in result.tests:
+                matrix.actix_tests.append(t if isinstance(t, dict) else vars(t))
+        except Exception:
+            pass
+
+    def _parse_axum(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Axum framework patterns from Rust file. v5.4."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.axum_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.axum_detected_frameworks:
+                    matrix.axum_detected_frameworks.append(fw)
+            if result.axum_version and not matrix.axum_version:
+                matrix.axum_version = result.axum_version
+            for r in result.routes:
+                matrix.axum_routes.append(r if isinstance(r, dict) else vars(r))
+            for l in result.layers:
+                matrix.axum_layers.append(l if isinstance(l, dict) else vars(l))
+            for e in result.extractors:
+                matrix.axum_extractors.append(e if isinstance(e, dict) else vars(e))
+            for s in result.state:
+                matrix.axum_state.append(s if isinstance(s, dict) else vars(s))
+            for er in result.errors:
+                matrix.axum_errors.append(er if isinstance(er, dict) else vars(er))
+            for ws in result.websockets:
+                matrix.axum_websockets.append(ws if isinstance(ws, dict) else vars(ws))
+            for n in result.nests:
+                matrix.axum_nests.append(n if isinstance(n, dict) else vars(n))
+        except Exception:
+            pass
+
+    def _parse_rocket(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Rocket framework patterns from Rust file. v5.4."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.rocket_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.rocket_detected_frameworks:
+                    matrix.rocket_detected_frameworks.append(fw)
+            if result.rocket_version and not matrix.rocket_version:
+                matrix.rocket_version = result.rocket_version
+            for r in result.routes:
+                matrix.rocket_routes.append(r if isinstance(r, dict) else vars(r))
+            for c in result.catchers:
+                matrix.rocket_catchers.append(c if isinstance(c, dict) else vars(c))
+            for f in result.fairings:
+                matrix.rocket_fairings.append(f if isinstance(f, dict) else vars(f))
+            for g in result.guards:
+                matrix.rocket_guards.append(g if isinstance(g, dict) else vars(g))
+            for s in result.state:
+                matrix.rocket_state.append(s if isinstance(s, dict) else vars(s))
+            for rsp in result.responders:
+                matrix.rocket_responders.append(rsp if isinstance(rsp, dict) else vars(rsp))
+            for mt in result.mounts:
+                matrix.rocket_mounts.append(mt if isinstance(mt, dict) else vars(mt))
+        except Exception:
+            pass
+
+    def _parse_warp(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Warp framework patterns from Rust file. v5.4."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.warp_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.warp_detected_frameworks:
+                    matrix.warp_detected_frameworks.append(fw)
+            if result.warp_version and not matrix.warp_version:
+                matrix.warp_version = result.warp_version
+            for r in result.routes:
+                matrix.warp_routes.append(r if isinstance(r, dict) else vars(r))
+            for f in result.filters:
+                matrix.warp_filters.append(f if isinstance(f, dict) else vars(f))
+            for rj in result.rejections:
+                matrix.warp_rejections.append(rj if isinstance(rj, dict) else vars(rj))
+            for rp in result.replies:
+                matrix.warp_replies.append(rp if isinstance(rp, dict) else vars(rp))
+            for ws in result.websockets:
+                matrix.warp_websockets.append(ws if isinstance(ws, dict) else vars(ws))
+            for cfg in result.configs:
+                matrix.warp_configs.append(cfg if isinstance(cfg, dict) else vars(cfg))
+        except Exception:
+            pass
+
+    def _parse_diesel(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Diesel ORM patterns from Rust file. v5.4."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.diesel_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.diesel_detected_frameworks:
+                    matrix.diesel_detected_frameworks.append(fw)
+            if result.diesel_version and not matrix.diesel_version:
+                matrix.diesel_version = result.diesel_version
+            for t in result.tables:
+                matrix.diesel_tables.append(t if isinstance(t, dict) else vars(t))
+            for m in result.models:
+                matrix.diesel_models.append(m if isinstance(m, dict) else vars(m))
+            for q in result.queries:
+                matrix.diesel_queries.append(q if isinstance(q, dict) else vars(q))
+            for mg in result.migrations:
+                matrix.diesel_migrations.append(mg if isinstance(mg, dict) else vars(mg))
+            for c in result.connections:
+                matrix.diesel_connections.append(c if isinstance(c, dict) else vars(c))
+            for a in result.associations:
+                matrix.diesel_associations.append(a if isinstance(a, dict) else vars(a))
+            for ct in result.custom_types:
+                matrix.diesel_custom_types.append(ct if isinstance(ct, dict) else vars(ct))
+        except Exception:
+            pass
+
+    def _parse_seaorm(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse SeaORM patterns from Rust file. v5.4."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.seaorm_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.seaorm_detected_frameworks:
+                    matrix.seaorm_detected_frameworks.append(fw)
+            if result.seaorm_version and not matrix.seaorm_version:
+                matrix.seaorm_version = result.seaorm_version
+            for e in result.entities:
+                matrix.seaorm_entities.append(e if isinstance(e, dict) else vars(e))
+            for r in result.relations:
+                matrix.seaorm_relations.append(r if isinstance(r, dict) else vars(r))
+            for q in result.queries:
+                matrix.seaorm_queries.append(q if isinstance(q, dict) else vars(q))
+            for mg in result.migrations:
+                matrix.seaorm_migrations.append(mg if isinstance(mg, dict) else vars(mg))
+            for c in result.connections:
+                matrix.seaorm_connections.append(c if isinstance(c, dict) else vars(c))
+            for am in result.active_models:
+                matrix.seaorm_active_models.append(am if isinstance(am, dict) else vars(am))
+            for col in result.columns:
+                matrix.seaorm_columns.append(col if isinstance(col, dict) else vars(col))
+        except Exception:
+            pass
+
+    def _parse_tauri(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Tauri desktop framework patterns from Rust file. v5.4."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.tauri_parser.parse(content, str(file_path))
+            if not result.detected_frameworks:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.tauri_detected_frameworks:
+                    matrix.tauri_detected_frameworks.append(fw)
+            if result.tauri_version and not matrix.tauri_version:
+                matrix.tauri_version = result.tauri_version
+            for cmd in result.commands:
+                matrix.tauri_commands.append(cmd if isinstance(cmd, dict) else vars(cmd))
+            for s in result.state:
+                matrix.tauri_state.append(s if isinstance(s, dict) else vars(s))
+            for ev in result.events:
+                matrix.tauri_events.append(ev if isinstance(ev, dict) else vars(ev))
+            for p in result.plugins:
+                matrix.tauri_plugins.append(p if isinstance(p, dict) else vars(p))
+            for w in result.windows:
+                matrix.tauri_windows.append(w if isinstance(w, dict) else vars(w))
+            for m in result.menus:
+                matrix.tauri_menus.append(m if isinstance(m, dict) else vars(m))
+            for cfg in result.configs:
+                matrix.tauri_configs.append(cfg if isinstance(cfg, dict) else vars(cfg))
         except Exception:
             pass
 

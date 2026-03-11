@@ -1,0 +1,96 @@
+# Rocket Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.4 - Rust Framework Support
+# Practice IDs: ROCKET001-ROCKET010
+# Category: rocket
+# Frameworks: rocket
+
+practices:
+  - id: ROCKET001
+    title: "Use request guards for authentication and authorization"
+    description: "Implement FromRequest for custom request guards. Rocket will call them before the handler, providing compile-time route protection."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["rocket"]
+    tags: ["rocket", "guards", "auth"]
+
+  - id: ROCKET002
+    title: "Use managed state for shared data"
+    description: "Use rocket::State<T> with .manage() to inject shared state into handlers. State is read-only; use Mutex/RwLock inside for mutation."
+    category: "state_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rocket"]
+    tags: ["rocket", "state", "managed"]
+
+  - id: ROCKET003
+    title: "Use catchers for error pages"
+    description: "Register error catchers with #[catch(404)] etc. to handle HTTP errors with custom responses instead of default error pages."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rocket"]
+    tags: ["rocket", "catchers", "errors"]
+
+  - id: ROCKET004
+    title: "Use fairings for lifecycle hooks"
+    description: "Implement the Fairing trait for startup initialization, request/response modification, and shutdown hooks. Use attach() to register fairings."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rocket"]
+    tags: ["rocket", "fairings", "lifecycle"]
+
+  - id: ROCKET005
+    title: "Use #[derive(FromForm)] for form data"
+    description: "Derive FromForm on structs to parse form data automatically. Use lenient parsing when needed. Validation is built into the derive macro."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rocket"]
+    tags: ["rocket", "forms", "derive"]
+
+  - id: ROCKET006
+    title: "Use Responder derive for custom response types"
+    description: "Derive or implement Responder for custom response types. Use (Status, Json<T>) tuples for quick typed responses."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rocket"]
+    tags: ["rocket", "responder", "response"]
+
+  - id: ROCKET007
+    title: "Use Rocket.toml for environment-specific configuration"
+    description: "Use Rocket.toml or ROCKET_ environment variables for configuration. Define profiles (debug, release) for environment-specific settings."
+    category: "configuration"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rocket"]
+    tags: ["rocket", "config", "toml"]
+
+  - id: ROCKET008
+    title: "Mount routes on base paths"
+    description: 'Use rocket.mount("/api/v1", routes![...]) to group routes under base paths. Keep route functions focused on a single resource.'
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rocket"]
+    tags: ["rocket", "routing", "mount"]
+
+  - id: ROCKET009
+    title: "Use Rocket's built-in testing with Client"
+    description: "Use rocket::local::blocking::Client or async variant for integration tests. Test routes by dispatching requests through the Client."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rocket"]
+    tags: ["rocket", "testing", "client"]
+
+  - id: ROCKET010
+    title: "Use #[launch] for application entry point"
+    description: "Use the #[launch] attribute macro for the entry point instead of manually building and launching. It sets up the async runtime automatically."
+    category: "convention"
+    severity: "recommended"
+    applicability:
+      frameworks: ["rocket"]
+    tags: ["rocket", "launch", "entry"]

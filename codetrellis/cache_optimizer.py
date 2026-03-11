@@ -220,6 +220,15 @@ SECTION_STABILITY: Dict[str, Tuple[SectionStability, int]] = {
     "GO_SQLX":              (SectionStability.SEMANTIC, 1196),
     "GO_COBRA":             (SectionStability.SEMANTIC, 1196),
 
+    # === SEMANTIC: Rust Framework sections (v5.4) ===
+    "ACTIX_WEB":            (SectionStability.SEMANTIC, 1197),
+    "AXUM":                 (SectionStability.SEMANTIC, 1197),
+    "ROCKET":               (SectionStability.SEMANTIC, 1197),
+    "WARP":                 (SectionStability.SEMANTIC, 1197),
+    "DIESEL":               (SectionStability.SEMANTIC, 1197),
+    "SEAORM":               (SectionStability.SEMANTIC, 1197),
+    "TAURI":                (SectionStability.SEMANTIC, 1197),
+
     # === SEMANTIC: Framework-specific code sections ===
 
     # React ecosystem

@@ -1,10 +1,10 @@
-# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq, Laravel, Symfony, CodeIgniter, Slim, WordPress Language Support — STATUS.md
+# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq, Laravel, Symfony, CodeIgniter, Slim, WordPress, Actix Web, Axum, Rocket, Warp, Diesel, SeaORM, Tauri Language Support — STATUS.md
 
 ## Overview
 
-**CodeTrellis Version**: v5.4.0 (v5.3.0 + PHP Framework Parsers)
-**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq), Session 80 (PHP Frameworks: Laravel + Symfony + CodeIgniter + Slim + WordPress)
-**Status**: ✅ Session 80 Complete — PHP Framework Parsers (v5.4.0): 5 new PHP framework parsers with full regex-based extraction following the established supplementary parser pattern. (1) **Laravel** — routes, controllers, models, migrations, middleware, jobs, events, notifications, commands, service providers, policies, observers, form requests, resources, Blade templates, configs, 22 ecosystem patterns (Livewire, Inertia, Jetstream, etc.), Laravel 5.x-11.x version detection. (2) **Symfony** — routes, controllers, entities, services, commands, form types, event subscribers, voters, PHP 8 attributes + legacy annotations, 14 ecosystem patterns (Doctrine, Twig, Messenger, API Platform, etc.), Symfony 3.x-7.x version detection. (3) **CodeIgniter** — routes, controllers, models, entities, filters, libraries, helpers, commands, configs, CI3+CI4 dual support, 5 ecosystem patterns, CI 3.x-4.x version detection. (4) **Slim** — routes, middleware, controllers, DI bindings, error handlers, route groups, configs, PSR-7/PSR-15 support, 8 ecosystem patterns (PHP-DI, Twig, Monolog, etc.), Slim 3.x-4.x version detection. (5) **WordPress** — hooks/actions/filters, custom post types, taxonomies, shortcodes, REST routes, Gutenberg blocks, widgets, admin pages, enqueues, cron, AJAX handlers, meta boxes, settings, plugin/theme detection, 11 ecosystem patterns (WooCommerce, ACF, Elementor, etc.). Scanner integration (5 \_parse methods, ~90 new ProjectMatrix fields), compressor (5 new sections), BPL (5 practice YAML files with 130 practices). 58 new unit tests (1 test file), 15-project scanner evaluation passed (laravel/laravel, koel, monica; symfony-demo, api-platform-demo, wallabag; ci4-appstarter, ci4-shield, bonfire2; slim-skeleton, slim4-skeleton, slim-framework; 3 WP sample projects), 6985 total tests passing, 0 regressions.
+**CodeTrellis Version**: v5.5.0 (v5.4.0 + Rust Framework Parsers)
+**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq), Session 80 (PHP Frameworks: Laravel + Symfony + CodeIgniter + Slim + WordPress), Session 81 (Rust Frameworks: Actix Web + Axum + Rocket + Warp + Diesel + SeaORM + Tauri)
+**Status**: ✅ Session 81 Complete — Rust Framework Parsers (v5.5.0): 7 new Rust framework parsers with full regex-based extraction following the established supplementary parser pattern. (1) **Actix Web** — routes, scopes, middleware, extractors, app state, error handlers, websockets, configs, test utilities, 12 ecosystem patterns, v0.x-4.x version detection. (2) **Axum** — routes, layers, extractors, state, errors, websockets, nested routers, 10 ecosystem patterns, v0.5-0.8+ version detection. (3) **Rocket** — routes, catchers, fairings, guards, state, responders, mounts, 8 ecosystem patterns, v0.3-0.5+ version detection. (4) **Warp** — routes, filters, rejections, replies, websockets, configs, 8 ecosystem patterns, v0.1-0.3+ version detection. (5) **Diesel** — tables, models, queries (CRUD), migrations, connections, associations, custom types, 6 ecosystem patterns, v1.x-2.x version detection. (6) **SeaORM** — entities, relations, queries, migrations, connections, active models, columns, 8 ecosystem patterns, v0.x-1.x version detection. (7) **Tauri** — commands, state, events, plugins, windows, menus, configs, 10 ecosystem patterns, v1.x-2.x version detection. Scanner integration (7 \_parse methods, ~75 new ProjectMatrix fields), compressor (7 new sections), BPL (7 practice YAML files with 70 practices), A5.x modules (jit_context, cache_optimizer, skills_generator, mcp_server). 106 new unit tests (7 test files), 3-project scanner evaluation passed, 0 regressions.
 
 ---
 
@@ -5195,4 +5195,96 @@ pytest tests/ -x -q
 New tests:  58 (14 Laravel + 12 Symfony + 10 CodeIgniter + 8 Slim + 14 WordPress)
 Previous:  6927 (from Session 79 baseline)
 Total:     6985
+```
+
+## Session 81 — Rust Framework Parsers (v5.5.0)
+
+### Overview
+
+7 new Rust framework parsers following the established supplementary parser pattern (same as Go/Ruby/PHP framework parsers in Sessions 78-80). Each parser complements the existing base Rust parser with deep framework-specific extraction.
+
+### Parsers Created
+
+| Framework | Parser File                 | Key Extractions                                                                               | BPL Practices       |
+| --------- | --------------------------- | --------------------------------------------------------------------------------------------- | ------------------- |
+| Actix Web | `actix_parser_enhanced.py`  | Routes, scopes, middleware, extractors, app state, error handlers, websockets, configs, tests | ACTIX001-ACTIX010   |
+| Axum      | `axum_parser_enhanced.py`   | Routes, layers, extractors, state, errors, websockets, nested routers                         | AXUM001-AXUM010     |
+| Rocket    | `rocket_parser_enhanced.py` | Routes, catchers, fairings, guards, state, responders, mounts                                 | ROCKET001-ROCKET010 |
+| Warp      | `warp_parser_enhanced.py`   | Routes, filters, rejections, replies, websockets, configs                                     | WARP001-WARP010     |
+| Diesel    | `diesel_parser_enhanced.py` | Tables, models, queries (CRUD), migrations, connections, associations, custom types           | DIESEL001-DIESEL010 |
+| SeaORM    | `seaorm_parser_enhanced.py` | Entities, relations, queries, migrations, connections, active models, columns                 | SEAORM001-SEAORM010 |
+| Tauri     | `tauri_parser_enhanced.py`  | Commands, state, events, plugins, windows, menus, configs                                     | TAURI001-TAURI010   |
+
+### Files Created
+
+| File                                         | Description                    | ~Lines |
+| -------------------------------------------- | ------------------------------ | ------ |
+| `codetrellis/actix_parser_enhanced.py`       | Actix Web framework parser     | ~450   |
+| `codetrellis/axum_parser_enhanced.py`        | Axum framework parser          | ~350   |
+| `codetrellis/rocket_parser_enhanced.py`      | Rocket framework parser        | ~350   |
+| `codetrellis/warp_parser_enhanced.py`        | Warp framework parser          | ~280   |
+| `codetrellis/diesel_parser_enhanced.py`      | Diesel ORM parser              | ~300   |
+| `codetrellis/seaorm_parser_enhanced.py`      | SeaORM parser                  | ~290   |
+| `codetrellis/tauri_parser_enhanced.py`       | Tauri desktop framework parser | ~340   |
+| `codetrellis/bpl/practices/actix_core.yaml`  | 10 Actix best practices        | ~150   |
+| `codetrellis/bpl/practices/axum_core.yaml`   | 10 Axum best practices         | ~150   |
+| `codetrellis/bpl/practices/rocket_core.yaml` | 10 Rocket best practices       | ~150   |
+| `codetrellis/bpl/practices/warp_core.yaml`   | 10 Warp best practices         | ~150   |
+| `codetrellis/bpl/practices/diesel_core.yaml` | 10 Diesel best practices       | ~150   |
+| `codetrellis/bpl/practices/seaorm_core.yaml` | 10 SeaORM best practices       | ~150   |
+| `codetrellis/bpl/practices/tauri_core.yaml`  | 10 Tauri best practices        | ~150   |
+| `tests/unit/test_actix_parser_enhanced.py`   | 24 Actix tests                 | ~400   |
+| `tests/unit/test_axum_parser_enhanced.py`    | 14 Axum tests                  | ~250   |
+| `tests/unit/test_rocket_parser_enhanced.py`  | 12 Rocket tests                | ~200   |
+| `tests/unit/test_warp_parser_enhanced.py`    | 11 Warp tests                  | ~200   |
+| `tests/unit/test_diesel_parser_enhanced.py`  | 15 Diesel tests                | ~250   |
+| `tests/unit/test_seaorm_parser_enhanced.py`  | 13 SeaORM tests                | ~200   |
+| `tests/unit/test_tauri_parser_enhanced.py`   | 14 Tauri tests                 | ~250   |
+
+### Files Modified
+
+| File                  | Changes                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `scanner.py`          | 7 imports, 7 parser inits, ~75 new ProjectMatrix fields, 7 `_parse_*` methods, Rust framework dispatch chain  |
+| `compressor.py`       | 7 section dispatch blocks (ACTIX*WEB through TAURI), 7 `\_compress*\*` methods                                |
+| `bpl/selector.py`     | `fw_mapping` for tauri, `section_framework_mapping` for SEAORM/TAURI, `has_rust` check, 7 framework detection |
+| `jit_context.py`      | Added 7 Rust framework sections to `.rs` extension mapping                                                    |
+| `cache_optimizer.py`  | Added 7 entries to `SECTION_STABILITY` dict as `SectionStability.SEMANTIC`                                    |
+| `skills_generator.py` | Added ACTIX_WEB/AXUM/ROCKET/WARP to add-endpoint, DIESEL/SEAORM to add-model skill detect_sections            |
+| `mcp_server.py`       | Added 7 Rust framework sections to AGGREGATE_RESOURCES "api" list                                             |
+
+### Scanner Evaluation Results
+
+| Project   | Framework | Key Results                                                                                                       |
+| --------- | --------- | ----------------------------------------------------------------------------------------------------------------- |
+| actix-app | Actix Web | 5 routes, 1 scope, 2 middleware, 10 extractors, 1 app state, 1 error handler, version ~4.0, ecosystem: actix-cors |
+| axum-app  | Axum      | 4 routes, 4 layers, 41 extractors, 1 state, 2 nested routers, version ~0.8, ecosystem: tower-http                 |
+| tauri-app | Tauri     | 9 commands, 1 state [managed], 4 events, 4 plugins, 1 window, version ~2.x, ecosystem: 4 tauri plugins            |
+
+**False-positive resistance**: axum-app has Diesel in Cargo.toml but no Diesel code → no [DIESEL] section generated (correct).
+
+**BPL selection**: Tauri-specific best practices (TAURI001-009) auto-selected when Tauri detected. Rust base practices (RS016-030) also included.
+
+### Bugs Fixed During Testing
+
+| #   | Bug                                                           | Fix                                                               |
+| --- | ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| 1   | Rocket `GUARD_IMPL` regex didn't match `impl<'r> FromRequest` | Changed `impl\s+` to `impl\s*` in parser                          |
+| 2   | Rocket `status_code` stored as int not str                    | Fixed test assertions                                             |
+| 3   | Rocket `RocketMountInfo` uses `.base` not `.base_path`        | Fixed test attribute access                                       |
+| 4   | Tauri `PLUGIN_USE` regex only matched `::init` pattern        | Enhanced parser to also match `tauri_plugin_\w+::Builder` pattern |
+
+### Test Results
+
+```
+pytest tests/unit/test_actix_parser_enhanced.py tests/unit/test_axum_parser_enhanced.py tests/unit/test_rocket_parser_enhanced.py tests/unit/test_warp_parser_enhanced.py tests/unit/test_diesel_parser_enhanced.py tests/unit/test_seaorm_parser_enhanced.py tests/unit/test_tauri_parser_enhanced.py -q
+106 passed
+
+New tests:  106 (24 Actix + 14 Axum + 12 Rocket + 11 Warp + 15 Diesel + 13 SeaORM + 14 Tauri)
+Previous:  6985 (from Session 80 baseline)
+Total:     7091
+
+pytest tests/ -x -q
+7091 passed, 101 skipped, 1 warning in 22.44s
+✅ ALL TESTS PASSED — 0 failures, 0 regressions
 ```

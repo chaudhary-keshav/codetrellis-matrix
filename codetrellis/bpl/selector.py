@@ -542,11 +542,27 @@ class ProjectContext:
                 'tower': 'tower',
                 'hyper': 'hyper',
                 'tracing': 'tracing',
+                'tauri': 'tauri',
             }
             for fw in rust_frameworks:
                 mapped = rust_fw_mapping.get(fw)
                 if mapped:
                     context.frameworks.add(mapped)
+
+        # v5.4: Detect Rust frameworks from framework-specific detected_frameworks lists
+        if rust_is_significant:
+            rust_fw_fields = {
+                'actix_detected_frameworks': 'actix',
+                'axum_detected_frameworks': 'axum',
+                'rocket_detected_frameworks': 'rocket',
+                'warp_detected_frameworks': 'warp',
+                'diesel_detected_frameworks': 'diesel',
+                'seaorm_detected_frameworks': 'sea_orm',
+                'tauri_detected_frameworks': 'tauri',
+            }
+            for field, bpl_name in rust_fw_fields.items():
+                if getattr(matrix, field, []):
+                    context.frameworks.add(bpl_name)
 
         logger.debug(f"Artifact counts - Python: {python_count}, TS: {ts_count}, Angular: {angular_count}, NestJS: {nestjs_count}, Go: {go_count}, Java: {java_count}, C#: {csharp_count}, Rust: {rust_count}")
 
@@ -4350,6 +4366,8 @@ class PracticeSelector:
             "WARP": {"warp", "rust"},      # Warp framework
             "TOKIO": {"tokio", "rust"},    # Tokio async runtime
             "DIESEL": {"diesel", "rust"},  # Diesel ORM
+            "SEAORM": {"sea_orm", "rust"},  # SeaORM async ORM (v5.4)
+            "TAURI": {"tauri", "rust"},     # Tauri desktop framework (v5.4)
             "TONIC": {"tonic", "rust"},    # Tonic gRPC
             "SQLX": {"sqlx_go", "golang"},   # sqlx Go SQL extensions (v5.2) — must precede SQL
             "SQL": {"sql"},                # SQL language practices (v4.15)
@@ -4502,7 +4520,7 @@ class PracticeSelector:
         has_golang = any(f in context_frameworks for f in ["golang", "gin", "echo", "fiber", "chi", "grpc_go", "gorm", "sqlx_go", "cobra"])
         has_java = any(f in context_frameworks for f in ["java", "spring", "quarkus", "micronaut", "jpa", "hibernate"])
         has_csharp = any(f in context_frameworks for f in ["csharp", "aspnet", "efcore", "blazor", "signalr", "maui"])
-        has_rust = any(f in context_frameworks for f in ["rust", "actix", "rocket", "axum", "warp", "tokio", "tonic", "diesel", "sea_orm", "sqlx"])
+        has_rust = any(f in context_frameworks for f in ["rust", "actix", "rocket", "axum", "warp", "tokio", "tonic", "diesel", "sea_orm", "sqlx", "tauri"])
         has_c = "c" in context_frameworks
         has_cpp = any(f in context_frameworks for f in ["cpp", "qt", "boost", "boost_asio", "crow", "pistache", "drogon", "cuda", "opengl", "vulkan", "unreal"])
         has_swift = any(f in context_frameworks for f in ["swift", "swiftui", "vapor", "combine", "core_data", "swift_data", "hummingbird", "alamofire", "tca"])

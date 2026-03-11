@@ -1,0 +1,96 @@
+# Axum Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.4 - Rust Framework Support
+# Practice IDs: AXUM001-AXUM010
+# Category: axum
+# Frameworks: axum
+
+practices:
+  - id: AXUM001
+    title: "Use typed extractors for request data"
+    description: "Use Axum's typed extractors (Json, Path, Query, Extension) to parse request data. Order matters — body-consuming extractors must be last."
+    category: "api_design"
+    severity: "critical"
+    applicability:
+      frameworks: ["axum"]
+    tags: ["axum", "extractors", "request"]
+
+  - id: AXUM002
+    title: "Use State extractor for shared state"
+    description: "Wrap shared state in State<Arc<AppState>> and add it via Router::with_state(). Prefer this over Extension for typed, compile-time-checked state access."
+    category: "state_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["axum"]
+    tags: ["axum", "state", "shared"]
+
+  - id: AXUM003
+    title: "Implement IntoResponse for custom error types"
+    description: "Implement axum::response::IntoResponse for error types to return consistent error responses. Use (StatusCode, Json<ErrorBody>) tuples for quick responses."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["axum"]
+    tags: ["axum", "error-handling", "into-response"]
+
+  - id: AXUM004
+    title: "Use tower layers for middleware"
+    description: "Axum builds on tower. Use tower::ServiceBuilder and .layer() for middleware (tracing, timeout, rate limiting). Prefer tower-http crate for common middleware."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["axum"]
+    tags: ["axum", "tower", "middleware"]
+
+  - id: AXUM005
+    title: "Nest routers for modular route organization"
+    description: "Use Router::nest() to compose sub-routers. Each module exports its own Router, which is merged or nested into the main app router."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["axum"]
+    tags: ["axum", "routing", "nest"]
+
+  - id: AXUM006
+    title: "Use axum::extract::FromRequestParts for custom extractors"
+    description: "Implement FromRequestParts (not FromRequest) when your extractor doesn't need the request body. This allows composing with body-consuming extractors."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["axum"]
+    tags: ["axum", "extractors", "custom"]
+
+  - id: AXUM007
+    title: "Return Result with rejection for handler errors"
+    description: "Use Result<impl IntoResponse, AppError> return types in handlers. Implement IntoResponse for AppError to convert errors to proper HTTP responses."
+    category: "error_handling"
+    severity: "recommended"
+    applicability:
+      frameworks: ["axum"]
+    tags: ["axum", "error-handling", "result"]
+
+  - id: AXUM008
+    title: "Use tower-http for common middleware needs"
+    description: "Use tower-http's TraceLayer, CorsLayer, CompressionLayer, and ServeDir instead of implementing common middleware from scratch."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["axum"]
+    tags: ["axum", "tower-http", "middleware"]
+
+  - id: AXUM009
+    title: "Use axum::extract::ws for WebSocket support"
+    description: "Use axum's built-in WebSocket extractor for WS upgrade handling. Manage connections with tokio tasks and channels."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["axum"]
+    tags: ["axum", "websocket", "async"]
+
+  - id: AXUM010
+    title: "Keep handler signatures simple and testable"
+    description: "Keep handlers as plain async functions with extractors. Avoid complex signatures. Test by calling handlers directly with constructed extractors."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["axum"]
+    tags: ["axum", "testing", "handlers"]

@@ -1264,6 +1264,59 @@ class MatrixCompressor:
             lines.append("")
 
         # ============================================
+        # v5.4: Rust Framework Support
+        # ============================================
+
+        # Actix Web Framework
+        actix_lines = self._compress_actix(matrix)
+        if actix_lines:
+            lines.append("[ACTIX_WEB]")
+            lines.extend(actix_lines)
+            lines.append("")
+
+        # Axum Framework
+        axum_lines = self._compress_axum(matrix)
+        if axum_lines:
+            lines.append("[AXUM]")
+            lines.extend(axum_lines)
+            lines.append("")
+
+        # Rocket Framework
+        rocket_lines = self._compress_rocket(matrix)
+        if rocket_lines:
+            lines.append("[ROCKET]")
+            lines.extend(rocket_lines)
+            lines.append("")
+
+        # Warp Framework
+        warp_lines = self._compress_warp(matrix)
+        if warp_lines:
+            lines.append("[WARP]")
+            lines.extend(warp_lines)
+            lines.append("")
+
+        # Diesel ORM
+        diesel_lines = self._compress_diesel(matrix)
+        if diesel_lines:
+            lines.append("[DIESEL]")
+            lines.extend(diesel_lines)
+            lines.append("")
+
+        # SeaORM
+        seaorm_lines = self._compress_seaorm(matrix)
+        if seaorm_lines:
+            lines.append("[SEAORM]")
+            lines.extend(seaorm_lines)
+            lines.append("")
+
+        # Tauri Desktop Framework
+        tauri_lines = self._compress_tauri(matrix)
+        if tauri_lines:
+            lines.append("[TAURI]")
+            lines.extend(tauri_lines)
+            lines.append("")
+
+        # ============================================
         # v4.15: SQL Language Support
         # ============================================
 
@@ -9013,6 +9066,314 @@ class MatrixCompressor:
         if hasattr(matrix, 'rust_macros_defined') and matrix.rust_macros_defined:
             lines.append(f"# Macros: {', '.join(matrix.rust_macros_defined[:10])}")
 
+        return lines
+
+    # ============================================
+    # v5.4: Rust Framework Compression Methods
+    # ============================================
+
+    def _compress_actix(self, matrix) -> List[str]:
+        """Compress Actix Web framework data."""
+        lines = []
+        routes = getattr(matrix, 'actix_routes', [])
+        middleware = getattr(matrix, 'actix_middleware', [])
+        if not routes and not middleware:
+            return lines
+        frameworks = getattr(matrix, 'actix_detected_frameworks', [])
+        version = getattr(matrix, 'actix_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:12])}")
+        if version:
+            lines.append(f"# Actix Web version: ~{version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:50]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{r.get('handler', '?')}|{f}")
+            if len(routes) > 50:
+                lines.append(f"  # ... and {len(routes) - 50} more routes")
+        scopes = getattr(matrix, 'actix_scopes', [])
+        if scopes:
+            lines.append(f"## Scopes ({len(scopes)})")
+            for s in scopes[:15]:
+                lines.append(f"  {s.get('prefix', '/')}")
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for m in middleware[:15]:
+                lines.append(f"  {m.get('name', '?')}")
+        extractors = getattr(matrix, 'actix_extractors', [])
+        if extractors:
+            lines.append(f"## Extractors ({len(extractors)})")
+            for e in extractors[:10]:
+                lines.append(f"  {e.get('kind', '?')}:{e.get('type_name', '?')}")
+        state = getattr(matrix, 'actix_app_state', [])
+        if state:
+            lines.append(f"## App State ({len(state)})")
+            for s in state[:10]:
+                lines.append(f"  {s.get('type_name', '?')}")
+        err = getattr(matrix, 'actix_error_handlers', [])
+        if err:
+            lines.append(f"## Error Handlers ({len(err)})")
+            for e in err[:10]:
+                lines.append(f"  {e.get('kind', '?')}:{e.get('name', '?')}")
+        ws = getattr(matrix, 'actix_websockets', [])
+        if ws:
+            lines.append(f"## WebSockets ({len(ws)})")
+        return lines
+
+    def _compress_axum(self, matrix) -> List[str]:
+        """Compress Axum framework data."""
+        lines = []
+        routes = getattr(matrix, 'axum_routes', [])
+        layers = getattr(matrix, 'axum_layers', [])
+        if not routes and not layers:
+            return lines
+        frameworks = getattr(matrix, 'axum_detected_frameworks', [])
+        version = getattr(matrix, 'axum_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Axum version: ~{version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:50]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{r.get('handler', '?')}|{f}")
+            if len(routes) > 50:
+                lines.append(f"  # ... and {len(routes) - 50} more routes")
+        if layers:
+            lines.append(f"## Layers ({len(layers)})")
+            for l in layers[:15]:
+                lines.append(f"  {l.get('kind', '?')}:{l.get('name', '?')}")
+        extractors = getattr(matrix, 'axum_extractors', [])
+        if extractors:
+            lines.append(f"## Extractors ({len(extractors)})")
+            for e in extractors[:10]:
+                lines.append(f"  {e.get('kind', '?')}:{e.get('type_name', '?')}")
+        state = getattr(matrix, 'axum_state', [])
+        if state:
+            lines.append(f"## State ({len(state)})")
+            for s in state[:10]:
+                lines.append(f"  {s.get('type_name', '?')}")
+        nests = getattr(matrix, 'axum_nests', [])
+        if nests:
+            lines.append(f"## Nested Routers ({len(nests)})")
+            for n in nests[:10]:
+                lines.append(f"  {n.get('path', '/')}")
+        return lines
+
+    def _compress_rocket(self, matrix) -> List[str]:
+        """Compress Rocket framework data."""
+        lines = []
+        routes = getattr(matrix, 'rocket_routes', [])
+        catchers = getattr(matrix, 'rocket_catchers', [])
+        if not routes and not catchers:
+            return lines
+        frameworks = getattr(matrix, 'rocket_detected_frameworks', [])
+        version = getattr(matrix, 'rocket_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:6])}")
+        if version:
+            lines.append(f"# Rocket version: ~{version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:50]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{r.get('handler', '?')}|{f}")
+            if len(routes) > 50:
+                lines.append(f"  # ... and {len(routes) - 50} more routes")
+        if catchers:
+            lines.append(f"## Catchers ({len(catchers)})")
+            for c in catchers[:15]:
+                lines.append(f"  {c.get('status_code', '?')}|{c.get('handler', '?')}")
+        fairings = getattr(matrix, 'rocket_fairings', [])
+        if fairings:
+            lines.append(f"## Fairings ({len(fairings)})")
+            for f in fairings[:10]:
+                lines.append(f"  {f.get('name', '?')}|{f.get('kind', '?')}")
+        guards = getattr(matrix, 'rocket_guards', [])
+        if guards:
+            lines.append(f"## Guards ({len(guards)})")
+            for g in guards[:10]:
+                lines.append(f"  {g.get('name', '?')}|{g.get('kind', '?')}")
+        state = getattr(matrix, 'rocket_state', [])
+        if state:
+            lines.append(f"## State ({len(state)})")
+            for s in state[:10]:
+                lines.append(f"  {s.get('type_name', '?')}")
+        mounts = getattr(matrix, 'rocket_mounts', [])
+        if mounts:
+            lines.append(f"## Mounts ({len(mounts)})")
+            for m in mounts[:10]:
+                lines.append(f"  {m.get('base_path', '/')}|routes:[{m.get('route_list', '?')}]")
+        return lines
+
+    def _compress_warp(self, matrix) -> List[str]:
+        """Compress Warp framework data."""
+        lines = []
+        routes = getattr(matrix, 'warp_routes', [])
+        filters = getattr(matrix, 'warp_filters', [])
+        if not routes and not filters:
+            return lines
+        frameworks = getattr(matrix, 'warp_detected_frameworks', [])
+        version = getattr(matrix, 'warp_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:5])}")
+        if version:
+            lines.append(f"# Warp version: ~{version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}|{r.get('handler', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if filters:
+            lines.append(f"## Filters ({len(filters)})")
+            for fl in filters[:15]:
+                lines.append(f"  {fl.get('kind', '?')}:{fl.get('name', '?')}")
+        rejections = getattr(matrix, 'warp_rejections', [])
+        if rejections:
+            lines.append(f"## Rejections ({len(rejections)})")
+            for rj in rejections[:10]:
+                lines.append(f"  {rj.get('kind', '?')}:{rj.get('name', '?')}")
+        replies = getattr(matrix, 'warp_replies', [])
+        if replies:
+            lines.append(f"## Reply Types ({len(replies)})")
+            for rp in replies[:10]:
+                lines.append(f"  {rp.get('kind', '?')}")
+        ws = getattr(matrix, 'warp_websockets', [])
+        if ws:
+            lines.append(f"## WebSockets ({len(ws)})")
+        return lines
+
+    def _compress_diesel(self, matrix) -> List[str]:
+        """Compress Diesel ORM data."""
+        lines = []
+        tables = getattr(matrix, 'diesel_tables', [])
+        models = getattr(matrix, 'diesel_models', [])
+        if not tables and not models:
+            return lines
+        frameworks = getattr(matrix, 'diesel_detected_frameworks', [])
+        version = getattr(matrix, 'diesel_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:5])}")
+        if version:
+            lines.append(f"# Diesel version: ~{version}")
+        if tables:
+            lines.append(f"## Tables ({len(tables)})")
+            for t in tables[:30]:
+                cols = t.get('columns', [])
+                col_str = ','.join(cols[:8])
+                if len(cols) > 8:
+                    col_str += f",+{len(cols) - 8}"
+                lines.append(f"  {t.get('name', '?')}|cols:[{col_str}]")
+        if models:
+            lines.append(f"## Models ({len(models)})")
+            for m in models[:30]:
+                derives = ','.join(m.get('derives', [])[:5])
+                table = m.get('table_name', '')
+                tbl_str = f"|table:{table}" if table else ""
+                lines.append(f"  {m.get('name', '?')}{tbl_str}|derives:[{derives}]")
+        connections = getattr(matrix, 'diesel_connections', [])
+        if connections:
+            lines.append(f"## Connections ({len(connections)})")
+            for c in connections[:5]:
+                pool_str = f"|pool:{c['pool']}" if c.get('pool') else ""
+                lines.append(f"  {c.get('backend', '?')}{pool_str}")
+        associations = getattr(matrix, 'diesel_associations', [])
+        if associations:
+            lines.append(f"## Associations ({len(associations)})")
+            for a in associations[:15]:
+                lines.append(f"  {a.get('model', '?')} {a.get('kind', '?')} {a.get('target', '?')}")
+        migrations = getattr(matrix, 'diesel_migrations', [])
+        if migrations:
+            lines.append(f"## Migrations ({len(migrations)})")
+        return lines
+
+    def _compress_seaorm(self, matrix) -> List[str]:
+        """Compress SeaORM data."""
+        lines = []
+        entities = getattr(matrix, 'seaorm_entities', [])
+        relations = getattr(matrix, 'seaorm_relations', [])
+        if not entities and not relations:
+            return lines
+        frameworks = getattr(matrix, 'seaorm_detected_frameworks', [])
+        version = getattr(matrix, 'seaorm_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:5])}")
+        if version:
+            lines.append(f"# SeaORM version: ~{version}")
+        if entities:
+            lines.append(f"## Entities ({len(entities)})")
+            for e in entities[:30]:
+                f = e.get('file', '').split('/')[-1]
+                table = e.get('table_name', '')
+                tbl_str = f"|table:{table}" if table else ""
+                lines.append(f"  {e.get('name', '?')}{tbl_str}|{f}")
+        if relations:
+            lines.append(f"## Relations ({len(relations)})")
+            for r in relations[:20]:
+                lines.append(f"  {r.get('kind', '?')}→{r.get('to_entity', '?')}")
+        active_models = getattr(matrix, 'seaorm_active_models', [])
+        if active_models:
+            lines.append(f"## Active Model Ops ({len(active_models)})")
+            for am in active_models[:10]:
+                lines.append(f"  {am.get('entity', '?')}.{am.get('operation', '?')}")
+        migrations = getattr(matrix, 'seaorm_migrations', [])
+        if migrations:
+            lines.append(f"## Migrations ({len(migrations)})")
+            for mg in migrations[:10]:
+                lines.append(f"  {mg.get('kind', '?')}|{mg.get('name', '?')}")
+        return lines
+
+    def _compress_tauri(self, matrix) -> List[str]:
+        """Compress Tauri desktop framework data."""
+        lines = []
+        commands = getattr(matrix, 'tauri_commands', [])
+        events = getattr(matrix, 'tauri_events', [])
+        if not commands and not events:
+            return lines
+        frameworks = getattr(matrix, 'tauri_detected_frameworks', [])
+        version = getattr(matrix, 'tauri_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:11])}")
+        if version:
+            lines.append(f"# Tauri version: ~{version}")
+        if commands:
+            lines.append(f"## Commands ({len(commands)})")
+            for cmd in commands[:40]:
+                f = cmd.get('file', '').split('/')[-1]
+                async_str = " async" if cmd.get('async_cmd') else ""
+                args = ','.join(cmd.get('args', [])[:5])
+                ret = cmd.get('return_type', '')
+                ret_str = f" -> {ret}" if ret else ""
+                lines.append(f"  {cmd.get('name', '?')}({args}){ret_str}{async_str}|{f}")
+            if len(commands) > 40:
+                lines.append(f"  # ... and {len(commands) - 40} more commands")
+        state = getattr(matrix, 'tauri_state', [])
+        if state:
+            lines.append(f"## State ({len(state)})")
+            for s in state[:10]:
+                managed = " [managed]" if s.get('managed') else ""
+                lines.append(f"  {s.get('type_name', '?')}{managed}")
+        if events:
+            lines.append(f"## Events ({len(events)})")
+            for ev in events[:20]:
+                lines.append(f"  {ev.get('kind', '?')}:{ev.get('name', '?')}")
+        plugins = getattr(matrix, 'tauri_plugins', [])
+        if plugins:
+            lines.append(f"## Plugins ({len(plugins)})")
+            for p in plugins[:10]:
+                lines.append(f"  {p.get('name', '?')}")
+        windows = getattr(matrix, 'tauri_windows', [])
+        if windows:
+            lines.append(f"## Windows ({len(windows)})")
+            for w in windows[:10]:
+                lines.append(f"  {w.get('kind', '?')}:{w.get('label', '?')}")
+        menus = getattr(matrix, 'tauri_menus', [])
+        if menus:
+            lines.append(f"## Menus ({len(menus)})")
         return lines
 
     # ============================================

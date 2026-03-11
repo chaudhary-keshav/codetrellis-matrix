@@ -1,0 +1,96 @@
+# Warp Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.4 - Rust Framework Support
+# Practice IDs: WARP001-WARP010
+# Category: warp
+# Frameworks: warp
+
+practices:
+  - id: WARP001
+    title: "Compose filters for route definitions"
+    description: "Build routes by composing filters with .and(), .or(), .map(), and .and_then(). Each filter handles one concern (path, method, extraction, handler)."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["warp"]
+    tags: ["warp", "filters", "composition"]
+
+  - id: WARP002
+    title: "Use custom rejections for error handling"
+    description: "Implement warp::reject::Reject for domain errors and use .recover() to convert rejections into HTTP responses. Avoid using string-based errors."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["warp"]
+    tags: ["warp", "rejections", "error-handling"]
+
+  - id: WARP003
+    title: "Use warp::any().map() for dependency injection"
+    description: "Inject shared state via warp::any().map(move || state.clone()). Combine with .and() to pass state into handlers alongside extractors."
+    category: "state_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["warp"]
+    tags: ["warp", "state", "injection"]
+
+  - id: WARP004
+    title: "Use reply combinators for responses"
+    description: "Use warp::reply::json(), warp::reply::html(), warp::reply::with_status(), and warp::reply::with_header() for composable response building."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["warp"]
+    tags: ["warp", "reply", "response"]
+
+  - id: WARP005
+    title: "Use warp::ws() for WebSocket upgrades"
+    description: "Use the warp::ws() filter for WebSocket support. Handle connections asynchronously with split sink/stream patterns."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["warp"]
+    tags: ["warp", "websocket", "ws"]
+
+  - id: WARP006
+    title: "Group related filters into modules"
+    description: "Define route filter functions in separate modules. Export a combined filter per module and merge all modules with .or() at the top level."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["warp"]
+    tags: ["warp", "modules", "organization"]
+
+  - id: WARP007
+    title: "Use warp::test for integration testing"
+    description: "Use warp::test::request() to build test requests and assert responses. Test individual filters and composed routes in isolation."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["warp"]
+    tags: ["warp", "testing", "integration"]
+
+  - id: WARP008
+    title: "Use warp::log for request logging"
+    description: "Add warp::log() or warp::trace() filters for structured request logging instead of implementing custom logging middleware."
+    category: "observability"
+    severity: "recommended"
+    applicability:
+      frameworks: ["warp"]
+    tags: ["warp", "logging", "trace"]
+
+  - id: WARP009
+    title: "Handle CORS with warp::cors()"
+    description: "Use warp::cors() builder for CORS configuration. Specify allowed origins, methods, and headers explicitly. Avoid allow_any_origin in production."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["warp"]
+    tags: ["warp", "cors", "security"]
+
+  - id: WARP010
+    title: "Use .with() for route-level filters"
+    description: "Apply cross-cutting filters with .with() on composed routes rather than repeating filter chains on every route definition."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["warp"]
+    tags: ["warp", "middleware", "with"]

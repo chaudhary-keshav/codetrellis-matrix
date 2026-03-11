@@ -84,7 +84,8 @@ EXTENSION_TO_SECTIONS: Dict[str, List[str]] = {
             "CSHARP_DEPENDENCIES"],
     # Rust
     ".rs": ["RUST_TYPES", "RUST_API", "RUST_FUNCTIONS", "RUST_MODELS",
-            "RUST_DEPENDENCIES"],
+            "RUST_DEPENDENCIES",
+            "ACTIX_WEB", "AXUM", "ROCKET", "WARP", "DIESEL", "SEAORM", "TAURI"],
     # Swift
     ".swift": ["SWIFT_TYPES", "SWIFT_FUNCTIONS", "SWIFT_API", "SWIFT_MODELS",
                "SWIFT_DEPENDENCIES"],

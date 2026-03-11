@@ -1,0 +1,96 @@
+# Actix Web Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.4 - Rust Framework Support
+# Practice IDs: ACTIX001-ACTIX020
+# Category: actix
+# Frameworks: actix
+
+practices:
+  - id: ACTIX001
+    title: "Use extractors for request data instead of manual parsing"
+    description: "Use Actix Web's typed extractors (web::Json, web::Path, web::Query, web::Form) to parse request data. They validate and deserialize automatically."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["actix"]
+    tags: ["actix", "extractors", "request"]
+
+  - id: ACTIX002
+    title: "Use web::Data for shared application state"
+    description: "Wrap shared state in web::Data<T> (backed by Arc) for thread-safe access across handlers. Initialize in App::new().app_data()."
+    category: "state_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["actix"]
+    tags: ["actix", "state", "app-data"]
+
+  - id: ACTIX003
+    title: "Implement ResponseError for custom error types"
+    description: "Implement actix_web::ResponseError for domain error types to return proper HTTP status codes and error bodies automatically."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["actix"]
+    tags: ["actix", "error-handling", "response-error"]
+
+  - id: ACTIX004
+    title: "Use middleware for cross-cutting concerns"
+    description: "Apply Logger, Compress, NormalizePath, and custom middleware via .wrap() for cross-cutting concerns like logging, compression, and authentication."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["actix"]
+    tags: ["actix", "middleware", "cross-cutting"]
+
+  - id: ACTIX005
+    title: "Use scopes to group related routes"
+    description: "Group related routes under web::scope() with shared middleware. This mirrors RESTful resource grouping and simplifies route organization."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["actix"]
+    tags: ["actix", "scope", "routing"]
+
+  - id: ACTIX006
+    title: "Prefer #[actix_web::main] for the entry point"
+    description: "Use the #[actix_web::main] macro for the async entry point instead of manually creating the Actix runtime."
+    category: "convention"
+    severity: "recommended"
+    applicability:
+      frameworks: ["actix"]
+    tags: ["actix", "runtime", "main"]
+
+  - id: ACTIX007
+    title: "Use actix-web-httpauth for authentication"
+    description: "Use the actix-web-httpauth crate for Bearer/Basic authentication middleware instead of implementing auth parsing manually."
+    category: "security"
+    severity: "recommended"
+    applicability:
+      frameworks: ["actix"]
+    tags: ["actix", "security", "auth"]
+
+  - id: ACTIX008
+    title: "Configure CORS properly with actix-cors"
+    description: "Use actix-cors for CORS configuration. Avoid Cors::permissive() in production — specify allowed origins, methods, and headers explicitly."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["actix"]
+    tags: ["actix", "security", "cors"]
+
+  - id: ACTIX009
+    title: "Use HttpServer::workers() to tune concurrency"
+    description: "Configure the number of HTTP workers based on CPU cores. Default is the number of physical CPUs. Adjust for I/O-bound vs. CPU-bound workloads."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["actix"]
+    tags: ["actix", "performance", "workers"]
+
+  - id: ACTIX010
+    title: "Use actix_web::test for integration testing"
+    description: "Use actix_web::test::init_service() and TestRequest for integration tests. Test handlers with real HTTP semantics including middleware."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["actix"]
+    tags: ["actix", "testing", "integration"]

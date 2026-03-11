@@ -1,0 +1,96 @@
+# SeaORM Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.4 - Rust Framework Support
+# Practice IDs: SEAORM001-SEAORM010
+# Category: sea_orm
+# Frameworks: sea_orm
+
+practices:
+  - id: SEAORM001
+    title: "Use sea-orm-cli for entity generation"
+    description: "Generate entity files with 'sea-orm-cli generate entity'. Keep generated entities in a dedicated module. Regenerate after schema changes."
+    category: "convention"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sea_orm"]
+    tags: ["sea_orm", "codegen", "entities"]
+
+  - id: SEAORM002
+    title: "Use ActiveModel for inserts and updates"
+    description: "Use ActiveModel with Set() and NotSet for partial inserts/updates. Only fields set to Set(value) are included in the SQL statement."
+    category: "database"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sea_orm"]
+    tags: ["sea_orm", "active-model", "crud"]
+
+  - id: SEAORM003
+    title: "Use sea_orm::TransactionTrait for multi-step operations"
+    description: "Wrap related operations in db.transaction(|txn| { ... }).await. Pass the transaction reference to all sub-operations."
+    category: "database"
+    severity: "critical"
+    applicability:
+      frameworks: ["sea_orm"]
+    tags: ["sea_orm", "transactions", "safety"]
+
+  - id: SEAORM004
+    title: "Define relations with DeriveRelation"
+    description: "Use #[derive(DeriveRelation)] and Related<T> trait to define entity relationships. Use .find_related() for eager loading."
+    category: "database"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sea_orm"]
+    tags: ["sea_orm", "relations", "derive"]
+
+  - id: SEAORM005
+    title: "Use sea-orm-migration for schema management"
+    description: "Use the sea-orm-migration crate with MigrationTrait implementations. Run migrations via cli or embed them in application startup."
+    category: "database"
+    severity: "critical"
+    applicability:
+      frameworks: ["sea_orm"]
+    tags: ["sea_orm", "migrations", "schema"]
+
+  - id: SEAORM006
+    title: "Use column_type attribute for type mapping"
+    description: 'Use #[sea_orm(column_type = "...")] to map Rust types to database column types. Specify nullable, unique, and indexed constraints in attributes.'
+    category: "database"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sea_orm"]
+    tags: ["sea_orm", "columns", "types"]
+
+  - id: SEAORM007
+    title: "Use .select_only() for partial selects"
+    description: "Use .select_only().column() for selecting specific columns. Use .into_model::<CustomStruct>() to map partial results."
+    category: "performance"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sea_orm"]
+    tags: ["sea_orm", "query", "performance"]
+
+  - id: SEAORM008
+    title: "Use DatabaseConnection abstraction"
+    description: "Pass &DatabaseConnection to functions instead of concrete connection types. This allows switching backends (postgres, mysql, sqlite) without code changes."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sea_orm"]
+    tags: ["sea_orm", "connection", "abstraction"]
+
+  - id: SEAORM009
+    title: "Use mock database for unit testing"
+    description: "Use sea_orm::MockDatabase for unit tests. Define expected query results with .append_query_results(). Verify executed statements."
+    category: "testing"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sea_orm"]
+    tags: ["sea_orm", "testing", "mock"]
+
+  - id: SEAORM010
+    title: "Use Condition for dynamic filters"
+    description: "Build dynamic query filters with sea_orm::Condition::all() / ::any(). Add conditions with .add() for optional runtime filters."
+    category: "api_design"
+    severity: "recommended"
+    applicability:
+      frameworks: ["sea_orm"]
+    tags: ["sea_orm", "query", "dynamic"]

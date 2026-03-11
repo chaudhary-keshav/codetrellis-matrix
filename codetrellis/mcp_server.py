@@ -154,6 +154,9 @@ class MatrixMCPServer:
             # Go framework APIs (v5.2)
             "GO_GIN", "GO_ECHO", "GO_FIBER", "GO_CHI",
             "GO_GRPC", "GO_GORM", "GO_SQLX", "GO_COBRA",
+            # Rust framework APIs (v5.4)
+            "ACTIX_WEB", "AXUM", "ROCKET", "WARP",
+            "DIESEL", "SEAORM", "TAURI",
         ],
         "overview": [
             "PROJECT", "OVERVIEW", "PROJECT_STRUCTURE", "PROJECT_PROFILE",

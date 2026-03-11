@@ -95,6 +95,7 @@ SKILL_TEMPLATES: List[Dict[str, any]] = [
             "ALPINE_API", "HTMX_API", "STIMULUS_API",
             "STORYBOOK_API",
             "GO_GIN", "GO_ECHO", "GO_FIBER", "GO_CHI", "GO_GRPC",
+            "ACTIX_WEB", "AXUM", "ROCKET", "WARP",
         ],
         "context_sections": [
             "PROJECT", "SCHEMAS", "CONTROLLERS", "HTTP_API",
@@ -138,6 +139,7 @@ SKILL_TEMPLATES: List[Dict[str, any]] = [
             "SWIFT_MODELS", "SCALA_MODELS", "GO_TYPES",
             "C_TYPES", "CPP_TYPES", "POWERSHELL_MODELS",
             "R_MODELS", "GO_GORM", "GO_SQLX",
+            "DIESEL", "SEAORM",
         ],
         "context_sections": [
             "PROJECT", "SCHEMAS", "DATABASE", "BEST_PRACTICES",

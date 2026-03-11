@@ -1,0 +1,96 @@
+# Tauri Best Practices for CodeTrellis BPL v1.0
+# Part of CodeTrellis v5.4 - Rust Framework Support
+# Practice IDs: TAURI001-TAURI010
+# Category: tauri
+# Frameworks: tauri
+
+practices:
+  - id: TAURI001
+    title: "Keep Tauri commands focused and typed"
+    description: "Define #[tauri::command] handlers with typed parameters and return types. Each command should handle one operation. Use Result<T, E> for error propagation."
+    category: "architecture"
+    severity: "critical"
+    applicability:
+      frameworks: ["tauri"]
+    tags: ["tauri", "commands", "typed"]
+
+  - id: TAURI002
+    title: "Use State<T> for shared backend state"
+    description: "Inject shared state via tauri::State<T> in commands. Register state with .manage() on the Builder. Use Mutex/RwLock for mutable state."
+    category: "state_management"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tauri"]
+    tags: ["tauri", "state", "managed"]
+
+  - id: TAURI003
+    title: "Use events for backend-to-frontend communication"
+    description: "Use app.emit_all() or window.emit() for backend-to-frontend messages. Use app.listen_global() for frontend-to-backend events. Prefer commands for request-response."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tauri"]
+    tags: ["tauri", "events", "ipc"]
+
+  - id: TAURI004
+    title: "Configure allowlist for security"
+    description: "Define tauri.allowlist in tauri.conf.json to control which APIs are exposed to the frontend. Disable unused APIs. Use scope patterns for fs and shell access."
+    category: "security"
+    severity: "critical"
+    applicability:
+      frameworks: ["tauri"]
+    tags: ["tauri", "security", "allowlist"]
+
+  - id: TAURI005
+    title: "Use Tauri plugins for extended capabilities"
+    description: "Use official Tauri plugins (store, sql, http, fs, dialog) instead of implementing functionality from scratch. Register plugins with .plugin() on the Builder."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tauri"]
+    tags: ["tauri", "plugins", "ecosystem"]
+
+  - id: TAURI006
+    title: "Implement proper error types for commands"
+    description: "Create a serializable error type implementing Into<InvokeError> or serde::Serialize. Return Result<T, AppError> from commands for consistent error handling."
+    category: "error_handling"
+    severity: "critical"
+    applicability:
+      frameworks: ["tauri"]
+    tags: ["tauri", "errors", "commands"]
+
+  - id: TAURI007
+    title: "Use setup hook for initialization"
+    description: "Use .setup(|app| { ... }) for app initialization (database setup, window creation, background tasks). Avoid heavy initialization in main()."
+    category: "architecture"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tauri"]
+    tags: ["tauri", "setup", "lifecycle"]
+
+  - id: TAURI008
+    title: "Use WindowBuilder for window management"
+    description: "Create and configure windows via WindowBuilder or tauri.conf.json. Set title, size, decorations, and transparency declaratively."
+    category: "ui"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tauri"]
+    tags: ["tauri", "windows", "builder"]
+
+  - id: TAURI009
+    title: "Use tauri-plugin-updater for auto-updates"
+    description: "Integrate tauri-plugin-updater for application updates. Configure update endpoints and signing keys in tauri.conf.json."
+    category: "deployment"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tauri"]
+    tags: ["tauri", "updater", "deployment"]
+
+  - id: TAURI010
+    title: "Use generate_handler! macro for command registration"
+    description: "Register commands with .invoke_handler(tauri::generate_handler![cmd1, cmd2, ...]). Keep the handler list in main() for visibility of all exposed commands."
+    category: "convention"
+    severity: "recommended"
+    applicability:
+      frameworks: ["tauri"]
+    tags: ["tauri", "commands", "handler"]

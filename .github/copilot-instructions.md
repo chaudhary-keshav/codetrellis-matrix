@@ -6,6 +6,7 @@
 ## Project Overview
 
 **codetrellis** — Python Library
+
 - **Languages:** Python
 - **Frameworks:** None detected
 
@@ -19,6 +20,7 @@
 ## CodeTrellis Matrix
 
 This project uses **CodeTrellis** for AI context injection. The full project matrix is available via:
+
 - **MCP Server:** Registered in `.vscode/mcp.json` — provides tools to query the entire project.
 - **Matrix file:** `.codetrellis/cache/4.16.0/codetrellis/matrix.prompt`
 
@@ -30,13 +32,13 @@ Prefer the CodeTrellis MCP tools for all project exploration and code understand
 
 ### MCP Server Tools
 
-| Tool | When to Use |
-|------|-------------|
-| `search_matrix(query)` | **Use FIRST** for any question about the project — searches all 33 sections |
-| `get_section(name)` | Get a specific section: OVERVIEW, PROJECT, PYTHON_TYPES, ROUTES_SEMANTIC, RUNBOOK, BUSINESS_DOMAIN, CLI_COMMANDS, IMPLEMENTATION_LOGIC, etc. |
-| `get_context_for_file(path)` | **Use before editing any file** — returns types, deps, and APIs relevant to that file |
-| `get_skills()` | List auto-generated AI skills for this project |
-| `get_cache_stats()` | Cache optimization statistics |
+| Tool                         | When to Use                                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search_matrix(query)`       | **Use FIRST** for any question about the project — searches all 33 sections                                                                  |
+| `get_section(name)`          | Get a specific section: OVERVIEW, PROJECT, PYTHON_TYPES, ROUTES_SEMANTIC, RUNBOOK, BUSINESS_DOMAIN, CLI_COMMANDS, IMPLEMENTATION_LOGIC, etc. |
+| `get_context_for_file(path)` | **Use before editing any file** — returns types, deps, and APIs relevant to that file                                                        |
+| `get_skills()`               | List auto-generated AI skills for this project                                                                                               |
+| `get_cache_stats()`          | Cache optimization statistics                                                                                                                |
 
 ## Key Conventions
 
@@ -90,3 +92,24 @@ ci:github-actions|triggers:push|jobs:quality-gates
   # cobra (1 commands)
     serve|semantic_extractor.py
 ```
+
+## Multi-Agent Workflow
+
+This workspace defines custom agents under `.github/agents/` for multi-step work.
+
+- Use the `ct-orchestrator` agent to coordinate the task.
+- The orchestrator may delegate to `ct-research`, `ct-implement`, and `ct-verify`.
+- Treat the orchestrator as the single coordination point for shared context, assumptions, and final synthesis.
+- Use the CodeTrellis MCP tools before manual file exploration.
+- Prefer parallel delegation only when the sub-tasks are independent.
+
+### Important Limitation
+
+VS Code custom agents do not maintain a native live peer-to-peer conversation with each other.
+If you want multiple agents to "talk", route that exchange through the orchestrator:
+
+1. Orchestrator sends the same task brief to multiple specialist agents.
+2. Specialist agents return structured findings, plans, or verification results.
+3. Orchestrator merges conflicts, requests follow-up work, and produces the final answer.
+
+Use this pattern instead of assuming direct agent-to-agent chat.
