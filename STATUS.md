@@ -1,10 +1,10 @@
-# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq, Laravel, Symfony, CodeIgniter, Slim, WordPress, Actix Web, Axum, Rocket, Warp, Diesel, SeaORM, Tauri Language Support — STATUS.md
+# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq, Laravel, Symfony, CodeIgniter, Slim, WordPress, Actix Web, Axum, Rocket, Warp, Diesel, SeaORM, Tauri, Elixir, Phoenix, Ecto, Absinthe, Oban Language Support — STATUS.md
 
 ## Overview
 
-**CodeTrellis Version**: v5.5.0 (v5.4.0 + Rust Framework Parsers)
-**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq), Session 80 (PHP Frameworks: Laravel + Symfony + CodeIgniter + Slim + WordPress), Session 81 (Rust Frameworks: Actix Web + Axum + Rocket + Warp + Diesel + SeaORM + Tauri)
-**Status**: ✅ Session 81 Complete — Rust Framework Parsers (v5.5.0): 7 new Rust framework parsers with full regex-based extraction following the established supplementary parser pattern. (1) **Actix Web** — routes, scopes, middleware, extractors, app state, error handlers, websockets, configs, test utilities, 12 ecosystem patterns, v0.x-4.x version detection. (2) **Axum** — routes, layers, extractors, state, errors, websockets, nested routers, 10 ecosystem patterns, v0.5-0.8+ version detection. (3) **Rocket** — routes, catchers, fairings, guards, state, responders, mounts, 8 ecosystem patterns, v0.3-0.5+ version detection. (4) **Warp** — routes, filters, rejections, replies, websockets, configs, 8 ecosystem patterns, v0.1-0.3+ version detection. (5) **Diesel** — tables, models, queries (CRUD), migrations, connections, associations, custom types, 6 ecosystem patterns, v1.x-2.x version detection. (6) **SeaORM** — entities, relations, queries, migrations, connections, active models, columns, 8 ecosystem patterns, v0.x-1.x version detection. (7) **Tauri** — commands, state, events, plugins, windows, menus, configs, 10 ecosystem patterns, v1.x-2.x version detection. Scanner integration (7 \_parse methods, ~75 new ProjectMatrix fields), compressor (7 new sections), BPL (7 practice YAML files with 70 practices), A5.x modules (jit_context, cache_optimizer, skills_generator, mcp_server). 106 new unit tests (7 test files), 3-project scanner evaluation passed, 0 regressions.
+**CodeTrellis Version**: v5.6.0 (v5.5.0 + Elixir Ecosystem Parsers)
+**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq), Session 80 (PHP Frameworks: Laravel + Symfony + CodeIgniter + Slim + WordPress), Session 81 (Rust Frameworks: Actix Web + Axum + Rocket + Warp + Diesel + SeaORM + Tauri), Session 82 (Elixir Ecosystem: Elixir + Phoenix + Ecto + Absinthe + Oban)
+**Status**: ✅ Session 82 Complete — Elixir Ecosystem Parsers (v5.6.0): 5 new parsers + 6 extractors with full regex-based extraction following the TypeScript parser reference pattern. (1) **Elixir** — modules, structs, protocols, behaviours, typespecs, exceptions, functions (def/defp), macros, guards, callbacks, plugs, pipelines, schemas, changesets, GenServer states, module attributes, use/import/alias/require directives, 70+ framework detection patterns, 10 OTP patterns, Elixir 1.0-1.17+ version detection. (2) **Phoenix** — routes, controllers, LiveViews, LiveComponents, channels, sockets, components, 1.0-1.8+ version detection. (3) **Ecto** — schemas with fields/associations, changesets with validations, migrations, queries, Repo calls, Multi transactions, custom types, 1.0-3.12 version detection. (4) **Absinthe** — types, queries/mutations/subscriptions, resolvers, middleware, dataloaders, version detection. (5) **Oban** — workers, queues, plugins, cron schedules, telemetry events, Pro features, 2.0-2.17 version detection. Scanner integration (5 \_parse methods, 60+ new ProjectMatrix fields, `_dc_to_dict` recursive dataclass converter, `_higher_version` comparator), compressor (6 new sections: ELIXIR_TYPES, ELIXIR_FUNCTIONS, PHOENIX, ECTO, ABSINTHE, OBAN). 127 new unit tests (6 test files), 3-project scanner evaluation (Plausible Analytics, Papercups, elixir-lang/elixir), 0 regressions (7233 total tests).
 
 ---
 
@@ -5286,5 +5286,80 @@ Total:     7091
 
 pytest tests/ -x -q
 7091 passed, 101 skipped, 1 warning in 22.44s
+✅ ALL TESTS PASSED — 0 failures, 0 regressions
+```
+
+## Session 82 — Elixir Ecosystem Parsers (v5.6.0)
+
+### Scope
+
+Full Elixir ecosystem support: Elixir (base language), Phoenix (web framework), Ecto (data layer), Absinthe (GraphQL), Oban (background jobs). Following the TypeScript parser reference pattern with 5 extractors per language.
+
+### New Files (18)
+
+**Parsers (5):**
+
+- `codetrellis/elixir_parser_enhanced.py` — Base Elixir parser. Modules, structs, protocols, behaviours, typespecs, exceptions, 70+ framework patterns, 10 OTP patterns, Elixir 1.0–1.17+ version detection.
+- `codetrellis/phoenix_parser_enhanced.py` — Phoenix framework. Routes, controllers, LiveViews, LiveComponents, channels, sockets, components, Phoenix 1.0–1.8+ version detection.
+- `codetrellis/ecto_parser_enhanced.py` — Ecto data layer. Schemas with fields/associations, changesets with validations, migrations, queries, Repo calls, Multi transactions, custom types, Ecto 1.0–3.12 version detection.
+- `codetrellis/absinthe_parser_enhanced.py` — Absinthe GraphQL. Types, queries/mutations/subscriptions, resolvers, middleware, dataloaders, version detection.
+- `codetrellis/oban_parser_enhanced.py` — Oban background jobs. Workers, queues, plugins, cron, telemetry, Pro features, Oban 2.0–2.17 version detection.
+
+**Extractors (6):**
+
+- `codetrellis/extractors/elixir/__init__.py`
+- `codetrellis/extractors/elixir/type_extractor.py` — Modules, structs, protocols, behaviours, typespecs, exceptions
+- `codetrellis/extractors/elixir/function_extractor.py` — Functions (def/defp), macros, guards, callbacks
+- `codetrellis/extractors/elixir/api_extractor.py` — Plugs, pipelines, endpoints
+- `codetrellis/extractors/elixir/model_extractor.py` — Schemas, changesets, GenServer states
+- `codetrellis/extractors/elixir/attribute_extractor.py` — Module attributes, use/import/alias/require directives
+
+**Tests (6):**
+
+- `tests/unit/test_elixir_parser_enhanced.py` (21 tests)
+- `tests/unit/test_phoenix_parser_enhanced.py` (14 tests)
+- `tests/unit/test_ecto_parser_enhanced.py` (18 tests)
+- `tests/unit/test_absinthe_parser_enhanced.py` (17 tests)
+- `tests/unit/test_oban_parser_enhanced.py` (16 tests)
+- `tests/unit/test_elixir_extractors.py` (19 tests)
+
+**Report (1):**
+
+- `docs/ELIXIR_SCANNER_EVALUATION.md` — Full evaluation report with 3-repo comparison
+
+### Modified Files
+
+**scanner.py:**
+
+- Added imports for 5 parsers, 60+ ProjectMatrix fields (elixir*\*, phoenix*_, ecto\__, absinthe*\*, oban*\*)
+- Added 5 parser instances, FILE*TYPES (`.ex`/`.exs` → `"elixir"`), dispatch chain → 5 `\_parse*\*` methods
+- Added `_dc_to_dict()` recursive dataclass→dict converter, `_higher_version()` version comparator
+- Fixed LiveComponent early-return gate
+
+**compressor.py:**
+
+- 6 compress methods + section calls: `[ELIXIR_TYPES]`, `[ELIXIR_FUNCTIONS]`, `[PHOENIX]`, `[ECTO]`, `[ABSINTHE]`, `[OBAN]`
+
+### Key Fixes
+
+1. Absinthe false positive in base parser (field/arg patterns matched Ecto)
+2. Nested dataclass serialization crash (EctoSchemaFieldInfo → compressor `.get()`)
+3. Version detection "first wins" → "highest wins" (Phoenix 1.4→1.7, Ecto 1.0→3.11)
+4. LiveComponent undercount (5→33 in Plausible) — regex + scanner gate fixes
+5. Multiple REQUIRE gate fixes (Ecto, Absinthe, Oban)
+
+### Scanner Evaluation (3 Repos)
+
+1. **Plausible Analytics**: 858 modules, 223 routes, 58 schemas, 23 Oban workers
+2. **Papercups**: 346 modules, 44 controllers, 43 schemas, 19 Oban workers
+3. **elixir-lang/elixir**: 507 modules, 6,536 functions — correctly no framework sections
+
+### Test Results
+
+```
+New tests:  127 (21+14+18+17+16+19+22 fixes)
+Previous:  7106
+Total:     7233
+pytest tests/ -x -q → 7233 passed, 86 skipped
 ✅ ALL TESTS PASSED — 0 failures, 0 regressions
 ```

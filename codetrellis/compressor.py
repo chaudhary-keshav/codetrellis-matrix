@@ -1911,6 +1911,54 @@ class MatrixCompressor:
             lines.append("")
 
         # ============================================
+        # v5.5: Elixir Language + Framework Support
+        # ============================================
+
+        # Elixir Types (modules, structs, protocols, behaviours, typespecs)
+        elixir_types_lines = self._compress_elixir_types(matrix)
+        if elixir_types_lines:
+            lines.append("[ELIXIR_TYPES]")
+            lines.append("# Elixir modules, structs, protocols, behaviours, typespecs, exceptions")
+            lines.extend(elixir_types_lines)
+            lines.append("")
+
+        # Elixir Functions (def/defp, macros, guards, callbacks)
+        elixir_func_lines = self._compress_elixir_functions(matrix)
+        if elixir_func_lines:
+            lines.append("[ELIXIR_FUNCTIONS]")
+            lines.append("# Elixir functions (def/defp), macros, guards, callbacks")
+            lines.extend(elixir_func_lines)
+            lines.append("")
+
+        # Phoenix Framework
+        phoenix_lines = self._compress_phoenix(matrix)
+        if phoenix_lines:
+            lines.append("[PHOENIX]")
+            lines.extend(phoenix_lines)
+            lines.append("")
+
+        # Ecto Framework
+        ecto_lines = self._compress_ecto(matrix)
+        if ecto_lines:
+            lines.append("[ECTO]")
+            lines.extend(ecto_lines)
+            lines.append("")
+
+        # Absinthe GraphQL
+        absinthe_lines = self._compress_absinthe(matrix)
+        if absinthe_lines:
+            lines.append("[ABSINTHE]")
+            lines.extend(absinthe_lines)
+            lines.append("")
+
+        # Oban Background Jobs
+        oban_lines = self._compress_oban(matrix)
+        if oban_lines:
+            lines.append("[OBAN]")
+            lines.extend(oban_lines)
+            lines.append("")
+
+        # ============================================
         # v4.24: PHP Language Support
         # ============================================
 
@@ -13249,6 +13297,366 @@ class MatrixCompressor:
             lines.append(f"## Periodic Jobs ({len(periodic)})")
             for pj in periodic[:10]:
                 lines.append(f"  {pj.get('name', '?')}|cron:{pj.get('cron', '')}")
+        return lines
+
+    # ============================================
+    # v5.5: Elixir Language + Framework Compression Methods
+    # ============================================
+
+    def _compress_elixir_types(self, matrix) -> List[str]:
+        """Compress Elixir type-level constructs (modules, structs, protocols, behaviours, typespecs)."""
+        lines = []
+        modules = getattr(matrix, 'elixir_modules', [])
+        structs = getattr(matrix, 'elixir_structs', [])
+        protocols = getattr(matrix, 'elixir_protocols', [])
+        if not modules and not structs and not protocols:
+            return lines
+        frameworks = getattr(matrix, 'elixir_detected_frameworks', [])
+        otp = getattr(matrix, 'elixir_otp_patterns', [])
+        version = getattr(matrix, 'elixir_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:15])}")
+        if otp:
+            lines.append(f"# OTP patterns: {', '.join(otp[:10])}")
+        if version:
+            lines.append(f"# Elixir version: {version}")
+        if modules:
+            lines.append(f"## Modules ({len(modules)})")
+            for m in modules[:40]:
+                f = m.get('file', '').split('/')[-1]
+                uses = ','.join(m.get('uses', [])[:3])
+                uses_str = f"|use:[{uses}]" if uses else ""
+                behav = ','.join(m.get('behaviours', [])[:3])
+                behav_str = f"|@behaviour:[{behav}]" if behav else ""
+                struct_str = "|struct" if m.get('has_struct') else ""
+                lines.append(f"  {m.get('name', '?')}{uses_str}{behav_str}{struct_str}|{f}")
+            if len(modules) > 40:
+                lines.append(f"  # ... and {len(modules) - 40} more modules")
+        if structs:
+            lines.append(f"## Structs ({len(structs)})")
+            for s in structs[:30]:
+                f = s.get('file', '').split('/')[-1]
+                fields = ','.join(s.get('fields', [])[:5])
+                enforced = ','.join(s.get('enforced_keys', [])[:3])
+                enf_str = f"|@enforce:[{enforced}]" if enforced else ""
+                lines.append(f"  %{s.get('name', '?')}{{|{fields}}}{enf_str}|{f}")
+            if len(structs) > 30:
+                lines.append(f"  # ... and {len(structs) - 30} more structs")
+        if protocols:
+            lines.append(f"## Protocols ({len(protocols)})")
+            for p in protocols[:20]:
+                f = p.get('file', '').split('/')[-1]
+                funcs = ','.join(p.get('functions', [])[:5])
+                lines.append(f"  {p.get('name', '?')}|fns:[{funcs}]|{f}")
+        behaviours = getattr(matrix, 'elixir_behaviours', [])
+        if behaviours:
+            lines.append(f"## Behaviours ({len(behaviours)})")
+            for b in behaviours[:20]:
+                f = b.get('file', '').split('/')[-1]
+                cbs = ','.join(b.get('callbacks', [])[:5])
+                lines.append(f"  {b.get('name', '?')}|callbacks:[{cbs}]|{f}")
+        typespecs = getattr(matrix, 'elixir_typespecs', [])
+        if typespecs:
+            lines.append(f"## Typespecs ({len(typespecs)})")
+            for ts in typespecs[:30]:
+                f = ts.get('file', '').split('/')[-1]
+                kind = ts.get('kind', 'type')
+                lines.append(f"  @{kind} {ts.get('name', '?')}::{ts.get('spec', '?')}|{f}")
+        exceptions = getattr(matrix, 'elixir_exceptions', [])
+        if exceptions:
+            lines.append(f"## Exceptions ({len(exceptions)})")
+            for ex in exceptions[:15]:
+                f = ex.get('file', '').split('/')[-1]
+                fields = ','.join(ex.get('fields', [])[:4])
+                lines.append(f"  {ex.get('name', '?')}|fields:[{fields}]|{f}")
+        return lines
+
+    def _compress_elixir_functions(self, matrix) -> List[str]:
+        """Compress Elixir function-level constructs (def/defp, macros, guards, callbacks)."""
+        lines = []
+        functions = getattr(matrix, 'elixir_functions', [])
+        macros = getattr(matrix, 'elixir_macros', [])
+        if not functions and not macros:
+            return lines
+        if functions:
+            pub_fns = [f for f in functions if f.get('is_public', True)]
+            priv_fns = [f for f in functions if not f.get('is_public', True)]
+            lines.append(f"## Functions ({len(functions)}: {len(pub_fns)} public, {len(priv_fns)} private)")
+            for fn in functions[:40]:
+                f = fn.get('file', '').split('/')[-1]
+                vis = "def" if fn.get('is_public', True) else "defp"
+                guard = "|guard" if fn.get('has_guard') else ""
+                arity = fn.get('arity', 0)
+                ret_type = f"|::{fn['return_type']}" if fn.get('return_type') else ""
+                gs_cb = f"|genserver:{fn['callback_type']}" if fn.get('is_genserver_callback') else ""
+                clauses = f"|clauses:{fn['clause_count']}" if fn.get('clause_count', 1) > 1 else ""
+                lines.append(f"  {vis} {fn.get('name', '?')}/{arity}{guard}{ret_type}{gs_cb}{clauses}|{f}")
+            if len(functions) > 40:
+                lines.append(f"  # ... and {len(functions) - 40} more functions")
+        if macros:
+            lines.append(f"## Macros ({len(macros)})")
+            for m in macros[:20]:
+                f = m.get('file', '').split('/')[-1]
+                vis = "defmacro" if m.get('is_public', True) else "defmacrop"
+                lines.append(f"  {vis} {m.get('name', '?')}/{m.get('arity', 0)}|{f}")
+        guards = getattr(matrix, 'elixir_guards', [])
+        if guards:
+            lines.append(f"## Guards ({len(guards)})")
+            for g in guards[:15]:
+                f = g.get('file', '').split('/')[-1]
+                lines.append(f"  defguard {g.get('name', '?')}/{g.get('arity', 0)}|{f}")
+        callbacks = getattr(matrix, 'elixir_callbacks', [])
+        if callbacks:
+            lines.append(f"## Callbacks ({len(callbacks)})")
+            for cb in callbacks[:20]:
+                f = cb.get('file', '').split('/')[-1]
+                lines.append(f"  @callback {cb.get('name', '?')}/{cb.get('arity', 0)}|{f}")
+        return lines
+
+    def _compress_phoenix(self, matrix) -> List[str]:
+        """Compress Phoenix framework data (routes, controllers, LiveView, channels, components)."""
+        lines = []
+        routes = getattr(matrix, 'phoenix_routes', [])
+        controllers = getattr(matrix, 'phoenix_controllers', [])
+        live_views = getattr(matrix, 'phoenix_live_views', [])
+        if not routes and not controllers and not live_views:
+            return lines
+        frameworks = getattr(matrix, 'phoenix_detected_frameworks', [])
+        version = getattr(matrix, 'phoenix_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Phoenix version: {version}")
+        if routes:
+            lines.append(f"## Routes ({len(routes)})")
+            for r in routes[:40]:
+                f = r.get('file', '').split('/')[-1]
+                pipe = f"|pipe:{r['pipeline']}" if r.get('pipeline') else ""
+                scope = f"|scope:{r['scope']}" if r.get('scope') else ""
+                lines.append(f"  {r.get('method', 'ANY')} {r.get('path', '/')}{pipe}{scope}|{r.get('action', '?')}|{f}")
+            if len(routes) > 40:
+                lines.append(f"  # ... and {len(routes) - 40} more routes")
+        if controllers:
+            lines.append(f"## Controllers ({len(controllers)})")
+            for c in controllers[:30]:
+                f = c.get('file', '').split('/')[-1]
+                actions = ','.join(c.get('actions', [])[:5])
+                plugs = ','.join(c.get('plugs', [])[:3])
+                plug_str = f"|plugs:[{plugs}]" if plugs else ""
+                lines.append(f"  {c.get('name', '?')}|actions:[{actions}]{plug_str}|{f}")
+        if live_views:
+            lines.append(f"## LiveViews ({len(live_views)})")
+            for lv in live_views[:20]:
+                f = lv.get('file', '').split('/')[-1]
+                events = ','.join(lv.get('handle_events', [])[:5])
+                ev_str = f"|events:[{events}]" if events else ""
+                assigns = ','.join(lv.get('assigns', [])[:5])
+                as_str = f"|assigns:[{assigns}]" if assigns else ""
+                lines.append(f"  {lv.get('name', '?')}{ev_str}{as_str}|{f}")
+        live_components = getattr(matrix, 'phoenix_live_components', [])
+        if live_components:
+            lines.append(f"## LiveComponents ({len(live_components)})")
+            for lc in live_components[:15]:
+                f = lc.get('file', '').split('/')[-1]
+                lines.append(f"  {lc.get('name', '?')}|{f}")
+        channels = getattr(matrix, 'phoenix_channels', [])
+        if channels:
+            lines.append(f"## Channels ({len(channels)})")
+            for ch in channels[:15]:
+                f = ch.get('file', '').split('/')[-1]
+                topic = f"|topic:{ch['topic']}" if ch.get('topic') else ""
+                events = ','.join(ch.get('handle_in_events', [])[:5])
+                ev_str = f"|events:[{events}]" if events else ""
+                lines.append(f"  {ch.get('name', '?')}{topic}{ev_str}|{f}")
+        sockets = getattr(matrix, 'phoenix_sockets', [])
+        if sockets:
+            lines.append(f"## Sockets ({len(sockets)})")
+            for sk in sockets[:10]:
+                f = sk.get('file', '').split('/')[-1]
+                lines.append(f"  {sk.get('name', '?')}|path:{sk.get('path', '?')}|{f}")
+        components = getattr(matrix, 'phoenix_components', [])
+        if components:
+            lines.append(f"## Components ({len(components)})")
+            for comp in components[:20]:
+                f = comp.get('file', '').split('/')[-1]
+                attrs = ','.join(comp.get('attrs', [])[:5])
+                attr_str = f"|attrs:[{attrs}]" if attrs else ""
+                slots = ','.join(comp.get('slots', [])[:3])
+                slot_str = f"|slots:[{slots}]" if slots else ""
+                lines.append(f"  {comp.get('name', '?')}{attr_str}{slot_str}|{f}")
+        return lines
+
+    def _compress_ecto(self, matrix) -> List[str]:
+        """Compress Ecto data layer (schemas, changesets, migrations, queries, Repo calls)."""
+        lines = []
+        schemas = getattr(matrix, 'ecto_schemas', [])
+        migrations = getattr(matrix, 'ecto_migrations', [])
+        if not schemas and not migrations:
+            return lines
+        frameworks = getattr(matrix, 'ecto_detected_frameworks', [])
+        version = getattr(matrix, 'ecto_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Ecto version: {version}")
+        if schemas:
+            lines.append(f"## Schemas ({len(schemas)})")
+            for s in schemas[:30]:
+                f = s.get('file', '').split('/')[-1]
+                fields = s.get('fields', [])
+                field_strs = [f"{fld.get('name', '?')}:{fld.get('type', '?')}" for fld in fields[:6]]
+                if len(fields) > 6:
+                    field_strs.append(f"+{len(fields) - 6}more")
+                assocs = s.get('associations', [])
+                assoc_str = f"|assoc:[{','.join(assocs[:3])}]" if assocs else ""
+                lines.append(f"  schema {s.get('table', s.get('name', '?'))}|{','.join(field_strs)}{assoc_str}|{f}")
+            if len(schemas) > 30:
+                lines.append(f"  # ... and {len(schemas) - 30} more schemas")
+        changesets = getattr(matrix, 'ecto_changesets', [])
+        if changesets:
+            lines.append(f"## Changesets ({len(changesets)})")
+            for cs in changesets[:20]:
+                f = cs.get('file', '').split('/')[-1]
+                cast_fields = ','.join(cs.get('cast_fields', [])[:5])
+                validations = ','.join(cs.get('validations', [])[:3])
+                val_str = f"|validate:[{validations}]" if validations else ""
+                lines.append(f"  {cs.get('name', '?')}|cast:[{cast_fields}]{val_str}|{f}")
+        if migrations:
+            lines.append(f"## Migrations ({len(migrations)})")
+            for mg in migrations[:20]:
+                f = mg.get('file', '').split('/')[-1]
+                ops = ','.join(mg.get('operations', [])[:3])
+                lines.append(f"  {mg.get('name', '?')}|ops:[{ops}]|{f}")
+        queries = getattr(matrix, 'ecto_queries', [])
+        if queries:
+            lines.append(f"## Queries ({len(queries)})")
+            for q in queries[:20]:
+                f = q.get('file', '').split('/')[-1]
+                lines.append(f"  {q.get('type', 'query')} {q.get('source', '?')}|{f}")
+        repo_calls = getattr(matrix, 'ecto_repo_calls', [])
+        if repo_calls:
+            lines.append(f"## Repo Calls ({len(repo_calls)})")
+            for rc in repo_calls[:20]:
+                f = rc.get('file', '').split('/')[-1]
+                lines.append(f"  Repo.{rc.get('operation', '?')}|{f}")
+        multis = getattr(matrix, 'ecto_multis', [])
+        if multis:
+            lines.append(f"## Multi Transactions ({len(multis)})")
+            for m in multis[:10]:
+                f = m.get('file', '').split('/')[-1]
+                ops = m.get('operation_count', 0)
+                lines.append(f"  Multi|ops:{ops}|{f}")
+        return lines
+
+    def _compress_absinthe(self, matrix) -> List[str]:
+        """Compress Absinthe GraphQL data (types, queries, resolvers, middleware)."""
+        lines = []
+        types = getattr(matrix, 'absinthe_types', [])
+        queries = getattr(matrix, 'absinthe_queries', [])
+        if not types and not queries:
+            return lines
+        frameworks = getattr(matrix, 'absinthe_detected_frameworks', [])
+        version = getattr(matrix, 'absinthe_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Absinthe version: {version}")
+        if types:
+            lines.append(f"## Types ({len(types)})")
+            for t in types[:30]:
+                f = t.get('file', '').split('/')[-1]
+                kind = t.get('kind', 'object')
+                fields = ','.join(t.get('fields', [])[:5])
+                fields_str = f"|fields:[{fields}]" if fields else ""
+                lines.append(f"  {kind} :{t.get('name', '?')}{fields_str}|{f}")
+            if len(types) > 30:
+                lines.append(f"  # ... and {len(types) - 30} more types")
+        if queries:
+            lines.append(f"## Queries/Mutations ({len(queries)})")
+            for q in queries[:20]:
+                f = q.get('file', '').split('/')[-1]
+                kind = q.get('kind', 'query')
+                ret = f"|::{q['return_type']}" if q.get('return_type') else ""
+                args = ','.join(q.get('args', [])[:4])
+                arg_str = f"|args:[{args}]" if args else ""
+                lines.append(f"  {kind} :{q.get('name', '?')}{ret}{arg_str}|{f}")
+        resolvers = getattr(matrix, 'absinthe_resolvers', [])
+        if resolvers:
+            lines.append(f"## Resolvers ({len(resolvers)})")
+            for r in resolvers[:20]:
+                f = r.get('file', '').split('/')[-1]
+                lines.append(f"  {r.get('module', '?')}.{r.get('function', '?')}|{f}")
+        middleware = getattr(matrix, 'absinthe_middleware', [])
+        if middleware:
+            lines.append(f"## Middleware ({len(middleware)})")
+            for mw in middleware[:10]:
+                f = mw.get('file', '').split('/')[-1]
+                lines.append(f"  {mw.get('name', '?')}|{f}")
+        dataloaders = getattr(matrix, 'absinthe_dataloaders', [])
+        if dataloaders:
+            lines.append(f"## Dataloaders ({len(dataloaders)})")
+            for dl in dataloaders[:10]:
+                f = dl.get('file', '').split('/')[-1]
+                lines.append(f"  {dl.get('source', '?')}|{f}")
+        subscriptions = getattr(matrix, 'absinthe_subscriptions', [])
+        if subscriptions:
+            lines.append(f"## Subscriptions ({len(subscriptions)})")
+            for sub in subscriptions[:10]:
+                f = sub.get('file', '').split('/')[-1]
+                lines.append(f"  :{sub.get('name', '?')}|topic:{sub.get('topic', '?')}|{f}")
+        return lines
+
+    def _compress_oban(self, matrix) -> List[str]:
+        """Compress Oban background job data (workers, queues, plugins, cron, telemetry)."""
+        lines = []
+        workers = getattr(matrix, 'oban_workers', [])
+        queues = getattr(matrix, 'oban_queues', [])
+        if not workers and not queues:
+            return lines
+        frameworks = getattr(matrix, 'oban_detected_frameworks', [])
+        version = getattr(matrix, 'oban_version', '')
+        if frameworks:
+            lines.append(f"# Ecosystem: {', '.join(frameworks[:10])}")
+        if version:
+            lines.append(f"# Oban version: {version}")
+        if workers:
+            lines.append(f"## Workers ({len(workers)})")
+            for w in workers[:30]:
+                f = w.get('file', '').split('/')[-1]
+                q = f"|queue:{w['queue']}" if w.get('queue', 'default') != 'default' else ""
+                attempts = f"|max_attempts:{w['max_attempts']}" if w.get('max_attempts') else ""
+                priority = f"|priority:{w['priority']}" if w.get('priority') else ""
+                unique = "|unique" if w.get('unique') else ""
+                tags = ','.join(w.get('tags', [])[:3])
+                tags_str = f"|tags:[{tags}]" if tags else ""
+                lines.append(f"  {w.get('name', '?')}{q}{attempts}{priority}{unique}{tags_str}|{f}")
+            if len(workers) > 30:
+                lines.append(f"  # ... and {len(workers) - 30} more workers")
+        if queues:
+            lines.append(f"## Queues ({len(queues)})")
+            for q in queues[:20]:
+                limit = f"|limit:{q['limit']}" if q.get('limit') else ""
+                lines.append(f"  {q.get('name', '?')}{limit}")
+        plugins = getattr(matrix, 'oban_plugins', [])
+        if plugins:
+            lines.append(f"## Plugins ({len(plugins)})")
+            for p in plugins[:15]:
+                lines.append(f"  {p.get('name', '?')}")
+        cron = getattr(matrix, 'oban_cron_schedules', [])
+        if cron:
+            lines.append(f"## Cron ({len(cron)})")
+            for c in cron[:15]:
+                lines.append(f"  {c.get('worker', '?')}|{c.get('expression', '?')}")
+        telemetry = getattr(matrix, 'oban_telemetry_events', [])
+        if telemetry:
+            lines.append(f"## Telemetry ({len(telemetry)})")
+            for te in telemetry[:10]:
+                lines.append(f"  {te.get('event', '?')}|handler:{te.get('handler', '?')}")
+        pro_features = getattr(matrix, 'oban_pro_features', [])
+        if pro_features:
+            lines.append(f"## Pro Features ({len(pro_features)})")
+            for pf in pro_features[:10]:
+                lines.append(f"  {pf.get('feature', '?')}|type:{pf.get('type', '?')}")
         return lines
 
     # ============================================

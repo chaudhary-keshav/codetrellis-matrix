@@ -337,6 +337,15 @@ from codetrellis.hangfire_parser_enhanced import EnhancedHangfireParser
 from codetrellis.masstransit_parser_enhanced import EnhancedMassTransitParser
 from codetrellis.dapper_parser_enhanced import EnhancedDapperParser
 
+# Import v5.5 Elixir language support
+from codetrellis.elixir_parser_enhanced import EnhancedElixirParser
+
+# Import v5.5 Elixir framework parsers (Phoenix, Ecto, Absinthe, Oban)
+from codetrellis.phoenix_parser_enhanced import EnhancedPhoenixParser
+from codetrellis.ecto_parser_enhanced import EnhancedEctoParser
+from codetrellis.absinthe_parser_enhanced import EnhancedAbsintheParser
+from codetrellis.oban_parser_enhanced import EnhancedObanParser
+
 # Import v4.6 Semantic extraction (language-agnostic hooks, middleware, routes)
 from codetrellis.extractors import SemanticExtractor
 
@@ -2695,6 +2704,71 @@ class ProjectMatrix:
     git_context: Optional[Dict] = None
     git_file_changes: Dict[str, int] = field(default_factory=dict)
 
+    # v5.5: Elixir Language Support (full AST + LSP)
+    elixir_modules: List[Dict] = field(default_factory=list)
+    elixir_structs: List[Dict] = field(default_factory=list)
+    elixir_protocols: List[Dict] = field(default_factory=list)
+    elixir_behaviours: List[Dict] = field(default_factory=list)
+    elixir_typespecs: List[Dict] = field(default_factory=list)
+    elixir_exceptions: List[Dict] = field(default_factory=list)
+    elixir_functions: List[Dict] = field(default_factory=list)
+    elixir_macros: List[Dict] = field(default_factory=list)
+    elixir_guards: List[Dict] = field(default_factory=list)
+    elixir_callbacks: List[Dict] = field(default_factory=list)
+    elixir_plugs: List[Dict] = field(default_factory=list)
+    elixir_pipelines: List[Dict] = field(default_factory=list)
+    elixir_endpoints: List[Dict] = field(default_factory=list)
+    elixir_schemas: List[Dict] = field(default_factory=list)
+    elixir_changesets: List[Dict] = field(default_factory=list)
+    elixir_genserver_states: List[Dict] = field(default_factory=list)
+    elixir_attributes: List[Dict] = field(default_factory=list)
+    elixir_directives: List[Dict] = field(default_factory=list)
+    elixir_detected_frameworks: List[str] = field(default_factory=list)
+    elixir_otp_patterns: List[str] = field(default_factory=list)
+    elixir_version: str = ""
+
+    # v5.5: Phoenix Framework Support (Elixir web framework)
+    phoenix_routes: List[Dict] = field(default_factory=list)
+    phoenix_controllers: List[Dict] = field(default_factory=list)
+    phoenix_live_views: List[Dict] = field(default_factory=list)
+    phoenix_live_components: List[Dict] = field(default_factory=list)
+    phoenix_channels: List[Dict] = field(default_factory=list)
+    phoenix_sockets: List[Dict] = field(default_factory=list)
+    phoenix_components: List[Dict] = field(default_factory=list)
+    phoenix_detected_frameworks: List[str] = field(default_factory=list)
+    phoenix_version: str = ""
+
+    # v5.5: Ecto Framework Support (Elixir database layer)
+    ecto_schemas: List[Dict] = field(default_factory=list)
+    ecto_changesets: List[Dict] = field(default_factory=list)
+    ecto_migrations: List[Dict] = field(default_factory=list)
+    ecto_queries: List[Dict] = field(default_factory=list)
+    ecto_repo_calls: List[Dict] = field(default_factory=list)
+    ecto_multis: List[Dict] = field(default_factory=list)
+    ecto_custom_types: List[Dict] = field(default_factory=list)
+    ecto_detected_frameworks: List[str] = field(default_factory=list)
+    ecto_version: str = ""
+
+    # v5.5: Absinthe Framework Support (Elixir GraphQL)
+    absinthe_types: List[Dict] = field(default_factory=list)
+    absinthe_queries: List[Dict] = field(default_factory=list)
+    absinthe_resolvers: List[Dict] = field(default_factory=list)
+    absinthe_middleware: List[Dict] = field(default_factory=list)
+    absinthe_dataloaders: List[Dict] = field(default_factory=list)
+    absinthe_subscriptions: List[Dict] = field(default_factory=list)
+    absinthe_detected_frameworks: List[str] = field(default_factory=list)
+    absinthe_version: str = ""
+
+    # v5.5: Oban Framework Support (Elixir background jobs)
+    oban_workers: List[Dict] = field(default_factory=list)
+    oban_queues: List[Dict] = field(default_factory=list)
+    oban_plugins: List[Dict] = field(default_factory=list)
+    oban_cron_schedules: List[Dict] = field(default_factory=list)
+    oban_telemetry_events: List[Dict] = field(default_factory=list)
+    oban_pro_features: List[Dict] = field(default_factory=list)
+    oban_detected_frameworks: List[str] = field(default_factory=list)
+    oban_version: str = ""
+
     # File tracking
     files: Dict[str, FileInfo] = field(default_factory=dict)
 
@@ -4288,6 +4362,8 @@ class ProjectScanner:
         ".vue": "vue",           # v4.34: Vue.js Single File Components
         ".svelte": "svelte",     # v4.35: Svelte/SvelteKit components
         ".astro": "astro",       # v4.60: Astro components
+        ".ex": "elixir",         # v5.5: Elixir language support
+        ".exs": "elixir",        # v5.5: Elixir script/test/config files
     }
 
     def __init__(self, ignore_patterns: Optional[Set[str]] = None, parallel: bool = False, max_workers: Optional[int] = None):
@@ -4655,6 +4731,15 @@ class ProjectScanner:
         self.hangfire_parser = EnhancedHangfireParser()
         self.masstransit_parser = EnhancedMassTransitParser()
         self.dapper_parser = EnhancedDapperParser()
+
+        # v5.5: Elixir parser with all extractors (AST + LSP)
+        self.elixir_parser = EnhancedElixirParser()
+
+        # v5.5: Elixir framework parsers
+        self.phoenix_parser = EnhancedPhoenixParser()
+        self.ecto_parser = EnhancedEctoParser()
+        self.absinthe_parser = EnhancedAbsintheParser()
+        self.oban_parser = EnhancedObanParser()
 
         # v4.6: Semantic extractor (language-agnostic)
         self.semantic_extractor = SemanticExtractor()
@@ -5476,6 +5561,13 @@ class ProjectScanner:
             self._parse_hanami(file_path, matrix)
             self._parse_grape(file_path, matrix)
             self._parse_sidekiq(file_path, matrix)
+        elif file_info.file_type == "elixir":
+            self._parse_elixir(file_path, matrix)
+            # v5.5: Elixir framework-level parsers (supplementary, run after base Elixir parser)
+            self._parse_phoenix(file_path, matrix)
+            self._parse_ecto(file_path, matrix)
+            self._parse_absinthe(file_path, matrix)
+            self._parse_oban(file_path, matrix)
         elif file_info.file_type == "php":
             self._parse_php(file_path, matrix)
             # v5.3: PHP framework-level parsers (supplementary, run after base PHP parser)
@@ -18719,6 +18811,225 @@ class ProjectScanner:
                 matrix.sidekiq_configs.append(cfg if isinstance(cfg, dict) else vars(cfg))
             for pj in result.periodic_jobs:
                 matrix.sidekiq_periodic_jobs.append(pj if isinstance(pj, dict) else vars(pj))
+        except Exception:
+            pass
+
+    def _parse_elixir(self, file_path: Path, matrix: ProjectMatrix):
+        """
+        Parse Elixir file using EnhancedElixirParser.
+        v5.5: Full Elixir language support with modules, structs, protocols,
+        behaviours, typespecs, exceptions, functions (def/defp), macros, guards,
+        callbacks, plugs, pipelines, schemas, changesets, GenServer states,
+        module attributes, use/import/alias/require directives.
+        70+ framework detection patterns, OTP pattern detection.
+        Supports Elixir 1.0 through 1.17+.
+        """
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.elixir_parser.parse(content, str(file_path))
+
+            # Metadata
+            for fw in result.detected_frameworks:
+                if fw not in matrix.elixir_detected_frameworks:
+                    matrix.elixir_detected_frameworks.append(fw)
+            for otp in result.otp_patterns:
+                if otp not in matrix.elixir_otp_patterns:
+                    matrix.elixir_otp_patterns.append(otp)
+            if result.elixir_version:
+                matrix.elixir_version = self._higher_version(result.elixir_version, matrix.elixir_version)
+
+            # Types
+            for mod in result.modules:
+                matrix.elixir_modules.append(self._dc_to_dict(mod))
+            for s in result.structs:
+                matrix.elixir_structs.append(self._dc_to_dict(s))
+            for p in result.protocols:
+                matrix.elixir_protocols.append(self._dc_to_dict(p))
+            for b in result.behaviours:
+                matrix.elixir_behaviours.append(self._dc_to_dict(b))
+            for ts in result.typespecs:
+                matrix.elixir_typespecs.append(self._dc_to_dict(ts))
+            for ex in result.exceptions:
+                matrix.elixir_exceptions.append(self._dc_to_dict(ex))
+
+            # Functions
+            for f in result.functions:
+                matrix.elixir_functions.append(self._dc_to_dict(f))
+            for m in result.macros:
+                matrix.elixir_macros.append(self._dc_to_dict(m))
+            for g in result.guards:
+                matrix.elixir_guards.append(self._dc_to_dict(g))
+            for cb in result.callbacks:
+                matrix.elixir_callbacks.append(self._dc_to_dict(cb))
+
+            # API
+            for pl in result.plugs:
+                matrix.elixir_plugs.append(self._dc_to_dict(pl))
+            for pipe in result.pipelines:
+                matrix.elixir_pipelines.append(self._dc_to_dict(pipe))
+            for ep in result.endpoints:
+                matrix.elixir_endpoints.append(self._dc_to_dict(ep))
+
+            # Models
+            for sch in result.schemas:
+                matrix.elixir_schemas.append(self._dc_to_dict(sch))
+            for cs in result.changesets:
+                matrix.elixir_changesets.append(self._dc_to_dict(cs))
+            for gs in result.genserver_states:
+                matrix.elixir_genserver_states.append(self._dc_to_dict(gs))
+
+            # Attributes
+            for attr in result.attributes:
+                matrix.elixir_attributes.append(self._dc_to_dict(attr))
+            for d in result.directives:
+                matrix.elixir_directives.append(self._dc_to_dict(d))
+        except Exception:
+            pass
+
+    def _parse_phoenix(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Phoenix framework patterns from Elixir file. v5.5."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.phoenix_parser.parse(content, str(file_path))
+            if not result.detected_frameworks and not result.routes and not result.controllers and not result.live_views and not result.live_components and not result.channels:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.phoenix_detected_frameworks:
+                    matrix.phoenix_detected_frameworks.append(fw)
+            if result.phoenix_version:
+                matrix.phoenix_version = self._higher_version(result.phoenix_version, matrix.phoenix_version)
+            for r in result.routes:
+                matrix.phoenix_routes.append(self._dc_to_dict(r))
+            for c in result.controllers:
+                matrix.phoenix_controllers.append(self._dc_to_dict(c))
+            for lv in result.live_views:
+                matrix.phoenix_live_views.append(self._dc_to_dict(lv))
+            for lc in result.live_components:
+                matrix.phoenix_live_components.append(self._dc_to_dict(lc))
+            for ch in result.channels:
+                matrix.phoenix_channels.append(self._dc_to_dict(ch))
+            for sk in result.sockets:
+                matrix.phoenix_sockets.append(self._dc_to_dict(sk))
+            for comp in result.components:
+                matrix.phoenix_components.append(self._dc_to_dict(comp))
+        except Exception:
+            pass
+
+    @staticmethod
+    def _dc_to_dict(obj):
+        """Recursively convert a dataclass (or nested dataclass) to a dict."""
+        if isinstance(obj, dict):
+            return {k: ProjectScanner._dc_to_dict(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [ProjectScanner._dc_to_dict(i) for i in obj]
+        if hasattr(obj, '__dataclass_fields__'):
+            return {k: ProjectScanner._dc_to_dict(v) for k, v in vars(obj).items()}
+        return obj
+
+    @staticmethod
+    def _higher_version(a: str, b: str) -> str:
+        """Return the higher of two version strings (e.g. '1.7' vs '1.4' -> '1.7')."""
+        if not a:
+            return b
+        if not b:
+            return a
+        try:
+            a_parts = [int(x) for x in a.split('.')]
+            b_parts = [int(x) for x in b.split('.')]
+            return a if a_parts >= b_parts else b
+        except (ValueError, AttributeError):
+            return a
+
+    def _parse_ecto(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Ecto framework patterns from Elixir file. v5.5."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.ecto_parser.parse(content, str(file_path))
+            if not result.detected_frameworks and not result.schemas and not result.migrations:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.ecto_detected_frameworks:
+                    matrix.ecto_detected_frameworks.append(fw)
+            if result.ecto_version:
+                matrix.ecto_version = self._higher_version(result.ecto_version, matrix.ecto_version)
+            for s in result.schemas:
+                matrix.ecto_schemas.append(self._dc_to_dict(s))
+            for cs in result.changesets:
+                matrix.ecto_changesets.append(self._dc_to_dict(cs))
+            for mg in result.migrations:
+                matrix.ecto_migrations.append(self._dc_to_dict(mg))
+            for q in result.queries:
+                matrix.ecto_queries.append(self._dc_to_dict(q))
+            for rc in result.repo_calls:
+                matrix.ecto_repo_calls.append(self._dc_to_dict(rc))
+            for m in result.multis:
+                matrix.ecto_multis.append(self._dc_to_dict(m))
+            for ct in result.custom_types:
+                matrix.ecto_custom_types.append(self._dc_to_dict(ct))
+        except Exception:
+            pass
+
+    def _parse_absinthe(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Absinthe GraphQL patterns from Elixir file. v5.5."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.absinthe_parser.parse(content, str(file_path))
+            if not result.detected_frameworks and not result.types and not result.queries:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.absinthe_detected_frameworks:
+                    matrix.absinthe_detected_frameworks.append(fw)
+            if result.absinthe_version:
+                matrix.absinthe_version = self._higher_version(result.absinthe_version, matrix.absinthe_version)
+            for t in result.types:
+                matrix.absinthe_types.append(self._dc_to_dict(t))
+            for q in result.queries:
+                matrix.absinthe_queries.append(self._dc_to_dict(q))
+            for r in result.resolvers:
+                matrix.absinthe_resolvers.append(self._dc_to_dict(r))
+            for mw in result.middleware:
+                matrix.absinthe_middleware.append(self._dc_to_dict(mw))
+            for dl in result.dataloaders:
+                matrix.absinthe_dataloaders.append(self._dc_to_dict(dl))
+            for sub in result.subscriptions:
+                matrix.absinthe_subscriptions.append(self._dc_to_dict(sub))
+        except Exception:
+            pass
+
+    def _parse_oban(self, file_path: Path, matrix: ProjectMatrix):
+        """Parse Oban background job patterns from Elixir file. v5.5."""
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+            result = self.oban_parser.parse(content, str(file_path))
+            if not result.detected_frameworks and not result.workers:
+                return
+            for fw in result.detected_frameworks:
+                if fw not in matrix.oban_detected_frameworks:
+                    matrix.oban_detected_frameworks.append(fw)
+            if result.oban_version:
+                matrix.oban_version = self._higher_version(result.oban_version, matrix.oban_version)
+            for w in result.workers:
+                matrix.oban_workers.append(self._dc_to_dict(w))
+            for q in result.queues:
+                matrix.oban_queues.append(self._dc_to_dict(q))
+            for p in result.plugins:
+                matrix.oban_plugins.append(self._dc_to_dict(p))
+            for cs in result.cron_schedules:
+                matrix.oban_cron_schedules.append(self._dc_to_dict(cs))
+            for te in result.telemetry_events:
+                matrix.oban_telemetry_events.append(self._dc_to_dict(te))
+            for pf in result.pro_features:
+                matrix.oban_pro_features.append(self._dc_to_dict(pf))
         except Exception:
             pass
 
