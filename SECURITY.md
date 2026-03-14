@@ -16,7 +16,7 @@ Please **do not** open a public GitHub issue for security vulnerabilities.
 **How to report:**
 
 1. **Email**: Send details to `security@nsbrain.ai`
-2. **GitHub Security Advisory**: [Open a private advisory](https://github.com/keshavchaudhary/codetrellis/security/advisories/new)
+2. **GitHub Security Advisory**: [Open a private advisory](https://github.com/chaudhary-keshav/codetrellis-matrix/security/advisories/new)
 
 **Please include:**
 

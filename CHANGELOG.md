@@ -86,6 +86,6 @@ See STATUS.md for detailed session history.
 
 ---
 
-[1.0.0]: https://github.com/keshavchaudhary/codetrellis/releases/tag/v1.0.0
-[4.16.0]: https://github.com/keshavchaudhary/codetrellis/compare/v4.15.0...v4.16.0
-[4.15.0]: https://github.com/keshavchaudhary/codetrellis/releases/tag/v4.15.0
+[1.0.0]: https://github.com/chaudhary-keshav/codetrellis-matrix/releases/tag/v1.0.0
+[4.16.0]: https://github.com/chaudhary-keshav/codetrellis-matrix/compare/v4.15.0...v4.16.0
+[4.15.0]: https://github.com/chaudhary-keshav/codetrellis-matrix/releases/tag/v4.15.0

@@ -550,7 +550,7 @@ head -10 README.md | grep -c "5\.1\.0"
 >    - Contact: `conduct@nsbrain.ai`
 > 3. **`.github/FUNDING.yml`**:
 >    ```yaml
->    github: [keshavchaudhary]
+>    github: [chaudhary-keshav]
 >    ```
 >
 > Use standard formatting. These are template files — don't over-customize.
@@ -646,11 +646,11 @@ grep "^\#\# \[1.0.0\]" CHANGELOG.md
 > 3. **Add project URLs:**
 >    ```toml
 >    [project.urls]
->    Homepage = "https://github.com/keshavchaudhary/codetrellis"
->    Repository = "https://github.com/keshavchaudhary/codetrellis"
->    Changelog = "https://github.com/keshavchaudhary/codetrellis/blob/main/CHANGELOG.md"
->    Documentation = "https://github.com/keshavchaudhary/codetrellis/blob/main/README.md"
->    "Bug Tracker" = "https://github.com/keshavchaudhary/codetrellis/issues"
+>    Homepage = "https://github.com/chaudhary-keshav/codetrellis-matrix"
+>    Repository = "https://github.com/chaudhary-keshav/codetrellis-matrix"
+>    Changelog = "https://github.com/chaudhary-keshav/codetrellis-matrix/blob/main/CHANGELOG.md"
+>    Documentation = "https://github.com/chaudhary-keshav/codetrellis-matrix/blob/main/README.md"
+>    "Bug Tracker" = "https://github.com/chaudhary-keshav/codetrellis-matrix/issues"
 >    ```
 >
 > Keep all existing content. Only add/update the items listed.
@@ -762,16 +762,16 @@ echo "════════════════════════�
 4. **Set up Trusted Publishing on TestPyPI:**
    - Go to https://test.pypi.org/manage/account/publishing/
    - Add pending publisher:
-     - Owner: `keshavchaudhary`
-     - Repository: `codetrellis`
+     - Owner: `chaudhary-keshav`
+     - Repository: `codetrellis-matrix`
      - Workflow: `release.yml`
      - Environment: `test-pypi`
 
 5. **Set up Trusted Publishing on PyPI:**
    - Go to https://pypi.org/manage/account/publishing/
    - Add pending publisher:
-     - Owner: `keshavchaudhary`
-     - Repository: `codetrellis`
+     - Owner: `chaudhary-keshav`
+     - Repository: `matrix`
      - Workflow: `release.yml`
      - Environment: `pypi`
 
@@ -912,7 +912,7 @@ cat .github/FUNDING.yml
 # Expected: shows github username
 
 # Sponsor page accessible
-curl -s "https://github.com/sponsors/keshavchaudhary" | grep -c "Sponsor"
+curl -s "https://github.com/sponsors/chaudhary-keshav" | grep -c "Sponsor"
 # Expected: > 0
 ```
 
@@ -1154,7 +1154,7 @@ Evening (~1.5h): Phase 3 — Publish
 >
 > **1. `SECURITY.md`**: Responsible disclosure, supported versions (1.0.x), security@nsbrain.ai.
 > **2. `CODE_OF_CONDUCT.md`**: Contributor Covenant v2.1.
-> **3. `.github/FUNDING.yml`**: GitHub Sponsors for keshavchaudhary.
+> **3. `.github/FUNDING.yml`**: GitHub Sponsors for chaudhary-keshav.
 > **4. `CONTRIBUTING.md`**: Update install to use `.[dev]`, add PR process, reference CODE_OF_CONDUCT.
 
 ---
