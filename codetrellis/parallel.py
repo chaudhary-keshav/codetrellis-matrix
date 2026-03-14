@@ -17,7 +17,7 @@ Created: 2 February 2026
 
 import asyncio
 import os
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
@@ -200,7 +200,7 @@ class ParallelExtractor:
                             for warning in result.warnings:
                                 error_collector.add_warning(str(file_path), warning)
 
-                    except TimeoutError:
+                    except (TimeoutError, FuturesTimeoutError):
                         error_collector.add_error(
                             str(file_path),
                             extractor_name,
@@ -218,7 +218,7 @@ class ParallelExtractor:
                             file_path=str(file_path),
                             error=str(e)
                         ))
-            except TimeoutError:
+            except (TimeoutError, FuturesTimeoutError):
                 timed_out = True
                 # as_completed() timed out — record remaining futures as failures
                 for future, file_path in future_to_file.items():
