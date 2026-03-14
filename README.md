@@ -56,7 +56,7 @@ codetrellis init . --ai   # sets up Copilot/Claude/Cursor integration
 - **CI/CD mode** — deterministic, parallel builds for pipelines
 - **AI integration** — auto-generates Copilot, Claude, Cursor, Windsurf configs
 
-📋 [Full feature list](docs/FEATURES.md)
+📋 [Full feature list](https://github.com/chaudhary-keshav/codetrellis-matrix/blob/main/docs/FEATURES.md)
 
 ## Installation
 
@@ -118,7 +118,7 @@ codetrellis clean [path]             # Clean caches
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+See [CONTRIBUTING.md](https://github.com/chaudhary-keshav/codetrellis-matrix/blob/main/CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 
