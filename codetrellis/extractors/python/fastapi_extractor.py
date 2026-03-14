@@ -14,7 +14,7 @@ Part of CodeTrellis v2.0 - Python Language Support
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 
 @dataclass
@@ -286,7 +286,7 @@ class FastAPIExtractor:
 
         return parameters, dependencies
 
-    def _parse_single_parameter(self, param: str) -> Optional[FastAPIParameterInfo | FastAPIDependencyInfo]:
+    def _parse_single_parameter(self, param: str) -> Optional[Union[FastAPIParameterInfo, FastAPIDependencyInfo]]:
         """Parse a single parameter string."""
         # Skip self
         if param.strip() == 'self':

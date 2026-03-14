@@ -10,7 +10,7 @@ import json
 import shutil
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 import logging
 
 logger = logging.getLogger(__name__)
@@ -177,7 +177,7 @@ class LSPClient:
             logger.warning(f"Failed to install LSP dependencies: {e}")
             return False
 
-    def extract(self, project_path: str | Path, timeout: int = 120) -> LSPExtractionResult:
+    def extract(self, project_path: Union[str, Path], timeout: int = 120) -> LSPExtractionResult:
         """
         Extract types from a TypeScript project using the LSP bridge.
 
@@ -379,7 +379,7 @@ def get_lsp_client() -> LSPClient:
     return _client
 
 
-def extract_types(project_path: str | Path) -> LSPExtractionResult:
+def extract_types(project_path: Union[str, Path]) -> LSPExtractionResult:
     """Convenience function to extract types from a project"""
     return get_lsp_client().extract(project_path)
 

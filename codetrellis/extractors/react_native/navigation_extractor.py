@@ -181,7 +181,7 @@ class ReactNativeNavigationExtractor:
                 screen_names.append(sm.group(1))
 
             has_header = bool(re.search(rf'<{re.escape(var_name)}\.Navigator[^>]*screenOptions', content))
-            has_tab_bar = bool(re.search(rf'tabBar|tabBarOptions|tabBarStyle', content)) if 'tab' in nav_type.lower() else False
+            has_tab_bar = bool(re.search(r'tabBar|tabBarOptions|tabBarStyle', content)) if 'tab' in nav_type.lower() else False
 
             navigators.append(RNNavigatorInfo(
                 name=var_name,

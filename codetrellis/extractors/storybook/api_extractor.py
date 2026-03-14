@@ -314,7 +314,7 @@ class StorybookApiExtractor:
     def _find_import_source(self, content: str, name: str) -> str:
         """Find the import source for a given name."""
         pattern = re.compile(
-            rf"""from\s+['"]([^"']+)['"]\s*""",
+            r"""from\s+['"]([^"']+)['"]\s*""",
             re.MULTILINE
         )
         for m in pattern.finditer(content):

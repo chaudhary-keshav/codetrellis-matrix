@@ -258,7 +258,7 @@ class ReactNativePlatformExtractor:
             module_name = match.group(1)
             line_num = content[:match.start()].count('\n') + 1
             has_request = bool(re.search(
-                rf'requestPermissions|requestForeground|requestBackground|requestMediaLibrary',
+                r'requestPermissions|requestForeground|requestBackground|requestMediaLibrary',
                 content
             ))
             permissions.append(RNPermissionInfo(

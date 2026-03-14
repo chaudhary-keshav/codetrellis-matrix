@@ -616,13 +616,13 @@ class EnhancedDjangoParser:
             if p.databases:
                 lines.append(f"  databases: {p.databases}")
             if p.uses_drf:
-                lines.append(f"  DRF: enabled")
+                lines.append("  DRF: enabled")
             if p.uses_celery:
-                lines.append(f"  Celery: enabled")
+                lines.append("  Celery: enabled")
             if p.uses_channels:
-                lines.append(f"  Channels: enabled")
+                lines.append("  Channels: enabled")
             if p.is_async:
-                lines.append(f"  ASGI: enabled")
+                lines.append("  ASGI: enabled")
             if p.installed_apps:
                 third_party = [a for a in p.installed_apps if not a.startswith('django.')]
                 if third_party:

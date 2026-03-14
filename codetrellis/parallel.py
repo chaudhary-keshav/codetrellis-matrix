@@ -234,7 +234,7 @@ class ParallelExtractor:
                             file_path=str(file_path),
                             error=f"Timeout after {self.config.timeout_per_file}s"
                         ))
-                logger.warning(f"Parallel extraction timed out for some files")
+                logger.warning("Parallel extraction timed out for some files")
 
         except Exception as e:
             logger.error(f"Parallel extraction failed: {e}")

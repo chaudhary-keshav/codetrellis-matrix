@@ -778,6 +778,10 @@ class TestLanguageCoverageSynergy:
 class TestTokenBudgetIntegration:
     """Integration tests for token budget validation (J1)."""
 
+    @pytest.mark.skipif(
+        not MATRIX_PROMPT_PATH.exists(),
+        reason="Matrix not built (requires codetrellis scan)",
+    )
     def test_token_budget_validator_runs(self):
         """Token budget validator produces valid report."""
         # Import from scripts
@@ -791,6 +795,10 @@ class TestTokenBudgetIntegration:
         assert len(report.budget_results) == 6, "Expected 6 model budgets"
         assert report.compression is not None, "Missing compression data"
 
+    @pytest.mark.skipif(
+        not MATRIX_PROMPT_PATH.exists(),
+        reason="Matrix not built (requires codetrellis scan)",
+    )
     def test_manifest_auditor_runs(self):
         """Manifest auditor produces valid report."""
         sys.path.insert(0, str(ROOT / "scripts"))

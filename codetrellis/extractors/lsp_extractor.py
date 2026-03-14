@@ -7,7 +7,7 @@ Falls back to regex-based extraction if LSP is unavailable.
 
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 import logging
 
 from ..lsp_client import (
@@ -65,7 +65,7 @@ class LSPExtractor:
     - Accurate class hierarchy information
     """
 
-    def __init__(self, project_path: str | Path):
+    def __init__(self, project_path: Union[str, Path]):
         self.project_path = Path(project_path).resolve()
         self._client = get_lsp_client()
         self._result: Optional[LSPExtractionResult] = None

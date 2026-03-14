@@ -162,7 +162,7 @@ class LeafletMapExtractor:
             container_match = re.search(r"container\s*:\s*['\"]([^'\"]+)['\"]", options)
             container_id = container_match.group(1) if container_match else ""
             maps.append(LeafletMapInfo(
-                name=f"mapboxgl.Map",
+                name="mapboxgl.Map",
                 line_number=line,
                 map_type='mapbox',
                 has_center=bool(CENTER_PATTERN.search(options)),
@@ -179,7 +179,7 @@ class LeafletMapExtractor:
             container_match = re.search(r"container\s*:\s*['\"]([^'\"]+)['\"]", options)
             container_id = container_match.group(1) if container_match else ""
             maps.append(LeafletMapInfo(
-                name=f"maplibregl.Map",
+                name="maplibregl.Map",
                 line_number=line,
                 map_type='maplibre',
                 has_center=bool(CENTER_PATTERN.search(options)),

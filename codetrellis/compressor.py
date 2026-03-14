@@ -28281,16 +28281,26 @@ class MatrixCompressor:
         if middleware_stacks:
             features = []
             for ms in middleware_stacks:
-                if ms.get('has_cors'): features.append('cors')
-                if ms.get('has_helmet'): features.append('helmet')
-                if ms.get('has_session'): features.append('session')
-                if ms.get('has_auth'): features.append('auth')
-                if ms.get('has_body_parser'): features.append('body-parser')
-                if ms.get('has_logger'): features.append('logger')
-                if ms.get('has_static'): features.append('static')
-                if ms.get('has_error_handler'): features.append('error-handler')
-                if ms.get('has_rate_limiting'): features.append('rate-limit')
-                if ms.get('has_compression'): features.append('compression')
+                if ms.get('has_cors'):
+                    features.append('cors')
+                if ms.get('has_helmet'):
+                    features.append('helmet')
+                if ms.get('has_session'):
+                    features.append('session')
+                if ms.get('has_auth'):
+                    features.append('auth')
+                if ms.get('has_body_parser'):
+                    features.append('body-parser')
+                if ms.get('has_logger'):
+                    features.append('logger')
+                if ms.get('has_static'):
+                    features.append('static')
+                if ms.get('has_error_handler'):
+                    features.append('error-handler')
+                if ms.get('has_rate_limiting'):
+                    features.append('rate-limit')
+                if ms.get('has_compression'):
+                    features.append('compression')
             if features:
                 lines.append(f"## Stack: {', '.join(sorted(set(features)))}")
 
@@ -28407,18 +28417,30 @@ class MatrixCompressor:
         if middleware_stacks:
             features = []
             for ms in middleware_stacks:
-                if ms.get('has_cors'): features.append('cors')
-                if ms.get('has_jwt'): features.append('jwt')
-                if ms.get('has_basic_auth'): features.append('basic-auth')
-                if ms.get('has_bearer_auth'): features.append('bearer-auth')
-                if ms.get('has_logger'): features.append('logger')
-                if ms.get('has_secure_headers'): features.append('secure-headers')
-                if ms.get('has_cache'): features.append('cache')
-                if ms.get('has_compress'): features.append('compress')
-                if ms.get('has_etag'): features.append('etag')
-                if ms.get('has_csrf'): features.append('csrf')
-                if ms.get('has_timing'): features.append('timing')
-                if ms.get('has_body_limit'): features.append('body-limit')
+                if ms.get('has_cors'):
+                    features.append('cors')
+                if ms.get('has_jwt'):
+                    features.append('jwt')
+                if ms.get('has_basic_auth'):
+                    features.append('basic-auth')
+                if ms.get('has_bearer_auth'):
+                    features.append('bearer-auth')
+                if ms.get('has_logger'):
+                    features.append('logger')
+                if ms.get('has_secure_headers'):
+                    features.append('secure-headers')
+                if ms.get('has_cache'):
+                    features.append('cache')
+                if ms.get('has_compress'):
+                    features.append('compress')
+                if ms.get('has_etag'):
+                    features.append('etag')
+                if ms.get('has_csrf'):
+                    features.append('csrf')
+                if ms.get('has_timing'):
+                    features.append('timing')
+                if ms.get('has_body_limit'):
+                    features.append('body-limit')
             if features:
                 lines.append(f"## Stack: {', '.join(sorted(set(features)))}")
 
