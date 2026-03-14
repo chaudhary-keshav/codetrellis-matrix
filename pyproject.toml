@@ -63,18 +63,25 @@ dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
     "pytest-timeout>=2.3.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.11.0",
     "black>=24.0.0",
     "ruff>=0.1.0",
     "mypy>=1.8.0",
     "numpy>=2.0.0",
+    "faker>=19.0.0",
+    "hypothesis>=6.82.0",
+    "jsonpatch>=1.33",
+    "isort>=5.12.0",
+    "types-PyYAML>=6.0.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/keshavchaudhary/codetrellis"
-Repository = "https://github.com/keshavchaudhary/codetrellis"
-Changelog = "https://github.com/keshavchaudhary/codetrellis/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/keshavchaudhary/codetrellis/blob/main/README.md"
-"Bug Tracker" = "https://github.com/keshavchaudhary/codetrellis/issues"
+Homepage = "https://github.com/chaudhary-keshav/codetrellis-matrix"
+Repository = "https://github.com/chaudhary-keshav/codetrellis-matrix"
+Changelog = "https://github.com/chaudhary-keshav/codetrellis-matrix/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/chaudhary-keshav/codetrellis-matrix/blob/main/README.md"
+"Bug Tracker" = "https://github.com/chaudhary-keshav/codetrellis-matrix/issues"
 
 [project.scripts]
 codetrellis = "codetrellis.cli:main"
