@@ -339,6 +339,7 @@ class PracticeCategory(Enum):
     JS_NODE = "js_node"
     JS_EXPRESS = "js_express"
     JS_REACT = "js_react"
+    JS_REACT_NATIVE = "react-native"
     JS_API_DESIGN = "js_api_design"
     JS_DATA_MODELING = "js_data_modeling"
     JS_STATE_MANAGEMENT = "js_state_management"

@@ -1,10 +1,10 @@
-# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq, Laravel, Symfony, CodeIgniter, Slim, WordPress, Actix Web, Axum, Rocket, Warp, Diesel, SeaORM, Tauri, Elixir, Phoenix, Ecto, Absinthe, Oban Language Support — STATUS.md
+# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq, Laravel, Symfony, CodeIgniter, Slim, WordPress, Actix Web, Axum, Rocket, Warp, Diesel, SeaORM, Tauri, Elixir, Phoenix, Ecto, Absinthe, Oban, React Native Language Support — STATUS.md
 
 ## Overview
 
-**CodeTrellis Version**: v5.6.0 (v5.5.0 + Elixir Ecosystem Parsers)
-**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq), Session 80 (PHP Frameworks: Laravel + Symfony + CodeIgniter + Slim + WordPress), Session 81 (Rust Frameworks: Actix Web + Axum + Rocket + Warp + Diesel + SeaORM + Tauri), Session 82 (Elixir Ecosystem: Elixir + Phoenix + Ecto + Absinthe + Oban)
-**Status**: ✅ Session 82 Complete — Elixir Ecosystem Parsers (v5.6.0): 5 new parsers + 6 extractors with full regex-based extraction following the TypeScript parser reference pattern. (1) **Elixir** — modules, structs, protocols, behaviours, typespecs, exceptions, functions (def/defp), macros, guards, callbacks, plugs, pipelines, schemas, changesets, GenServer states, module attributes, use/import/alias/require directives, 70+ framework detection patterns, 10 OTP patterns, Elixir 1.0-1.17+ version detection. (2) **Phoenix** — routes, controllers, LiveViews, LiveComponents, channels, sockets, components, 1.0-1.8+ version detection. (3) **Ecto** — schemas with fields/associations, changesets with validations, migrations, queries, Repo calls, Multi transactions, custom types, 1.0-3.12 version detection. (4) **Absinthe** — types, queries/mutations/subscriptions, resolvers, middleware, dataloaders, version detection. (5) **Oban** — workers, queues, plugins, cron schedules, telemetry events, Pro features, 2.0-2.17 version detection. Scanner integration (5 \_parse methods, 60+ new ProjectMatrix fields, `_dc_to_dict` recursive dataclass converter, `_higher_version` comparator), compressor (6 new sections: ELIXIR_TYPES, ELIXIR_FUNCTIONS, PHOENIX, ECTO, ABSINTHE, OBAN). 127 new unit tests (6 test files), 3-project scanner evaluation (Plausible Analytics, Papercups, elixir-lang/elixir), 0 regressions (7233 total tests).
+**CodeTrellis Version**: v5.7.0 (v5.6.0 + React Native Framework Parser)
+**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq), Session 80 (PHP Frameworks: Laravel + Symfony + CodeIgniter + Slim + WordPress), Session 81 (Rust Frameworks: Actix Web + Axum + Rocket + Warp + Diesel + SeaORM + Tauri), Session 82 (Elixir Ecosystem: Elixir + Phoenix + Ecto + Absinthe + Oban), Session 83 (React Native)
+**Status**: ✅ Session 83 Complete — React Native Framework Parser (v5.7.0): 1 new framework parser + 5 extractors with full regex-based extraction following the TypeScript parser reference pattern. **React Native** — core RN components, animated components (Animated API, Reanimated v2/v3, LayoutAnimation, Moti), list components (FlatList, SectionList, FlashList), React Navigation (stack, tab, drawer, native*stack), Expo Router, deep linking, NativeModules, TurboModules, Fabric components, JSI bindings, NativeEventEmitter, StyleSheet.create, NativeWind, styled-components/native, Restyle, react-native-paper themes, Platform.OS/select/Version, platform-specific files (.ios/.android/.native/.web), PermissionsAndroid, expo permissions, AppState, BackHandler, Linking, Keyboard. 40+ framework detection patterns (core, navigation, animation, UI libraries, styling, storage, media, maps, push notifications, testing, devtools, Expo SDK). RN version detection 0.59-0.76+. Architecture detection (bridge, new_architecture, bridgeless). Scanner integration (18 rn*\* ProjectMatrix fields, dispatch in both JS and TS blocks), compressor (5 new sections: REACT_NATIVE_COMPONENTS, REACT_NATIVE_NAVIGATION, REACT_NATIVE_NATIVE_MODULES, REACT_NATIVE_STYLING, REACT_NATIVE_PLATFORM). 50 BPL practices (RN001-RN050). A5.x module updates (cache_optimizer, jit_context, skills_generator, mcp_server). 46 new unit tests, 3-project scanner evaluation (react-native-reanimated, react-native-paper, Ignite), 0 regressions (7264 total tests).
 
 ---
 
@@ -5331,7 +5331,7 @@ Full Elixir ecosystem support: Elixir (base language), Phoenix (web framework), 
 
 **scanner.py:**
 
-- Added imports for 5 parsers, 60+ ProjectMatrix fields (elixir*\*, phoenix*_, ecto\__, absinthe*\*, oban*\*)
+- Added imports for 5 parsers, 60+ ProjectMatrix fields (elixir*\*, phoenix*\_, ecto\_\_, absinthe*\*, oban*\*)
 - Added 5 parser instances, FILE*TYPES (`.ex`/`.exs` → `"elixir"`), dispatch chain → 5 `\_parse*\*` methods
 - Added `_dc_to_dict()` recursive dataclass→dict converter, `_higher_version()` version comparator
 - Fixed LiveComponent early-return gate
@@ -5361,5 +5361,91 @@ New tests:  127 (21+14+18+17+16+19+22 fixes)
 Previous:  7106
 Total:     7233
 pytest tests/ -x -q → 7233 passed, 86 skipped
+✅ ALL TESTS PASSED — 0 failures, 0 regressions
+```
+
+## Session 83 — React Native Framework Parser (v5.7.0)
+
+### Scope
+
+React Native framework support as a FRAMEWORK-level parser (like React, MUI, Bootstrap). Runs as an overlay on JS/TS files when React Native imports are detected. Following the TypeScript parser reference pattern with 5 extractors.
+
+### New Files (8)
+
+**Extractors (5 + init):**
+
+- `codetrellis/extractors/react_native/__init__.py` — Module init exporting all 5 extractors and their dataclasses
+- `codetrellis/extractors/react_native/component_extractor.py` — Core RN components, animated components (Animated API, Reanimated v2/v3, LayoutAnimation, Moti), list components (FlatList, SectionList, FlashList)
+- `codetrellis/extractors/react_native/navigation_extractor.py` — React Navigation (stack, tab, drawer, native_stack), Expo Router, Wix Navigation, deep linking
+- `codetrellis/extractors/react_native/native_module_extractor.py` — NativeModules, TurboModules, Fabric components, JSI bindings, NativeEventEmitter
+- `codetrellis/extractors/react_native/styling_extractor.py` — StyleSheet.create, NativeWind, styled-components/native, Restyle, react-native-paper themes, dynamic styles
+- `codetrellis/extractors/react_native/platform_extractor.py` — Platform.OS/select/Version, platform-specific files (.ios/.android/.native/.web), PermissionsAndroid, expo permissions, AppState, BackHandler, Linking, Keyboard
+
+**Parser (1):**
+
+- `codetrellis/react_native_parser_enhanced.py` — Main React Native parser. ReactNativeParseResult dataclass (18 fields), EnhancedReactNativeParser with 40+ FRAMEWORK_PATTERNS (core, navigation, animation, UI libraries, styling, storage, media, maps, push notifications, testing, devtools, Expo SDK). RN_VERSION_FEATURES for 0.59-0.76+. Architecture detection (bridge, new_architecture, bridgeless). `is_react_native_file()` gate.
+
+**Tests (1):**
+
+- `tests/unit/test_react_native_parser_enhanced.py` — 46 tests across 6 classes (TestRNComponentExtractor, TestRNNavigationExtractor, TestRNNativeModuleExtractor, TestRNStylingExtractor, TestRNPlatformExtractor, TestEnhancedReactNativeParser, TestEdgeCases)
+
+**BPL (1):**
+
+- `codetrellis/bpl/practices/react_native_core.yaml` — 50 practices (RN001-RN050): Components (RN001-010), Navigation (RN011-020), Animation (RN021-026), List Performance (RN027-032), Native Modules (RN033-038), Styling/Theming (RN039-044), Platform/Performance (RN045-050)
+
+### Modified Files
+
+**scanner.py:**
+
+- Added import for `EnhancedReactNativeParser`
+- Added 18 ProjectMatrix fields: `rn_components`, `rn_animated_components`, `rn_list_components`, `rn_navigators`, `rn_screens`, `rn_deep_links`, `rn_native_modules`, `rn_turbo_modules`, `rn_fabric_components`, `rn_stylesheets`, `rn_dynamic_styles`, `rn_themes`, `rn_platform_usages`, `rn_platform_files`, `rn_permissions`, `rn_detected_frameworks`, `rn_version`, `rn_architecture`
+- Added parser init: `self.react_native_parser = EnhancedReactNativeParser()`
+- Added `_parse_react_native()` method (~200 lines)
+- Dispatch wired in BOTH JS and TS handler blocks (after `_parse_react()`)
+
+**compressor.py:**
+
+- 5 new section calls: `[REACT_NATIVE_COMPONENTS]`, `[REACT_NATIVE_NAVIGATION]`, `[REACT_NATIVE_NATIVE_MODULES]`, `[REACT_NATIVE_STYLING]`, `[REACT_NATIVE_PLATFORM]`
+- 5 new compress methods: `_compress_rn_components()`, `_compress_rn_navigation()`, `_compress_rn_native_modules()`, `_compress_rn_styling()`, `_compress_rn_platform()`
+
+**bpl/models.py:**
+
+- Added `JS_REACT_NATIVE = "react-native"` to PracticeCategory enum
+
+**cache_optimizer.py:**
+
+- Added 5 React Native sections with SectionStability.SEMANTIC
+
+**jit_context.py:**
+
+- Added 5 RN sections to `.tsx` and `.jsx` file extension mappings
+
+**skills_generator.py:**
+
+- Added `REACT_NATIVE_COMPONENTS` and `REACT_NATIVE_NAVIGATION` to add-component detect_sections
+- Added `REACT_NATIVE_COMPONENTS`, `REACT_NATIVE_STYLING`, `REACT_NATIVE_PLATFORM` to context_sections
+
+**mcp_server.py:**
+
+- Added all 5 RN sections to `"components"` aggregate resource
+
+### Key Fixes
+
+1. JSX prop extraction: `_find_component_jsx()` angle-bracket depth tracker skips `=>` and `>=` operators so multi-line FlatList props are captured
+2. Architecture detection: Changed regex from `NativeModules\.\w+` to `\bNativeModules\b` to match destructured usage patterns
+
+### Scanner Evaluation (3 Repos)
+
+1. **react-native-reanimated**: 125 components, 1 navigator, 6 native modules (JSI), 57 stylesheets, 13 OS checks, 23 native platform files
+2. **react-native-paper**: 142 components, 6 navigators, 1 native module, 126 stylesheets, 64 OS checks
+3. **Ignite**: 46 components, 2 navigators (Stack+Tab, 7 screens), 1 native module, 38 conditional dynamic styles, 2 themes, 8 OS checks, 3 deep links
+
+### Test Results
+
+```
+New tests:  46 (1 test file)
+Previous:  7233 (from Session 82 baseline)
+Total:     7264
+pytest tests/ -x -q → 7264 passed, 101 skipped
 ✅ ALL TESTS PASSED — 0 failures, 0 regressions
 ```

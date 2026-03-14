@@ -2399,6 +2399,52 @@ class MatrixCompressor:
             lines.append("")
 
         # ============================================
+        # v5.6: React Native Framework Sections
+        # Components, navigation, native modules, styling, platform
+        # Runs on JS/TS files where React Native is detected
+        # ============================================
+
+        # React Native Components (core RN, animated, lists)
+        rn_comp_lines = self._compress_rn_components(matrix)
+        if rn_comp_lines:
+            lines.append("[REACT_NATIVE_COMPONENTS]")
+            lines.append("# Core RN components, animated components, list components (FlatList/FlashList)")
+            lines.extend(rn_comp_lines)
+            lines.append("")
+
+        # React Native Navigation (stacks, tabs, drawers, screens, deep links)
+        rn_nav_lines = self._compress_rn_navigation(matrix)
+        if rn_nav_lines:
+            lines.append("[REACT_NATIVE_NAVIGATION]")
+            lines.append("# React Navigation, Expo Router, Wix Navigation, screens, deep links")
+            lines.extend(rn_nav_lines)
+            lines.append("")
+
+        # React Native Native Modules (NativeModules, TurboModules, Fabric, JSI)
+        rn_native_lines = self._compress_rn_native_modules(matrix)
+        if rn_native_lines:
+            lines.append("[REACT_NATIVE_NATIVE_MODULES]")
+            lines.append("# NativeModules, TurboModules, Fabric components, JSI bindings")
+            lines.extend(rn_native_lines)
+            lines.append("")
+
+        # React Native Styling (StyleSheet, NativeWind, Restyle, themes)
+        rn_style_lines = self._compress_rn_styling(matrix)
+        if rn_style_lines:
+            lines.append("[REACT_NATIVE_STYLING]")
+            lines.append("# StyleSheet.create, dynamic styles, NativeWind, Restyle, themes")
+            lines.extend(rn_style_lines)
+            lines.append("")
+
+        # React Native Platform (Platform.OS, permissions, lifecycle)
+        rn_platform_lines = self._compress_rn_platform(matrix)
+        if rn_platform_lines:
+            lines.append("[REACT_NATIVE_PLATFORM]")
+            lines.append("# Platform.OS, Platform.select, permissions, BackHandler, Linking")
+            lines.extend(rn_platform_lines)
+            lines.append("")
+
+        # ============================================
         # v4.47: Redux / Redux Toolkit Framework Sections
         # Stores, slices, middleware, selectors, RTK Query
         # Runs on JS/TS files where Redux framework is detected
@@ -16873,6 +16919,226 @@ class MatrixCompressor:
                 lines.append(f"  {page['name']}{route}{fw}{data}{ssr}{ssg}{isr}{api}|{file_short}")
             if len(matrix.react_pages) > 25:
                 lines.append(f"  # ... and {len(matrix.react_pages) - 25} more pages")
+
+        return lines
+
+    # ============================================
+    # v5.6: React Native compression methods
+    # ============================================
+
+    def _compress_rn_components(self, matrix) -> List[str]:
+        """Compress React Native components, animated components, and list components."""
+        lines = []
+
+        # Core components
+        if hasattr(matrix, 'rn_components') and matrix.rn_components:
+            lines.append(f"# Components ({len(matrix.rn_components)})")
+            for comp in matrix.rn_components[:40]:
+                file_short = comp.get('file', '').split('/')[-1]
+                ctype = f"|{comp['component_type']}" if comp.get('component_type') else ""
+                source = f"|from:{comp['source_module']}" if comp.get('source_module') else ""
+                native = "|native" if comp.get('wraps_native') else ""
+                exported = "|export" if comp.get('is_exported') else ""
+                lines.append(f"  {comp['name']}{ctype}{source}{native}{exported}|{file_short}")
+            if len(matrix.rn_components) > 40:
+                lines.append(f"  # ... and {len(matrix.rn_components) - 40} more")
+
+        # Animated components
+        if hasattr(matrix, 'rn_animated_components') and matrix.rn_animated_components:
+            lines.append(f"# Animated ({len(matrix.rn_animated_components)})")
+            for anim in matrix.rn_animated_components[:20]:
+                file_short = anim.get('file', '').split('/')[-1]
+                atype = f"|{anim['animation_type']}" if anim.get('animation_type') else ""
+                vals = anim.get('animated_values', [])
+                vals_str = f"|values:[{','.join(vals[:5])}]" if vals else ""
+                native_drv = "|nativeDriver" if anim.get('uses_native_driver') else ""
+                gesture = "|gesture" if anim.get('is_gesture_based') else ""
+                lines.append(f"  {anim['name']}{atype}{vals_str}{native_drv}{gesture}|{file_short}")
+
+        # List components
+        if hasattr(matrix, 'rn_list_components') and matrix.rn_list_components:
+            lines.append(f"# Lists ({len(matrix.rn_list_components)})")
+            for lst in matrix.rn_list_components[:20]:
+                file_short = lst.get('file', '').split('/')[-1]
+                ltype = f"|{lst['list_type']}" if lst.get('list_type') else ""
+                key = "|keyExtractor" if lst.get('has_key_extractor') else ""
+                render = "|renderItem" if lst.get('has_render_item') else ""
+                page = "|pagination" if lst.get('has_pagination') else ""
+                refresh = "|pullToRefresh" if lst.get('has_pull_to_refresh') else ""
+                lines.append(f"  {lst['name']}{ltype}{key}{render}{page}{refresh}|{file_short}")
+
+        # Detected frameworks
+        if hasattr(matrix, 'rn_detected_frameworks') and matrix.rn_detected_frameworks:
+            lines.append(f"# RN ecosystem: {', '.join(matrix.rn_detected_frameworks[:30])}")
+
+        # RN version
+        if hasattr(matrix, 'rn_version') and matrix.rn_version:
+            lines.append(f"# React Native version: >={matrix.rn_version}")
+
+        # Architecture
+        if hasattr(matrix, 'rn_architecture') and matrix.rn_architecture:
+            lines.append(f"# Architecture: {matrix.rn_architecture}")
+
+        return lines
+
+    def _compress_rn_navigation(self, matrix) -> List[str]:
+        """Compress React Native navigation (navigators, screens, deep links)."""
+        lines = []
+
+        # Navigators
+        if hasattr(matrix, 'rn_navigators') and matrix.rn_navigators:
+            lines.append(f"# Navigators ({len(matrix.rn_navigators)})")
+            for nav in matrix.rn_navigators[:20]:
+                file_short = nav.get('file', '').split('/')[-1]
+                ntype = f"|{nav['navigator_type']}" if nav.get('navigator_type') else ""
+                lib = f"|{nav['library']}" if nav.get('library') else ""
+                screens = nav.get('screens', [])
+                scr_str = f"|screens:[{','.join(screens[:5])}]" if screens else ""
+                header = "|header" if nav.get('has_header_config') else ""
+                tab = "|tabBar" if nav.get('has_tab_bar_config') else ""
+                lines.append(f"  {nav['name']}{ntype}{lib}{scr_str}{header}{tab}|{file_short}")
+
+        # Screens
+        if hasattr(matrix, 'rn_screens') and matrix.rn_screens:
+            lines.append(f"# Screens ({len(matrix.rn_screens)})")
+            for scr in matrix.rn_screens[:30]:
+                file_short = scr.get('file', '').split('/')[-1]
+                comp = f"|→{scr['component']}" if scr.get('component') else ""
+                nav = f"|nav:{scr['navigator']}" if scr.get('navigator') else ""
+                opts = "|options" if scr.get('has_options') else ""
+                initial = "|initial" if scr.get('is_initial') else ""
+                lines.append(f"  {scr['name']}{comp}{nav}{opts}{initial}|{file_short}")
+            if len(matrix.rn_screens) > 30:
+                lines.append(f"  # ... and {len(matrix.rn_screens) - 30} more screens")
+
+        # Deep links
+        if hasattr(matrix, 'rn_deep_links') and matrix.rn_deep_links:
+            lines.append(f"# Deep Links ({len(matrix.rn_deep_links)})")
+            for dl in matrix.rn_deep_links[:15]:
+                file_short = dl.get('file', '').split('/')[-1]
+                path = f"|path:{dl['path_pattern']}" if dl.get('path_pattern') else ""
+                screen = f"|→{dl['screen_name']}" if dl.get('screen_name') else ""
+                params = "|params" if dl.get('has_params') else ""
+                prefix = f"|prefix:{dl['prefix']}" if dl.get('prefix') else ""
+                lines.append(f"  {dl['name']}{path}{screen}{params}{prefix}|{file_short}")
+
+        return lines
+
+    def _compress_rn_native_modules(self, matrix) -> List[str]:
+        """Compress React Native native modules (NativeModules, TurboModules, Fabric)."""
+        lines = []
+
+        # Native Modules
+        if hasattr(matrix, 'rn_native_modules') and matrix.rn_native_modules:
+            lines.append(f"# Native Modules ({len(matrix.rn_native_modules)})")
+            for nm in matrix.rn_native_modules[:25]:
+                file_short = nm.get('file', '').split('/')[-1]
+                arch = f"|{nm['architecture']}" if nm.get('architecture') else ""
+                methods = nm.get('methods_called', [])
+                methods_str = f"|methods:[{','.join(methods[:5])}]" if methods else ""
+                emitter = "|emitter" if nm.get('is_event_emitter') else ""
+                lines.append(f"  {nm['name']}{arch}{methods_str}{emitter}|{file_short}")
+
+        # TurboModules
+        if hasattr(matrix, 'rn_turbo_modules') and matrix.rn_turbo_modules:
+            lines.append(f"# TurboModules ({len(matrix.rn_turbo_modules)})")
+            for tm in matrix.rn_turbo_modules[:15]:
+                file_short = tm.get('file', '').split('/')[-1]
+                spec = f"|spec:{tm['spec_name']}" if tm.get('spec_name') else ""
+                methods = tm.get('methods', [])
+                methods_str = f"|methods:[{','.join(methods[:5])}]" if methods else ""
+                sync = "|sync" if tm.get('is_sync') else ""
+                lines.append(f"  {tm['name']}{spec}{methods_str}{sync}|{file_short}")
+
+        # Fabric Components
+        if hasattr(matrix, 'rn_fabric_components') and matrix.rn_fabric_components:
+            lines.append(f"# Fabric Components ({len(matrix.rn_fabric_components)})")
+            for fc in matrix.rn_fabric_components[:15]:
+                file_short = fc.get('file', '').split('/')[-1]
+                props = f"|props:{fc['props_type']}" if fc.get('props_type') else ""
+                events = fc.get('events', [])
+                events_str = f"|events:[{','.join(events[:5])}]" if events else ""
+                cmds = fc.get('commands', [])
+                cmds_str = f"|commands:[{','.join(cmds[:5])}]" if cmds else ""
+                lines.append(f"  {fc['name']}{props}{events_str}{cmds_str}|{file_short}")
+
+        return lines
+
+    def _compress_rn_styling(self, matrix) -> List[str]:
+        """Compress React Native styling (StyleSheet, dynamic styles, themes)."""
+        lines = []
+
+        # StyleSheets
+        if hasattr(matrix, 'rn_stylesheets') and matrix.rn_stylesheets:
+            lines.append(f"# StyleSheets ({len(matrix.rn_stylesheets)})")
+            for ss in matrix.rn_stylesheets[:25]:
+                file_short = ss.get('file', '').split('/')[-1]
+                names = ss.get('style_names', [])
+                names_str = f"|styles:[{','.join(names[:8])}]" if names else ""
+                count = f"|count:{ss['style_count']}" if ss.get('style_count') else ""
+                lines.append(f"  {ss['name']}{count}{names_str}|{file_short}")
+            if len(matrix.rn_stylesheets) > 25:
+                lines.append(f"  # ... and {len(matrix.rn_stylesheets) - 25} more stylesheets")
+
+        # Dynamic styles summary
+        if hasattr(matrix, 'rn_dynamic_styles') and matrix.rn_dynamic_styles:
+            by_type = {}
+            for ds in matrix.rn_dynamic_styles:
+                t = ds.get('style_type', 'unknown')
+                by_type[t] = by_type.get(t, 0) + 1
+            summary = ", ".join(f"{t}:{c}" for t, c in sorted(by_type.items()))
+            lines.append(f"# Dynamic styles: {summary}")
+
+        # Themes
+        if hasattr(matrix, 'rn_themes') and matrix.rn_themes:
+            lines.append(f"# Themes ({len(matrix.rn_themes)})")
+            for theme in matrix.rn_themes[:10]:
+                file_short = theme.get('file', '').split('/')[-1]
+                lib = f"|{theme['theme_library']}" if theme.get('theme_library') else ""
+                dark = "|dark_mode" if theme.get('has_dark_mode') else ""
+                provider = "|provider" if theme.get('has_provider') else ""
+                lines.append(f"  {theme['name']}{lib}{dark}{provider}|{file_short}")
+
+        return lines
+
+    def _compress_rn_platform(self, matrix) -> List[str]:
+        """Compress React Native platform patterns (Platform.OS, permissions, lifecycle)."""
+        lines = []
+
+        # Platform usages summary
+        if hasattr(matrix, 'rn_platform_usages') and matrix.rn_platform_usages:
+            by_type = {}
+            for pu in matrix.rn_platform_usages:
+                t = pu.get('usage_type', 'unknown')
+                by_type[t] = by_type.get(t, 0) + 1
+            summary = ", ".join(f"{t}:{c}" for t, c in sorted(by_type.items()))
+            lines.append(f"# Platform usage: {summary}")
+
+            # Unique platforms targeted
+            all_platforms = set()
+            for pu in matrix.rn_platform_usages:
+                all_platforms.update(pu.get('platforms', []))
+            if all_platforms:
+                lines.append(f"# Target platforms: {', '.join(sorted(all_platforms))}")
+
+        # Platform-specific files
+        if hasattr(matrix, 'rn_platform_files') and matrix.rn_platform_files:
+            by_platform = {}
+            for pf in matrix.rn_platform_files:
+                p = pf.get('platform', 'unknown')
+                by_platform[p] = by_platform.get(p, 0) + 1
+            summary = ", ".join(f"{p}:{c}" for p, c in sorted(by_platform.items()))
+            lines.append(f"# Platform-specific files: {summary}")
+
+        # Permissions
+        if hasattr(matrix, 'rn_permissions') and matrix.rn_permissions:
+            lines.append(f"# Permissions ({len(matrix.rn_permissions)})")
+            for perm in matrix.rn_permissions[:15]:
+                file_short = perm.get('file', '').split('/')[-1]
+                ptype = f"|{perm['permission_type']}" if perm.get('permission_type') else ""
+                lib = f"|{perm['library']}" if perm.get('library') else ""
+                req = "|request" if perm.get('is_request') else "|check"
+                lines.append(f"  {perm['name']}{ptype}{lib}{req}|{file_short}")
 
         return lines
 

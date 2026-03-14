@@ -1,0 +1,1746 @@
+# React Native Best Practices
+# Framework-specific practices for React Native applications
+# Requires: react-native
+
+practices:
+  # ============================================================================
+  # COMPONENT PRACTICES (RN001-RN010)
+  # ============================================================================
+
+  - id: RN001
+    title: "Use Functional Components with Hooks"
+    category: react-native
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Prefer functional components with hooks over class components.
+        This aligns with React Native's direction and reduces boilerplate.
+      rationale: |
+        Functional components are lighter, easier to test, and work better
+        with React Native's concurrent features and the New Architecture.
+      good_examples:
+        - |
+          export function ProfileScreen({ userId }: Props) {
+              const [user, setUser] = useState<User | null>(null);
+              const navigation = useNavigation();
+
+              useEffect(() => {
+                  fetchUser(userId).then(setUser);
+              }, [userId]);
+
+              return (
+                  <SafeAreaView style={styles.container}>
+                      <Text style={styles.name}>{user?.name}</Text>
+                  </SafeAreaView>
+              );
+          }
+      bad_examples:
+        - |
+          class ProfileScreen extends React.Component {
+              state = { user: null };
+              componentDidMount() {
+                  fetchUser(this.props.userId).then(user =>
+                      this.setState({ user }));
+              }
+              render() {
+                  return <View><Text>{this.state.user?.name}</Text></View>;
+              }
+          }
+      tags:
+        - components
+        - hooks
+
+  - id: RN002
+    title: "Use Platform-Specific File Extensions"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use .ios.tsx and .android.tsx file extensions for platform-specific
+        implementations instead of inline Platform.OS checks.
+      rationale: |
+        Platform-specific files are tree-shaken at build time, reducing bundle
+        size. They also keep platform logic cleanly separated.
+      good_examples:
+        - |
+          // DatePicker.ios.tsx
+          import DateTimePicker from '@react-native-community/datetimepicker';
+          export function DatePicker({ value, onChange }: Props) {
+              return <DateTimePicker value={value} onChange={onChange} mode="date" />;
+          }
+
+          // DatePicker.android.tsx
+          export function DatePicker({ value, onChange }: Props) {
+              // Android-specific implementation
+          }
+      bad_examples:
+        - |
+          // DatePicker.tsx — mixed platform logic
+          export function DatePicker({ value, onChange }: Props) {
+              if (Platform.OS === 'ios') {
+                  return <DateTimePicker value={value} mode="date" />;
+              } else {
+                  return <AndroidDatePicker value={value} />;
+              }
+          }
+      tags:
+        - platform
+        - architecture
+
+  - id: RN003
+    title: "Memoize Expensive Renders"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use React.memo, useMemo, and useCallback to prevent unnecessary
+        re-renders in performance-critical components.
+      rationale: |
+        React Native renders on a single JS thread. Unnecessary re-renders
+        cause frame drops and poor user experience.
+      good_examples:
+        - |
+          const ListItem = React.memo(function ListItem({ item, onPress }: Props) {
+              const handlePress = useCallback(() => onPress(item.id), [item.id, onPress]);
+              return (
+                  <Pressable onPress={handlePress}>
+                      <Text>{item.title}</Text>
+                  </Pressable>
+              );
+          });
+      tags:
+        - performance
+        - rendering
+
+  - id: RN004
+    title: "Use Pressable Over Touchable Components"
+    category: react-native
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Prefer Pressable over TouchableOpacity, TouchableHighlight, and
+        TouchableWithoutFeedback. Pressable is the modern, flexible API.
+      rationale: |
+        Pressable provides a unified API with hover, focus, and press states.
+        It's the recommended replacement since React Native 0.63.
+      good_examples:
+        - |
+          <Pressable
+              onPress={handlePress}
+              style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+          >
+              <Text>Press me</Text>
+          </Pressable>
+      bad_examples:
+        - |
+          <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
+              <Text>Press me</Text>
+          </TouchableOpacity>
+      tags:
+        - components
+        - interaction
+
+  - id: RN005
+    title: "Avoid Inline Styles in Render"
+    category: react-native
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Define styles outside the render using StyleSheet.create instead
+        of inline style objects that create new references each render.
+      rationale: |
+        StyleSheet.create validates styles at creation time and enables
+        optimizations. Inline objects cause re-renders due to referential inequality.
+      good_examples:
+        - |
+          const styles = StyleSheet.create({
+              container: { flex: 1, padding: 16 },
+              title: { fontSize: 24, fontWeight: 'bold' },
+          });
+
+          function Screen() {
+              return <View style={styles.container}><Text style={styles.title}>Hi</Text></View>;
+          }
+      bad_examples:
+        - |
+          function Screen() {
+              return (
+                  <View style={{ flex: 1, padding: 16 }}>
+                      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Hi</Text>
+                  </View>
+              );
+          }
+      tags:
+        - styling
+        - performance
+
+  - id: RN006
+    title: "Use SafeAreaView for Notch and Status Bar"
+    category: react-native
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - react-native-safe-area-context
+    content:
+      description: |
+        Wrap screen content in SafeAreaView from react-native-safe-area-context
+        to handle notches, status bars, and home indicators.
+      rationale: |
+        The community SafeAreaView works on both iOS and Android, unlike
+        the built-in SafeAreaView which is iOS-only.
+      good_examples:
+        - |
+          import { SafeAreaView } from 'react-native-safe-area-context';
+
+          export function HomeScreen() {
+              return (
+                  <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+                      <ScrollView>{/* content */}</ScrollView>
+                  </SafeAreaView>
+              );
+          }
+      tags:
+        - layout
+        - platform
+
+  - id: RN007
+    title: "Extract Reusable UI Components"
+    category: react-native
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Create a shared component library for buttons, inputs, cards, and
+        other UI primitives used across multiple screens.
+      rationale: |
+        Reusable components ensure visual consistency, reduce duplication,
+        and make design system changes easier to propagate.
+      good_examples:
+        - |
+          // components/Button.tsx
+          interface ButtonProps {
+              title: string;
+              variant?: 'primary' | 'secondary' | 'outline';
+              onPress: () => void;
+              disabled?: boolean;
+          }
+
+          export function Button({ title, variant = 'primary', onPress, disabled }: ButtonProps) {
+              return (
+                  <Pressable
+                      onPress={onPress}
+                      disabled={disabled}
+                      style={[styles.base, styles[variant], disabled && styles.disabled]}
+                  >
+                      <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text>
+                  </Pressable>
+              );
+          }
+      tags:
+        - components
+        - design-system
+
+  - id: RN008
+    title: "Use TypeScript for Component Props"
+    category: react-native
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Define explicit TypeScript interfaces for all component props.
+        This catches errors at compile time and improves IDE support.
+      rationale: |
+        TypeScript prop types provide compile-time safety and serve as
+        living documentation for component APIs.
+      good_examples:
+        - |
+          interface UserCardProps {
+              user: {
+                  id: string;
+                  name: string;
+                  avatar?: string;
+              };
+              onPress: (userId: string) => void;
+              showBadge?: boolean;
+          }
+
+          export function UserCard({ user, onPress, showBadge = false }: UserCardProps) {
+              return (
+                  <Pressable onPress={() => onPress(user.id)}>
+                      <Image source={{ uri: user.avatar }} style={styles.avatar} />
+                      <Text>{user.name}</Text>
+                  </Pressable>
+              );
+          }
+      tags:
+        - typescript
+        - props
+
+  - id: RN009
+    title: "Handle Loading and Error States"
+    category: react-native
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Every screen that fetches data should handle loading, error, and
+        empty states explicitly with appropriate UI feedback.
+      rationale: |
+        Users expect visual feedback during data loading. Unhandled error
+        states lead to blank screens and poor user experience.
+      good_examples:
+        - |
+          function OrdersScreen() {
+              const { data, isLoading, error, refetch } = useOrders();
+
+              if (isLoading) return <ActivityIndicator size="large" />;
+              if (error) return <ErrorView message={error.message} onRetry={refetch} />;
+              if (!data?.length) return <EmptyState message="No orders yet" />;
+
+              return <FlatList data={data} renderItem={renderOrder} />;
+          }
+      tags:
+        - ux
+        - data-fetching
+
+  - id: RN010
+    title: "Use Error Boundaries for Crash Protection"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Wrap screen sections in error boundaries to prevent full-app
+        crashes from component rendering errors.
+      rationale: |
+        Without error boundaries, a single component crash takes down the
+        entire app. Error boundaries contain the blast radius.
+      good_examples:
+        - |
+          class ScreenErrorBoundary extends React.Component<Props, State> {
+              state = { hasError: false };
+
+              static getDerivedStateFromError() {
+                  return { hasError: true };
+              }
+
+              componentDidCatch(error: Error, info: ErrorInfo) {
+                  crashlytics().recordError(error);
+              }
+
+              render() {
+                  if (this.state.hasError) {
+                      return <ErrorFallback onRetry={() => this.setState({ hasError: false })} />;
+                  }
+                  return this.props.children;
+              }
+          }
+      tags:
+        - error-handling
+        - reliability
+
+  # ============================================================================
+  # NAVIGATION PRACTICES (RN011-RN020)
+  # ============================================================================
+
+  - id: RN011
+    title: "Type-Safe Navigation with React Navigation"
+    category: react-native
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - "@react-navigation/native"
+    content:
+      description: |
+        Define a root param list type and use typed navigation hooks
+        for compile-time route name and parameter safety.
+      rationale: |
+        Typed navigation catches route name typos and missing parameters
+        at compile time instead of runtime crashes.
+      good_examples:
+        - |
+          type RootStackParamList = {
+              Home: undefined;
+              Profile: { userId: string };
+              Settings: { section?: string };
+          };
+
+          declare global {
+              namespace ReactNavigation {
+                  interface RootParamList extends RootStackParamList {}
+              }
+          }
+
+          // In a screen:
+          const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+          navigation.navigate('Profile', { userId: '123' }); // Type-safe
+      tags:
+        - navigation
+        - typescript
+
+  - id: RN012
+    title: "Configure Deep Linking"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - "@react-navigation/native"
+    content:
+      description: |
+        Configure deep linking with proper URL prefixes and screen mappings
+        to support push notification links, email links, and universal links.
+      rationale: |
+        Deep linking improves user experience by allowing direct navigation
+        to specific screens from external sources.
+      good_examples:
+        - |
+          const linking: LinkingOptions<RootStackParamList> = {
+              prefixes: ['myapp://', 'https://myapp.com'],
+              config: {
+                  screens: {
+                      Home: '',
+                      Profile: 'user/:userId',
+                      Settings: 'settings',
+                  },
+              },
+          };
+
+          <NavigationContainer linking={linking} fallback={<LoadingScreen />}>
+              <Stack.Navigator>{/* screens */}</Stack.Navigator>
+          </NavigationContainer>
+      tags:
+        - navigation
+        - deep-linking
+
+  - id: RN013
+    title: "Separate Navigator from Screen Components"
+    category: react-native
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Keep navigator configuration in dedicated files separate from
+        screen component implementations.
+      rationale: |
+        Separating navigation from screens makes both easier to maintain,
+        test, and refactor independently.
+      good_examples:
+        - |
+          // navigation/MainNavigator.tsx
+          const Stack = createNativeStackNavigator<RootStackParamList>();
+
+          export function MainNavigator() {
+              return (
+                  <Stack.Navigator screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="Home" component={HomeScreen} />
+                      <Stack.Screen name="Profile" component={ProfileScreen} />
+                  </Stack.Navigator>
+              );
+          }
+
+          // screens/HomeScreen.tsx — no navigation setup, just UI
+          export function HomeScreen() {
+              return <View>{/* screen content */}</View>;
+          }
+      tags:
+        - navigation
+        - architecture
+
+  - id: RN014
+    title: "Use Navigation State Persistence for Dev"
+    category: react-native
+    level: advanced
+    priority: low
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - "@react-navigation/native"
+    content:
+      description: |
+        Persist navigation state during development to preserve the current
+        screen across JS refreshes, speeding up development cycles.
+      rationale: |
+        Without state persistence, every hot reload resets to the initial
+        screen, forcing manual navigation during development.
+      good_examples:
+        - |
+          const [isReady, setIsReady] = useState(!__DEV__);
+          const [initialState, setInitialState] = useState();
+
+          useEffect(() => {
+              if (__DEV__) {
+                  AsyncStorage.getItem('NAV_STATE').then((state) => {
+                      if (state) setInitialState(JSON.parse(state));
+                      setIsReady(true);
+                  });
+              }
+          }, []);
+
+          <NavigationContainer
+              initialState={initialState}
+              onStateChange={(state) => __DEV__ && AsyncStorage.setItem('NAV_STATE', JSON.stringify(state))}
+          />
+      tags:
+        - navigation
+        - developer-experience
+
+  - id: RN015
+    title: "Implement Tab and Stack Navigator Composition"
+    category: react-native
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - "@react-navigation/bottom-tabs"
+    content:
+      description: |
+        Compose navigators by nesting stack navigators inside tab navigators
+        for the standard mobile navigation pattern.
+      rationale: |
+        Tab-in-stack (or stack-in-tab) composition is the standard mobile
+        navigation pattern that users expect.
+      good_examples:
+        - |
+          function HomeTabs() {
+              return (
+                  <Tab.Navigator>
+                      <Tab.Screen name="Feed" component={FeedScreen} />
+                      <Tab.Screen name="Search" component={SearchScreen} />
+                      <Tab.Screen name="Profile" component={ProfileScreen} />
+                  </Tab.Navigator>
+              );
+          }
+
+          function RootNavigator() {
+              return (
+                  <Stack.Navigator>
+                      <Stack.Screen name="Main" component={HomeTabs} options={{ headerShown: false }} />
+                      <Stack.Screen name="Details" component={DetailsScreen} />
+                  </Stack.Navigator>
+              );
+          }
+      tags:
+        - navigation
+        - architecture
+
+  - id: RN016
+    title: "Use Expo Router for File-Based Routing"
+    category: react-native
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - expo-router
+    content:
+      description: |
+        For Expo projects, use expo-router for file-system based routing
+        that mirrors Next.js conventions.
+      rationale: |
+        File-based routing reduces boilerplate, provides automatic deep linking,
+        and makes navigation structure match the file tree.
+      good_examples:
+        - |
+          // app/_layout.tsx — root layout
+          import { Stack } from 'expo-router';
+          export default function Layout() {
+              return <Stack />;
+          }
+
+          // app/index.tsx — home screen (/)
+          export default function Home() { return <View />; }
+
+          // app/[id].tsx — dynamic route (/123)
+          import { useLocalSearchParams } from 'expo-router';
+          export default function Details() {
+              const { id } = useLocalSearchParams();
+              return <Text>Details for {id}</Text>;
+          }
+      tags:
+        - navigation
+        - expo
+
+  - id: RN017
+    title: "Handle Hardware Back Button on Android"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Handle the Android hardware back button for custom navigation
+        flows, modals, and multi-step forms.
+      rationale: |
+        Android users expect the hardware back button to work consistently.
+        Custom flows need explicit back button handling.
+      good_examples:
+        - |
+          useFocusEffect(
+              useCallback(() => {
+                  const onBackPress = () => {
+                      if (hasUnsavedChanges) {
+                          Alert.alert('Discard changes?', 'You have unsaved changes.', [
+                              { text: 'Stay', style: 'cancel' },
+                              { text: 'Discard', onPress: () => navigation.goBack() },
+                          ]);
+                          return true; // Prevent default back
+                      }
+                      return false; // Use default back behavior
+                  };
+
+                  const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+                  return () => sub.remove();
+              }, [hasUnsavedChanges])
+          );
+      tags:
+        - navigation
+        - android
+
+  - id: RN018
+    title: "Screen Options and Headers"
+    category: react-native
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - "@react-navigation/native-stack"
+    content:
+      description: |
+        Configure screen options declaratively using screenOptions or the
+        options prop rather than imperative setOptions calls.
+      rationale: |
+        Declarative options are easier to understand and maintain.
+        Use setOptions only for dynamic header content.
+      good_examples:
+        - |
+          <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={({ route }) => ({
+                  title: route.params.userName,
+                  headerRight: () => <SettingsButton />,
+              })}
+          />
+      tags:
+        - navigation
+        - headers
+
+  - id: RN019
+    title: "Authenticate Navigation Guards"
+    category: react-native
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Implement authentication flow by conditionally rendering navigator
+        stacks based on auth state rather than imperative navigation.
+      rationale: |
+        Conditional rendering prevents unauthorized screen access and
+        provides a clean auth/unauth navigation split.
+      good_examples:
+        - |
+          function RootNavigator() {
+              const { isAuthenticated } = useAuth();
+              return (
+                  <Stack.Navigator>
+                      {isAuthenticated ? (
+                          <Stack.Screen name="Main" component={MainTabs} />
+                      ) : (
+                          <Stack.Screen name="Auth" component={AuthStack} />
+                      )}
+                  </Stack.Navigator>
+              );
+          }
+      tags:
+        - navigation
+        - authentication
+
+  - id: RN020
+    title: "Preload Screens for Instant Navigation"
+    category: react-native
+    level: advanced
+    priority: low
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use React Navigation's lazy prop or React.lazy for screens that
+        are expensive to mount, and preload critical screens.
+      rationale: |
+        Lazy loading reduces initial bundle parse time while preloading
+        ensures instant transitions to frequently visited screens.
+      good_examples:
+        - |
+          const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen'));
+
+          <Stack.Screen name="Settings" options={{ lazy: true }}>
+              {() => (
+                  <React.Suspense fallback={<LoadingScreen />}>
+                      <SettingsScreen />
+                  </React.Suspense>
+              )}
+          </Stack.Screen>
+      tags:
+        - navigation
+        - performance
+
+  # ============================================================================
+  # ANIMATION PRACTICES (RN021-RN026)
+  # ============================================================================
+
+  - id: RN021
+    title: "Use Reanimated for Complex Animations"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - react-native-reanimated
+    content:
+      description: |
+        Use react-native-reanimated with worklets for gesture-driven and
+        complex animations that run on the UI thread at 60fps.
+      rationale: |
+        Reanimated runs animations on the UI thread via worklets, avoiding
+        JS thread bottlenecks that cause jank with the Animated API.
+      good_examples:
+        - |
+          const offset = useSharedValue(0);
+          const animatedStyle = useAnimatedStyle(() => ({
+              transform: [{ translateX: withSpring(offset.value) }],
+          }));
+
+          const gesture = Gesture.Pan()
+              .onUpdate((e) => { offset.value = e.translationX; })
+              .onEnd(() => { offset.value = withSpring(0); });
+
+          return (
+              <GestureDetector gesture={gesture}>
+                  <Animated.View style={animatedStyle}>
+                      <Card />
+                  </Animated.View>
+              </GestureDetector>
+          );
+      bad_examples:
+        - |
+          // JS thread animation — will drop frames during gestures
+          const pan = Animated.event([{ nativeEvent: { translationX: translateX } }]);
+      tags:
+        - animation
+        - performance
+
+  - id: RN022
+    title: "Always Use useNativeDriver When Possible"
+    category: react-native
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Set useNativeDriver: true for Animated API animations that only
+        affect transform and opacity properties.
+      rationale: |
+        Native driver offloads animation calculation to the native side,
+        achieving 60fps even when the JS thread is busy.
+      good_examples:
+        - |
+          Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: true,
+          }).start();
+      bad_examples:
+        - |
+          Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: false, // Runs on JS thread
+          }).start();
+      tags:
+        - animation
+        - performance
+
+  - id: RN023
+    title: "Use LayoutAnimation for Simple Transitions"
+    category: react-native
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use LayoutAnimation for simple layout changes like showing/hiding
+        views, list reordering, and size changes.
+      rationale: |
+        LayoutAnimation requires minimal code for layout transitions and
+        runs natively. Ideal for simple show/hide and list mutations.
+      good_examples:
+        - |
+          function ExpandableCard({ title, children }: Props) {
+              const [expanded, setExpanded] = useState(false);
+
+              const toggle = () => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setExpanded(!expanded);
+              };
+
+              return (
+                  <Pressable onPress={toggle}>
+                      <Text>{title}</Text>
+                      {expanded && <View>{children}</View>}
+                  </Pressable>
+              );
+          }
+      tags:
+        - animation
+        - layout
+
+  - id: RN024
+    title: "Animate List Items on Entry"
+    category: react-native
+    level: intermediate
+    priority: low
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Animate list items as they appear using Reanimated entering/exiting
+        layout animations for polished UI.
+      rationale: |
+        Staggered item entry animations provide visual polish and help
+        users perceive content loading as faster.
+      good_examples:
+        - |
+          import Animated, { FadeInDown } from 'react-native-reanimated';
+
+          function ListItem({ item, index }: Props) {
+              return (
+                  <Animated.View entering={FadeInDown.delay(index * 50).springify()}>
+                      <Text>{item.title}</Text>
+                  </Animated.View>
+              );
+          }
+      tags:
+        - animation
+        - lists
+
+  - id: RN025
+    title: "Use Shared Element Transitions"
+    category: react-native
+    level: advanced
+    priority: low
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - react-native-reanimated
+    content:
+      description: |
+        Implement shared element transitions between screens using
+        Reanimated shared transitions for fluid screen changes.
+      rationale: |
+        Shared element transitions create a visual connection between
+        list and detail screens, improving navigation comprehension.
+      good_examples:
+        - |
+          // List screen
+          <Animated.Image
+              source={{ uri: item.image }}
+              sharedTransitionTag={`image-${item.id}`}
+          />
+
+          // Detail screen
+          <Animated.Image
+              source={{ uri: item.image }}
+              sharedTransitionTag={`image-${item.id}`}
+          />
+      tags:
+        - animation
+        - navigation
+
+  - id: RN026
+    title: "Avoid Animated on Layout Properties"
+    category: react-native
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Do not animate width, height, padding, margin, or flex with the
+        Animated API (useNativeDriver cannot animate layout props).
+        Use Reanimated or LayoutAnimation instead.
+      rationale: |
+        The Animated API with useNativeDriver cannot animate layout properties.
+        Forcing JS-thread layout animations causes severe jank.
+      good_examples:
+        - |
+          // Use transform for size changes
+          const scale = useSharedValue(1);
+          const style = useAnimatedStyle(() => ({
+              transform: [{ scale: scale.value }],
+          }));
+      bad_examples:
+        - |
+          // BAD: Animating layout props on JS thread
+          Animated.timing(width, { toValue: 200, useNativeDriver: false }).start();
+      tags:
+        - animation
+        - performance
+
+  # ============================================================================
+  # LIST PERFORMANCE PRACTICES (RN027-RN032)
+  # ============================================================================
+
+  - id: RN027
+    title: "Optimize FlatList with Proper Props"
+    category: react-native
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Configure FlatList with getItemLayout, maxToRenderPerBatch,
+        windowSize, and removeClippedSubviews for scroll performance.
+      rationale: |
+        Default FlatList configuration works for small lists but degrades
+        significantly with hundreds of items without optimization.
+      good_examples:
+        - |
+          <FlatList
+              data={items}
+              renderItem={renderItem}
+              keyExtractor={(item) => item.id}
+              getItemLayout={(_, index) => ({
+                  length: ITEM_HEIGHT,
+                  offset: ITEM_HEIGHT * index,
+                  index,
+              })}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews
+              initialNumToRender={10}
+          />
+      tags:
+        - lists
+        - performance
+
+  - id: RN028
+    title: "Use FlashList for Large Lists"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - "@shopify/flash-list"
+    content:
+      description: |
+        Use @shopify/flash-list as a drop-in replacement for FlatList
+        when dealing with large or complex lists.
+      rationale: |
+        FlashList recycles views like native list implementations,
+        achieving significantly better performance than FlatList.
+      good_examples:
+        - |
+          import { FlashList } from '@shopify/flash-list';
+
+          <FlashList
+              data={items}
+              renderItem={renderItem}
+              estimatedItemSize={80}
+              keyExtractor={(item) => item.id}
+          />
+      tags:
+        - lists
+        - performance
+
+  - id: RN029
+    title: "Stable keyExtractor for Lists"
+    category: react-native
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Always provide a stable keyExtractor that returns a unique string
+        identifier. Never use array index as a key.
+      rationale: |
+        Array indices cause incorrect UI when items are reordered, deleted,
+        or inserted. Stable keys enable proper reconciliation.
+      good_examples:
+        - |
+          keyExtractor={(item) => item.id.toString()}
+      bad_examples:
+        - |
+          keyExtractor={(item, index) => index.toString()} // Will cause bugs
+      tags:
+        - lists
+        - correctness
+
+  - id: RN030
+    title: "Memoize renderItem and List Callbacks"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Wrap renderItem and other FlatList callbacks in useCallback
+        to prevent unnecessary list re-renders.
+      rationale: |
+        FlatList re-renders all visible items when renderItem reference
+        changes. useCallback prevents this when dependencies are stable.
+      good_examples:
+        - |
+          const renderItem = useCallback(({ item }: { item: Product }) => (
+              <ProductCard product={item} onPress={handlePress} />
+          ), [handlePress]);
+
+          <FlatList data={products} renderItem={renderItem} />
+      bad_examples:
+        - |
+          <FlatList
+              data={products}
+              renderItem={({ item }) => <ProductCard product={item} />} // New function each render
+          />
+      tags:
+        - lists
+        - performance
+
+  - id: RN031
+    title: "Implement Pull-to-Refresh"
+    category: react-native
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Add pull-to-refresh to data lists using the refreshing and
+        onRefresh props for manual data reload.
+      rationale: |
+        Pull-to-refresh is a standard mobile pattern users expect for
+        refreshing list content.
+      good_examples:
+        - |
+          const [refreshing, setRefreshing] = useState(false);
+
+          const onRefresh = useCallback(async () => {
+              setRefreshing(true);
+              await refetchData();
+              setRefreshing(false);
+          }, []);
+
+          <FlatList
+              data={items}
+              renderItem={renderItem}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+          />
+      tags:
+        - lists
+        - ux
+
+  - id: RN032
+    title: "Implement Infinite Scroll Pagination"
+    category: react-native
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use onEndReached with a threshold to load more data as the user
+        scrolls, with a footer loading indicator.
+      rationale: |
+        Infinite scroll is the standard pattern for loading paginated
+        content in mobile apps.
+      good_examples:
+        - |
+          const loadMore = useCallback(() => {
+              if (!isLoadingMore && hasNextPage) {
+                  fetchNextPage();
+              }
+          }, [isLoadingMore, hasNextPage]);
+
+          <FlatList
+              data={items}
+              renderItem={renderItem}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={isLoadingMore ? <ActivityIndicator /> : null}
+          />
+      tags:
+        - lists
+        - pagination
+
+  # ============================================================================
+  # NATIVE MODULE PRACTICES (RN033-RN038)
+  # ============================================================================
+
+  - id: RN033
+    title: "Use TurboModules Over Legacy NativeModules"
+    category: react-native
+    level: advanced
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        For new native modules, use TurboModule specs instead of legacy
+        NativeModules.xxx access for type safety and performance.
+      rationale: |
+        TurboModules are lazily loaded, type-safe via codegen, and work
+        with the New Architecture for synchronous native calls.
+      good_examples:
+        - |
+          // NativeCalculator.ts
+          import type { TurboModule } from 'react-native';
+          import { TurboModuleRegistry } from 'react-native';
+
+          export interface Spec extends TurboModule {
+              add(a: number, b: number): number;
+              multiply(a: number, b: number): Promise<number>;
+          }
+
+          export default TurboModuleRegistry.getEnforcing<Spec>('NativeCalculator');
+      bad_examples:
+        - |
+          // Legacy: no type safety, always bridge
+          const { Calculator } = NativeModules;
+          Calculator.add(1, 2);
+      tags:
+        - native-modules
+        - new-architecture
+
+  - id: RN034
+    title: "Use Fabric Components for Custom Views"
+    category: react-native
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Create custom native views using codegenNativeComponent with
+        typed props for the New Architecture.
+      rationale: |
+        Fabric components integrate with React's concurrent features
+        and provide type-safe props via codegen.
+      good_examples:
+        - |
+          import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
+          import type { ViewProps } from 'react-native';
+
+          interface NativeProps extends ViewProps {
+              color?: string;
+              radius?: number;
+          }
+
+          export default codegenNativeComponent<NativeProps>('CustomCircle');
+      tags:
+        - native-modules
+        - fabric
+
+  - id: RN035
+    title: "Handle Native Events with NativeEventEmitter"
+    category: react-native
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use NativeEventEmitter for receiving events from native modules,
+        and always clean up listeners in useEffect returns.
+      rationale: |
+        Event listeners that are not cleaned up cause memory leaks and
+        can trigger updates on unmounted components.
+      good_examples:
+        - |
+          useEffect(() => {
+              const emitter = new NativeEventEmitter(NativeModules.LocationModule);
+              const sub = emitter.addListener('onLocationUpdate', (event) => {
+                  setLocation(event);
+              });
+              return () => sub.remove();
+          }, []);
+      bad_examples:
+        - |
+          // Missing cleanup — memory leak
+          const emitter = new NativeEventEmitter(NativeModules.LocationModule);
+          emitter.addListener('onLocationUpdate', setLocation);
+      tags:
+        - native-modules
+        - events
+
+  - id: RN036
+    title: "Wrap Expo Modules for Abstraction"
+    category: react-native
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - expo
+    content:
+      description: |
+        Wrap Expo SDK modules behind custom hooks or services for
+        testability and potential Expo-to-bare migration.
+      rationale: |
+        Direct Expo imports throughout the codebase create tight coupling.
+        Wrappers enable mocking and future platform flexibility.
+      good_examples:
+        - |
+          // hooks/useCamera.ts
+          import * as ImagePicker from 'expo-image-picker';
+
+          export function useCamera() {
+              const takePhoto = async () => {
+                  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                  if (status !== 'granted') throw new Error('Camera permission denied');
+                  return ImagePicker.launchCameraAsync({ quality: 0.8 });
+              };
+              return { takePhoto };
+          }
+      tags:
+        - expo
+        - abstraction
+
+  - id: RN037
+    title: "JSI for Performance-Critical Native Calls"
+    category: react-native
+    level: advanced
+    priority: low
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use JSI (JavaScript Interface) for synchronous, high-frequency
+        native calls that cannot tolerate bridge async overhead.
+      rationale: |
+        JSI enables synchronous C++ function calls from JS without
+        serialization overhead. Essential for real-time features.
+      good_examples:
+        - |
+          // Access JSI-backed module
+          const db = global.__realmModule;
+          const results = db.query('SELECT * FROM users WHERE active = 1');
+      tags:
+        - native-modules
+        - jsi
+        - performance
+
+  - id: RN038
+    title: "Bridge to New Architecture Migration Path"
+    category: react-native
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        When migrating from Bridge to New Architecture, maintain backward
+        compatibility by checking for TurboModule support at runtime.
+      rationale: |
+        Gradual migration allows apps to work on both old and new architectures
+        during the transition period.
+      good_examples:
+        - |
+          // Support both architectures
+          let MyModule;
+          try {
+              MyModule = require('./NativeMyModule').default; // TurboModule
+          } catch {
+              MyModule = NativeModules.MyModule; // Bridge fallback
+          }
+      tags:
+        - native-modules
+        - migration
+
+  # ============================================================================
+  # STYLING AND THEMING PRACTICES (RN039-RN044)
+  # ============================================================================
+
+  - id: RN039
+    title: "Use a Design Token System"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Define spacing, colors, typography, and sizing as design tokens
+        consumed by all StyleSheet definitions.
+      rationale: |
+        Design tokens ensure visual consistency, make theme changes easy,
+        and prevent magic numbers throughout styles.
+      good_examples:
+        - |
+          // theme/tokens.ts
+          export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
+          export const colors = { primary: '#6200ee', surface: '#fff', text: '#1a1a1a' };
+          export const typography = {
+              h1: { fontSize: 32, fontWeight: '700' as const },
+              body: { fontSize: 16, lineHeight: 24 },
+          };
+
+          // Usage
+          const styles = StyleSheet.create({
+              container: { padding: spacing.md, backgroundColor: colors.surface },
+              title: { ...typography.h1, color: colors.text },
+          });
+      tags:
+        - styling
+        - design-system
+
+  - id: RN040
+    title: "Support Dark Mode"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use useColorScheme or a theme context to support light and dark modes
+        with adaptive colors.
+      rationale: |
+        iOS and Android both support system dark mode. Apps that ignore it
+        provide a poor experience for dark mode users.
+      good_examples:
+        - |
+          import { useColorScheme } from 'react-native';
+
+          const themes = {
+              light: { background: '#fff', text: '#000' },
+              dark: { background: '#1a1a1a', text: '#fff' },
+          };
+
+          function App() {
+              const scheme = useColorScheme();
+              const theme = themes[scheme ?? 'light'];
+
+              return (
+                  <ThemeContext.Provider value={theme}>
+                      <NavigationContainer theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+                          <AppNavigator />
+                      </NavigationContainer>
+                  </ThemeContext.Provider>
+              );
+          }
+      tags:
+        - styling
+        - theming
+        - accessibility
+
+  - id: RN041
+    title: "Responsive Layouts with Dimensions and Flexbox"
+    category: react-native
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use useWindowDimensions for responsive values and flexbox for
+        layout rather than fixed pixel values.
+      rationale: |
+        Fixed pixel layouts break on different screen sizes and orientations.
+        Flex-based layouts adapt naturally.
+      good_examples:
+        - |
+          const { width } = useWindowDimensions();
+          const numColumns = width > 600 ? 3 : 2;
+          const itemWidth = (width - spacing.md * (numColumns + 1)) / numColumns;
+
+          <FlatList
+              data={items}
+              numColumns={numColumns}
+              key={numColumns} // Force re-render on column change
+              renderItem={({ item }) => <Card width={itemWidth} item={item} />}
+          />
+      tags:
+        - styling
+        - responsive
+
+  - id: RN042
+    title: "Use NativeWind for Utility-First Styling"
+    category: react-native
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - nativewind
+    content:
+      description: |
+        Consider NativeWind (Tailwind CSS for React Native) for rapid UI
+        development with compiled, zero-runtime styles.
+      rationale: |
+        NativeWind compiles Tailwind classes to StyleSheet objects at build
+        time, combining developer velocity with native performance.
+      good_examples:
+        - |
+          export function Card({ title, description }: Props) {
+              return (
+                  <View className="bg-white rounded-2xl p-4 shadow-md dark:bg-gray-800">
+                      <Text className="text-lg font-bold text-gray-900 dark:text-white">
+                          {title}
+                      </Text>
+                      <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          {description}
+                      </Text>
+                  </View>
+              );
+          }
+      tags:
+        - styling
+        - nativewind
+
+  - id: RN043
+    title: "Platform-Specific Shadows"
+    category: react-native
+    level: beginner
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use Platform.select for shadows since iOS uses shadow* properties
+        while Android uses elevation.
+      rationale: |
+        Shadow properties are platform-specific in React Native. A single
+        shadow declaration will not work cross-platform.
+      good_examples:
+        - |
+          const shadow = Platform.select({
+              ios: {
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 4,
+              },
+              android: {
+                  elevation: 4,
+              },
+          });
+      tags:
+        - styling
+        - platform
+
+  - id: RN044
+    title: "Use Restyle or Styled System for Complex Theming"
+    category: react-native
+    level: advanced
+    priority: low
+    applicability:
+      frameworks:
+        - react-native
+      has_dependencies:
+        - "@shopify/restyle"
+    content:
+      description: |
+        For design-system-heavy apps, use @shopify/restyle for typed theme
+        tokens, responsive values, and constrainted style props.
+      rationale: |
+        Restyle provides compile-time typed theme access and responsive
+        breakpoints without runtime overhead.
+      good_examples:
+        - |
+          import { createBox, createText, createTheme } from '@shopify/restyle';
+
+          const theme = createTheme({
+              colors: { primary: '#6200ee', background: '#fff' },
+              spacing: { s: 8, m: 16, l: 24, xl: 40 },
+          });
+
+          const Box = createBox<Theme>();
+          const Text = createText<Theme>();
+
+          <Box backgroundColor="background" padding="m">
+              <Text variant="header" color="primary">Hello</Text>
+          </Box>
+      tags:
+        - styling
+        - design-system
+
+  # ============================================================================
+  # PLATFORM AND PERFORMANCE PRACTICES (RN045-RN050)
+  # ============================================================================
+
+  - id: RN045
+    title: "Request Permissions Lazily"
+    category: react-native
+    level: intermediate
+    priority: critical
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Request device permissions (camera, location, notifications) only
+        when the feature is first needed, not at app launch.
+      rationale: |
+        Users are more likely to grant permissions when they understand why
+        they are needed. Early requests have higher denial rates.
+      good_examples:
+        - |
+          async function startCamera() {
+              const { status } = await Camera.requestCameraPermissionsAsync();
+              if (status === 'granted') {
+                  setShowCamera(true);
+              } else {
+                  Alert.alert('Camera Access', 'Camera permission is needed to take photos.');
+              }
+          }
+
+          // Triggered by user action
+          <Pressable onPress={startCamera}>
+              <Text>Take Photo</Text>
+          </Pressable>
+      bad_examples:
+        - |
+          // BAD: Requesting everything at startup
+          useEffect(() => {
+              Camera.requestCameraPermissionsAsync();
+              Location.requestForegroundPermissionsAsync();
+              Notifications.requestPermissionsAsync();
+          }, []);
+      tags:
+        - permissions
+        - ux
+
+  - id: RN046
+    title: "Use Hermes Engine"
+    category: react-native
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Enable Hermes JavaScript engine for faster startup, lower memory
+        usage, and smaller app size.
+      rationale: |
+        Hermes compiles JS to bytecode at build time, dramatically
+        reducing startup time and memory footprint. Default since RN 0.70.
+      good_examples:
+        - |
+          // android/app/build.gradle
+          project.ext.react = [
+              enableHermes: true
+          ]
+
+          // ios/Podfile
+          :hermes_enabled => true
+      tags:
+        - performance
+        - configuration
+
+  - id: RN047
+    title: "Manage AppState for Background/Foreground"
+    category: react-native
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Listen to AppState changes to pause/resume operations, refresh
+        stale data, and manage background tasks.
+      rationale: |
+        Apps should stop timers, pause animations, and refresh data
+        when returning to foreground for a responsive user experience.
+      good_examples:
+        - |
+          useEffect(() => {
+              const sub = AppState.addEventListener('change', (state) => {
+                  if (state === 'active') {
+                      refetchStaleData();
+                      reconnectWebSocket();
+                  } else if (state === 'background') {
+                      pauseAnimations();
+                      disconnectWebSocket();
+                  }
+              });
+              return () => sub.remove();
+          }, []);
+      tags:
+        - lifecycle
+        - platform
+
+  - id: RN048
+    title: "Optimize Image Loading"
+    category: react-native
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Use a performant image library like expo-image or react-native-fast-image
+        with caching, progressive loading, and proper sizing.
+      rationale: |
+        The built-in Image component has no disk caching on Android and
+        limited progressive loading support.
+      good_examples:
+        - |
+          import { Image } from 'expo-image';
+
+          <Image
+              source={{ uri: imageUrl }}
+              style={{ width: 200, height: 200 }}
+              contentFit="cover"
+              placeholder={{ blurhash }}
+              transition={200}
+          />
+      bad_examples:
+        - |
+          // Built-in Image — no caching on Android
+          <Image source={{ uri: imageUrl }} style={{ width: 200, height: 200 }} />
+      tags:
+        - images
+        - performance
+
+  - id: RN049
+    title: "Avoid Console.log in Production"
+    category: react-native
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        Remove or disable console.log statements in production builds.
+        They cause performance overhead by serializing data across the bridge.
+      rationale: |
+        Console.log serializes objects to send them across the bridge
+        to the native debugger, causing measurable performance impact.
+      good_examples:
+        - |
+          // babel.config.js
+          module.exports = {
+              plugins: [
+                  ['transform-remove-console', { exclude: ['error', 'warn'] }],
+              ],
+          };
+      tags:
+        - performance
+        - debugging
+
+  - id: RN050
+    title: "Enable New Architecture for RN 0.72+"
+    category: react-native
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - react-native
+    content:
+      description: |
+        For React Native 0.72+, enable the New Architecture (Fabric + TurboModules)
+        for better performance and React 18 feature support.
+      rationale: |
+        The New Architecture removes the bridge bottleneck, enables
+        concurrent features, and provides synchronous native calls.
+      good_examples:
+        - |
+          // android/gradle.properties
+          newArchEnabled=true
+
+          // ios/Podfile
+          ENV['RCT_NEW_ARCH_ENABLED'] = '1'
+      tags:
+        - new-architecture
+        - configuration
+        - performance

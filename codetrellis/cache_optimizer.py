@@ -238,6 +238,13 @@ SECTION_STABILITY: Dict[str, Tuple[SectionStability, int]] = {
     "REACT_STATE":          (SectionStability.SEMANTIC, 1203),
     "REACT_ROUTING":        (SectionStability.SEMANTIC, 1204),
 
+    # React Native ecosystem
+    "REACT_NATIVE_COMPONENTS":     (SectionStability.SEMANTIC, 1205),
+    "REACT_NATIVE_NAVIGATION":     (SectionStability.SEMANTIC, 1206),
+    "REACT_NATIVE_NATIVE_MODULES": (SectionStability.SEMANTIC, 1207),
+    "REACT_NATIVE_STYLING":        (SectionStability.SEMANTIC, 1208),
+    "REACT_NATIVE_PLATFORM":       (SectionStability.SEMANTIC, 1209),
+
     # Angular / NestJS
     "NESTJS_MODULES":       (SectionStability.SEMANTIC, 1210),
     "ANGULAR_SERVICES":     (SectionStability.SEMANTIC, 1211),

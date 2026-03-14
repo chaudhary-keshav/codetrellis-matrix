@@ -155,6 +155,9 @@ from codetrellis.typescript_parser_enhanced import EnhancedTypeScriptParser
 # Import v4.32 React language support
 from codetrellis.react_parser_enhanced import EnhancedReactParser
 
+# Import v5.6 React Native framework support
+from codetrellis.react_native_parser_enhanced import EnhancedReactNativeParser
+
 # Import v4.33 Next.js framework support
 from codetrellis.nextjs_parser_enhanced import EnhancedNextJSParser
 
@@ -2136,6 +2139,26 @@ class ProjectMatrix:
     react_pages: List[Dict] = field(default_factory=list)
     react_detected_frameworks: List[str] = field(default_factory=list)
     react_version: str = ""
+
+    # v5.6: React Native Framework Support (full AST + LSP)
+    rn_components: List[Dict] = field(default_factory=list)
+    rn_animated_components: List[Dict] = field(default_factory=list)
+    rn_list_components: List[Dict] = field(default_factory=list)
+    rn_navigators: List[Dict] = field(default_factory=list)
+    rn_screens: List[Dict] = field(default_factory=list)
+    rn_deep_links: List[Dict] = field(default_factory=list)
+    rn_native_modules: List[Dict] = field(default_factory=list)
+    rn_turbo_modules: List[Dict] = field(default_factory=list)
+    rn_fabric_components: List[Dict] = field(default_factory=list)
+    rn_stylesheets: List[Dict] = field(default_factory=list)
+    rn_dynamic_styles: List[Dict] = field(default_factory=list)
+    rn_themes: List[Dict] = field(default_factory=list)
+    rn_platform_usages: List[Dict] = field(default_factory=list)
+    rn_platform_files: List[Dict] = field(default_factory=list)
+    rn_permissions: List[Dict] = field(default_factory=list)
+    rn_detected_frameworks: List[str] = field(default_factory=list)
+    rn_version: str = ""
+    rn_architecture: str = ""
 
     # v4.36: Material UI (MUI) Framework Support (full AST + LSP)
     mui_components: List[Dict] = field(default_factory=list)
@@ -4550,6 +4573,9 @@ class ProjectScanner:
         # v4.32: React parser with all extractors (framework-level, runs on JS/TS)
         self.react_parser = EnhancedReactParser()
 
+        # v5.6: React Native parser with all extractors (framework-level, runs on JS/TS)
+        self.react_native_parser = EnhancedReactNativeParser()
+
         # v4.33: Next.js parser with all extractors (framework-level, runs on JS/TS)
         self.nextjs_parser = EnhancedNextJSParser()
 
@@ -5591,6 +5617,8 @@ class ProjectScanner:
         elif file_info.file_type == "javascript":
             self._parse_javascript(file_path, matrix)
             self._parse_react(file_path, matrix)
+            # v5.6: React Native framework parsing (runs on JS/TS with RN imports)
+            self._parse_react_native(file_path, matrix)
             self._parse_nextjs(file_path, matrix)
             self._parse_vue(file_path, matrix)
             self._parse_svelte(file_path, matrix)
@@ -5693,6 +5721,8 @@ class ProjectScanner:
         elif file_info.file_type == "typescript":
             self._parse_typescript(file_path, matrix)
             self._parse_react(file_path, matrix)
+            # v5.6: React Native framework parsing (runs on JS/TS with RN imports)
+            self._parse_react_native(file_path, matrix)
             self._parse_nextjs(file_path, matrix)
             self._parse_vue(file_path, matrix)
             self._parse_svelte(file_path, matrix)
@@ -22087,6 +22117,216 @@ class ProjectScanner:
         except Exception as e:
             import logging
             logging.getLogger('codetrellis').debug(f"React parse failed for {file_path}: {e}")
+
+    def _parse_react_native(self, file_path: Path, matrix: ProjectMatrix):
+        """
+        Parse React Native file using EnhancedReactNativeParser.
+        v5.6: React Native framework-level support. Runs on JS/TS files where
+        React Native is detected. Extracts components (core RN, animated,
+        lists), navigation (React Navigation, Expo Router, Wix),
+        native modules (NativeModules, TurboModules, Fabric, JSI),
+        styling (StyleSheet, NativeWind, Restyle, styled-components/native),
+        and platform patterns (Platform.OS, permissions, lifecycle).
+        Supports React Native 0.59 through 0.76+, 40+ ecosystem detection patterns.
+        """
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+
+            # Only parse if file contains React Native code
+            if not self.react_native_parser.is_react_native_file(content, str(file_path)):
+                return
+
+            result = self.react_native_parser.parse(content, str(file_path))
+
+            # ── Metadata ────────────────────────────────────────────
+            for fw in result.detected_frameworks:
+                if fw not in matrix.rn_detected_frameworks:
+                    matrix.rn_detected_frameworks.append(fw)
+
+            if result.rn_version and (
+                not matrix.rn_version or
+                self.react_native_parser._version_compare(result.rn_version, matrix.rn_version) > 0
+            ):
+                matrix.rn_version = result.rn_version
+
+            if result.architecture and not matrix.rn_architecture:
+                matrix.rn_architecture = result.architecture
+
+            # ── Components ───────────────────────────────────────────
+            for comp in result.components:
+                matrix.rn_components.append({
+                    "name": comp.name,
+                    "file": str(file_path),
+                    "line": comp.line_number,
+                    "component_type": comp.component_type or "",
+                    "source_module": comp.source_module or "",
+                    "is_exported": comp.is_exported,
+                    "wraps_native": comp.wraps_native,
+                })
+
+            # ── Animated Components ──────────────────────────────────
+            for anim in result.animated_components:
+                matrix.rn_animated_components.append({
+                    "name": anim.name,
+                    "file": str(file_path),
+                    "line": anim.line_number,
+                    "animation_type": anim.animation_type or "",
+                    "animated_values": anim.animated_values[:10],
+                    "uses_native_driver": anim.uses_native_driver,
+                    "is_gesture_based": anim.is_gesture_based,
+                })
+
+            # ── List Components ──────────────────────────────────────
+            for lst in result.list_components:
+                matrix.rn_list_components.append({
+                    "name": lst.name,
+                    "file": str(file_path),
+                    "line": lst.line_number,
+                    "list_type": lst.list_type or "",
+                    "has_key_extractor": lst.has_key_extractor,
+                    "has_render_item": lst.has_render_item,
+                    "has_pagination": lst.has_pagination,
+                    "has_pull_to_refresh": lst.has_pull_to_refresh,
+                })
+
+            # ── Navigators ───────────────────────────────────────────
+            for nav in result.navigators:
+                matrix.rn_navigators.append({
+                    "name": nav.name,
+                    "file": str(file_path),
+                    "line": nav.line_number,
+                    "navigator_type": nav.navigator_type or "",
+                    "library": nav.library or "",
+                    "screens": nav.screens[:20],
+                    "has_header_config": nav.has_header_config,
+                    "has_tab_bar_config": nav.has_tab_bar_config,
+                })
+
+            # ── Screens ──────────────────────────────────────────────
+            for scr in result.screens:
+                matrix.rn_screens.append({
+                    "name": scr.name,
+                    "file": str(file_path),
+                    "line": scr.line_number,
+                    "component": scr.component or "",
+                    "navigator": scr.navigator or "",
+                    "has_options": scr.has_options,
+                    "is_initial": scr.is_initial,
+                })
+
+            # ── Deep Links ───────────────────────────────────────────
+            for dl in result.deep_links:
+                matrix.rn_deep_links.append({
+                    "name": dl.name,
+                    "file": str(file_path),
+                    "line": dl.line_number,
+                    "path_pattern": dl.path_pattern or "",
+                    "screen_name": dl.screen_name or "",
+                    "has_params": dl.has_params,
+                    "prefix": dl.prefix or "",
+                })
+
+            # ── Native Modules ───────────────────────────────────────
+            for nm in result.native_modules:
+                matrix.rn_native_modules.append({
+                    "name": nm.name,
+                    "file": str(file_path),
+                    "line": nm.line_number,
+                    "module_name": nm.module_name or "",
+                    "methods_called": nm.methods_called[:10],
+                    "is_event_emitter": nm.is_event_emitter,
+                    "architecture": nm.architecture or "",
+                })
+
+            # ── TurboModules ─────────────────────────────────────────
+            for tm in result.turbo_modules:
+                matrix.rn_turbo_modules.append({
+                    "name": tm.name,
+                    "file": str(file_path),
+                    "line": tm.line_number,
+                    "spec_name": tm.spec_name or "",
+                    "methods": tm.methods[:10],
+                    "is_sync": tm.is_sync,
+                })
+
+            # ── Fabric Components ────────────────────────────────────
+            for fc in result.fabric_components:
+                matrix.rn_fabric_components.append({
+                    "name": fc.name,
+                    "file": str(file_path),
+                    "line": fc.line_number,
+                    "component_name": fc.component_name or "",
+                    "props_type": fc.props_type or "",
+                    "events": fc.events[:10],
+                    "commands": fc.commands[:10],
+                })
+
+            # ── StyleSheets ──────────────────────────────────────────
+            for ss in result.stylesheets:
+                matrix.rn_stylesheets.append({
+                    "name": ss.name,
+                    "file": str(file_path),
+                    "line": ss.line_number,
+                    "style_names": ss.style_names[:20],
+                    "style_count": ss.style_count,
+                })
+
+            # ── Dynamic Styles ───────────────────────────────────────
+            for ds in result.dynamic_styles:
+                matrix.rn_dynamic_styles.append({
+                    "name": ds.name,
+                    "file": str(file_path),
+                    "line": ds.line_number,
+                    "style_type": ds.style_type or "",
+                    "depends_on": ds.depends_on[:5],
+                })
+
+            # ── Themes ───────────────────────────────────────────────
+            for theme in result.themes:
+                matrix.rn_themes.append({
+                    "name": theme.name,
+                    "file": str(file_path),
+                    "line": theme.line_number,
+                    "theme_library": theme.theme_library or "",
+                    "has_dark_mode": theme.has_dark_mode,
+                    "has_provider": theme.has_provider,
+                })
+
+            # ── Platform Usages ──────────────────────────────────────
+            for pu in result.platform_usages:
+                matrix.rn_platform_usages.append({
+                    "name": pu.name,
+                    "file": str(file_path),
+                    "line": pu.line_number,
+                    "usage_type": pu.usage_type or "",
+                    "platforms": pu.platforms[:5],
+                })
+
+            # ── Platform Files ───────────────────────────────────────
+            for pf in result.platform_files:
+                matrix.rn_platform_files.append({
+                    "name": pf.name,
+                    "file": str(file_path),
+                    "platform": pf.platform or "",
+                    "base_name": pf.base_name or "",
+                })
+
+            # ── Permissions ──────────────────────────────────────────
+            for perm in result.permissions:
+                matrix.rn_permissions.append({
+                    "name": perm.name,
+                    "file": str(file_path),
+                    "line": perm.line_number,
+                    "permission_type": perm.permission_type or "",
+                    "library": perm.library or "",
+                    "is_request": perm.is_request,
+                })
+
+        except Exception as e:
+            import logging
+            logging.getLogger('codetrellis').debug(f"React Native parse failed for {file_path}: {e}")
 
     def _parse_mui(self, file_path: Path, matrix: ProjectMatrix):
         """

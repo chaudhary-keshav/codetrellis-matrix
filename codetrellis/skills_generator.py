@@ -185,6 +185,7 @@ SKILL_TEMPLATES: List[Dict[str, any]] = [
             "BOOTSTRAP_COMPONENTS", "MUI_COMPONENTS", "ANTD_COMPONENTS",
             "CHAKRA_COMPONENTS", "SHADCN_COMPONENTS", "RADIX_COMPONENTS",
             "SC_COMPONENTS", "EM_COMPONENTS",
+            "REACT_NATIVE_COMPONENTS", "REACT_NATIVE_NAVIGATION",
         ],
         "context_sections": [
             "PROJECT", "COMPONENTS", "REACT_COMPONENTS", "REACT_HOOKS",
@@ -194,7 +195,9 @@ SKILL_TEMPLATES: List[Dict[str, any]] = [
             "LIT_COMPONENTS", "ALPINE_COMPONENTS",
             "MUI_COMPONENTS", "ANTD_COMPONENTS", "CHAKRA_COMPONENTS",
             "SHADCN_COMPONENTS", "RADIX_COMPONENTS",
-            "BOOTSTRAP_COMPONENTS", "BEST_PRACTICES",
+            "BOOTSTRAP_COMPONENTS",
+            "REACT_NATIVE_COMPONENTS", "REACT_NATIVE_STYLING",
+            "REACT_NATIVE_PLATFORM", "BEST_PRACTICES",
         ],
         "instructions": (
             "Follow the existing component structure. Match naming conventions, "

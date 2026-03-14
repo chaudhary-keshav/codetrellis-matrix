@@ -46,6 +46,10 @@ EXTENSION_TO_SECTIONS: Dict[str, List[str]] = {
             "INTERFACES", "TYPES"],
     ".tsx": ["TS_TYPES", "TS_FUNCTIONS", "TS_API", "TS_MODELS",
              "REACT_COMPONENTS", "REACT_HOOKS", "REACT_CONTEXT", "REACT_STATE",
+             # React Native sections
+             "REACT_NATIVE_COMPONENTS", "REACT_NATIVE_NAVIGATION",
+             "REACT_NATIVE_NATIVE_MODULES", "REACT_NATIVE_STYLING",
+             "REACT_NATIVE_PLATFORM",
              # State management libraries commonly used with TSX
              "REDUX_STORES", "REDUX_SLICES", "ZUSTAND_STORES",
              "JOTAI_ATOMS", "RECOIL_ATOMS", "MOBX_OBSERVABLES",
@@ -59,6 +63,10 @@ EXTENSION_TO_SECTIONS: Dict[str, List[str]] = {
     ".js": ["JS_TYPES", "JS_FUNCTIONS", "JS_API", "JS_MODELS", "JS_DEPENDENCIES"],
     ".jsx": ["JS_TYPES", "JS_FUNCTIONS", "JS_API",
              "REACT_COMPONENTS", "REACT_HOOKS", "REACT_CONTEXT", "REACT_STATE",
+             # React Native sections
+             "REACT_NATIVE_COMPONENTS", "REACT_NATIVE_NAVIGATION",
+             "REACT_NATIVE_NATIVE_MODULES", "REACT_NATIVE_STYLING",
+             "REACT_NATIVE_PLATFORM",
              "REDUX_STORES", "REDUX_SLICES", "ZUSTAND_STORES",
              "JOTAI_ATOMS", "RECOIL_ATOMS", "MOBX_OBSERVABLES",
              "TANSTACK_QUERIES", "SWR_HOOKS", "APOLLO_QUERIES",
