@@ -1,6 +1,10 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -23,7 +27,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install -r requirements-test.txt
 
       - name: Ruff lint
         run: ruff check codetrellis/
@@ -31,6 +34,16 @@ jobs:
       - name: Mypy typecheck (advisory)
         run: mypy codetrellis/ --ignore-missing-imports --no-error-summary
         continue-on-error: true
+
+      - name: Version consistency check
+        run: |
+          PYPROJECT_VER=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          INIT_VER=$(python3 -c "from codetrellis import __version__; print(__version__)")
+          if [ "$PYPROJECT_VER" != "$INIT_VER" ]; then
+            echo "❌ Version mismatch: pyproject.toml=$PYPROJECT_VER, __init__.py=$INIT_VER"
+            exit 1
+          fi
+          echo "✅ Version consistent: $PYPROJECT_VER"
 
   # ── Test ────────────────────────────────────────────────────────
   test:
@@ -52,7 +65,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install -r requirements-test.txt
 
       - name: Run tests
         run: pytest tests/ -x -q --timeout=120

@@ -7,10 +7,10 @@ and injects complete project awareness into every AI prompt.
 
 Created: 31 January 2026
 Author: Keshav Chaudhary
-Version: 4.16.0
+Version: 1.0.0
 """
 
-__version__ = "4.16.0"
+__version__ = "1.0.0"
 __author__ = "Keshav Chaudhary"
 
 # Lazy imports to avoid dependency issues

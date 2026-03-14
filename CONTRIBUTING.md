@@ -13,7 +13,6 @@ cd codetrellis
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-pip install -r requirements-test.txt
 
 # Run tests
 pytest tests/ -x -q
@@ -124,6 +123,31 @@ class TestEnhancedMyLangParser:
 
 Run: `pytest tests/unit/test_mylang_parser_enhanced.py -v`
 
+## Reporting Issues
+
+Before opening an issue, please:
+
+1. **Search existing issues** to avoid duplicates
+2. **Check the CHANGELOG** to see if the bug was already fixed in a newer version
+3. **Provide a minimal reproduction** — file content, command run, and output
+
+For security vulnerabilities, see [SECURITY.md](SECURITY.md) and do **not** open a public issue.
+
+## Pull Request Process
+
+1. **Fork and branch** from `main`: `git checkout -b feat/my-change`
+2. **One parser per PR** — keep PRs focused and reviewable
+3. **Write tests** — every new parser needs at least two tests (realistic input + empty input)
+4. **Run the full test suite** before opening a PR:
+   ```bash
+   pytest tests/ -x -q
+   ```
+5. **Follow code style** — run `black` and `ruff` before committing
+6. **Update CHANGELOG.md** with a brief note under `[Unreleased]`
+7. PRs that break existing tests will not be merged
+
+All contributors are expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Project Conventions
 
 ### Code Style
@@ -158,7 +182,7 @@ Run: `pytest tests/unit/test_mylang_parser_enhanced.py -v`
 
 ```bash
 # Full suite
-pip install -e ".[dev]" -r requirements-test.txt
+pip install -e ".[dev]"
 pytest tests/ -x -q
 
 # Specific parser

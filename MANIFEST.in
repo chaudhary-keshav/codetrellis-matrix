@@ -1,0 +1,17 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include codetrellis/py.typed
+recursive-include codetrellis *.py *.yaml *.yml *.json
+recursive-exclude tests *
+recursive-exclude docs *
+recursive-exclude build *
+recursive-exclude scripts *
+exclude generate_letterhead.py
+exclude requirements*.txt
+exclude .gitignore
+prune .codetrellis
+prune .github
+prune best_practices
+prune lsp
+prune codetrellis.egg-info

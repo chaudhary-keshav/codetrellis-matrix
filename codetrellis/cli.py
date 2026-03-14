@@ -877,7 +877,7 @@ def clean_project(path: str, version: Optional[str] = None) -> int:
 
     Args:
         path: Project root path
-        version: Optional specific version to clean (e.g. '4.16.0')
+        version: Optional specific version to clean (e.g. '1.0.0')
 
     Returns:
         Exit code: 0 on success, 2 on configuration/path error
@@ -2386,7 +2386,7 @@ def main():
     # clean command (B4 Phase 0 — cache cleanup)
     clean_parser = subparsers.add_parser("clean", help="Remove .codetrellis/cache directory")
     clean_parser.add_argument("path", nargs="?", default=".", help="Project path")
-    clean_parser.add_argument("--version", help="Remove only a specific version cache (e.g. 4.16.0)")
+    clean_parser.add_argument("--version", help="Remove only a specific version cache (e.g. 1.0.0)")
 
     # show command
     show_parser = subparsers.add_parser("show", help="Show compressed matrix")

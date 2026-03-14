@@ -1,6 +1,9 @@
 name: Release to PyPI
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -27,7 +30,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install -r requirements-test.txt
 
       - name: Run tests
         run: pytest tests/ -x -q --timeout=120
@@ -49,6 +51,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine
 
+      - name: Version consistency check
+        run: |
+          PYPROJECT_VER=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          INIT_VER=$(python3 -c "from codetrellis import __version__; print(__version__)")
+          if [ "$PYPROJECT_VER" != "$INIT_VER" ]; then
+            echo "❌ Version mismatch: pyproject.toml=$PYPROJECT_VER, __init__.py=$INIT_VER"
+            exit 1
+          fi
+          echo "✅ Version consistent: $PYPROJECT_VER"
+
+      - name: Version from tag check
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_VER="${GITHUB_REF#refs/tags/v}"
+          PYPROJECT_VER=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [ "$TAG_VER" != "$PYPROJECT_VER" ]; then
+            echo "❌ Tag version mismatch: tag=$TAG_VER, pyproject.toml=$PYPROJECT_VER"
+            exit 1
+          fi
+          echo "✅ Tag matches package version: $TAG_VER"
+
       - name: Build sdist and wheel
         run: python -m build
 
@@ -66,6 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     environment: test-pypi
+    permissions:
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -78,10 +103,13 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
   # ── Publish to PyPI ─────────────────────────────────────────────
-  publish:
+  publish-pypi:
     runs-on: ubuntu-latest
     needs: [build, publish-test]
+    if: startsWith(github.ref, 'refs/tags/v')
     environment: pypi
+    permissions:
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:

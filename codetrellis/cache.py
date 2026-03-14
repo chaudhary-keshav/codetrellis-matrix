@@ -296,7 +296,7 @@ class CacheManager:
     - Validates cache against lockfile, config hash, and extractor version
 
     Usage:
-        cache = CacheManager(cache_dir, version="4.16.0")
+        cache = CacheManager(cache_dir, version="1.0.0")
         result = cache.get("python_parser", "abc123def456")
         if not result.is_hit:
             data = run_extractor(...)

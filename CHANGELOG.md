@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-14
+
+### 🎉 First Public Release
+
+First public PyPI release. Consolidates 83 internal development sessions.
+
+### Highlights
+
+- 120+ language and framework parsers
+- MCP server for AI context injection
+- JIT context engine for file-level queries
+- Best Practices Library with 4,500+ practices
+- Build contracts and quality gates
+- Support for Python, TypeScript, Go, Rust, Java, C#, and 100+ more
+- Works with GitHub Copilot, Claude, Cursor, and Windsurf
+
+### Internal History
+
+Developed through sessions 1–83 (versions 4.9.0–5.7.0 internally).
+See STATUS.md for detailed session history.
+
 ## [4.16.0] - 2026-01-31
 
 ### Added
@@ -62,3 +83,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Matrix compression pipeline
 - CLI interface with scan, show, prompt, watch commands
 - Python, JavaScript, TypeScript parser support
+
+---
+
+[1.0.0]: https://github.com/keshavchaudhary/codetrellis/releases/tag/v1.0.0
+[4.16.0]: https://github.com/keshavchaudhary/codetrellis/compare/v4.15.0...v4.16.0
+[4.15.0]: https://github.com/keshavchaudhary/codetrellis/releases/tag/v4.15.0

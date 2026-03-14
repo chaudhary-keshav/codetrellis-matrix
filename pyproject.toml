@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codetrellis"
-version = "4.16.0"
+version = "1.0.0"
 description = "CodeTrellis - Project Self-Awareness System - AI context injection tool"
 readme = "README.md"
 license = {text = "MIT"}
@@ -19,10 +19,22 @@ keywords = [
     "project-scanner",
     "prompt-engineering",
     "copilot",
-    "developer-tools"
+    "developer-tools",
+    "mcp",
+    "model-context-protocol",
+    "code-context",
+    "github-copilot",
+    "claude",
+    "cursor",
+    "windsurf",
+    "ai-context",
+    "code-scanner",
+    "code-intelligence",
+    "ast-parser",
+    "framework-parser"
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -33,26 +45,36 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Code Generators",
     "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 dependencies = [
     "watchdog>=3.0.0",
 ]
 
 [project.optional-dependencies]
+ast = ["tree-sitter>=0.22.0", "tree-sitter-java>=0.23.0", "tree-sitter-python>=0.23.0", "tree-sitter-typescript>=0.23.0"]
+yaml = ["pyyaml>=6.0"]
+color = ["colorama>=0.4.6"]
+tokens = ["tiktoken>=0.5.0"]
+all = ["codetrellis[ast,yaml,color,tokens]"]
 dev = [
-    "numpy>=2.0.0",
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
     "pytest-timeout>=2.3.0",
     "black>=24.0.0",
     "ruff>=0.1.0",
     "mypy>=1.8.0",
+    "numpy>=2.0.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/keshavchaudhary/codetrellis"
 Repository = "https://github.com/keshavchaudhary/codetrellis"
 Changelog = "https://github.com/keshavchaudhary/codetrellis/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/keshavchaudhary/codetrellis/blob/main/README.md"
+"Bug Tracker" = "https://github.com/keshavchaudhary/codetrellis/issues"
 
 [project.scripts]
 codetrellis = "codetrellis.cli:main"
@@ -61,9 +83,13 @@ codetrellis = "codetrellis.cli:main"
 package-dir = {"" = "."}
 include-package-data = true
 
+[tool.setuptools.package-data]
+codetrellis = ["**/*.yaml", "**/*.yml", "**/*.json", "py.typed"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["codetrellis*"]
+exclude = ["tests*", "docs*", "scripts*"]
 
 [tool.black]
 line-length = 100

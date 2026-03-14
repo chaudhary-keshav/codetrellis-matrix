@@ -1,3 +1,9 @@
+> **Public Release Version:** 1.0.0 (PyPI)
+> Internal development tracked as v4.9.0–v5.7.0 across 83 sessions.
+> This file contains internal development history.
+
+---
+
 # Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq, Laravel, Symfony, CodeIgniter, Slim, WordPress, Actix Web, Axum, Rocket, Warp, Diesel, SeaORM, Tauri, Elixir, Phoenix, Ecto, Absinthe, Oban, React Native Language Support — STATUS.md
 
 ## Overview
