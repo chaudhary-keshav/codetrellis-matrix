@@ -39,8 +39,10 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-MATRIX_JSON_PATH = ROOT / ".codetrellis" / "cache" / "4.16.0" / "codetrellis" / "matrix.json"
-MATRIX_PROMPT_PATH = ROOT / ".codetrellis" / "cache" / "4.16.0" / "codetrellis" / "matrix.prompt"
+from codetrellis import __version__ as VERSION
+
+MATRIX_JSON_PATH = ROOT / ".codetrellis" / "cache" / VERSION / "codetrellis" / "matrix.json"
+MATRIX_PROMPT_PATH = ROOT / ".codetrellis" / "cache" / VERSION / "codetrellis" / "matrix.prompt"
 
 # All 53+ CodeTrellis-supported languages and frameworks
 ALL_LANGUAGES = [

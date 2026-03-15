@@ -14,7 +14,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-MATRIX_JSON_PATH = ROOT / ".codetrellis" / "cache" / "4.16.0" / "codetrellis" / "matrix.json"
+from codetrellis import __version__ as VERSION
+
+MATRIX_JSON_PATH = ROOT / ".codetrellis" / "cache" / VERSION / "codetrellis" / "matrix.json"
 
 
 def main():

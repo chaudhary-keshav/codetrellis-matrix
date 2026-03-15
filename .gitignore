@@ -190,3 +190,5 @@ scripts/validation/validation-results
 
 # CodeTrellis test results
 tests/repos
+
+docs/

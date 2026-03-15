@@ -199,7 +199,8 @@ class TokenBudgetValidator:
 
     def __init__(self, project_root: Optional[str] = None):
         self.project_root = Path(project_root) if project_root else PROJECT_ROOT
-        self.cache_dir = self.project_root / ".codetrellis" / "cache" / "4.16.0"
+        from codetrellis import __version__ as _ver
+        self.cache_dir = self.project_root / ".codetrellis" / "cache" / _ver
 
         # Auto-detect project name from cache dir
         self.project_name = self._detect_project_name()
