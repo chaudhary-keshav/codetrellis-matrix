@@ -7,7 +7,7 @@ and injects complete project awareness into every AI prompt.
 
 Created: 31 January 2026
 Author: Keshav Chaudhary
-Version: 1.0.0
+Version: 1.0.1
 """
 
 __version__ = "1.0.1"
