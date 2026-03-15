@@ -10,7 +10,7 @@ Author: Keshav Chaudhary
 Version: 1.0.0
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Keshav Chaudhary"
 
 # Lazy imports to avoid dependency issues
