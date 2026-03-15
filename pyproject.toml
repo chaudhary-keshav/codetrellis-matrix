@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codetrellis"
-version = "1.0.0"
+version = "1.0.1"
 description = "CodeTrellis - Project Self-Awareness System - AI context injection tool"
 readme = "README.md"
 license = {text = "MIT"}

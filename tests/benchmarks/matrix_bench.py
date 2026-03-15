@@ -15,9 +15,11 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
+from codetrellis import __version__ as VERSION
+
 # Matrix file paths
-MATRIX_JSON_PATH = ROOT / ".codetrellis" / "cache" / "4.16.0" / "codetrellis" / "matrix.json"
-MATRIX_PROMPT_PATH = ROOT / ".codetrellis" / "cache" / "4.16.0" / "codetrellis" / "matrix.prompt"
+MATRIX_JSON_PATH = ROOT / ".codetrellis" / "cache" / VERSION / "codetrellis" / "matrix.json"
+MATRIX_PROMPT_PATH = ROOT / ".codetrellis" / "cache" / VERSION / "codetrellis" / "matrix.prompt"
 
 
 @pytest.fixture(scope="module")

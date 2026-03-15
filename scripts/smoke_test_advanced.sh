@@ -467,10 +467,11 @@ from codetrellis.matrix_compressor_levels import MatrixMultiLevelCompressor, Com
 from codetrellis.cross_language_types import CrossLanguageLinker
 from codetrellis.matrix_navigator import MatrixNavigator
 from codetrellis.matrixbench_scorer import MatrixBench
+from codetrellis import __version__ as _VER
 
 # Check if real matrix files exist
-mj_path = Path('$PROJECT_ROOT/.codetrellis/cache/4.16.0/codetrellis/matrix.json')
-mp_path = Path('$PROJECT_ROOT/.codetrellis/cache/4.16.0/codetrellis/matrix.prompt')
+mj_path = Path('$PROJECT_ROOT/.codetrellis/cache/' + _VER + '/codetrellis/matrix.json')
+mp_path = Path('$PROJECT_ROOT/.codetrellis/cache/' + _VER + '/codetrellis/matrix.prompt')
 
 if mj_path.exists() and mp_path.exists():
     matrix_json = json.loads(mj_path.read_text())
