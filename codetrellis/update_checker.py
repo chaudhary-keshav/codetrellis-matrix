@@ -6,11 +6,13 @@ Results are cached locally so the check runs at most once per day.
 """
 
 import json
+import logging
 import time
 import urllib.request
 import urllib.error
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
+from packaging.version import InvalidVersion, Version
 
 
 # How often to check (in seconds) — once per 24 hours
@@ -64,20 +66,32 @@ def _fetch_latest_version() -> Optional[str]:
         return None
 
 
-def _parse_version(v: str) -> Tuple[int, ...]:
-    """Parse a PEP 440 version string into a tuple for comparison."""
-    parts = []
-    for seg in v.split("."):
-        try:
-            parts.append(int(seg))
-        except ValueError:
-            break
-    return tuple(parts)
+def _parse_version(v: str) -> Optional[Version]:
+    """Parse a version string using PEP 440 rules.
+
+    Returns a :class:`packaging.version.Version` instance, or None if the
+    version cannot be parsed (including placeholder values like "unknown").
+    """
+    v = v.strip()
+    if not v or v.lower() == "unknown":
+        return None
+    try:
+        return Version(v)
+    except InvalidVersion:
+        return None
 
 
 def _is_newer(latest: str, current: str) -> bool:
-    """Return True if *latest* is strictly newer than *current*."""
-    return _parse_version(latest) > _parse_version(current)
+    """Return True if *latest* is strictly newer than *current*.
+
+    If either version cannot be parsed as a valid PEP 440 version,
+    this returns False to avoid emitting incorrect update notices.
+    """
+    latest_v = _parse_version(latest)
+    current_v = _parse_version(current)
+    if latest_v is None or current_v is None:
+        return False
+    return latest_v > current_v
 
 
 def check_for_update(current_version: str) -> Optional[str]:
@@ -150,5 +164,5 @@ def print_update_notice(current_version: str) -> None:
                 file=sys.stderr,
             )
     except Exception:
-        # Never let the update check break the CLI
-        pass
+        # Never let the update check break the CLI, but log for debugging.
+        logging.debug("CodeTrellis update check failed", exc_info=True)

@@ -2561,8 +2561,10 @@ def main():
     args = parser.parse_args()
 
     # ── Update check (non-blocking, cached, once per day) ──
-    from codetrellis.update_checker import print_update_notice
-    print_update_notice(VERSION)
+    # Skip in CI/non-interactive contexts to avoid nondeterministic network calls.
+    if not os.environ.get("CODETRELLIS_CI") and sys.stdout.isatty():
+        from codetrellis.update_checker import print_update_notice
+        print_update_notice(VERSION)
 
     if args.command == "scan":
         output = "json" if getattr(args, "json", False) else "prompt"
