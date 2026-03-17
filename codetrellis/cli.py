@@ -2560,6 +2560,10 @@ def main():
 
     args = parser.parse_args()
 
+    # ── Update check (non-blocking, cached, once per day) ──
+    from codetrellis.update_checker import print_update_notice
+    print_update_notice(VERSION)
+
     if args.command == "scan":
         output = "json" if getattr(args, "json", False) else "prompt"
         if getattr(args, "quiet", False):
