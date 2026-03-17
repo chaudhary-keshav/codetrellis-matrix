@@ -51,6 +51,7 @@ classifiers = [
 ]
 dependencies = [
     "watchdog>=3.0.0",
+    "packaging>=21.0",
 ]
 
 [project.optional-dependencies]
