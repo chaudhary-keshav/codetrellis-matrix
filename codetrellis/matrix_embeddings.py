@@ -391,7 +391,7 @@ class MatrixEmbeddingIndex:
         }
 
         meta_path = path.with_suffix(".meta.json")
-        meta_path.write_text(json.dumps(meta_data, indent=2, sort_keys=True))
+        meta_path.write_text(json.dumps(meta_data, indent=2, sort_keys=True), encoding="utf-8")
 
         # Validate index size
         if actual_path.exists():
@@ -423,7 +423,7 @@ class MatrixEmbeddingIndex:
         # Load metadata
         meta_path = path.with_suffix(".meta.json")
         if meta_path.exists():
-            meta = json.loads(meta_path.read_text())
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
             self._section_tokens = meta.get("section_tokens", {})
             self._section_hashes = meta.get("section_hashes", {})
 

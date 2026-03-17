@@ -466,7 +466,7 @@ def init_codetrellis(project_root: Path):
     }
 
     config_file = ct_dir / "config.json"
-    config_file.write_text(json.dumps(config, indent=2, sort_keys=True))
+    config_file.write_text(json.dumps(config, indent=2, sort_keys=True), encoding="utf-8")
 
     print(f"[CodeTrellis] Initialized in {ct_dir}")
     return ct_dir
@@ -674,15 +674,15 @@ def scan_project(path: str, output_format: str = "prompt", tier: OutputTier = Ou
             "cost_savings_pct": cache_result.estimated_cost_savings_pct if cache_result else 0,
         } if cache_optimize else None,
     }
-    metadata_file.write_text(json.dumps(metadata, indent=2, sort_keys=True, default=str))
+    metadata_file.write_text(json.dumps(metadata, indent=2, sort_keys=True, default=str), encoding="utf-8")
 
     # 2. Save compressed prompt
     prompt_file = cache_dir / "matrix.prompt"
-    prompt_file.write_text(compressed)
+    prompt_file.write_text(compressed, encoding="utf-8")
 
     # 3. Save full JSON matrix
     json_file = cache_dir / "matrix.json"
-    json_file.write_text(json.dumps(matrix.to_dict(), indent=2, sort_keys=True, default=str))
+    json_file.write_text(json.dumps(matrix.to_dict(), indent=2, sort_keys=True, default=str), encoding="utf-8")
 
     # Calculate stats
     estimated_tokens = len(compressed) // 4
@@ -732,7 +732,7 @@ def show_matrix(path: str, section: str = None):
         print("[CodeTrellis] No matrix found. Run 'codetrellis scan' first.")
         return
 
-    content = prompt_file.read_text()
+    content = prompt_file.read_text(encoding="utf-8")
 
     if section:
         # Filter to specific section
@@ -771,7 +771,7 @@ def print_prompt(path: str, include_header: bool = True, tier: OutputTier = Outp
 
         # Load matrix JSON and recompress with requested tier
         import json as json_mod
-        matrix_data = json_mod.loads(json_file.read_text())
+        matrix_data = json_mod.loads(json_file.read_text(encoding="utf-8"))
 
         # Create a simple namespace object for compressor
         class MatrixObj:
@@ -788,7 +788,7 @@ def print_prompt(path: str, include_header: bool = True, tier: OutputTier = Outp
         if not prompt_file.exists():
             print("[CodeTrellis] No matrix found. Run 'codetrellis scan' first.", file=sys.stderr)
             return
-        content = prompt_file.read_text()
+        content = prompt_file.read_text(encoding="utf-8")
 
     if include_header:
         tier_label = f" tier={tier.value}" if tier != OutputTier.PROMPT else ""
@@ -920,7 +920,7 @@ def export_section(path: str, sections: list, output_file: str = None):
         print("[CodeTrellis] No matrix found. Run 'codetrellis scan' first.", file=sys.stderr)
         return
 
-    content = prompt_file.read_text()
+    content = prompt_file.read_text(encoding="utf-8")
     lines = content.split("\n")
 
     exported_lines = []
@@ -941,7 +941,7 @@ def export_section(path: str, sections: list, output_file: str = None):
 
     if output_file:
         output_path = Path(output_file)
-        output_path.write_text(result)
+        output_path.write_text(result, encoding="utf-8")
         print(f"[CodeTrellis] Exported {len(sections)} section(s) to {output_path}")
     else:
         print(result)
@@ -959,8 +959,8 @@ def validate_project(path: str, verbose: bool = False):
         return
 
     # Load metadata and matrix
-    metadata = json.loads(metadata_file.read_text())
-    matrix_data = json.loads(json_file.read_text())
+    metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
+    matrix_data = json.loads(json_file.read_text(encoding="utf-8"))
 
     issues = []
     warnings = []
@@ -1046,7 +1046,7 @@ def coverage_report(path: str, detailed: bool = False):
         print("[CodeTrellis] No matrix found. Run 'codetrellis scan' first.", file=sys.stderr)
         return
 
-    metadata = json.loads(metadata_file.read_text())
+    metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
     stats = metadata.get('stats', {})
 
     # Count actual files in project
@@ -1145,7 +1145,7 @@ def show_progress(path: str, detailed: bool = False, by_module: bool = False, as
         print("[CodeTrellis] Error: Could not create matrix.", file=sys.stderr)
         return
 
-    matrix_data = json.loads(json_file.read_text())
+    matrix_data = json.loads(json_file.read_text(encoding="utf-8"))
     progress = matrix_data.get('progress', {})
 
     if as_json:
@@ -1295,7 +1295,7 @@ def show_overview(path: str, as_json: bool = False, as_markdown: bool = False):
         print("[CodeTrellis] Error: Could not create matrix.", file=sys.stderr)
         return
 
-    matrix_data = json.loads(json_file.read_text())
+    matrix_data = json.loads(json_file.read_text(encoding="utf-8"))
     overview = matrix_data.get('overview', {})
 
     if as_json:
@@ -1770,7 +1770,7 @@ def validate_repos_command(args):
         # Count output lines
         line_count = 0
         if prompt_file.exists() and prompt_file.stat().st_size > 0:
-            line_count = len(prompt_file.read_text().split("\n"))
+            line_count = len(prompt_file.read_text(encoding="utf-8").split("\n"))
 
         # Report
         if exit_code == 0 and line_count > 10:
@@ -1820,7 +1820,7 @@ def cache_optimize_command(args):
         print("[CodeTrellis] No matrix.prompt found. Run 'codetrellis scan' first.")
         return
 
-    raw_prompt = prompt_file.read_text()
+    raw_prompt = prompt_file.read_text(encoding="utf-8")
     insert_breaks = not getattr(args, "no_cache_breaks", False)
 
     result = optimize_matrix_prompt(raw_prompt, insert_cache_breaks=insert_breaks)
@@ -1858,10 +1858,10 @@ def cache_optimize_command(args):
     if output_path:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(result.optimized_prompt)
+        output_path.write_text(result.optimized_prompt, encoding="utf-8")
         print(f"[CodeTrellis] Optimized matrix written to: {output_path}")
     else:
-        prompt_file.write_text(result.optimized_prompt)
+        prompt_file.write_text(result.optimized_prompt, encoding="utf-8")
         print(f"[CodeTrellis] matrix.prompt optimized in place: {prompt_file}")
 
     print(f"[CodeTrellis] {result.sections_reordered} sections reordered, "
@@ -1921,7 +1921,7 @@ def context_command(args):
         print("[CodeTrellis] No matrix.prompt found. Run 'codetrellis scan' first.")
         return
 
-    raw_prompt = prompt_file.read_text()
+    raw_prompt = prompt_file.read_text(encoding="utf-8")
 
     # Parse raw prompt into sections dict (JITContextProvider expects Dict[str, str])
     import re as _re
@@ -1986,7 +1986,7 @@ def skills_command(args):
         print("[CodeTrellis] No matrix.prompt found. Run 'codetrellis scan' first.")
         return
 
-    raw_prompt = prompt_file.read_text()
+    raw_prompt = prompt_file.read_text(encoding="utf-8")
 
     # Parse into sections (reuse the MCP server's parser logic)
     import re as _re
@@ -2196,7 +2196,7 @@ def export_context_command(args) -> None:
         print("[CodeTrellis] No matrix.prompt found. Run 'codetrellis scan' first.")
         return
 
-    raw = prompt_file.read_text()
+    raw = prompt_file.read_text(encoding="utf-8")
     sections = _parse_matrix_sections(raw)
 
     # Filter to requested sections
@@ -2238,7 +2238,7 @@ def export_context_command(args) -> None:
     if out_path:
         out_file = Path(out_path)
         out_file.parent.mkdir(parents=True, exist_ok=True)
-        out_file.write_text(output)
+        out_file.write_text(output, encoding="utf-8")
         print(f"[CodeTrellis] Exported {len(sections)} sections "
               f"({len(output):,} chars) → {out_file}")
     else:
@@ -2799,7 +2799,7 @@ def main():
             cache_dir = get_cache_dir(project_root)
             prompt_file = cache_dir / "matrix.prompt"
             if prompt_file.exists():
-                content = prompt_file.read_text()
+                content = prompt_file.read_text(encoding="utf-8")
                 tokens = len(content) // 4
                 print(f"Estimated tokens: ~{tokens}")
         else:

@@ -307,7 +307,7 @@ def extract_matrix_context(project_root: Path) -> Optional[MatrixContext]:
     meta_path = matrix_path.parent / "_metadata.json"
     if meta_path.exists():
         try:
-            meta = json.loads(meta_path.read_text())
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
             ctx.total_files = meta.get("stats", {}).get("totalFiles", 0)
         except (json.JSONDecodeError, OSError):
             pass
