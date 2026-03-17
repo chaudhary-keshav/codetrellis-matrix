@@ -254,12 +254,21 @@ def extract_matrix_context(project_root: Path) -> Optional[MatrixContext]:
         return None
 
     matrix_path = None
-    # Search version directories for matrix.prompt (newest first)
-    for version_dir in sorted(cache_base.iterdir(), reverse=True):
-        if version_dir.is_dir():
-            candidate = version_dir / project_root.name / "matrix.prompt"
+    # Search for matrix.prompt in project cache directory
+    for sub_dir in sorted(cache_base.iterdir(), reverse=True):
+        if sub_dir.is_dir():
+            candidate = sub_dir / "matrix.prompt"
             if candidate.exists():
                 matrix_path = candidate
+                break
+            # Also check for legacy versioned layout (cache/VERSION/project/)
+            for nested_dir in sorted(sub_dir.iterdir(), reverse=True):
+                if nested_dir.is_dir():
+                    candidate = nested_dir / "matrix.prompt"
+                    if candidate.exists():
+                        matrix_path = candidate
+                        break
+            if matrix_path:
                 break
 
     if not matrix_path:
@@ -435,7 +444,7 @@ def generate_copilot_instructions(info: ProjectInfo, ctx: Optional[MatrixContext
 
 This project uses **CodeTrellis** for AI context injection. The full project matrix is available via:
 - **MCP Server:** Registered in `.vscode/mcp.json` — provides tools to query the entire project.
-- **Matrix file:** `.codetrellis/cache/{VERSION}/{info.name}/matrix.prompt`
+- **Matrix file:** `.codetrellis/cache/{info.name}/matrix.prompt`
 
 ### ⚠️ IMPORTANT: Always use the CodeTrellis MCP tools FIRST
 
@@ -610,7 +619,7 @@ def generate_claude_md(info: ProjectInfo, ctx: Optional[MatrixContext] = None) -
 Before exploring files manually, **read the full project matrix**:
 
 ```bash
-cat .codetrellis/cache/{VERSION}/{info.name}/matrix.prompt
+cat .codetrellis/cache/{info.name}/matrix.prompt
 ```
 
 This file contains the ENTIRE project context: all types, APIs, routes, schemas,
@@ -711,7 +720,7 @@ def generate_cursorrules(info: ProjectInfo, ctx: Optional[MatrixContext] = None)
 Before exploring files manually, **read the full project matrix**:
 
 ```
-.codetrellis/cache/{VERSION}/{info.name}/matrix.prompt
+.codetrellis/cache/{info.name}/matrix.prompt
 ```
 
 This file contains the ENTIRE project context compressed into ~15K tokens.

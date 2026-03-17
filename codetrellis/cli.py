@@ -422,7 +422,7 @@ def get_cache_dir(project_root: Path) -> Path:
     """Get the cache directory path"""
     ct_dir = get_codetrellis_dir(project_root)
     project_name = project_root.name
-    return ct_dir / "cache" / VERSION / project_name
+    return ct_dir / "cache" / project_name
 
 
 def init_codetrellis(project_root: Path):

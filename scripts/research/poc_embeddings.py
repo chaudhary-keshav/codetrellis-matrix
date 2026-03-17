@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT))
 
 from codetrellis import __version__ as VERSION
 
-MATRIX_PROMPT_PATH = ROOT / ".codetrellis" / "cache" / VERSION / "codetrellis" / "matrix.prompt"
+MATRIX_PROMPT_PATH = ROOT / ".codetrellis" / "cache" / "codetrellis" / "matrix.prompt"
 
 
 def parse_sections(prompt: str) -> Dict[str, str]:

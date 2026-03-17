@@ -136,7 +136,7 @@ class TestIncrementalBuildIntegration:
 
         # Verify matrix.json was written
         from codetrellis import __version__ as VERSION
-        cache_dir = root / ".codetrellis" / "cache" / VERSION / root.name
+        cache_dir = root / ".codetrellis" / "cache" / root.name
         assert (cache_dir / "matrix.json").exists()
         assert (cache_dir / "matrix.prompt").exists()
 

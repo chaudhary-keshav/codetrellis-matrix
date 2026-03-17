@@ -18,8 +18,8 @@ sys.path.insert(0, str(ROOT))
 from codetrellis import __version__ as VERSION
 
 # Matrix file paths
-MATRIX_JSON_PATH = ROOT / ".codetrellis" / "cache" / VERSION / "codetrellis" / "matrix.json"
-MATRIX_PROMPT_PATH = ROOT / ".codetrellis" / "cache" / VERSION / "codetrellis" / "matrix.prompt"
+MATRIX_JSON_PATH = ROOT / ".codetrellis" / "cache" / "codetrellis" / "matrix.json"
+MATRIX_PROMPT_PATH = ROOT / ".codetrellis" / "cache" / "codetrellis" / "matrix.prompt"
 
 
 @pytest.fixture(scope="module")

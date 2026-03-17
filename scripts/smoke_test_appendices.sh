@@ -96,8 +96,7 @@ except ImportError:
 smoke_check "J1: Count tokens for matrix.prompt" \
     "
 import os
-from codetrellis import __version__
-matrix_path = os.path.join('$PROJECT_ROOT', '.codetrellis', 'cache', __version__, 'codetrellis', 'matrix.prompt')
+matrix_path = os.path.join('$PROJECT_ROOT', '.codetrellis', 'cache', 'codetrellis', 'matrix.prompt')
 if not os.path.exists(matrix_path):
     print('SKIP: matrix.prompt not found (run codetrellis scan first)')
     exit(0)

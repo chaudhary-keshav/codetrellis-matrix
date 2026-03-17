@@ -229,7 +229,7 @@ class LockfileManager:
         """Initialize with the cache directory path.
 
         Args:
-            cache_dir: Path to .codetrellis/cache/{VERSION}/{project_name}/
+            cache_dir: Path to .codetrellis/cache/{project_name}/
         """
         self._cache_dir = cache_dir
         self._lockfile_path = cache_dir / "_lockfile.json"
@@ -307,7 +307,7 @@ class CacheManager:
         """Initialize the cache manager.
 
         Args:
-            cache_dir: Path to .codetrellis/cache/{VERSION}/{project_name}/
+            cache_dir: Path to .codetrellis/cache/{project_name}/
             version: Current CodeTrellis version string
         """
         self._cache_dir = cache_dir
