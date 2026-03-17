@@ -808,19 +808,19 @@ def get_cache_base_dir(project_root: Path) -> Path:
 
 
 def get_versioned_cache_dir(project_root: Path) -> Path:
-    """Get the full versioned cache directory for a project.
+    """Get the full cache directory for a project.
 
-    Structure: {cache_base}/{VERSION}/{project_name}/
+    Structure: {cache_base}/{project_name}/
 
     Args:
         project_root: Project root directory.
 
     Returns:
-        Path to the versioned project cache directory.
+        Path to the project cache directory.
     """
     cache_base = get_cache_base_dir(project_root)
     project_name = project_root.resolve().name
-    return cache_base / VERSION / project_name
+    return cache_base / project_name
 
 
 # =============================================================================

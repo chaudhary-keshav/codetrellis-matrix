@@ -5,7 +5,7 @@ from pathlib import Path
 from codetrellis import __version__ as VERSION
 from codetrellis.matrixbench_scorer import MatrixBench
 
-cache_dir = Path(f".codetrellis/cache/{VERSION}/codetrellis-matrix")
+cache_dir = Path(f".codetrellis/cache/codetrellis-matrix")
 matrix_json = json.loads((cache_dir / "matrix.json").read_text(encoding="utf-8"))
 matrix_prompt = (cache_dir / "matrix.prompt").read_text(encoding="utf-8")
 

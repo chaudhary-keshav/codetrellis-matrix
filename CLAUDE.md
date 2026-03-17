@@ -6,6 +6,7 @@
 ## Project
 
 **codetrellis-matrix** — Python Library
+
 - **Languages:** Python
 - **Frameworks:** None detected
 - **Domain:** Developer Tools
@@ -17,7 +18,7 @@
 Before exploring files manually, **read the full project matrix**:
 
 ```bash
-cat .codetrellis/cache/1.0.0/codetrellis-matrix/matrix.prompt
+cat .codetrellis/cache/codetrellis-matrix/matrix.prompt
 ```
 
 This file contains the ENTIRE project context: all types, APIs, routes, schemas,
@@ -27,6 +28,7 @@ It is compressed into ~15K tokens and saves you hundreds of file reads.
 **Always read the matrix before running `find`, `grep`, or `ls` commands.**
 
 You can also get specific sections:
+
 ```bash
 # Get just types
 codetrellis export . --section TS_TYPES
@@ -117,3 +119,18 @@ ci:github-actions|triggers:push|jobs:lint,test,package
 - Follow existing patterns in the codebase.
 - Follow the project's established error handling patterns.
 - Write tests for new code.
+
+## Version Bump
+
+**Single source of truth: `pyproject.toml` line 7** — `version = "X.Y.Z"`
+`codetrellis/__init__.py` reads it automatically via `importlib.metadata`; no other file needs touching.
+
+```bash
+# 1. Edit the ONE place:
+#    pyproject.toml  →  version = "X.Y.Z"
+# 2. Reinstall so importlib.metadata picks it up:
+pip install -e . --quiet
+# 3. Verify everywhere at once:
+python -c "import codetrellis; print(codetrellis.__version__)"
+python -c "from importlib.metadata import version; print(version('codetrellis'))"
+```

@@ -531,7 +531,7 @@ class MatrixBench:
             tmp = Path(f.name)
         try:
             self.export_results(r1, tmp)
-            data = json.loads(tmp.read_text())
+            data = json.loads(tmp.read_text(encoding="utf-8"))
             if data["total_tasks"] != r1.total_tasks:
                 errors.append("EXPORT_MISMATCH: total_tasks differs")
         finally:

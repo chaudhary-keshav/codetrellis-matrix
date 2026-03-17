@@ -7,10 +7,13 @@ and injects complete project awareness into every AI prompt.
 
 Created: 31 January 2026
 Author: Keshav Chaudhary
-Version: 1.0.1
 """
 
-__version__ = "1.0.1"
+try:
+    from importlib.metadata import version as _pkg_version
+    __version__ = _pkg_version("codetrellis")
+except Exception:
+    __version__ = "unknown"
 __author__ = "Keshav Chaudhary"
 
 # Lazy imports to avoid dependency issues

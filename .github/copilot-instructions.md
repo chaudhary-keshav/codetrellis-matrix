@@ -6,6 +6,7 @@
 ## Project Overview
 
 **codetrellis-matrix** — Python Library
+
 - **Languages:** Python
 - **Frameworks:** None detected
 
@@ -19,8 +20,9 @@
 ## CodeTrellis Matrix
 
 This project uses **CodeTrellis** for AI context injection. The full project matrix is available via:
+
 - **MCP Server:** Registered in `.vscode/mcp.json` — provides tools to query the entire project.
-- **Matrix file:** `.codetrellis/cache/1.0.0/codetrellis-matrix/matrix.prompt`
+- **Matrix file:** `.codetrellis/cache/codetrellis-matrix/matrix.prompt`
 
 ### ⚠️ IMPORTANT: Always use the CodeTrellis MCP tools FIRST
 
@@ -30,19 +32,34 @@ Prefer the CodeTrellis MCP tools for all project exploration and code understand
 
 ### MCP Server Tools
 
-| Tool | When to Use |
-|------|-------------|
-| `search_matrix(query)` | **Use FIRST** for any question about the project — searches all 34 sections |
-| `get_section(name)` | Get a specific section: OVERVIEW, PROJECT, PYTHON_TYPES, ROUTES_SEMANTIC, RUNBOOK, BUSINESS_DOMAIN, CLI_COMMANDS, IMPLEMENTATION_LOGIC, etc. |
-| `get_context_for_file(path)` | **Use before editing any file** — returns types, deps, and APIs relevant to that file |
-| `get_skills()` | List auto-generated AI skills for this project |
-| `get_cache_stats()` | Cache optimization statistics |
+| Tool                         | When to Use                                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search_matrix(query)`       | **Use FIRST** for any question about the project — searches all 34 sections                                                                  |
+| `get_section(name)`          | Get a specific section: OVERVIEW, PROJECT, PYTHON_TYPES, ROUTES_SEMANTIC, RUNBOOK, BUSINESS_DOMAIN, CLI_COMMANDS, IMPLEMENTATION_LOGIC, etc. |
+| `get_context_for_file(path)` | **Use before editing any file** — returns types, deps, and APIs relevant to that file                                                        |
+| `get_skills()`               | List auto-generated AI skills for this project                                                                                               |
+| `get_cache_stats()`          | Cache optimization statistics                                                                                                                |
 
 ## Key Conventions
 
 1. **Language:** Python. Follow existing patterns in the codebase.
 2. **Error handling:** Follow the project's established error handling patterns.
 3. **Testing:** Run tests with `pytest tests/ -x -q`.
+
+## Version Bump
+
+**Single source of truth: `pyproject.toml` line 7** — `version = "X.Y.Z"`
+`codetrellis/__init__.py` reads it automatically via `importlib.metadata`; no other file needs touching.
+
+```bash
+# 1. Edit the ONE place:
+#    pyproject.toml  →  version = "X.Y.Z"
+# 2. Reinstall so importlib.metadata picks it up:
+pip install -e . --quiet
+# 3. Verify everywhere at once:
+python -c "import codetrellis; print(codetrellis.__version__)"
+python -c "from importlib.metadata import version; print(version('codetrellis'))"
+```
 
 ## Project Structure
 

@@ -60,7 +60,7 @@ class MatrixSyncHandler(FileSystemEventHandler):
         """Load file hashes from disk"""
         if self.hashes_file.exists():
             try:
-                return json.loads(self.hashes_file.read_text())
+                return json.loads(self.hashes_file.read_text(encoding="utf-8"))
             except Exception:
                 pass
         return {}
@@ -68,7 +68,7 @@ class MatrixSyncHandler(FileSystemEventHandler):
     def _save_hashes(self):
         """Save file hashes to disk"""
         self.hashes_file.parent.mkdir(parents=True, exist_ok=True)
-        self.hashes_file.write_text(json.dumps(self.hashes, indent=2))
+        self.hashes_file.write_text(json.dumps(self.hashes, indent=2), encoding="utf-8")
 
     def _hash_file(self, file_path: Path) -> str:
         """Calculate MD5 hash of file content"""

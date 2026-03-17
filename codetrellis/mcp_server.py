@@ -303,13 +303,18 @@ class MatrixMCPServer:
         if not cache_dir.exists():
             return None
 
-        # Find the latest version directory
-        version_dirs = sorted(cache_dir.iterdir(), reverse=True)
-        for vdir in version_dirs:
-            if vdir.is_dir():
-                for project_dir in vdir.iterdir():
-                    if project_dir.is_dir():
-                        prompt_file = project_dir / "matrix.prompt"
+        # Find matrix.prompt in cache directory
+        # New layout: cache/{project_name}/matrix.prompt
+        # Legacy layout: cache/{version}/{project_name}/matrix.prompt
+        for sub_dir in sorted(cache_dir.iterdir(), reverse=True):
+            if sub_dir.is_dir():
+                prompt_file = sub_dir / "matrix.prompt"
+                if prompt_file.exists():
+                    return prompt_file
+                # Check for legacy versioned layout
+                for nested_dir in sub_dir.iterdir():
+                    if nested_dir.is_dir():
+                        prompt_file = nested_dir / "matrix.prompt"
                         if prompt_file.exists():
                             return prompt_file
         return None

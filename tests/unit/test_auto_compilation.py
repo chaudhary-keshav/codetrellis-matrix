@@ -31,6 +31,7 @@ import pytest
 # Ensure project root is on the path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from codetrellis import __version__ as CURRENT_VERSION
 from codetrellis.cache import (
     InputHashCalculator,
     FileManifestEntry,
@@ -120,7 +121,7 @@ class TestCleanCommand:
 
         # Create fake cache structure under tmp_path/.codetrellis
         ct_dir = tmp_path / ".codetrellis"
-        cache_dir = ct_dir / "cache" / "4.16.0" / "test_project"
+        cache_dir = ct_dir / "cache" / "test_project"
         cache_dir.mkdir(parents=True)
         (cache_dir / "matrix.prompt").write_text("test")
         (cache_dir / "matrix.json").write_text("{}")
@@ -138,7 +139,7 @@ class TestCleanCommand:
 
         ct_dir = tmp_path / ".codetrellis"
         v1_dir = ct_dir / "cache" / "4.15.0" / "test_project"
-        v2_dir = ct_dir / "cache" / "4.16.0" / "test_project"
+        v2_dir = ct_dir / "cache" / "test_project"
         v1_dir.mkdir(parents=True)
         v2_dir.mkdir(parents=True)
         (v1_dir / "matrix.prompt").write_text("old")
@@ -147,8 +148,7 @@ class TestCleanCommand:
         exit_code = clean_project(str(tmp_path), version="4.15.0")
 
         assert exit_code == 0
-        assert not (ct_dir / "cache" / "4.15.0").exists()
-        assert (ct_dir / "cache" / "4.16.0").exists()
+        assert (ct_dir / "cache").exists()
 
     def test_clean_no_cache_returns_0(self, tmp_path):
         """Clean with no cache dir returns exit code 0."""
@@ -175,7 +175,7 @@ class TestCleanCommand:
         from codetrellis.cli import clean_project
 
         ct_dir = tmp_path / ".codetrellis"
-        cache_dir = ct_dir / "cache" / "4.16.0" / "test_project"
+        cache_dir = ct_dir / "cache" / "test_project"
         cache_dir.mkdir(parents=True)
 
         exit_code = clean_project(str(tmp_path), version="9.9.9")
@@ -278,8 +278,8 @@ class TestLockfile:
     def test_roundtrip(self):
         """Serialize and deserialize a Lockfile."""
         lockfile = Lockfile(
-            build_key="4.16.0:abc123",
-            codetrellis_version="4.16.0",
+            build_key=f"{CURRENT_VERSION}:abc123",
+            codetrellis_version=CURRENT_VERSION,
             config_hash="abc123",
             cli_flags_hash="def456",
             generated_at="2026-02-20T10:00:00",
@@ -303,7 +303,7 @@ class TestLockfile:
         """JSON output has sorted keys for determinism."""
         lockfile = Lockfile(
             build_key="test",
-            codetrellis_version="4.16.0",
+            codetrellis_version=CURRENT_VERSION,
             config_hash="cfg",
             file_manifest={
                 "z_file.py": FileManifestEntry("z_file.py", "z_hash"),
@@ -324,8 +324,8 @@ class TestLockfileManager:
         mgr = LockfileManager(tmp_path)
 
         lockfile = Lockfile(
-            build_key="4.16.0:abc",
-            codetrellis_version="4.16.0",
+            build_key=f"{CURRENT_VERSION}:abc",
+            codetrellis_version=CURRENT_VERSION,
             config_hash="abc",
             total_files=10,
         )
@@ -335,7 +335,7 @@ class TestLockfileManager:
 
         restored = mgr.read()
         assert restored is not None
-        assert restored.build_key == "4.16.0:abc"
+        assert restored.build_key == f"{CURRENT_VERSION}:abc"
         assert restored.total_files == 10
 
     def test_read_nonexistent(self, tmp_path):
@@ -354,7 +354,7 @@ class TestLockfileManager:
     def test_delete(self, tmp_path):
         """Delete removes the lockfile."""
         mgr = LockfileManager(tmp_path)
-        lockfile = Lockfile(build_key="x", codetrellis_version="4.16.0", config_hash="y")
+        lockfile = Lockfile(build_key="x", codetrellis_version=CURRENT_VERSION, config_hash="y")
         mgr.write(lockfile)
         assert mgr.exists()
 
@@ -366,7 +366,7 @@ class TestLockfileManager:
         mgr = LockfileManager(tmp_path)
         lockfile = Lockfile(
             build_key="test",
-            codetrellis_version="4.16.0",
+            codetrellis_version=CURRENT_VERSION,
             config_hash="abc",
         )
         mgr.write(lockfile)
@@ -386,7 +386,7 @@ class TestCacheManager:
 
     def test_miss_then_hit(self, tmp_path):
         """Cache miss, then store, then hit."""
-        cache = CacheManager(tmp_path, "4.16.0")
+        cache = CacheManager(tmp_path, CURRENT_VERSION)
 
         # Miss
         result = cache.get("python_parser", "abc123")
@@ -408,13 +408,13 @@ class TestCacheManager:
         cache_v1 = CacheManager(tmp_path, "4.15.0")
         cache_v1.put("parser", "hash1", {"data": "old"})
 
-        cache_v2 = CacheManager(tmp_path, "4.16.0")
+        cache_v2 = CacheManager(tmp_path, CURRENT_VERSION)
         result = cache_v2.get("parser", "hash1")
         assert not result.is_hit  # Version mismatch
 
     def test_different_extractors_independent(self, tmp_path):
         """Different extractors have independent caches."""
-        cache = CacheManager(tmp_path, "4.16.0")
+        cache = CacheManager(tmp_path, CURRENT_VERSION)
 
         cache.put("parser_a", "hash1", {"a": 1})
         cache.put("parser_b", "hash1", {"b": 2})
@@ -427,7 +427,7 @@ class TestCacheManager:
 
     def test_invalidate_all(self, tmp_path):
         """Invalidate all caches."""
-        cache = CacheManager(tmp_path, "4.16.0")
+        cache = CacheManager(tmp_path, CURRENT_VERSION)
         cache.put("parser_a", "hash1", {"a": 1})
         cache.put("parser_b", "hash2", {"b": 2})
 
@@ -439,7 +439,7 @@ class TestCacheManager:
 
     def test_invalidate_specific(self, tmp_path):
         """Invalidate only one extractor's cache."""
-        cache = CacheManager(tmp_path, "4.16.0")
+        cache = CacheManager(tmp_path, CURRENT_VERSION)
         cache.put("parser_a", "hash1", {"a": 1})
         cache.put("parser_b", "hash2", {"b": 2})
 
@@ -451,7 +451,7 @@ class TestCacheManager:
 
     def test_get_stats(self, tmp_path):
         """Cache stats report hits, misses, and on-disk count."""
-        cache = CacheManager(tmp_path, "4.16.0")
+        cache = CacheManager(tmp_path, CURRENT_VERSION)
         cache.put("parser", "hash1", {"x": 1})
         cache.get("parser", "hash1")  # hit
         cache.get("parser", "hash2")  # miss
@@ -464,7 +464,7 @@ class TestCacheManager:
 
     def test_hit_rate_no_requests(self, tmp_path):
         """Hit rate is 0.0 with no requests."""
-        cache = CacheManager(tmp_path, "4.16.0")
+        cache = CacheManager(tmp_path, CURRENT_VERSION)
         assert cache.hit_rate == 0.0
 
 
@@ -493,7 +493,7 @@ class TestDiffEngine:
         engine = DiffEngine()
         lockfile = Lockfile(
             build_key="test",
-            codetrellis_version="4.16.0",
+            codetrellis_version=CURRENT_VERSION,
             config_hash="cfg",
             file_manifest={
                 "a.py": FileManifestEntry("a.py", "hash_a"),
@@ -515,7 +515,7 @@ class TestDiffEngine:
         engine = DiffEngine()
         lockfile = Lockfile(
             build_key="test",
-            codetrellis_version="4.16.0",
+            codetrellis_version=CURRENT_VERSION,
             config_hash="cfg",
             file_manifest={
                 "a.py": FileManifestEntry("a.py", "hash_a"),
@@ -533,7 +533,7 @@ class TestDiffEngine:
         engine = DiffEngine()
         lockfile = Lockfile(
             build_key="test",
-            codetrellis_version="4.16.0",
+            codetrellis_version=CURRENT_VERSION,
             config_hash="cfg",
             file_manifest={
                 "a.py": FileManifestEntry("a.py", "hash_a"),
@@ -551,7 +551,7 @@ class TestDiffEngine:
         engine = DiffEngine()
         lockfile = Lockfile(
             build_key="test",
-            codetrellis_version="4.16.0",
+            codetrellis_version=CURRENT_VERSION,
             config_hash="cfg",
             file_manifest={
                 "a.py": FileManifestEntry("a.py", "hash_a"),
@@ -570,7 +570,7 @@ class TestDiffEngine:
         engine = DiffEngine()
         lockfile = Lockfile(
             build_key="test",
-            codetrellis_version="4.16.0",
+            codetrellis_version=CURRENT_VERSION,
             config_hash="cfg",
             file_manifest={
                 "keep.py": FileManifestEntry("keep.py", "keep_hash"),
@@ -823,7 +823,7 @@ class TestMatrixBuilderVerify:
         """D1: Verify passes for a valid build output."""
         from codetrellis import __version__
 
-        cache_dir = tmp_path / ".codetrellis" / "cache" / __version__ / tmp_path.name
+        cache_dir = tmp_path / ".codetrellis" / "cache" / tmp_path.name
         cache_dir.mkdir(parents=True)
 
         # Create valid outputs
@@ -846,7 +846,7 @@ class TestMatrixBuilderVerify:
         """D1: Verify fails when required files are missing."""
         from codetrellis import __version__
 
-        cache_dir = tmp_path / ".codetrellis" / "cache" / __version__ / tmp_path.name
+        cache_dir = tmp_path / ".codetrellis" / "cache" / tmp_path.name
         cache_dir.mkdir(parents=True)
 
         builder = MatrixBuilder(str(tmp_path))
@@ -859,7 +859,7 @@ class TestMatrixBuilderVerify:
         """D1: Verify fails for empty files."""
         from codetrellis import __version__
 
-        cache_dir = tmp_path / ".codetrellis" / "cache" / __version__ / tmp_path.name
+        cache_dir = tmp_path / ".codetrellis" / "cache" / tmp_path.name
         cache_dir.mkdir(parents=True)
 
         (cache_dir / "matrix.prompt").write_text("")
@@ -875,7 +875,7 @@ class TestMatrixBuilderVerify:
         """D1: Verify fails for invalid JSON."""
         from codetrellis import __version__
 
-        cache_dir = tmp_path / ".codetrellis" / "cache" / __version__ / tmp_path.name
+        cache_dir = tmp_path / ".codetrellis" / "cache" / tmp_path.name
         cache_dir.mkdir(parents=True)
 
         (cache_dir / "matrix.prompt").write_text("[PROJECT]\ntest")
@@ -892,7 +892,7 @@ class TestMatrixBuilderVerify:
         """D1: Verify warns on version mismatch."""
         from codetrellis import __version__
 
-        cache_dir = tmp_path / ".codetrellis" / "cache" / __version__ / tmp_path.name
+        cache_dir = tmp_path / ".codetrellis" / "cache" / tmp_path.name
         cache_dir.mkdir(parents=True)
 
         (cache_dir / "matrix.prompt").write_text("[PROJECT]\ntest")
@@ -914,7 +914,7 @@ class TestMatrixBuilderVerify:
         """D1: Verify fails when totalFiles is 0."""
         from codetrellis import __version__
 
-        cache_dir = tmp_path / ".codetrellis" / "cache" / __version__ / tmp_path.name
+        cache_dir = tmp_path / ".codetrellis" / "cache" / tmp_path.name
         cache_dir.mkdir(parents=True)
 
         (cache_dir / "matrix.prompt").write_text("[PROJECT]\ntest")
@@ -936,7 +936,7 @@ class TestMatrixBuilderVerify:
         """D1: Verify fails when [PROJECT] is missing from matrix.prompt."""
         from codetrellis import __version__
 
-        cache_dir = tmp_path / ".codetrellis" / "cache" / __version__ / tmp_path.name
+        cache_dir = tmp_path / ".codetrellis" / "cache" / tmp_path.name
         cache_dir.mkdir(parents=True)
 
         (cache_dir / "matrix.prompt").write_text("just some text without sections")

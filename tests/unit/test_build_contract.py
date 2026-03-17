@@ -96,7 +96,7 @@ def project_with_config(project_dir: Path) -> Path:
 @pytest.fixture
 def cache_dir(tmp_path: Path) -> Path:
     """Create a valid cache directory with all required outputs."""
-    cache = tmp_path / ".codetrellis" / "cache" / VERSION / "test-project"
+    cache = tmp_path / ".codetrellis" / "cache" / "test-project"
     cache.mkdir(parents=True)
 
     # matrix.prompt — requires [PROJECT] section and ≥100 bytes
@@ -993,9 +993,9 @@ class TestCacheDirectoryResolution:
     """C5: Cache directory layout and resolution."""
 
     def test_default_cache_dir(self, project_dir: Path):
-        """C5: Default cache dir is .codetrellis/cache/{VERSION}/{project_name}."""
+        """C5: Default cache dir is .codetrellis/cache/{project_name}."""
         cache = get_versioned_cache_dir(project_dir)
-        assert str(cache).endswith(f"cache/{VERSION}/{project_dir.name}")
+        assert str(cache).endswith(f"cache/{project_dir.name}")
 
     def test_env_override_cache_dir(self, project_dir: Path, tmp_path: Path):
         """C5/C1.3: CODETRELLIS_CACHE_DIR overrides default location."""

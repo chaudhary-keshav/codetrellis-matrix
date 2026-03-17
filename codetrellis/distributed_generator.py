@@ -108,7 +108,7 @@ class DistributedCodeTrellisGenerator:
 
                 if ct_content:
                     codetrellis_file = dir_path / ".codetrellis"
-                    codetrellis_file.write_text(ct_content)
+                    codetrellis_file.write_text(ct_content, encoding="utf-8")
                     self.stats["total_files"] += 1
                     print(f"  ✓ {dir_path.relative_to(root)}")
 
@@ -156,7 +156,7 @@ class DistributedCodeTrellisGenerator:
 
             file_path = folder / filename
             try:
-                content = file_path.read_text()
+                content = file_path.read_text(encoding="utf-8", errors="replace")
             except Exception:
                 continue
 
@@ -237,7 +237,7 @@ class DistributedCodeTrellisGenerator:
 
             file_path = folder / filename
             try:
-                content = file_path.read_text()
+                content = file_path.read_text(encoding="utf-8", errors="replace")
             except Exception:
                 continue
 
@@ -278,7 +278,7 @@ class DistributedCodeTrellisGenerator:
 
             file_path = folder / filename
             try:
-                content = file_path.read_text()
+                content = file_path.read_text(encoding="utf-8", errors="replace")
             except Exception:
                 continue
 
@@ -326,7 +326,7 @@ class DistributedCodeTrellisGenerator:
 
             file_path = folder / filename
             try:
-                content = file_path.read_text()
+                content = file_path.read_text(encoding="utf-8", errors="replace")
             except Exception:
                 continue
 

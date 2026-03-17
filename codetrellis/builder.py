@@ -211,7 +211,7 @@ class MatrixBuilder:
     def _get_cache_dir(self) -> Path:
         """Get the versioned cache directory."""
         return (
-            self._project_root / ".codetrellis" / "cache" / VERSION / self._project_name
+            self._project_root / ".codetrellis" / "cache" / self._project_name
         )
 
     def _get_build_timestamp(self) -> str:
