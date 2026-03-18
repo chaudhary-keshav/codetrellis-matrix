@@ -2,7 +2,7 @@
   "servers": {
     "codetrellis": {
       "type": "stdio",
-      "command": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "command": "/Users/keshavchaudhary/Documents/github-new/codetrellis-matrix/.venv/bin/python3.14",
       "args": [
         "-m",
         "codetrellis",

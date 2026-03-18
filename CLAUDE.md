@@ -9,7 +9,7 @@
 
 - **Languages:** Python
 - **Domain:** Developer Tools — A developer tools application for code analysis, project scanning, or build/development tooling. Provides utilities for development workflow automation and code intelligence.
-- **Scale:** 979 files, 2268 types, 34 matrix sections
+- **Scale:** 980 files, 2269 types, 34 matrix sections
 
 ## ⚠️ CRITICAL — Read the Matrix FIRST
 
@@ -38,7 +38,7 @@ codetrellis context . --file src/example.py
 ## Project Structure
 
 ```
-  codetrellis/  (803 files)
+  codetrellis/  (804 files)
   scripts/  (17 files)
   lsp/  (1 files)
   codetrellis.egg-info/  (0 files)
@@ -86,11 +86,12 @@ pytest tests/ -x -q
 
 ## Quality Gates (CI enforced)
 
-1. **ruff** lint must pass
-2. **shellcheck** lint must pass
-3. **mypy** type-check (advisory)
-4. **Version consistency** — pyproject.toml must be single source of truth
-5. **Tests** — `pytest tests/ -x -q` (Python >=3.9)
+1. **black** lint must pass
+2. **ruff** lint must pass
+3. **shellcheck** lint must pass
+4. **mypy** type-check (advisory)
+5. **Version consistency** — pyproject.toml must be single source of truth
+6. **Tests** — `pytest tests/ -x -q` (Python >=3.9)
 
 ## Key Conventions
 
@@ -117,9 +118,9 @@ Run tests: `pytest tests/ -x -q`
 
 ## Version & Release
 
-**Single source of truth:** `pyproject.toml` — `version = "1.0.2"`
+**Single source of truth:** `pyproject.toml` — `version = "1.1.0"`
 
-- `__init__.py` reads via `importlib.metadata` — never edit it manually.
+`__init__.py` reads via `importlib.metadata` — never edit it manually.
 - Release: push `v*` tag → CI runs tests → build → publish.
 - Tag version MUST match pyproject.toml version.
 

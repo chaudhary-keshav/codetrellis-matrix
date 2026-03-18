@@ -9,7 +9,7 @@
 
 - **Languages:** Python
 
-**Matrix Stats:** 979 files scanned, 2268 types extracted, 34 matrix sections
+**Matrix Stats:** 980 files scanned, 2269 types extracted, 34 matrix sections
 
 - **Domain:** Developer Tools
 - **Purpose:** A developer tools application for code analysis, project scanning, or build/development tooling. Provides utilities for development workflow automation and code intelligence.
@@ -28,17 +28,17 @@ tools below. They return the full project context in one call and save hundreds 
 
 ### MCP Server Tools
 
-| Tool                         | When to Use                                                                                                                                  |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search_matrix(query)`       | **Use FIRST** for any question — searches all 34 sections                                                                                    |
-| `get_section(name)`          | Get a specific section: OVERVIEW, PROJECT, PYTHON_TYPES, ROUTES_SEMANTIC, RUNBOOK, BUSINESS_DOMAIN, CLI_COMMANDS, IMPLEMENTATION_LOGIC, etc. |
-| `get_context_for_file(path)` | **Before editing any file** — returns types, deps, APIs for that file                                                                        |
-| `get_skills()`               | List auto-generated AI skills                                                                                                                |
-| `get_cache_stats()`          | Cache optimization statistics                                                                                                                |
+| Tool | When to Use |
+|------|-------------|
+| `search_matrix(query)` | **Use FIRST** for any question — searches all 34 sections |
+| `get_section(name)` | Get a specific section: OVERVIEW, PROJECT, PYTHON_TYPES, ROUTES_SEMANTIC, RUNBOOK, BUSINESS_DOMAIN, CLI_COMMANDS, IMPLEMENTATION_LOGIC, etc. |
+| `get_context_for_file(path)` | **Before editing any file** — returns types, deps, APIs for that file |
+| `get_skills()` | List auto-generated AI skills |
+| `get_cache_stats()` | Cache optimization statistics |
 
 ## Key Conventions
 
-1. **python (library):** use type-hints, docstrings, **all**, pytest; avoid print, global-state.
+1. **python (library):** use type-hints, docstrings, __all__, pytest; avoid print, global-state.
 2. **python (code-quality):** use mypy, ruff, black; avoid any-type, mutable-defaults.
 3. **bash:** use set-euo-pipefail, shellcheck, quoting, local-vars; avoid eval, unquoted-vars, cd-without-.
 
@@ -54,17 +54,18 @@ Run tests: `pytest tests/ -x -q`
 
 ## Quality Gates (CI enforced)
 
-1. **ruff** lint must pass
-2. **shellcheck** lint must pass
-3. **mypy** type-check (advisory)
-4. **Version consistency** — pyproject.toml must be single source of truth
-5. **Tests** — `pytest tests/ -x -q` (Python >=3.9)
+1. **black** lint must pass
+2. **ruff** lint must pass
+3. **shellcheck** lint must pass
+4. **mypy** type-check (advisory)
+5. **Version consistency** — pyproject.toml must be single source of truth
+6. **Tests** — `pytest tests/ -x -q` (Python >=3.9)
 
 ## Version & Release
 
 **Single source of truth:** `pyproject.toml` — `version = "1.1.0"`
 
-- `__init__.py` reads via `importlib.metadata` — never edit it manually.
+`__init__.py` reads via `importlib.metadata` — never edit it manually.
 - Release: push `v*` tag → CI runs tests → build → publish.
 - Tag version MUST match pyproject.toml version.
 
@@ -85,7 +86,7 @@ Run tests: `pytest tests/ -x -q`
 ## Project Structure
 
 ```
-  codetrellis/  (803 files)
+  codetrellis/  (804 files)
   scripts/  (17 files)
   lsp/  (1 files)
   codetrellis.egg-info/  (0 files)
@@ -95,22 +96,23 @@ Run tests: `pytest tests/ -x -q`
 
 **Primary pattern:** Request-Response
 
+
 ## CLI Commands (key subset)
 
-| Command      | Purpose                                              |
-| ------------ | ---------------------------------------------------- |
-| `scan`       | Scan project and create matrix                       |
+| Command | Purpose |
+| ------- | ------- |
+| `scan` | Scan project and create matrix |
 | `distribute` | Generate .codetrellis files in each component folder |
-| `init`       | Initialize CodeTrellis in directory                  |
-| `clean`      | Remove .codetrellis/cache directory                  |
-| `show`       | Show compressed matrix                               |
-| `prompt`     | Print prompt-ready matrix                            |
-| `watch`      | Watch for changes                                    |
-| `sync`       | Sync matrix                                          |
-| `export`     | Export specific sections                             |
-| `validate`   | Validate extraction completeness                     |
-| `coverage`   | Show extraction coverage                             |
-| `progress`   | Show project progress (TODOs, completion, blockers)  |
+| `init` | Initialize CodeTrellis in directory |
+| `clean` | Remove .codetrellis/cache directory |
+| `show` | Show compressed matrix |
+| `prompt` | Print prompt-ready matrix |
+| `watch` | Watch for changes |
+| `sync` | Sync matrix |
+| `export` | Export specific sections |
+| `validate` | Validate extraction completeness |
+| `coverage` | Show extraction coverage |
+| `progress` | Show project progress (TODOs, completion, blockers) |
 
 ## Known Pitfalls
 
@@ -118,3 +120,4 @@ Run tests: `pytest tests/ -x -q`
 - `__init__.py` version is read-only (via importlib.metadata) — editing it directly causes CI version mismatch.
 - `CODETRELLIS_BUILD_TIMESTAMP` env var must be set for deterministic CI builds.
 - New code integration requires 5 coordinated changes (see Contributing section).
+

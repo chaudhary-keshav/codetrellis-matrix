@@ -33,9 +33,10 @@ You are the execution specialist for the **codetrellis-matrix** project.
 
 ## Post-Change Quality Checks
 
-- `pytest tests/ -x -q`
-- `python -c "import codetrellis; print(codetrellis.__version__)"`
-- (optionally) `ruff check codetrellis/` and `mypy codetrellis/` when relevant to the change
+- `pytest`
+- `mypy`
+- `ruff`
+- `shellcheck`
 
 ## Output Format
 
