@@ -27594,16 +27594,8 @@ class ProjectScanner:
             pass
 
         # Build summary with purpose detection
-        ext_to_lang = {
-            '.go': 'Go', '.py': 'Python', '.ts': 'TypeScript', '.tsx': 'TypeScript',
-            '.js': 'JavaScript', '.jsx': 'JavaScript', '.java': 'Java',
-            '.rs': 'Rust', '.rb': 'Ruby', '.cs': 'C#', '.cpp': 'C++',
-            '.swift': 'Swift', '.kt': 'Kotlin', '.php': 'PHP',
-            '.ps1': 'PowerShell', '.psm1': 'PowerShell', '.psd1': 'PowerShell',
-            '.scala': 'Scala', '.r': 'R', '.dart': 'Dart', '.lua': 'Lua',
-            '.sh': 'Bash', '.bash': 'Bash', '.c': 'C', '.h': 'C',
-            '.sql': 'SQL', '.html': 'HTML', '.css': 'CSS',
-        }
+        from codetrellis.language_config import EXT_TO_DISPLAY
+        ext_to_lang = EXT_TO_DISPLAY
 
         purpose_hints = {
             'cmd': 'CLI entrypoints', 'api': 'API layer', 'apis': 'API handlers',

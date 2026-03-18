@@ -191,7 +191,3 @@ scripts/validation/validation-results
 # CodeTrellis test results
 tests/repos
 
-# Docs (generated/local-only), but keep references tracked
-docs/
-!docs/references/
-!docs/references/CITATIONS.md

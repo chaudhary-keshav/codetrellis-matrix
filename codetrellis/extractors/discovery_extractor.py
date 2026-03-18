@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from codetrellis.file_classifier import FileClassifier, GitignoreFilter
+from codetrellis.language_config import EXT_TO_LANG, MANIFEST_TO_LANG
 
 
 # =============================================================================
@@ -154,55 +155,8 @@ class DiscoveryExtractor:
     of manifest files. No AST parsing, no regex on source code.
     """
 
-    # Extension → language mapping
-    LANGUAGE_MAP: Dict[str, str] = {
-        '.go': 'go',
-        '.py': 'python',
-        '.ts': 'typescript',
-        '.tsx': 'typescript',
-        '.js': 'javascript',
-        '.jsx': 'javascript',
-        '.rs': 'rust',
-        '.java': 'java',
-        '.kt': 'kotlin',
-        '.kts': 'kotlin',
-        '.scala': 'scala',
-        '.rb': 'ruby',
-        '.ex': 'elixir',
-        '.exs': 'elixir',
-        '.swift': 'swift',
-        '.dart': 'dart',
-        '.cs': 'csharp',
-        '.fs': 'fsharp',
-        '.lua': 'lua',
-        '.zig': 'zig',
-        '.nim': 'nim',
-        '.php': 'php',
-        '.r': 'r',
-        '.R': 'r',
-        '.cpp': 'cpp',
-        '.cc': 'cpp',
-        '.cxx': 'cpp',
-        '.c': 'c',
-        '.h': 'c',
-        '.hpp': 'cpp',
-        '.clj': 'clojure',
-        '.cljs': 'clojure',
-        '.erl': 'erlang',
-        '.hrl': 'erlang',
-        '.ml': 'ocaml',
-        '.mli': 'ocaml',
-        '.hs': 'haskell',
-        '.v': 'v',
-        '.cr': 'crystal',
-        '.pl': 'perl',
-        '.pm': 'perl',
-        '.proto': 'protobuf',
-        '.sol': 'solidity',
-        '.ps1': 'powershell',
-        '.psm1': 'powershell',
-        '.psd1': 'powershell',
-    }
+    # Extension → language mapping (from centralized language_config)
+    LANGUAGE_MAP: Dict[str, str] = EXT_TO_LANG
 
     # Manifest files that indicate a sub-project boundary
     MANIFEST_FILES: List[str] = [
@@ -212,23 +166,8 @@ class DiscoveryExtractor:
         'composer.json',
     ]
 
-    # Manifest → language
-    MANIFEST_LANGUAGE: Dict[str, str] = {
-        'package.json': 'javascript',
-        'go.mod': 'go',
-        'Cargo.toml': 'rust',
-        'pyproject.toml': 'python',
-        'setup.py': 'python',
-        'requirements.txt': 'python',
-        'pom.xml': 'java',
-        'build.gradle': 'java',
-        'build.gradle.kts': 'kotlin',
-        'Gemfile': 'ruby',
-        'mix.exs': 'elixir',
-        'Package.swift': 'swift',
-        'pubspec.yaml': 'dart',
-        'composer.json': 'php',
-    }
+    # Manifest → language (from centralized language_config)
+    MANIFEST_LANGUAGE: Dict[str, str] = MANIFEST_TO_LANG
 
     # JS/TS framework detection from package.json dependencies
     JS_FRAMEWORK_HINTS: Dict[str, str] = {
