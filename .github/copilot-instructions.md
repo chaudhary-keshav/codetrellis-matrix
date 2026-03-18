@@ -28,17 +28,17 @@ tools below. They return the full project context in one call and save hundreds 
 
 ### MCP Server Tools
 
-| Tool | When to Use |
-|------|-------------|
-| `search_matrix(query)` | **Use FIRST** for any question — searches all 34 sections |
-| `get_section(name)` | Get a specific section: OVERVIEW, PROJECT, PYTHON_TYPES, ROUTES_SEMANTIC, RUNBOOK, BUSINESS_DOMAIN, CLI_COMMANDS, IMPLEMENTATION_LOGIC, etc. |
-| `get_context_for_file(path)` | **Before editing any file** — returns types, deps, APIs for that file |
-| `get_skills()` | List auto-generated AI skills |
-| `get_cache_stats()` | Cache optimization statistics |
+| Tool                         | When to Use                                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search_matrix(query)`       | **Use FIRST** for any question — searches all 34 sections                                                                                    |
+| `get_section(name)`          | Get a specific section: OVERVIEW, PROJECT, PYTHON_TYPES, ROUTES_SEMANTIC, RUNBOOK, BUSINESS_DOMAIN, CLI_COMMANDS, IMPLEMENTATION_LOGIC, etc. |
+| `get_context_for_file(path)` | **Before editing any file** — returns types, deps, APIs for that file                                                                        |
+| `get_skills()`               | List auto-generated AI skills                                                                                                                |
+| `get_cache_stats()`          | Cache optimization statistics                                                                                                                |
 
 ## Key Conventions
 
-1. **python (library):** use type-hints, docstrings, __all__, pytest; avoid print, global-state.
+1. **python (library):** use type-hints, docstrings, **all**, pytest; avoid print, global-state.
 2. **python (code-quality):** use mypy, ruff, black; avoid any-type, mutable-defaults.
 3. **bash:** use set-euo-pipefail, shellcheck, quoting, local-vars; avoid eval, unquoted-vars, cd-without-.
 
@@ -95,23 +95,22 @@ Run tests: `pytest tests/ -x -q`
 
 **Primary pattern:** Request-Response
 
-
 ## CLI Commands (key subset)
 
-| Command | Purpose |
-| ------- | ------- |
-| `scan` | Scan project and create matrix |
+| Command      | Purpose                                              |
+| ------------ | ---------------------------------------------------- |
+| `scan`       | Scan project and create matrix                       |
 | `distribute` | Generate .codetrellis files in each component folder |
-| `init` | Initialize CodeTrellis in directory |
-| `clean` | Remove .codetrellis/cache directory |
-| `show` | Show compressed matrix |
-| `prompt` | Print prompt-ready matrix |
-| `watch` | Watch for changes |
-| `sync` | Sync matrix |
-| `export` | Export specific sections |
-| `validate` | Validate extraction completeness |
-| `coverage` | Show extraction coverage |
-| `progress` | Show project progress (TODOs, completion, blockers) |
+| `init`       | Initialize CodeTrellis in directory                  |
+| `clean`      | Remove .codetrellis/cache directory                  |
+| `show`       | Show compressed matrix                               |
+| `prompt`     | Print prompt-ready matrix                            |
+| `watch`      | Watch for changes                                    |
+| `sync`       | Sync matrix                                          |
+| `export`     | Export specific sections                             |
+| `validate`   | Validate extraction completeness                     |
+| `coverage`   | Show extraction coverage                             |
+| `progress`   | Show project progress (TODOs, completion, blockers)  |
 
 ## Known Pitfalls
 
@@ -119,4 +118,3 @@ Run tests: `pytest tests/ -x -q`
 - `__init__.py` version is read-only (via importlib.metadata) — editing it directly causes CI version mismatch.
 - `CODETRELLIS_BUILD_TIMESTAMP` env var must be set for deterministic CI builds.
 - New code integration requires 5 coordinated changes (see Contributing section).
-
