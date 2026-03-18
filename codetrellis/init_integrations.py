@@ -27,6 +27,7 @@ Usage:
 Part of CodeTrellis v4.68 — AI Integration Initializer
 """
 
+import fnmatch
 import json
 import re
 import sys
@@ -560,7 +561,15 @@ def _build_quality_gates_block(
     # Detect linting tools from best practices — language-filtered
     linters = set()
     test_tools = set()
-    detected_lower = {lang.lower() for lang in info.detected_languages}
+    # Normalize detected language display names to canonical keys
+    # (e.g. 'C#' → 'csharp', 'C++' → 'cpp', 'F#' → 'fsharp')
+    _display_to_key: Dict[str, str] = {
+        v.display_name.lower(): v.key for v in _LC_BY_KEY.values()
+    }
+    detected_lang_keys = {
+        _display_to_key.get(str(lang).lower(), str(lang).lower())
+        for lang in info.detected_languages
+    }
     if ctx.best_practices_parsed:
         for bp in ctx.best_practices_parsed:
             for tool in bp.get("use", []):
@@ -568,11 +577,11 @@ def _build_quality_gates_block(
                 # Only include linters relevant to detected languages
                 if tool_str in _LC_LINTER_LANG:
                     needed_langs = _LC_LINTER_LANG[tool_str]
-                    if needed_langs & detected_lower or tool_str == "shellcheck":
+                    if needed_langs & detected_lang_keys or tool_str == "shellcheck":
                         linters.add(str(tool))
                 elif tool_str in _LC_TEST_LANG:
                     needed_langs = _LC_TEST_LANG[tool_str]
-                    if needed_langs & detected_lower:
+                    if needed_langs & detected_lang_keys:
                         test_tools.add(str(tool))
 
     for linter in sorted(linters):
@@ -585,7 +594,7 @@ def _build_quality_gates_block(
             tool_str = str(tool).lower()
             if tool_str in _LC_TYCHECK_LANG:
                 needed = _LC_TYCHECK_LANG[tool_str]
-                if needed & detected_lower:
+                if needed & detected_lang_keys:
                     lines.append(f"{idx}. **{tool}** type-check (advisory)")
                     idx += 1
 
@@ -629,10 +638,21 @@ def _build_version_block(
 
     # Language-specific version workflow from language_config
     lang_info: Optional[LanguageInfo] = None
+    ver_basename = Path(ver_file).name
     for lang in LANGUAGES:
-        if lang.version_file and lang.version_file.rstrip("*").rstrip(".") in ver_file:
-            lang_info = lang
-            break
+        pattern = lang.version_file
+        if not pattern:
+            continue
+        if any(ch in pattern for ch in "*?[]"):
+            # Glob pattern (e.g. "*.csproj") — use fnmatch
+            if fnmatch.fnmatch(ver_basename, pattern):
+                lang_info = lang
+                break
+        else:
+            # Exact filename match
+            if ver_basename == pattern or ver_file.endswith(pattern):
+                lang_info = lang
+                break
 
     if lang_info and lang_info.version_bump_hint:
         # Use per-language release guidance
@@ -662,7 +682,15 @@ def _build_lifecycle_block(
 
     # Detect linter command — language-filtered via language_config
     lint_cmd = ""
-    detected_lower = {lang.lower() for lang in info.detected_languages}
+    # Normalize detected language display names to canonical keys
+    # (e.g. 'C#' → 'csharp', 'C++' → 'cpp', 'F#' → 'fsharp')
+    _display_to_key2: Dict[str, str] = {
+        v.display_name.lower(): v.key for v in _LC_BY_KEY.values()
+    }
+    detected_canonical = {
+        _display_to_key2.get(str(lang).lower(), str(lang).lower())
+        for lang in info.detected_languages
+    }
     # Map common linter names to their CLI invocations
     _LINT_COMMANDS: Dict[str, str] = {
         "ruff": "ruff check", "eslint": "npx eslint .",
@@ -678,7 +706,7 @@ def _build_lifecycle_block(
                 tool_str = str(tool).lower()
                 if tool_str in _LC_LINTER_LANG and tool_str in _LINT_COMMANDS:
                     needed = _LC_LINTER_LANG[tool_str]
-                    if needed & detected_lower:
+                    if needed & detected_canonical:
                         lint_cmd = _LINT_COMMANDS[tool_str]
                         break
             if lint_cmd:

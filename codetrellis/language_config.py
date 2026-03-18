@@ -17,7 +17,7 @@ Consumers
 Adding a new language
 ---------------------
 1. Add an entry to ``LANGUAGES`` below.
-2. Run ``pytest tests/unit/test_language_config.py -x -q`` to verify.
+2. Run ``pytest tests/ -x -q`` to verify.
 3. Everything else (init_integrations, discovery_extractor, scanner)
    picks it up automatically.
 """
@@ -615,7 +615,7 @@ def _build_ext_to_lang() -> Dict[str, str]:
     m: Dict[str, str] = {}
     for lang in LANGUAGES:
         for ext in lang.extensions:
-            m[ext] = lang.key
+            m[ext.lower()] = lang.key
     return m
 
 def _build_manifest_to_lang() -> Dict[str, str]:
@@ -632,7 +632,7 @@ def _build_ext_to_display() -> Dict[str, str]:
     m: Dict[str, str] = {}
     for lang in LANGUAGES:
         for ext in lang.extensions:
-            m[ext] = lang.display_name
+            m[ext.lower()] = lang.display_name
     return m
 
 def _build_alias_map() -> Dict[str, Set[str]]:

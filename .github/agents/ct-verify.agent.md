@@ -28,7 +28,7 @@ You are the quality gate for the **codetrellis-matrix** project.
 - **Architecture:** Request-Response
 - **Primary language:** python
 - **Python:** >=3.9
-- **Version source:** pyproject.toml (version = "1.0.2")
+- **Version source:** pyproject.toml (version = "1.1.0")
 
 ## Post-Change Quality Checks
 

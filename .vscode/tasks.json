@@ -4,7 +4,7 @@
     {
       "label": "CodeTrellis: Watch Mode",
       "type": "shell",
-      "command": "codetrellis watch /Users/keshavchaudhary/Documents/github-new/codetrellis-matrix",
+      "command": "codetrellis watch ${workspaceFolder}",
       "isBackground": true,
       "problemMatcher": [],
       "group": "build",
@@ -22,7 +22,7 @@
     {
       "label": "CodeTrellis: Scan (Optimal)",
       "type": "shell",
-      "command": "codetrellis scan /Users/keshavchaudhary/Documents/github-new/codetrellis-matrix --optimal",
+      "command": "codetrellis scan ${workspaceFolder} --optimal",
       "group": "build",
       "problemMatcher": [],
       "presentation": {
@@ -34,7 +34,7 @@
     {
       "label": "CodeTrellis: Scan (Incremental)",
       "type": "shell",
-      "command": "codetrellis scan /Users/keshavchaudhary/Documents/github-new/codetrellis-matrix --incremental",
+      "command": "codetrellis scan ${workspaceFolder} --incremental",
       "group": "build",
       "problemMatcher": [],
       "presentation": {
@@ -46,7 +46,7 @@
     {
       "label": "CodeTrellis: Verify Build",
       "type": "shell",
-      "command": "codetrellis verify /Users/keshavchaudhary/Documents/github-new/codetrellis-matrix",
+      "command": "codetrellis verify ${workspaceFolder}",
       "group": "test",
       "problemMatcher": [],
       "presentation": {
