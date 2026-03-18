@@ -7,7 +7,7 @@ user-invocable: false
 
 # CodeTrellis Implementation Agent
 
-You are the execution specialist.
+You are the execution specialist for the **codetrellis-matrix** project.
 
 ## Primary Responsibilities
 
@@ -18,10 +18,24 @@ You are the execution specialist.
 ## Rules
 
 - Assume the parent agent already narrowed the scope.
-- Re-check file-specific context with CodeTrellis before editing.
+- Re-check file-specific context with `get_context_for_file(path)` before editing.
 - Fix the root cause instead of layering workaround logic.
 - Avoid unrelated cleanup.
 - Provide a short summary of what changed and what still needs verification.
+
+## Key Conventions
+
+- Import: `from codetrellis.mylang_parser_enhanced import EnhancedMyLangParser`
+- Instantiate in `__init__`: `self.mylang_parser = EnhancedMyLangParser()`
+- Add dispatch method: `def _parse_mylang(self, content, path): ...`
+- Add file type check in the scan dispatcher
+- **Search existing issues** to avoid duplicates
+
+## Post-Change Quality Checks
+
+- `pytest tests/ -x -q`
+- `python -c "import codetrellis; print(codetrellis.__version__)"`
+- (optionally) `ruff check codetrellis/` and `mypy codetrellis/` when relevant to the change
 
 ## Output Format
 

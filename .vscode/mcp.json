@@ -2,12 +2,12 @@
   "servers": {
     "codetrellis": {
       "type": "stdio",
-      "command": "/Users/keshavchaudhary/Documents/GitHub/codetrellis-reops/codetrellis/.venv/bin/python",
+      "command": "/opt/homebrew/opt/python@3.14/bin/python3.14",
       "args": [
         "-m",
         "codetrellis",
         "mcp",
-        "/Users/keshavchaudhary/Documents/GitHub/codetrellis-reops/codetrellis"
+        "/Users/keshavchaudhary/Documents/github-new/codetrellis-matrix"
       ],
       "env": {}
     }
