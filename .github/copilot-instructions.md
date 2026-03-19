@@ -28,17 +28,17 @@ tools below. They return the full project context in one call and save hundreds 
 
 ### MCP Server Tools
 
-| Tool | When to Use |
-|------|-------------|
-| `search_matrix(query)` | **Use FIRST** for any question — searches all 34 sections |
-| `get_section(name)` | Get a specific section: OVERVIEW, PROJECT, PYTHON_TYPES, ROUTES_SEMANTIC, RUNBOOK, BUSINESS_DOMAIN, CLI_COMMANDS, IMPLEMENTATION_LOGIC, etc. |
-| `get_context_for_file(path)` | **Before editing any file** — returns types, deps, APIs for that file |
-| `get_skills()` | List auto-generated AI skills |
-| `get_cache_stats()` | Cache optimization statistics |
+| Tool                         | When to Use                                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search_matrix(query)`       | **Use FIRST** for any question — searches all 34 sections                                                                                    |
+| `get_section(name)`          | Get a specific section: OVERVIEW, PROJECT, PYTHON_TYPES, ROUTES_SEMANTIC, RUNBOOK, BUSINESS_DOMAIN, CLI_COMMANDS, IMPLEMENTATION_LOGIC, etc. |
+| `get_context_for_file(path)` | **Before editing any file** — returns types, deps, APIs for that file                                                                        |
+| `get_skills()`               | List auto-generated AI skills                                                                                                                |
+| `get_cache_stats()`          | Cache optimization statistics                                                                                                                |
 
 ## Key Conventions
 
-1. **python (library):** use type-hints, docstrings, __all__, pytest; avoid print, global-state.
+1. **python (library):** use type-hints, docstrings, **all**, pytest; avoid print, global-state.
 2. **python (code-quality):** use mypy, ruff, black; avoid any-type, mutable-defaults.
 3. **bash:** use set-euo-pipefail, shellcheck, quoting, local-vars; avoid eval, unquoted-vars, cd-without-.
 
@@ -66,6 +66,7 @@ Run tests: `pytest tests/ -x -q`
 **Single source of truth:** `pyproject.toml` — `version = "1.1.0"`
 
 `__init__.py` reads via `importlib.metadata` — never edit it manually.
+
 - Release: push `v*` tag → CI runs tests → build → publish.
 - Tag version MUST match pyproject.toml version.
 
@@ -96,23 +97,22 @@ Run tests: `pytest tests/ -x -q`
 
 **Primary pattern:** Request-Response
 
-
 ## CLI Commands (key subset)
 
-| Command | Purpose |
-| ------- | ------- |
-| `scan` | Scan project and create matrix |
+| Command      | Purpose                                              |
+| ------------ | ---------------------------------------------------- |
+| `scan`       | Scan project and create matrix                       |
 | `distribute` | Generate .codetrellis files in each component folder |
-| `init` | Initialize CodeTrellis in directory |
-| `clean` | Remove .codetrellis/cache directory |
-| `show` | Show compressed matrix |
-| `prompt` | Print prompt-ready matrix |
-| `watch` | Watch for changes |
-| `sync` | Sync matrix |
-| `export` | Export specific sections |
-| `validate` | Validate extraction completeness |
-| `coverage` | Show extraction coverage |
-| `progress` | Show project progress (TODOs, completion, blockers) |
+| `init`       | Initialize CodeTrellis in directory                  |
+| `clean`      | Remove .codetrellis/cache directory                  |
+| `show`       | Show compressed matrix                               |
+| `prompt`     | Print prompt-ready matrix                            |
+| `watch`      | Watch for changes                                    |
+| `sync`       | Sync matrix                                          |
+| `export`     | Export specific sections                             |
+| `validate`   | Validate extraction completeness                     |
+| `coverage`   | Show extraction coverage                             |
+| `progress`   | Show project progress (TODOs, completion, blockers)  |
 
 ## Known Pitfalls
 
@@ -121,3 +121,92 @@ Run tests: `pytest tests/ -x -q`
 - `CODETRELLIS_BUILD_TIMESTAMP` env var must be set for deterministic CI builds.
 - New code integration requires 5 coordinated changes (see Contributing section).
 
+## Session Quality Rules (learned from 60 prior sessions)
+
+> These rules were extracted from analyzing 352 MB of real conversation history (2026-03-08 through 2026-03-19).
+> Full analysis: `.github/session-learned-rules.md`
+
+### Mandatory Session Behaviors
+
+1. **Never restart a session for the same task.** If stuck, diagnose why or break into a smaller sub-task. Each new session loses all accumulated context.
+2. **Never paste identical prompts across sessions.** If retrying, prepend what was already tried and what failed.
+3. **Be specific, not vague.** State what is broken, where, and what you expected. Never use "see attached and fix the issue" without describing the error.
+4. **Pick one model and commit.** Don't switch models mid-task — the issue is usually prompt clarity, not the model.
+5. **Limit each session to 2-3 deliverables.** Never "implement the entire plan" in one session.
+6. **Validate after each batch.** Run `pytest tests/ -x -q` and `ruff check` before proceeding to the next task.
+7. **Provide state context when resuming.** Always specify: what's done, what's in progress, and what's next.
+8. **Use MCP tools first.** Call `search_matrix()` or `get_context_for_file()` before manual file exploration.
+9. **Don't cancel prematurely.** Give the model 60+ seconds for complex tasks — file reads and tool calls are normal processing.
+10. **Commit between sessions.** Use `git commit` or `git stash` after each successful session to create clear checkpoints.
+
+### Model Selection Guide
+
+- **claude-opus-4.6**: Complex multi-file implementation, plan execution, deep analysis (3x rate) — 15 sessions
+- **claude-sonnet-4.6**: Targeted fixes, code review, single-file changes (1x rate) — 2 sessions
+- **gpt-5.4**: Strategic planning, documentation, multi-agent validation, creative writing — 5 sessions
+
+### Effective Prompt Patterns (keep using)
+
+- Detailed briefs with explicit constraints, scope boundaries, and exit criteria
+- Phase-based execution: "Work phase by phase, verify each batch"
+- Role-based prompting: "You are a senior [role] working inside [repo]"
+- Explicit "do not" constraints to prevent destructive or out-of-scope actions
+- Multi-agent orchestration (ct-research → ct-implement → ct-verify) for strategic tasks
+- Structured PR review prompts with explicit review context for focused multi-file changes
+
+## User Commands
+
+These are shorthand commands the user may give. Execute them exactly as described.
+
+### `sync my sessions`
+
+When the user says **"sync my sessions"** (or any close variation), execute this full procedure:
+
+1. **Locate the VS Code workspace storage** for the current project:
+
+   ```
+   ~/Library/Application Support/Code/User/workspaceStorage/*/workspace.json
+   ```
+
+   Find the directory whose `workspace.json` contains the current project folder path.
+
+2. **Run the extraction script:**
+
+   ```bash
+   python3 scripts/extract_copilot_history.py "<project-folder-name>"
+   ```
+
+   This extracts all chat sessions into `copilot_chat_history.md`.
+
+3. **Run the analysis script:**
+
+   ```bash
+   python3 scripts/analyze_sessions.py "<project-folder-name>"
+   ```
+
+   This produces `session_analysis.md` with pattern statistics.
+
+4. **Read the analysis output** and the existing `.github/session-learned-rules.md`.
+
+5. **Update `.github/session-learned-rules.md`** — merge new findings with existing rules:
+   - Add any new anti-patterns discovered
+   - Update statistics (session count, date range, data size)
+   - Preserve existing rules that are still relevant
+   - Remove rules that no longer apply
+
+6. **Update the "Session Quality Rules" section in this file** (`.github/copilot-instructions.md`) with any new mandatory behaviors learned from the latest analysis.
+
+7. **Report a summary** to the user:
+   - How many new sessions were analyzed
+   - What new patterns or anti-patterns were found
+   - What rules were added or updated
+   - Date range covered
+
+8. **Clean up** — remove `copilot_chat_history.md` and `session_analysis.md` from the project root (they are temporary artifacts).
+
+The scripts are located at:
+
+- `scripts/extract_copilot_history.py` — extracts chat history from VS Code local storage
+- `scripts/analyze_sessions.py` — analyzes sessions for patterns and anti-patterns
+
+**Important:** If the scripts don't exist or fail, recreate them following the same logic — read JSONL files from `~/Library/Application Support/Code/User/workspaceStorage/<hash>/chatSessions/`, parse the JSON structure (kind=0 is session header, kind=1 is updates), extract user messages and assistant responses, and analyze for patterns like rapid retries, repeated prompts, model switching, and vague requests.
