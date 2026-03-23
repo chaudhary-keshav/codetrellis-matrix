@@ -200,6 +200,48 @@ class DiscoveryExtractor:
         'socket.io-client': 'socket.io',
     }
 
+    # Dart/Flutter framework detection from pubspec.yaml dependencies
+    DART_FRAMEWORK_HINTS: Dict[str, str] = {
+        'flutter': 'flutter',
+        'flutter_riverpod': 'riverpod',
+        'riverpod': 'riverpod',
+        'hooks_riverpod': 'riverpod',
+        'flutter_bloc': 'bloc',
+        'bloc': 'bloc',
+        'get': 'getx',
+        'provider': 'provider',
+        'mobx': 'mobx',
+        'flutter_mobx': 'mobx',
+        'flutter_redux': 'redux',
+        'redux': 'redux',
+        'dio': 'dio',
+        'http': 'http',
+        'chopper': 'chopper',
+        'retrofit': 'retrofit',
+        'graphql_flutter': 'graphql',
+        'drift': 'drift',
+        'floor': 'floor',
+        'isar': 'isar',
+        'hive': 'hive',
+        'objectbox': 'objectbox',
+        'sqflite': 'sqflite',
+        'firebase_core': 'firebase',
+        'firebase_auth': 'firebase',
+        'cloud_firestore': 'firebase',
+        'supabase_flutter': 'supabase',
+        'freezed_annotation': 'freezed',
+        'json_serializable': 'json_serializable',
+        'built_value': 'built_value',
+        'get_it': 'get_it',
+        'injectable': 'injectable',
+        'go_router': 'go_router',
+        'auto_route': 'auto_route',
+        'shelf': 'shelf',
+        'dart_frog': 'dart_frog',
+        'serverpod': 'serverpod',
+        'grpc': 'grpc',
+    }
+
     # Directories to skip
     IGNORE_DIRS: Set[str] = {
         'node_modules', 'dist', 'build', '.git', '.angular',
@@ -459,6 +501,22 @@ class DiscoveryExtractor:
                 }
                 for dep_key, hint in swift_framework_hints.items():
                     if dep_key in content:
+                        info.framework_hints.append(hint)
+                info.framework_hints = list(dict.fromkeys(info.framework_hints))
+            except (OSError, UnicodeDecodeError):
+                pass
+        elif manifest == 'pubspec.yaml':
+            try:
+                content = manifest_path.read_text(encoding='utf-8')
+                name_match = re.search(r'^name:\s*(\S+)', content, re.MULTILINE)
+                if name_match:
+                    info.name = name_match.group(1)
+                desc_match = re.search(r'^description:\s*(.+)', content, re.MULTILINE)
+                if desc_match:
+                    info.description = desc_match.group(1).strip().strip("'\"")
+                # Detect Dart/Flutter frameworks from dependencies
+                for dep_key, hint in self.DART_FRAMEWORK_HINTS.items():
+                    if re.search(r'^\s+' + re.escape(dep_key) + r'\s*:', content, re.MULTILINE):
                         info.framework_hints.append(hint)
                 info.framework_hints = list(dict.fromkeys(info.framework_hints))
             except (OSError, UnicodeDecodeError):

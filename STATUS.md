@@ -1,16 +1,16 @@
 > **Public Release Version:** 1.0.0 (PyPI)
-> Internal development tracked as v4.9.0–v5.7.0 across 83 sessions.
+> Internal development tracked as v4.9.0–v5.8.0 across 84 sessions.
 > This file contains internal development history.
 
 ---
 
-# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq, Laravel, Symfony, CodeIgniter, Slim, WordPress, Actix Web, Axum, Rocket, Warp, Diesel, SeaORM, Tauri, Elixir, Phoenix, Ecto, Absinthe, Oban, React Native Language Support — STATUS.md
+# Java, Kotlin, C#, Rust, SQL, HTML, CSS, Bash, C, C++, Swift, Ruby, PHP, Scala, R, Dart, Lua, PowerShell, JavaScript, TypeScript, Vue.js, Tailwind CSS, Material UI (MUI), Ant Design, Chakra UI, shadcn/ui, Bootstrap, Radix UI, Styled Components, Emotion, Sass/SCSS, Less, PostCSS, Redux/RTK, Zustand, Jotai, Recoil, MobX, Pinia, NgRx, XState, Valtio, TanStack Query, SWR, Apollo Client, Astro, Remix, Solid.js, Qwik, Preact, Lit / Web Components, Alpine.js, HTMX, Stimulus / Hotwire, D3.js, Chart.js, Recharts, Leaflet / Mapbox, Framer Motion, GSAP, RxJS, Express.js, NestJS, Fastify, Koa, Hono, tRPC, Hapi, AdonisJS, Django, Flask, FastAPI, Starlette, SQLAlchemy, Celery, Sanic, Litestar, Pydantic, Spring Boot, Spring Framework, Quarkus, Micronaut, Jakarta EE, Vert.x, Hibernate, MyBatis, Apache Camel, Akka, ASP.NET Core, EF Core, MediatR, AutoMapper, Hangfire, MassTransit, Dapper, Gin, Echo, Fiber, Chi, gRPC-Go, GORM, sqlx, Cobra, Rails, Sinatra, Hanami, Grape, Sidekiq, Laravel, Symfony, CodeIgniter, Slim, WordPress, Actix Web, Axum, Rocket, Warp, Diesel, SeaORM, Tauri, Elixir, Phoenix, Ecto, Absinthe, Oban, React Native, Expo Language Support — STATUS.md
 
 ## Overview
 
-**CodeTrellis Version**: v5.7.0 (v5.6.0 + React Native Framework Parser)
-**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq), Session 80 (PHP Frameworks: Laravel + Symfony + CodeIgniter + Slim + WordPress), Session 81 (Rust Frameworks: Actix Web + Axum + Rocket + Warp + Diesel + SeaORM + Tauri), Session 82 (Elixir Ecosystem: Elixir + Phoenix + Ecto + Absinthe + Oban), Session 83 (React Native)
-**Status**: ✅ Session 83 Complete — React Native Framework Parser (v5.7.0): 1 new framework parser + 5 extractors with full regex-based extraction following the TypeScript parser reference pattern. **React Native** — core RN components, animated components (Animated API, Reanimated v2/v3, LayoutAnimation, Moti), list components (FlatList, SectionList, FlashList), React Navigation (stack, tab, drawer, native*stack), Expo Router, deep linking, NativeModules, TurboModules, Fabric components, JSI bindings, NativeEventEmitter, StyleSheet.create, NativeWind, styled-components/native, Restyle, react-native-paper themes, Platform.OS/select/Version, platform-specific files (.ios/.android/.native/.web), PermissionsAndroid, expo permissions, AppState, BackHandler, Linking, Keyboard. 40+ framework detection patterns (core, navigation, animation, UI libraries, styling, storage, media, maps, push notifications, testing, devtools, Expo SDK). RN version detection 0.59-0.76+. Architecture detection (bridge, new_architecture, bridgeless). Scanner integration (18 rn*\* ProjectMatrix fields, dispatch in both JS and TS blocks), compressor (5 new sections: REACT_NATIVE_COMPONENTS, REACT_NATIVE_NAVIGATION, REACT_NATIVE_NATIVE_MODULES, REACT_NATIVE_STYLING, REACT_NATIVE_PLATFORM). 50 BPL practices (RN001-RN050). A5.x module updates (cache_optimizer, jit_context, skills_generator, mcp_server). 46 new unit tests, 3-project scanner evaluation (react-native-reanimated, react-native-paper, Ignite), 0 regressions (7264 total tests).
+**CodeTrellis Version**: v5.8.0 (v5.7.0 + Expo Framework Parser)
+**Started**: Session 1 (Java), Session 2 (gap closure + Kotlin v1.0), Session 3 (C#), Session 4 (Rust), Session 5 (SQL), Session 6 (HTML), Session 7 (CSS), Session 8 (Bash), Session 9 (C), Session 10 (C++), Session 11 (Kotlin v2.0), Session 12 (Swift), Session 13 (Ruby), Session 14 (PHP), Session 15 (Scala), Session 16 (R), Session 17 (Dart), Session 18 (Lua), Session 19 (PowerShell), Session 20 (JavaScript), Session 21 (TypeScript), Session 22 (Vue.js), Session 23 (Tailwind CSS), Session 24 (Material UI), Session 25 (Ant Design), Session 26 (Chakra UI), Session 27 (shadcn/ui), Session 28 (Bootstrap), Session 29 (Radix UI), Session 30 (Styled Components), Session 31 (Emotion), Session 32 (Sass/SCSS), Session 33 (Less), Session 34 (PostCSS), Session 35 (Redux/RTK), Session 36 (Zustand), Session 37 (Jotai), Session 37.5 (Recoil), Session 38 (MobX), Session 39 (Pinia), Session 40 (NgRx), Session 41 (XState), Session 42 (Valtio), Session 43 (TanStack Query), Session 44 (SWR), Session 45 (Apollo Client), Session 46 (Astro), Session 47 (Remix), Session 48 (Solid.js), Session 49 (Qwik), Session 50 (Preact), Session 51 (Lit / Web Components), Session 52 (Alpine.js), Session 53 (HTMX), Session 54 (Zig), Session 55 (PART F Advanced Research + PART G Quality Gates), Session 55b (PART H Build Contracts), Session 56 (PART J Appendices Validation & Synergy Testing), Session 57 (AI Integration Initializer), Session 58 (Stimulus / Hotwire), Session 59 (Infrastructure Hardening — Watcher + Builder + Compressor), Session 61 (D3.js), Session 62 (Chart.js), Session 63 (Recharts), Session 64 (Leaflet / Mapbox), Session 65 (Framer Motion), Session 66 (GSAP + RxJS), Session 67 (Express.js + NestJS + Fastify), Session 68 (Koa + Hono), Session 69 (tRPC + Hapi + AdonisJS), Session 74 (Spring Boot + Spring Framework + Quarkus + Micronaut + Jakarta EE), Session 75 (Vert.x + Hibernate + MyBatis + Apache Camel + Akka), Session 76 (ASP.NET Core + EF Core + MediatR + AutoMapper + Hangfire + MassTransit + Dapper), Session 77 (Git Context + Change-Frequency Sorting + JIT Graph Boosting + Remote Scan), Session 78 (Go Frameworks: Gin + Echo + Fiber + Chi + gRPC-Go + GORM + sqlx + Cobra), Session 79 (Ruby Frameworks: Rails + Sinatra + Hanami + Grape + Sidekiq), Session 80 (PHP Frameworks: Laravel + Symfony + CodeIgniter + Slim + WordPress), Session 81 (Rust Frameworks: Actix Web + Axum + Rocket + Warp + Diesel + SeaORM + Tauri), Session 82 (Elixir Ecosystem: Elixir + Phoenix + Ecto + Absinthe + Oban), Session 83 (React Native), Session 84 (Expo)
+**Status**: ✅ Session 84 Complete — Expo Framework Parser (v5.8.0): 1 new framework parser + 5 extractors with full regex-based extraction following the TypeScript parser reference pattern. **Expo** — app.json/app.config.js/ts config extraction, EAS Build/Submit/Update profiles, 50+ expo-_ SDK module detection across 10 categories (device, media, storage, ui, sharing, misc, updates, location, sensors, auth), Expo Router v1-v3 file-based routing (*layout, [dynamic], [...catchAll], route groups, API routes), config plugins (30+ known plugins, custom plugin detection), Expo Modules API (Swift/Kotlin native modules), deep-linking/push-notifications/social-auth/image-pipeline integration patterns, SDK 44-52+ version detection. 60+ framework detection patterns. Scanner integration (22 expo*_ ProjectMatrix fields, dispatch in both JS and TS blocks, dedicated config file scanning), compressor (5 new sections: EXPO_CONFIG, EXPO_MODULES, EXPO_ROUTER, EXPO_PLUGINS, EXPO_API). 14 BPL practices (EXPO001-EXPO042). 96 new unit tests, 3-project scanner evaluation (expo-examples/with-router, pillar-valley, rn-template-obytes), 0 regressions (7474 total tests).
 
 ---
 
@@ -5453,5 +5453,81 @@ New tests:  46 (1 test file)
 Previous:  7233 (from Session 82 baseline)
 Total:     7264
 pytest tests/ -x -q → 7264 passed, 101 skipped
+✅ ALL TESTS PASSED — 0 failures, 0 regressions
+```
+
+## Session 84 — Expo Framework Parser (v5.8.0)
+
+### Scope
+
+Expo framework support as a FRAMEWORK-level parser (like React Native, React, MUI). Runs as an overlay on JS/TS files when Expo imports or config files are detected. Following the TypeScript parser reference pattern with 5 extractors. SDK 44–52+ coverage.
+
+### New Files (9)
+
+**Extractors (5 + init):**
+
+- `codetrellis/extractors/expo/__init__.py` — Module init exporting all 5 extractors and 14 dataclass types
+- `codetrellis/extractors/expo/config_extractor.py` — ExpoConfigExtractor: app.json, app.config.js/ts, eas.json parsing. ExpoConfigInfo (name, slug, sdk_version, platforms, plugins, workflow), ExpoEASConfigInfo (build_profiles, submit_profiles, update_channels), ExpoPluginConfigInfo
+- `codetrellis/extractors/expo/module_extractor.py` — ExpoModuleExtractor: 50+ expo-\* SDK packages across 10 categories (device, media, storage, ui, sharing, misc, updates, location, sensors, auth). ExpoModuleUsageInfo, ExpoPermissionInfo (8 permission patterns), ExpoAssetInfo
+- `codetrellis/extractors/expo/router_extractor.py` — ExpoRouterExtractor: Expo Router v1–v3 file-based routing. ExpoRouteInfo, ExpoLayoutInfo, ExpoRouteGroupInfo, ExpoApiRouteInfo. Dynamic `[param]`, catch-all `[...rest]`, route groups `(group)`, API routes
+- `codetrellis/extractors/expo/plugin_extractor.py` — ExpoPluginExtractor: 30+ known config plugins, custom plugin detection, Expo Modules API (Swift Name() + Kotlin Module()). ExpoConfigPluginInfo, ExpoModulesAPIInfo
+- `codetrellis/extractors/expo/api_extractor.py` — ExpoApiExtractor: Cross-module integration patterns (deep-linking, push-notifications, social-auth, image-pipeline), SDK version detection, EAS detection, workflow detection. ExpoImportInfo, ExpoIntegrationInfo, ExpoEASInfo
+
+**Parser (1):**
+
+- `codetrellis/expo_parser_enhanced.py` — Main Expo parser. ExpoParseResult dataclass (all fields from all extractors), EnhancedExpoParser with 60+ FRAMEWORK_PATTERNS, SDK_VERSION_FEATURES (SDK 44–52). `is_expo_file()` and `is_config_file()` gates. Coordinates all 5 extractors.
+
+**Tests (1):**
+
+- `tests/unit/test_expo_parser_enhanced.py` — 96 tests across 8 classes: TestExpoConfigExtractor (8), TestExpoModuleExtractor (11), TestExpoRouterExtractor (13), TestExpoPluginExtractor (7), TestExpoApiExtractor (11), TestEnhancedExpoParser (18), TestEdgeCases (10), TestSDKVersionSupport (8)
+
+**BPL (1):**
+
+- `codetrellis/bpl/practices/expo_core.yaml` — 14 practices (EXPO001–EXPO042): Config management, EAS Build, SDK updates, Expo Router patterns, permissions, splash screens, OTA updates, native modules, asset optimization, environment config
+
+### Modified Files
+
+**scanner.py:**
+
+- Added import for `EnhancedExpoParser`
+- Added 22 ProjectMatrix fields: `expo_config`, `expo_eas_config`, `expo_modules`, `expo_permissions`, `expo_assets`, `expo_routes`, `expo_layouts`, `expo_route_groups`, `expo_api_routes`, `expo_config_plugins`, `expo_modules_api`, `expo_integrations`, `expo_navigation_hooks`, `expo_detected_frameworks`, `expo_sdk_version`, `expo_workflow`, `expo_router_version`, `expo_has_custom_plugins`
+- Added parser init: `self.expo_parser = EnhancedExpoParser()`
+- Added `_parse_expo()` method (~200 lines)
+- Added `_parse_expo_config_files()` method for app.json/app.config.js/eas.json
+- Dispatch wired in BOTH JS and TS handler blocks (after `_parse_react_native()`)
+
+**compressor.py:**
+
+- 5 new section calls: `[EXPO_CONFIG]`, `[EXPO_MODULES]`, `[EXPO_ROUTER]`, `[EXPO_PLUGINS]`, `[EXPO_API]`
+- 5 new compress methods: `_compress_expo_config()`, `_compress_expo_modules()`, `_compress_expo_router()`, `_compress_expo_plugins()`, `_compress_expo_api()`
+
+**bpl/models.py:**
+
+- Added `JS_EXPO = "expo"` to PracticeCategory enum
+
+**bpl/selector.py:**
+
+- Added Expo artifact counting (`expo_modules`, `expo_routes`, `expo_config_plugins`)
+- Added framework detection for `expo` mapping to `JS_EXPO`
+
+### Key Fixes (4 bugs found and fixed during test development)
+
+1. **Namespace import regex** (module_extractor.py + api_extractor.py): `import * as Camera from 'expo-camera'` not matched. Changed `[\w*]+` to `\*\s+as\s+\w+|\{[^}]*\}|\w+(?:\s*,\s*\{[^}]*\})?` in EXPO_IMPORT_PATTERN
+2. **Swift Modules API regex** (plugin_extractor.py): `Name("MyModule")` not matched. Changed `Module\s*\(` to `(?:Module|Name)\s*\(` in EXPO_MODULE_DEF
+3. **Config dict key mismatch** (expo_parser_enhanced.py): Config extractor returns `{'configs': [...]}` (plural) but parser looked for `config_result.get('config')`. Fixed to use correct pluralized keys `configs`, `eas_configs`, `plugin_configs`
+
+### Scanner Evaluation (3 Repos)
+
+1. **expo-examples/with-router** (minimal): 2 Expo sections — [EXPO_CONFIG] (SDK 47), [EXPO_PLUGINS] (expo-router)
+2. **EvanBacon/pillar-valley** (full game app): 5 Expo sections — [EXPO_CONFIG] (SDK 47, managed workflow, 18 frameworks), [EXPO_MODULES] (44 usages, 20 unique, audio permission), [EXPO_ROUTER] (7 routes, 2 layouts), [EXPO_PLUGINS] (2 config plugins, 1 Modules API), [EXPO_API] (deep-linking integration). Coexists with REACT_NATIVE sections.
+3. **obytes/react-native-template-obytes** (production template): 3 Expo sections — [EXPO_CONFIG] (SDK 49, Router v2, EAS Build: 4 profiles, EAS Submit/Update), [EXPO_MODULES] (12 usages, 4 unique), [EXPO_ROUTER] (8 routes with dynamic/catchAll segments)
+
+### Test Results
+
+```
+New tests:  96 (1 test file)
+Previous:  7378 (from Session 83 baseline)
+Total:     7474
+pytest tests/ -x -q → 7474 passed, 88 skipped
 ✅ ALL TESTS PASSED — 0 failures, 0 regressions
 ```

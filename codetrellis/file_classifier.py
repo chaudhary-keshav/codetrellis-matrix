@@ -108,6 +108,8 @@ class FileClassifier:
         # Other common patterns
         '.min.js', '.min.css',
         '.bundle.js', '.chunk.js',
+        # Dart code generation
+        '.g.dart', '.freezed.dart', '.gr.dart', '.mocks.dart',
     }
 
     # ── GENERATED DIRECTORY NAMES ────────────────────────────────────────
