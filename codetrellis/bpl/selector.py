@@ -1466,6 +1466,7 @@ class ProjectContext:
             "dart_classes", "dart_mixins", "dart_enums",
             "dart_extensions", "dart_extension_types", "dart_typedefs",
             "dart_functions", "dart_constructors",
+            "dart_getters", "dart_setters", "dart_exports",
             "dart_widgets", "dart_routes", "dart_state_managers",
             "dart_grpc_services", "dart_flutter_routes",
             "dart_models", "dart_data_classes", "dart_migrations",

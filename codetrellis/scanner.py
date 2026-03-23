@@ -2019,6 +2019,11 @@ class ProjectMatrix:
     dart_version: str = ""
     dart_flutter_version: str = ""
     dart_is_flutter: bool = False
+    dart_getters: List[Dict] = field(default_factory=list)
+    dart_setters: List[Dict] = field(default_factory=list)
+    dart_exports: List[Dict] = field(default_factory=list)
+    dart_library_name: str = ""
+    dart_package_name: str = ""
 
     # v4.28: Lua Language Support (full AST + LSP)
     lua_classes: List[Dict] = field(default_factory=list)
@@ -3831,6 +3836,11 @@ class ProjectMatrix:
                 "dart_version": self.dart_version,
                 "flutter_version": self.dart_flutter_version,
                 "is_flutter": self.dart_is_flutter,
+                "getters": self.dart_getters,
+                "setters": self.dart_setters,
+                "exports": self.dart_exports,
+                "library_name": self.dart_library_name,
+                "package_name": self.dart_package_name,
             },
             # v4.28: Lua Language Support
             "lua": {
@@ -20499,6 +20509,12 @@ class ProjectScanner:
             # Parse with enhanced Dart parser
             result = self.dart_parser.parse(content, str(file_path))
 
+            # ── Library/Package metadata ─────────────────────────────
+            if result.library_name and not matrix.dart_library_name:
+                matrix.dart_library_name = result.library_name
+            if result.package_name and not matrix.dart_package_name:
+                matrix.dart_package_name = result.package_name
+
             # ── Metadata ────────────────────────────────────────────
             for fw in result.detected_frameworks:
                 if fw not in matrix.dart_detected_frameworks:
@@ -20633,6 +20649,38 @@ class ProjectScanner:
                     "is_factory": ctor.is_factory,
                     "is_named": ctor.is_named,
                     "params": [p.name for p in ctor.parameters[:10]],
+                })
+
+            # ── Getters ──────────────────────────────────────────────
+            for getter in result.getters:
+                matrix.dart_getters.append({
+                    "name": getter.name,
+                    "file": str(file_path),
+                    "line": getter.line_number,
+                    "return_type": getter.return_type or "",
+                    "is_static": getter.is_static,
+                    "class_name": getter.class_name or "",
+                })
+
+            # ── Setters ──────────────────────────────────────────────
+            for setter in result.setters:
+                matrix.dart_setters.append({
+                    "name": setter.name,
+                    "file": str(file_path),
+                    "line": setter.line_number,
+                    "param_type": setter.return_type or "",
+                    "is_static": setter.is_static,
+                    "class_name": setter.class_name or "",
+                })
+
+            # ── Exports ──────────────────────────────────────────────
+            for exp in result.exports:
+                matrix.dart_exports.append({
+                    "uri": exp.uri,
+                    "file": str(file_path),
+                    "line": exp.line_number,
+                    "show": exp.show[:10],
+                    "hide": exp.hide[:10],
                 })
 
             # ── Widgets ──────────────────────────────────────────────

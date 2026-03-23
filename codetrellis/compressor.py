@@ -15115,6 +15115,26 @@ class MatrixCompressor:
                 param_str = f"|params:[{','.join(params[:5])}]" if params else ""
                 lines.append(f"  {ctor['name']}{flag_str}{param_str}|{file_short}")
 
+        # Getters
+        if hasattr(matrix, 'dart_getters') and matrix.dart_getters:
+            lines.append(f"# Getters ({len(matrix.dart_getters)})")
+            for g in matrix.dart_getters[:30]:
+                file_short = g.get('file', '').split('/')[-1]
+                ret = f"|-> {g['return_type']}" if g.get('return_type') else ""
+                cls = f"{g['class_name']}." if g.get('class_name') else ""
+                static = "[static]" if g.get('is_static') else ""
+                lines.append(f"  get {cls}{g['name']}{ret}{static}|{file_short}")
+
+        # Setters
+        if hasattr(matrix, 'dart_setters') and matrix.dart_setters:
+            lines.append(f"# Setters ({len(matrix.dart_setters)})")
+            for s in matrix.dart_setters[:30]:
+                file_short = s.get('file', '').split('/')[-1]
+                param_t = f"|param:{s['param_type']}" if s.get('param_type') else ""
+                cls = f"{s['class_name']}." if s.get('class_name') else ""
+                static = "[static]" if s.get('is_static') else ""
+                lines.append(f"  set {cls}{s['name']}{param_t}{static}|{file_short}")
+
         return lines
 
     def _compress_dart_api(self, matrix) -> List[str]:
@@ -15303,6 +15323,26 @@ class MatrixCompressor:
         # Detected frameworks
         if hasattr(matrix, 'dart_detected_frameworks') and matrix.dart_detected_frameworks:
             lines.append(f"# Detected: {', '.join(matrix.dart_detected_frameworks[:25])}")
+
+        # Exports
+        if hasattr(matrix, 'dart_exports') and matrix.dart_exports:
+            lines.append(f"# Exports ({len(matrix.dart_exports)})")
+            for exp in matrix.dart_exports[:20]:
+                file_short = exp.get('file', '').split('/')[-1]
+                show = exp.get('show', [])
+                hide = exp.get('hide', [])
+                filters = ""
+                if show:
+                    filters = f"|show:[{','.join(show[:5])}]"
+                elif hide:
+                    filters = f"|hide:[{','.join(hide[:5])}]"
+                lines.append(f"  export {exp.get('uri', '?')}{filters}|{file_short}")
+
+        # Library/package info
+        if hasattr(matrix, 'dart_library_name') and matrix.dart_library_name:
+            lines.append(f"# Library: {matrix.dart_library_name}")
+        if hasattr(matrix, 'dart_package_name') and matrix.dart_package_name:
+            lines.append(f"# Package: {matrix.dart_package_name}")
 
         # Null safety stats
         if hasattr(matrix, 'dart_null_safety') and matrix.dart_null_safety:
