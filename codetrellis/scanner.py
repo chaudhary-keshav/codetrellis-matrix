@@ -26527,6 +26527,9 @@ class ProjectScanner:
         # --- Node.js: package.json ---
         # Recursively find all package.json files but respect .gitignore
         for package_json in root.rglob("package.json"):
+            # Skip if in ignored directory (e.g., .venv, site-packages, node_modules)
+            if self._path_contains_ignored_segment(str(package_json)):
+                continue
             # Skip if gitignored (e.g., tests/repos)
             if gi and not gi.is_empty:
                 rel = str(package_json.relative_to(root))
@@ -26548,6 +26551,9 @@ class ProjectScanner:
         # --- Go: go.mod ---
         # Recursively find all go.mod files but respect .gitignore
         for go_mod in root.rglob("go.mod"):
+            # Skip if in ignored directory (e.g., .venv, site-packages, node_modules)
+            if self._path_contains_ignored_segment(str(go_mod)):
+                continue
             # Skip if gitignored (e.g., tests/repos)
             if gi and not gi.is_empty:
                 rel = str(go_mod.relative_to(root))
@@ -26599,6 +26605,9 @@ class ProjectScanner:
         # --- Java: pom.xml (Maven) ---
         # Recursively find all pom.xml files but respect .gitignore
         for pom_xml in root.rglob("pom.xml"):
+            # Skip if in ignored directory (e.g., .venv, site-packages, node_modules)
+            if self._path_contains_ignored_segment(str(pom_xml)):
+                continue
             # Skip if gitignored (e.g., tests/repos)
             if gi and not gi.is_empty:
                 rel = str(pom_xml.relative_to(root))
@@ -26651,6 +26660,9 @@ class ProjectScanner:
         # --- Java: build.gradle / build.gradle.kts (Gradle) ---
         # Recursively find all build.gradle* files but respect .gitignore
         for gradle_file in root.rglob("build.gradle*"):
+            # Skip if in ignored directory (e.g., .venv, site-packages, node_modules)
+            if self._path_contains_ignored_segment(str(gradle_file)):
+                continue
             # Skip if gitignored (e.g., tests/repos)
             if gi and not gi.is_empty:
                 rel = str(gradle_file.relative_to(root))
@@ -26699,6 +26711,9 @@ class ProjectScanner:
         # --- Rust: Cargo.toml ---
         # Recursively find all Cargo.toml files but respect .gitignore
         for cargo_toml in root.rglob("Cargo.toml"):
+            # Skip if in ignored directory (e.g., .venv, site-packages, node_modules)
+            if self._path_contains_ignored_segment(str(cargo_toml)):
+                continue
             # Skip if gitignored (e.g., tests/repos)
             if gi and not gi.is_empty:
                 rel = str(cargo_toml.relative_to(root))

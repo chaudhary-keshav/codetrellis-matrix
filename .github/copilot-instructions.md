@@ -9,7 +9,7 @@
 
 - **Languages:** Python
 
-**Matrix Stats:** 980 files scanned, 2269 types extracted, 34 matrix sections
+**Matrix Stats:** 983 files scanned, 2285 types extracted, 34 matrix sections
 
 - **Domain:** Developer Tools
 - **Purpose:** A developer tools application for code analysis, project scanning, or build/development tooling. Provides utilities for development workflow automation and code intelligence.
@@ -86,7 +86,7 @@ Run tests: `pytest tests/ -x -q`
 ## Project Structure
 
 ```
-  codetrellis/  (804 files)
+  codetrellis/  (811 files)
   scripts/  (17 files)
   lsp/  (1 files)
   codetrellis.egg-info/  (0 files)

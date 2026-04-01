@@ -9,7 +9,7 @@
 
 - **Languages:** Python
 - **Domain:** Developer Tools — A developer tools application for code analysis, project scanning, or build/development tooling. Provides utilities for development workflow automation and code intelligence.
-- **Scale:** 980 files, 2269 types, 34 matrix sections
+- **Scale:** 983 files, 2285 types, 34 matrix sections
 
 ## ⚠️ CRITICAL — Read the Matrix FIRST
 
@@ -38,7 +38,7 @@ codetrellis context . --file src/example.py
 ## Project Structure
 
 ```
-  codetrellis/  (804 files)
+  codetrellis/  (811 files)
   scripts/  (17 files)
   lsp/  (1 files)
   codetrellis.egg-info/  (0 files)
