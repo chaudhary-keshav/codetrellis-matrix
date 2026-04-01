@@ -1,0 +1,514 @@
+# Expo Best Practices
+# Framework-specific practices for Expo applications
+# Requires: expo
+
+practices:
+  # ============================================================================
+  # CONFIG PRACTICES (EXPO001-EXPO010)
+  # ============================================================================
+
+  - id: EXPO001
+    title: "Use app.config.js for Dynamic Configuration"
+    category: expo
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Use app.config.js or app.config.ts instead of static app.json for
+        dynamic configuration that can read environment variables and conditionally
+        set values at build time.
+      rationale: |
+        Static app.json cannot include dynamic values like API keys or
+        environment-specific settings. app.config.js allows TypeScript,
+        .env usage, and build-time logic.
+      good_examples:
+        - |
+          // app.config.ts
+          import { ExpoConfig, ConfigContext } from 'expo/config';
+
+          export default ({ config }: ConfigContext): ExpoConfig => ({
+              ...config,
+              name: process.env.APP_NAME || 'MyApp',
+              slug: 'my-app',
+              extra: {
+                  apiUrl: process.env.API_URL,
+                  eas: { projectId: process.env.EAS_PROJECT_ID },
+              },
+          });
+      bad_examples:
+        - |
+          // app.json with hardcoded values
+          {
+              "expo": {
+                  "name": "MyApp",
+                  "extra": { "apiUrl": "https://prod.api.example.com" }
+              }
+          }
+      tags:
+        - config
+        - environment
+
+  - id: EXPO002
+    title: "Configure EAS Build Profiles"
+    category: expo
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Define separate EAS Build profiles for development, preview, and
+        production builds in eas.json with appropriate settings for each.
+      rationale: |
+        Different build profiles ensure dev builds include debug tools,
+        preview builds use internal distribution, and production builds
+        are optimized for store submission.
+      good_examples:
+        - |
+          {
+              "build": {
+                  "development": {
+                      "developmentClient": true,
+                      "distribution": "internal"
+                  },
+                  "preview": {
+                      "distribution": "internal",
+                      "channel": "preview"
+                  },
+                  "production": {
+                      "channel": "production",
+                      "autoIncrement": true
+                  }
+              }
+          }
+      tags:
+        - eas
+        - build
+
+  - id: EXPO003
+    title: "Set Runtime Version Policy for OTA Updates"
+    category: expo
+    level: advanced
+    priority: high
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Configure runtimeVersion with a policy (appVersion, nativeVersion,
+        or fingerprint) to ensure OTA updates are only applied to compatible
+        native builds.
+      rationale: |
+        Without proper runtime versioning, OTA updates can be delivered to
+        builds with incompatible native code, causing crashes.
+      good_examples:
+        - |
+          {
+              "expo": {
+                  "runtimeVersion": { "policy": "fingerprint" }
+              }
+          }
+      bad_examples:
+        - |
+          {
+              "expo": {
+                  "runtimeVersion": "1.0.0"
+              }
+          }
+      tags:
+        - updates
+        - ota
+
+  # ============================================================================
+  # EXPO ROUTER PRACTICES (EXPO011-EXPO020)
+  # ============================================================================
+
+  - id: EXPO011
+    title: "Use File-Based Routing Conventions"
+    category: expo
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Follow Expo Router's file-based routing conventions: app/ directory,
+        _layout.tsx for layouts, index.tsx for default routes, [param] for
+        dynamic segments, and (group) for route groups.
+      rationale: |
+        File-based routing eliminates manual route configuration, enables
+        automatic deep linking, and makes navigation structure visible
+        in the file system.
+      good_examples:
+        - |
+          // app/_layout.tsx
+          import { Stack } from 'expo-router';
+
+          export default function RootLayout() {
+              return <Stack />;
+          }
+      tags:
+        - router
+        - routing
+
+  - id: EXPO012
+    title: "Use Route Groups for Authentication"
+    category: expo
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Use route groups (auth) and (app) to separate authenticated and
+        unauthenticated screens with their own layouts.
+      rationale: |
+        Route groups allow different navigation stacks for auth flows
+        without polluting the URL structure.
+      good_examples:
+        - |
+          // app/(auth)/_layout.tsx - unauthenticated stack
+          // app/(app)/_layout.tsx - authenticated tabs
+          // app/(app)/(tabs)/_layout.tsx - main tab navigator
+      tags:
+        - router
+        - authentication
+
+  - id: EXPO013
+    title: "Use Typed Routes (Expo Router v3)"
+    category: expo
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Enable typed routes in Expo Router v3+ for type-safe navigation
+        with compile-time checking of route paths and parameters.
+      rationale: |
+        Typed routes catch navigation errors at compile time instead of
+        runtime, preventing broken links and missing parameters.
+      good_examples:
+        - |
+          import { router } from 'expo-router';
+          // Typed route - compiler checks path exists
+          router.push('/user/[id]', { id: '123' });
+      bad_examples:
+        - |
+          // Untyped string - no compile-time checking
+          router.push('/users/123');
+      tags:
+        - router
+        - typescript
+
+  # ============================================================================
+  # SDK MODULE PRACTICES (EXPO021-EXPO030)
+  # ============================================================================
+
+  - id: EXPO021
+    title: "Request Permissions Lazily"
+    category: expo
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Request permissions only when the user is about to use a feature,
+        not at app launch. Use permission hooks for declarative handling.
+      rationale: |
+        Requesting all permissions at launch leads to poor UX and higher
+        denial rates. Users are more likely to grant permissions when they
+        understand the context.
+      good_examples:
+        - |
+          import { useCameraPermissions } from 'expo-camera';
+
+          function ScanScreen() {
+              const [permission, requestPermission] = useCameraPermissions();
+
+              if (!permission?.granted) {
+                  return <Button onPress={requestPermission} title="Grant camera" />;
+              }
+              return <CameraView />;
+          }
+      bad_examples:
+        - |
+          // Don't request all permissions at app start
+          useEffect(() => {
+              Camera.requestCameraPermissionsAsync();
+              Location.requestForegroundPermissionsAsync();
+              Notifications.requestPermissionsAsync();
+          }, []);
+      tags:
+        - permissions
+        - ux
+
+  - id: EXPO022
+    title: "Preload Fonts Before Rendering"
+    category: expo
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Use useFonts hook to load custom fonts before rendering text.
+        Show splash screen until fonts are loaded.
+      rationale: |
+        Text rendered before fonts load will flash with the system font,
+        causing a jarring visual experience.
+      good_examples:
+        - |
+          import { useFonts } from 'expo-font';
+          import * as SplashScreen from 'expo-splash-screen';
+
+          SplashScreen.preventAutoHideAsync();
+
+          export default function App() {
+              const [loaded] = useFonts({
+                  'Inter-Bold': require('./assets/Inter-Bold.ttf'),
+              });
+              if (!loaded) return null;
+              SplashScreen.hideAsync();
+              return <Text style={{ fontFamily: 'Inter-Bold' }}>Hello</Text>;
+          }
+      tags:
+        - fonts
+        - splash
+
+  - id: EXPO023
+    title: "Use expo-image Instead of React Native Image"
+    category: expo
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Use expo-image for better performance, caching, placeholders,
+        transitions, and blurhash support. Available in SDK 49+.
+      rationale: |
+        expo-image uses native caching, supports modern image formats
+        (AVIF, WebP), has better memory management, and provides
+        built-in placeholder support.
+      good_examples:
+        - |
+          import { Image } from 'expo-image';
+          <Image source={uri} placeholder={blurhash} contentFit="cover"
+                 transition={200} />
+      bad_examples:
+        - |
+          import { Image } from 'react-native';
+          <Image source={{ uri }} style={{ width: 100, height: 100 }} />
+      tags:
+        - image
+        - performance
+
+  # ============================================================================
+  # SECURITY PRACTICES (EXPO031-EXPO035)
+  # ============================================================================
+
+  - id: EXPO031
+    title: "Use expo-secure-store for Sensitive Data"
+    category: expo
+    level: beginner
+    priority: critical
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Store sensitive data (tokens, keys, secrets) in expo-secure-store
+        which uses Keychain on iOS and encrypted SharedPreferences on Android.
+      rationale: |
+        AsyncStorage is unencrypted. Sensitive data must use platform
+        secure storage to prevent data leakage.
+      good_examples:
+        - |
+          import * as SecureStore from 'expo-secure-store';
+          await SecureStore.setItemAsync('auth_token', token);
+          const token = await SecureStore.getItemAsync('auth_token');
+      bad_examples:
+        - |
+          import AsyncStorage from '@react-native-async-storage/async-storage';
+          await AsyncStorage.setItem('auth_token', token); // NOT ENCRYPTED
+      tags:
+        - security
+        - storage
+
+  - id: EXPO032
+    title: "Use expo-auth-session for OAuth"
+    category: expo
+    level: intermediate
+    priority: high
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Use expo-auth-session for OAuth/OpenID Connect flows with proper
+        PKCE support and secure redirect handling.
+      rationale: |
+        Manual OAuth in WebView is insecure and against platform guidelines.
+        expo-auth-session handles PKCE, redirect URIs, and token exchange
+        securely on all platforms.
+      good_examples:
+        - |
+          import * as AuthSession from 'expo-auth-session';
+          import * as WebBrowser from 'expo-web-browser';
+
+          WebBrowser.maybeCompleteAuthSession();
+
+          const [request, response, promptAsync] = AuthSession.useAuthRequest({
+              clientId: CLIENT_ID,
+              redirectUri: AuthSession.makeRedirectUri(),
+              scopes: ['openid', 'profile'],
+          }, discovery);
+      tags:
+        - auth
+        - security
+
+  # ============================================================================
+  # PERFORMANCE PRACTICES (EXPO036-EXPO040)
+  # ============================================================================
+
+  - id: EXPO036
+    title: "Configure Splash Screen Properly"
+    category: expo
+    level: beginner
+    priority: high
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Use SplashScreen.preventAutoHideAsync() at module scope and
+        hideAsync() after critical resources load. Never let the splash
+        screen flash or show a blank screen.
+      rationale: |
+        Proper splash screen management prevents white flash between
+        native splash and JS-rendered content.
+      good_examples:
+        - |
+          import * as SplashScreen from 'expo-splash-screen';
+          SplashScreen.preventAutoHideAsync();
+
+          function RootLayout() {
+              const [ready, setReady] = useState(false);
+              useEffect(() => {
+                  loadResources().then(() => setReady(true));
+              }, []);
+              useEffect(() => {
+                  if (ready) SplashScreen.hideAsync();
+              }, [ready]);
+              if (!ready) return null;
+              return <Slot />;
+          }
+      tags:
+        - splash
+        - performance
+
+  - id: EXPO037
+    title: "Use EAS Update for OTA Updates"
+    category: expo
+    level: intermediate
+    priority: medium
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Use EAS Update with channels for zero-downtime JavaScript updates
+        without app store review. Configure channels per build profile.
+      rationale: |
+        EAS Update enables instant bug fixes and feature rollouts
+        without going through the app store review process.
+      good_examples:
+        - |
+          import * as Updates from 'expo-updates';
+
+          async function checkForUpdates() {
+              const update = await Updates.checkForUpdateAsync();
+              if (update.isAvailable) {
+                  await Updates.fetchUpdateAsync();
+                  await Updates.reloadAsync();
+              }
+          }
+      tags:
+        - updates
+        - eas
+
+  # ============================================================================
+  # CONFIG PLUGIN PRACTICES (EXPO041-EXPO045)
+  # ============================================================================
+
+  - id: EXPO041
+    title: "Prefer Expo Modules API Over Config Plugins"
+    category: expo
+    level: advanced
+    priority: medium
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Use the Expo Modules API (expo-modules-core) for native functionality
+        instead of raw config plugins when possible. Config plugins modify
+        native build files directly and are harder to maintain.
+      rationale: |
+        Expo Modules API provides type-safe Swift/Kotlin APIs with automatic
+        module linking, versioning, and lifecycle management.
+      good_examples:
+        - |
+          // Swift module definition
+          Module("MyModule") {
+              AsyncFunction("getValue") {
+                  return await fetchValue()
+              }
+          }
+      tags:
+        - modules
+        - native
+
+  - id: EXPO042
+    title: "Use withDangerousMod Sparingly"
+    category: expo
+    level: advanced
+    priority: high
+    applicability:
+      frameworks:
+        - expo
+    content:
+      description: |
+        Avoid withDangerousMod config plugins. Use targeted modifiers like
+        withAndroidManifest, withInfoPlist, withGradleProperties instead.
+      rationale: |
+        withDangerousMod bypasses Expo's safe modification system and can
+        cause build failures during SDK upgrades.
+      good_examples:
+        - |
+          const { withAndroidManifest } = require('@expo/config-plugins');
+          module.exports = function withPermission(config) {
+              return withAndroidManifest(config, (config) => {
+                  // Targeted manifest modification
+                  return config;
+              });
+          };
+      bad_examples:
+        - |
+          const { withDangerousMod } = require('@expo/config-plugins');
+          // Dangerous: direct file system manipulation
+      tags:
+        - plugins
+        - native

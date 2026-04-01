@@ -1466,6 +1466,7 @@ class ProjectContext:
             "dart_classes", "dart_mixins", "dart_enums",
             "dart_extensions", "dart_extension_types", "dart_typedefs",
             "dart_functions", "dart_constructors",
+            "dart_getters", "dart_setters", "dart_exports",
             "dart_widgets", "dart_routes", "dart_state_managers",
             "dart_grpc_services", "dart_flutter_routes",
             "dart_models", "dart_data_classes", "dart_migrations",
@@ -1795,6 +1796,31 @@ class ProjectContext:
                     context.frameworks.add(mapped)
 
         logger.debug(f"React artifact count: {react_count}")
+
+        # ==== Expo artifact counts (v5.7) ====
+        expo_count = 0
+        expo_artifacts = [
+            "expo_modules", "expo_permissions", "expo_assets",
+            "expo_routes", "expo_layouts", "expo_route_groups",
+            "expo_api_routes", "expo_config_plugins", "expo_modules_api",
+            "expo_integrations",
+        ]
+        for attr in expo_artifacts:
+            if hasattr(matrix, attr):
+                expo_count += len(getattr(matrix, attr, []))
+
+        if expo_count >= SIGNIFICANCE_THRESHOLD:
+            context.frameworks.add("expo")
+
+        # Detect Expo ecosystem frameworks from detected_frameworks list
+        expo_frameworks = getattr(matrix, 'expo_detected_frameworks', [])
+        if expo_count >= SIGNIFICANCE_THRESHOLD and expo_frameworks:
+            for fw in expo_frameworks:
+                if fw.startswith('expo'):
+                    context.frameworks.add("expo")
+                    break
+
+        logger.debug(f"Expo artifact count: {expo_count}")
 
         # ==== Material UI (MUI) artifact counts (v4.36) ====
         mui_count = 0

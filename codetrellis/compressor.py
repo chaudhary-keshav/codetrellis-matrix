@@ -2445,6 +2445,52 @@ class MatrixCompressor:
             lines.append("")
 
         # ============================================
+        # v5.7: Expo Framework Sections
+        # Config, SDK modules, Router, Config plugins, EAS
+        # Runs on JS/TS files where Expo SDK is detected
+        # ============================================
+
+        # Expo Config (app.json, app.config.js, eas.json, SDK version, workflow)
+        expo_config_lines = self._compress_expo_config(matrix)
+        if expo_config_lines:
+            lines.append("[EXPO_CONFIG]")
+            lines.append("# app.json/app.config.js config, SDK version, workflow, EAS build profiles")
+            lines.extend(expo_config_lines)
+            lines.append("")
+
+        # Expo SDK Modules (50+ expo-* packages, permissions, assets)
+        expo_modules_lines = self._compress_expo_modules(matrix)
+        if expo_modules_lines:
+            lines.append("[EXPO_MODULES]")
+            lines.append("# expo-* SDK modules, permissions, fonts, icons, asset preloading")
+            lines.extend(expo_modules_lines)
+            lines.append("")
+
+        # Expo Router (file-based routing, layouts, groups, API routes)
+        expo_router_lines = self._compress_expo_router(matrix)
+        if expo_router_lines:
+            lines.append("[EXPO_ROUTER]")
+            lines.append("# Expo Router v1-v3, file-based routes, layouts, groups, API routes, typed routes")
+            lines.extend(expo_router_lines)
+            lines.append("")
+
+        # Expo Config Plugins (native modifications, Expo Modules API)
+        expo_plugins_lines = self._compress_expo_plugins(matrix)
+        if expo_plugins_lines:
+            lines.append("[EXPO_PLUGINS]")
+            lines.append("# Config plugins, withAndroidManifest, withInfoPlist, Expo Modules API")
+            lines.extend(expo_plugins_lines)
+            lines.append("")
+
+        # Expo API (integrations, EAS, ecosystem patterns)
+        expo_api_lines = self._compress_expo_api(matrix)
+        if expo_api_lines:
+            lines.append("[EXPO_API]")
+            lines.append("# Cross-module integrations, EAS Build/Update/Submit, deep linking")
+            lines.extend(expo_api_lines)
+            lines.append("")
+
+        # ============================================
         # v4.47: Redux / Redux Toolkit Framework Sections
         # Stores, slices, middleware, selectors, RTK Query
         # Runs on JS/TS files where Redux framework is detected
@@ -15115,6 +15161,26 @@ class MatrixCompressor:
                 param_str = f"|params:[{','.join(params[:5])}]" if params else ""
                 lines.append(f"  {ctor['name']}{flag_str}{param_str}|{file_short}")
 
+        # Getters
+        if hasattr(matrix, 'dart_getters') and matrix.dart_getters:
+            lines.append(f"# Getters ({len(matrix.dart_getters)})")
+            for g in matrix.dart_getters[:30]:
+                file_short = g.get('file', '').split('/')[-1]
+                ret = f"|-> {g['return_type']}" if g.get('return_type') else ""
+                cls = f"{g['class_name']}." if g.get('class_name') else ""
+                static = "[static]" if g.get('is_static') else ""
+                lines.append(f"  get {cls}{g['name']}{ret}{static}|{file_short}")
+
+        # Setters
+        if hasattr(matrix, 'dart_setters') and matrix.dart_setters:
+            lines.append(f"# Setters ({len(matrix.dart_setters)})")
+            for s in matrix.dart_setters[:30]:
+                file_short = s.get('file', '').split('/')[-1]
+                param_t = f"|param:{s['param_type']}" if s.get('param_type') else ""
+                cls = f"{s['class_name']}." if s.get('class_name') else ""
+                static = "[static]" if s.get('is_static') else ""
+                lines.append(f"  set {cls}{s['name']}{param_t}{static}|{file_short}")
+
         return lines
 
     def _compress_dart_api(self, matrix) -> List[str]:
@@ -15303,6 +15369,26 @@ class MatrixCompressor:
         # Detected frameworks
         if hasattr(matrix, 'dart_detected_frameworks') and matrix.dart_detected_frameworks:
             lines.append(f"# Detected: {', '.join(matrix.dart_detected_frameworks[:25])}")
+
+        # Exports
+        if hasattr(matrix, 'dart_exports') and matrix.dart_exports:
+            lines.append(f"# Exports ({len(matrix.dart_exports)})")
+            for exp in matrix.dart_exports[:20]:
+                file_short = exp.get('file', '').split('/')[-1]
+                show = exp.get('show', [])
+                hide = exp.get('hide', [])
+                filters = ""
+                if show:
+                    filters = f"|show:[{','.join(show[:5])}]"
+                elif hide:
+                    filters = f"|hide:[{','.join(hide[:5])}]"
+                lines.append(f"  export {exp.get('uri', '?')}{filters}|{file_short}")
+
+        # Library/package info
+        if hasattr(matrix, 'dart_library_name') and matrix.dart_library_name:
+            lines.append(f"# Library: {matrix.dart_library_name}")
+        if hasattr(matrix, 'dart_package_name') and matrix.dart_package_name:
+            lines.append(f"# Package: {matrix.dart_package_name}")
 
         # Null safety stats
         if hasattr(matrix, 'dart_null_safety') and matrix.dart_null_safety:
@@ -17139,6 +17225,216 @@ class MatrixCompressor:
                 lib = f"|{perm['library']}" if perm.get('library') else ""
                 req = "|request" if perm.get('is_request') else "|check"
                 lines.append(f"  {perm['name']}{ptype}{lib}{req}|{file_short}")
+
+        return lines
+
+    # ============================================
+    # v5.7: Expo Framework compression methods
+    # ============================================
+
+    def _compress_expo_config(self, matrix) -> List[str]:
+        """Compress Expo config, SDK version, workflow, and EAS configuration."""
+        lines = []
+
+        # SDK version and workflow
+        if hasattr(matrix, 'expo_sdk_version') and matrix.expo_sdk_version:
+            lines.append(f"# Expo SDK: {matrix.expo_sdk_version}")
+        if hasattr(matrix, 'expo_workflow') and matrix.expo_workflow:
+            lines.append(f"# Workflow: {matrix.expo_workflow}")
+        if hasattr(matrix, 'expo_router_version') and matrix.expo_router_version:
+            lines.append(f"# Expo Router: v{matrix.expo_router_version}")
+
+        # App config
+        if hasattr(matrix, 'expo_config') and matrix.expo_config:
+            cfg = matrix.expo_config
+            name = cfg.get('name', '')
+            slug = cfg.get('slug', '')
+            sdk = cfg.get('sdk_version', '')
+            platforms = ','.join(cfg.get('platforms', []))
+            scheme = f"|scheme:{cfg['scheme']}" if cfg.get('scheme') else ""
+            config_type = f"|{cfg.get('config_type', 'app.json')}"
+            plugins = f"|plugins:{cfg.get('plugins_count', 0)}" if cfg.get('plugins_count') else ""
+            lines.append(f"  {name}|slug:{slug}|sdk:{sdk}|platforms:[{platforms}]{scheme}{config_type}{plugins}")
+
+        # EAS config
+        if hasattr(matrix, 'expo_eas_config') and matrix.expo_eas_config:
+            eas = matrix.expo_eas_config
+            profiles = eas.get('build_profiles', [])
+            if profiles:
+                lines.append(f"# EAS Build profiles: {', '.join(profiles[:8])}")
+            submit = eas.get('submit_profiles', [])
+            if submit:
+                lines.append(f"# EAS Submit profiles: {', '.join(submit[:5])}")
+            channels = eas.get('update_channels', [])
+            if channels:
+                lines.append(f"# EAS Update channels: {', '.join(channels[:5])}")
+            if eas.get('has_eas_update'):
+                lines.append("# EAS Update: enabled")
+
+        # Detected frameworks
+        if hasattr(matrix, 'expo_detected_frameworks') and matrix.expo_detected_frameworks:
+            lines.append(f"# Expo ecosystem: {', '.join(matrix.expo_detected_frameworks[:40])}")
+
+        return lines
+
+    def _compress_expo_modules(self, matrix) -> List[str]:
+        """Compress Expo SDK module usage, permissions, and assets."""
+        lines = []
+
+        # Modules by category
+        if hasattr(matrix, 'expo_modules') and matrix.expo_modules:
+            by_cat = {}
+            for mod in matrix.expo_modules:
+                cat = mod.get('category', 'misc')
+                if cat not in by_cat:
+                    by_cat[cat] = []
+                mod_name = mod.get('module', '')
+                if mod_name not in by_cat[cat]:
+                    by_cat[cat].append(mod_name)
+
+            lines.append(f"# SDK modules ({len(matrix.expo_modules)} usages, {sum(len(v) for v in by_cat.values())} unique)")
+            for cat in sorted(by_cat.keys()):
+                mods = by_cat[cat]
+                lines.append(f"  {cat}: {', '.join(mods[:15])}")
+
+        # Permissions
+        if hasattr(matrix, 'expo_permissions') and matrix.expo_permissions:
+            perm_types = set()
+            for perm in matrix.expo_permissions:
+                perm_types.add(perm.get('permission_type', ''))
+            lines.append(f"# Permissions: {', '.join(sorted(perm_types))}")
+
+        # Assets
+        if hasattr(matrix, 'expo_assets') and matrix.expo_assets:
+            by_type = {}
+            for asset in matrix.expo_assets:
+                t = asset.get('asset_type', 'other')
+                by_type[t] = by_type.get(t, 0) + 1
+            summary = ", ".join(f"{t}:{c}" for t, c in sorted(by_type.items()))
+            lines.append(f"# Assets: {summary}")
+
+        return lines
+
+    def _compress_expo_router(self, matrix) -> List[str]:
+        """Compress Expo Router routes, layouts, groups, and API routes."""
+        lines = []
+
+        # Routes
+        if hasattr(matrix, 'expo_routes') and matrix.expo_routes:
+            lines.append(f"# Routes ({len(matrix.expo_routes)})")
+            for route in matrix.expo_routes[:50]:
+                rpath = route.get('route_path', '')
+                flags = []
+                if route.get('is_dynamic'):
+                    params = ','.join(route.get('dynamic_params', []))
+                    flags.append(f"dynamic:[{params}]")
+                if route.get('is_catch_all'):
+                    flags.append("catchAll")
+                if route.get('is_index'):
+                    flags.append("index")
+                if route.get('is_api_route'):
+                    flags.append("api")
+                if route.get('is_modal'):
+                    flags.append("modal")
+                if route.get('has_error_boundary'):
+                    flags.append("errorBoundary")
+                flag_str = f"|{','.join(flags)}" if flags else ""
+                file_short = route.get('file', '').split('/')[-1]
+                lines.append(f"  {rpath}{flag_str}|{file_short}")
+            if len(matrix.expo_routes) > 50:
+                lines.append(f"  # ... and {len(matrix.expo_routes) - 50} more routes")
+
+        # Layouts
+        if hasattr(matrix, 'expo_layouts') and matrix.expo_layouts:
+            lines.append(f"# Layouts ({len(matrix.expo_layouts)})")
+            for layout in matrix.expo_layouts[:20]:
+                ltype = layout.get('layout_type', 'unknown')
+                group = f"|group:({layout['route_group']})" if layout.get('route_group') else ""
+                screens = layout.get('screens', [])
+                screen_str = f"|screens:[{','.join(screens[:10])}]" if screens else ""
+                header = "|header" if layout.get('has_header_config') else ""
+                tabs = "|tabBar" if layout.get('has_tab_bar_config') else ""
+                file_short = layout.get('file', '').split('/')[-1]
+                lines.append(f"  {ltype}{group}{screen_str}{header}{tabs}|{file_short}")
+
+        # Route groups
+        if hasattr(matrix, 'expo_route_groups') and matrix.expo_route_groups:
+            groups = [g.get('group_name', '') for g in matrix.expo_route_groups]
+            lines.append(f"# Route groups: ({', '.join(groups[:10])})")
+
+        # API routes
+        if hasattr(matrix, 'expo_api_routes') and matrix.expo_api_routes:
+            lines.append(f"# API routes ({len(matrix.expo_api_routes)})")
+            for api in matrix.expo_api_routes[:20]:
+                rpath = api.get('route_path', '')
+                methods = ','.join(api.get('http_methods', []))
+                file_short = api.get('file', '').split('/')[-1]
+                lines.append(f"  {rpath}|[{methods}]|{file_short}")
+
+        # Navigation hooks
+        if hasattr(matrix, 'expo_navigation_hooks') and matrix.expo_navigation_hooks:
+            lines.append(f"# Navigation hooks: {', '.join(matrix.expo_navigation_hooks[:10])}")
+
+        return lines
+
+    def _compress_expo_plugins(self, matrix) -> List[str]:
+        """Compress Expo config plugins and Expo Modules API."""
+        lines = []
+
+        # Config plugins
+        if hasattr(matrix, 'expo_config_plugins') and matrix.expo_config_plugins:
+            lines.append(f"# Config plugins ({len(matrix.expo_config_plugins)})")
+            for plugin in matrix.expo_config_plugins[:30]:
+                name = plugin.get('name', '')
+                flags = []
+                if plugin.get('is_custom'):
+                    flags.append("custom")
+                if plugin.get('is_inline'):
+                    flags.append("inline")
+                if plugin.get('modifies_android'):
+                    flags.append("android")
+                if plugin.get('modifies_ios'):
+                    flags.append("ios")
+                flag_str = f"|{','.join(flags)}" if flags else ""
+                file_short = plugin.get('file', '').split('/')[-1]
+                lines.append(f"  {name}{flag_str}|{file_short}")
+
+        if hasattr(matrix, 'expo_has_custom_plugins') and matrix.expo_has_custom_plugins:
+            lines.append("# Has custom config plugins: yes")
+
+        # Modules API (native modules)
+        if hasattr(matrix, 'expo_modules_api') and matrix.expo_modules_api:
+            lines.append(f"# Expo Modules API ({len(matrix.expo_modules_api)})")
+            for mod in matrix.expo_modules_api[:15]:
+                name = mod.get('module_name', '')
+                lang = f"|{mod['language']}" if mod.get('language') else ""
+                flags = []
+                if mod.get('has_view'):
+                    flags.append("view")
+                if mod.get('has_events'):
+                    flags.append("events")
+                if mod.get('has_async_function'):
+                    flags.append("async")
+                methods = mod.get('exported_methods', [])
+                mstr = f"|methods:[{','.join(methods[:5])}]" if methods else ""
+                flag_str = f"|{','.join(flags)}" if flags else ""
+                file_short = mod.get('file', '').split('/')[-1]
+                lines.append(f"  {name}{lang}{flag_str}{mstr}|{file_short}")
+
+        return lines
+
+    def _compress_expo_api(self, matrix) -> List[str]:
+        """Compress Expo ecosystem integrations and EAS info."""
+        lines = []
+
+        # Integrations
+        if hasattr(matrix, 'expo_integrations') and matrix.expo_integrations:
+            lines.append(f"# Cross-module integrations ({len(matrix.expo_integrations)})")
+            for integ in matrix.expo_integrations[:10]:
+                pattern = integ.get('pattern_name', '')
+                modules = ','.join(integ.get('modules_involved', []))
+                file_short = integ.get('file', '').split('/')[-1]
+                lines.append(f"  {pattern}|[{modules}]|{file_short}")
 
         return lines
 

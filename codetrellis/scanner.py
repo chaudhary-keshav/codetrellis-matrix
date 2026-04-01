@@ -158,6 +158,9 @@ from codetrellis.react_parser_enhanced import EnhancedReactParser
 # Import v5.6 React Native framework support
 from codetrellis.react_native_parser_enhanced import EnhancedReactNativeParser
 
+# Import v5.7 Expo framework support
+from codetrellis.expo_parser_enhanced import EnhancedExpoParser
+
 # Import v4.33 Next.js framework support
 from codetrellis.nextjs_parser_enhanced import EnhancedNextJSParser
 
@@ -2019,6 +2022,11 @@ class ProjectMatrix:
     dart_version: str = ""
     dart_flutter_version: str = ""
     dart_is_flutter: bool = False
+    dart_getters: List[Dict] = field(default_factory=list)
+    dart_setters: List[Dict] = field(default_factory=list)
+    dart_exports: List[Dict] = field(default_factory=list)
+    dart_library_name: str = ""
+    dart_package_name: str = ""
 
     # v4.28: Lua Language Support (full AST + LSP)
     lua_classes: List[Dict] = field(default_factory=list)
@@ -2159,6 +2167,26 @@ class ProjectMatrix:
     rn_detected_frameworks: List[str] = field(default_factory=list)
     rn_version: str = ""
     rn_architecture: str = ""
+
+    # v5.7: Expo Framework Support (full AST + LSP)
+    expo_config: Dict = field(default_factory=dict)
+    expo_eas_config: Dict = field(default_factory=dict)
+    expo_modules: List[Dict] = field(default_factory=list)
+    expo_permissions: List[Dict] = field(default_factory=list)
+    expo_assets: List[Dict] = field(default_factory=list)
+    expo_routes: List[Dict] = field(default_factory=list)
+    expo_layouts: List[Dict] = field(default_factory=list)
+    expo_route_groups: List[Dict] = field(default_factory=list)
+    expo_api_routes: List[Dict] = field(default_factory=list)
+    expo_navigation_hooks: List[str] = field(default_factory=list)
+    expo_config_plugins: List[Dict] = field(default_factory=list)
+    expo_modules_api: List[Dict] = field(default_factory=list)
+    expo_integrations: List[Dict] = field(default_factory=list)
+    expo_detected_frameworks: List[str] = field(default_factory=list)
+    expo_sdk_version: int = 0
+    expo_workflow: str = ""
+    expo_router_version: int = 0
+    expo_has_custom_plugins: bool = False
 
     # v4.36: Material UI (MUI) Framework Support (full AST + LSP)
     mui_components: List[Dict] = field(default_factory=list)
@@ -3831,6 +3859,11 @@ class ProjectMatrix:
                 "dart_version": self.dart_version,
                 "flutter_version": self.dart_flutter_version,
                 "is_flutter": self.dart_is_flutter,
+                "getters": self.dart_getters,
+                "setters": self.dart_setters,
+                "exports": self.dart_exports,
+                "library_name": self.dart_library_name,
+                "package_name": self.dart_package_name,
             },
             # v4.28: Lua Language Support
             "lua": {
@@ -4576,6 +4609,9 @@ class ProjectScanner:
         # v5.6: React Native parser with all extractors (framework-level, runs on JS/TS)
         self.react_native_parser = EnhancedReactNativeParser()
 
+        # v5.7: Expo parser with all extractors (framework-level, runs on JS/TS + config)
+        self.expo_parser = EnhancedExpoParser()
+
         # v4.33: Next.js parser with all extractors (framework-level, runs on JS/TS)
         self.nextjs_parser = EnhancedNextJSParser()
 
@@ -4823,6 +4859,9 @@ class ProjectScanner:
 
         # Extract dependencies from package.json files
         self._extract_dependencies(root, matrix)
+
+        # v5.7: Parse Expo config files (app.json, eas.json)
+        self._parse_expo_config_files(root, matrix)
 
         # Detect services (NestJS modules)
         self._detect_services(root, matrix)
@@ -5619,6 +5658,8 @@ class ProjectScanner:
             self._parse_react(file_path, matrix)
             # v5.6: React Native framework parsing (runs on JS/TS with RN imports)
             self._parse_react_native(file_path, matrix)
+            # v5.7: Expo framework parsing (runs on JS/TS with Expo imports)
+            self._parse_expo(file_path, matrix)
             self._parse_nextjs(file_path, matrix)
             self._parse_vue(file_path, matrix)
             self._parse_svelte(file_path, matrix)
@@ -5723,6 +5764,8 @@ class ProjectScanner:
             self._parse_react(file_path, matrix)
             # v5.6: React Native framework parsing (runs on JS/TS with RN imports)
             self._parse_react_native(file_path, matrix)
+            # v5.7: Expo framework parsing (runs on JS/TS with Expo imports)
+            self._parse_expo(file_path, matrix)
             self._parse_nextjs(file_path, matrix)
             self._parse_vue(file_path, matrix)
             self._parse_svelte(file_path, matrix)
@@ -20499,6 +20542,12 @@ class ProjectScanner:
             # Parse with enhanced Dart parser
             result = self.dart_parser.parse(content, str(file_path))
 
+            # ── Library/Package metadata ─────────────────────────────
+            if result.library_name and not matrix.dart_library_name:
+                matrix.dart_library_name = result.library_name
+            if result.package_name and not matrix.dart_package_name:
+                matrix.dart_package_name = result.package_name
+
             # ── Metadata ────────────────────────────────────────────
             for fw in result.detected_frameworks:
                 if fw not in matrix.dart_detected_frameworks:
@@ -20633,6 +20682,38 @@ class ProjectScanner:
                     "is_factory": ctor.is_factory,
                     "is_named": ctor.is_named,
                     "params": [p.name for p in ctor.parameters[:10]],
+                })
+
+            # ── Getters ──────────────────────────────────────────────
+            for getter in result.getters:
+                matrix.dart_getters.append({
+                    "name": getter.name,
+                    "file": str(file_path),
+                    "line": getter.line_number,
+                    "return_type": getter.return_type or "",
+                    "is_static": getter.is_static,
+                    "class_name": getter.class_name or "",
+                })
+
+            # ── Setters ──────────────────────────────────────────────
+            for setter in result.setters:
+                matrix.dart_setters.append({
+                    "name": setter.name,
+                    "file": str(file_path),
+                    "line": setter.line_number,
+                    "param_type": setter.return_type or "",
+                    "is_static": setter.is_static,
+                    "class_name": setter.class_name or "",
+                })
+
+            # ── Exports ──────────────────────────────────────────────
+            for exp in result.exports:
+                matrix.dart_exports.append({
+                    "uri": exp.uri,
+                    "file": str(file_path),
+                    "line": exp.line_number,
+                    "show": exp.show[:10],
+                    "hide": exp.hide[:10],
                 })
 
             # ── Widgets ──────────────────────────────────────────────
@@ -22327,6 +22408,198 @@ class ProjectScanner:
         except Exception as e:
             import logging
             logging.getLogger('codetrellis').debug(f"React Native parse failed for {file_path}: {e}")
+
+    def _parse_expo(self, file_path: Path, matrix: ProjectMatrix):
+        """
+        Parse Expo file using EnhancedExpoParser.
+        v5.7: Expo framework-level support. Runs on JS/TS files where
+        Expo SDK usage is detected. Extracts config (app.json, eas.json),
+        SDK modules (50+ expo-* packages), Expo Router (v1-v3 file-based
+        routing, layouts, groups, API routes), config plugins (custom native
+        mods), Expo Modules API (native module definitions), and EAS
+        integration (Build, Update, Submit).
+        Supports Expo SDK 44 through 52+, 60+ ecosystem detection patterns.
+        """
+        try:
+            content = file_path.read_text()
+            if not content.strip():
+                return
+
+            # Only parse if file contains Expo code
+            if not self.expo_parser.is_expo_file(content, str(file_path)):
+                return
+
+            result = self.expo_parser.parse(content, str(file_path))
+
+            # ── Metadata ────────────────────────────────────────────
+            for fw in result.detected_frameworks:
+                if fw not in matrix.expo_detected_frameworks:
+                    matrix.expo_detected_frameworks.append(fw)
+
+            if result.sdk_version > matrix.expo_sdk_version:
+                matrix.expo_sdk_version = result.sdk_version
+
+            if result.workflow and not matrix.expo_workflow:
+                matrix.expo_workflow = result.workflow
+
+            if result.router_version > matrix.expo_router_version:
+                matrix.expo_router_version = result.router_version
+
+            if result.has_custom_plugins:
+                matrix.expo_has_custom_plugins = True
+
+            # ── Config ───────────────────────────────────────────────
+            if result.config.name:
+                matrix.expo_config = {
+                    "name": result.config.name,
+                    "slug": result.config.slug,
+                    "sdk_version": result.config.sdk_version,
+                    "version": result.config.version,
+                    "platforms": result.config.platforms[:5],
+                    "scheme": result.config.scheme,
+                    "has_splash": result.config.has_splash,
+                    "has_icon": result.config.has_icon,
+                    "orientation": result.config.orientation,
+                    "workflow": result.config.workflow,
+                    "runtime_version": result.config.runtime_version,
+                    "config_type": result.config.config_type,
+                    "plugins_count": len(result.config.plugins),
+                }
+
+            if result.eas_config.has_eas_update or result.eas_config.build_profiles:
+                matrix.expo_eas_config = {
+                    "build_profiles": result.eas_config.build_profiles[:10],
+                    "submit_profiles": result.eas_config.submit_profiles[:10],
+                    "update_channels": result.eas_config.update_channels[:10],
+                    "has_eas_update": result.eas_config.has_eas_update,
+                }
+
+            # ── SDK Modules ──────────────────────────────────────────
+            for mod in result.modules:
+                matrix.expo_modules.append({
+                    "module": mod.module,
+                    "file": str(file_path),
+                    "line": mod.line_number,
+                    "category": mod.category,
+                    "apis_used": mod.apis_used[:10],
+                    "requires_permission": mod.requires_permission,
+                    "is_async": mod.is_async,
+                })
+
+            # ── Permissions ──────────────────────────────────────────
+            for perm in result.permissions:
+                matrix.expo_permissions.append({
+                    "permission_type": perm.permission_type,
+                    "file": str(file_path),
+                    "line": perm.line_number,
+                    "hook_used": perm.hook_used,
+                    "is_foreground": perm.is_foreground,
+                    "is_background": perm.is_background,
+                })
+
+            # ── Assets ───────────────────────────────────────────────
+            for asset in result.assets:
+                matrix.expo_assets.append({
+                    "asset_type": asset.asset_type,
+                    "source": asset.source,
+                    "file": str(file_path),
+                    "line": asset.line_number,
+                    "names": asset.names[:10],
+                    "is_preloaded": asset.is_preloaded,
+                })
+
+            # ── Routes ───────────────────────────────────────────────
+            for route in result.routes:
+                matrix.expo_routes.append({
+                    "route_path": route.route_path,
+                    "file": str(file_path),
+                    "is_dynamic": route.is_dynamic,
+                    "dynamic_params": route.dynamic_params[:5],
+                    "is_catch_all": route.is_catch_all,
+                    "is_index": route.is_index,
+                    "is_api_route": route.is_api_route,
+                    "is_modal": route.is_modal,
+                    "has_error_boundary": route.has_error_boundary,
+                    "exports": route.exports[:5],
+                })
+
+            # ── Layouts ──────────────────────────────────────────────
+            for layout in result.layouts:
+                matrix.expo_layouts.append({
+                    "layout_type": layout.layout_type,
+                    "file": str(file_path),
+                    "route_group": layout.route_group,
+                    "screens": layout.screens[:20],
+                    "has_header_config": layout.has_header_config,
+                    "has_tab_bar_config": layout.has_tab_bar_config,
+                })
+
+            # ── Route Groups ─────────────────────────────────────────
+            for group in result.route_groups:
+                existing = [g for g in matrix.expo_route_groups
+                            if g.get("group_name") == group.group_name]
+                if existing:
+                    for r in group.routes:
+                        if r not in existing[0].get("routes", []):
+                            existing[0]["routes"].append(r)
+                else:
+                    matrix.expo_route_groups.append({
+                        "group_name": group.group_name,
+                        "routes": group.routes[:30],
+                        "has_layout": group.has_layout,
+                    })
+
+            # ── API Routes ───────────────────────────────────────────
+            for api_route in result.api_routes:
+                matrix.expo_api_routes.append({
+                    "route_path": api_route.route_path,
+                    "file": str(file_path),
+                    "http_methods": api_route.http_methods[:7],
+                })
+
+            # ── Navigation Hooks ─────────────────────────────────────
+            for hook in result.navigation_hooks:
+                if hook not in matrix.expo_navigation_hooks:
+                    matrix.expo_navigation_hooks.append(hook)
+
+            # ── Config Plugins ───────────────────────────────────────
+            for plugin in result.config_plugins:
+                matrix.expo_config_plugins.append({
+                    "name": plugin.name,
+                    "file": str(file_path),
+                    "line": plugin.line_number,
+                    "is_custom": plugin.is_custom,
+                    "is_inline": plugin.is_inline,
+                    "modifies_android": plugin.modifies_android,
+                    "modifies_ios": plugin.modifies_ios,
+                })
+
+            # ── Modules API ──────────────────────────────────────────
+            for mod_api in result.modules_api:
+                matrix.expo_modules_api.append({
+                    "module_name": mod_api.module_name,
+                    "file": str(file_path),
+                    "line": mod_api.line_number,
+                    "language": mod_api.language,
+                    "has_view": mod_api.has_view,
+                    "has_events": mod_api.has_events,
+                    "has_async_function": mod_api.has_async_function,
+                    "exported_methods": mod_api.exported_methods[:20],
+                    "exported_properties": mod_api.exported_properties[:10],
+                })
+
+            # ── Integrations ─────────────────────────────────────────
+            for integ in result.integrations:
+                matrix.expo_integrations.append({
+                    "pattern_name": integ.pattern_name,
+                    "file": str(file_path),
+                    "line": integ.line_number,
+                    "modules_involved": integ.modules_involved[:5],
+                })
+
+        except Exception as e:
+            import logging
+            logging.getLogger('codetrellis').debug(f"Expo parse failed for {file_path}: {e}")
 
     def _parse_mui(self, file_path: Path, matrix: ProjectMatrix):
         """
@@ -26225,6 +26498,27 @@ class ProjectScanner:
     # Keep _EXAMPLE_DIRS as a backward-compatible alias for any internal refs.
     _EXAMPLE_DIRS = FileClassifier.EXAMPLE_DIRS
 
+    def _parse_expo_config_files(self, root: Path, matrix: ProjectMatrix):
+        """
+        Parse Expo config files (app.json, app.config.js/ts, eas.json).
+        v5.7: Runs once during scan to extract Expo project configuration.
+        These files are not JS/TS source code dispatched through _parse_file,
+        so they are handled separately.
+        """
+        config_files = [
+            'app.json', 'app.config.js', 'app.config.ts', 'eas.json',
+        ]
+        for fname in config_files:
+            config_path = root / fname
+            if config_path.is_file():
+                try:
+                    self._parse_expo(config_path, matrix)
+                except Exception as e:
+                    import logging
+                    logging.getLogger('codetrellis').debug(
+                        f"Expo config parse failed for {config_path}: {e}"
+                    )
+
     def _extract_dependencies(self, root: Path, matrix: ProjectMatrix):
         """Extract dependencies from package.json and go.mod files"""
         # Get gitignore filter for respecting .gitignore rules
@@ -26233,6 +26527,9 @@ class ProjectScanner:
         # --- Node.js: package.json ---
         # Recursively find all package.json files but respect .gitignore
         for package_json in root.rglob("package.json"):
+            # Skip if in ignored directory (e.g., .venv, site-packages, node_modules)
+            if self._path_contains_ignored_segment(str(package_json)):
+                continue
             # Skip if gitignored (e.g., tests/repos)
             if gi and not gi.is_empty:
                 rel = str(package_json.relative_to(root))
@@ -26254,6 +26551,9 @@ class ProjectScanner:
         # --- Go: go.mod ---
         # Recursively find all go.mod files but respect .gitignore
         for go_mod in root.rglob("go.mod"):
+            # Skip if in ignored directory (e.g., .venv, site-packages, node_modules)
+            if self._path_contains_ignored_segment(str(go_mod)):
+                continue
             # Skip if gitignored (e.g., tests/repos)
             if gi and not gi.is_empty:
                 rel = str(go_mod.relative_to(root))
@@ -26305,6 +26605,9 @@ class ProjectScanner:
         # --- Java: pom.xml (Maven) ---
         # Recursively find all pom.xml files but respect .gitignore
         for pom_xml in root.rglob("pom.xml"):
+            # Skip if in ignored directory (e.g., .venv, site-packages, node_modules)
+            if self._path_contains_ignored_segment(str(pom_xml)):
+                continue
             # Skip if gitignored (e.g., tests/repos)
             if gi and not gi.is_empty:
                 rel = str(pom_xml.relative_to(root))
@@ -26357,6 +26660,9 @@ class ProjectScanner:
         # --- Java: build.gradle / build.gradle.kts (Gradle) ---
         # Recursively find all build.gradle* files but respect .gitignore
         for gradle_file in root.rglob("build.gradle*"):
+            # Skip if in ignored directory (e.g., .venv, site-packages, node_modules)
+            if self._path_contains_ignored_segment(str(gradle_file)):
+                continue
             # Skip if gitignored (e.g., tests/repos)
             if gi and not gi.is_empty:
                 rel = str(gradle_file.relative_to(root))
@@ -26405,6 +26711,9 @@ class ProjectScanner:
         # --- Rust: Cargo.toml ---
         # Recursively find all Cargo.toml files but respect .gitignore
         for cargo_toml in root.rglob("Cargo.toml"):
+            # Skip if in ignored directory (e.g., .venv, site-packages, node_modules)
+            if self._path_contains_ignored_segment(str(cargo_toml)):
+                continue
             # Skip if gitignored (e.g., tests/repos)
             if gi and not gi.is_empty:
                 rel = str(cargo_toml.relative_to(root))
