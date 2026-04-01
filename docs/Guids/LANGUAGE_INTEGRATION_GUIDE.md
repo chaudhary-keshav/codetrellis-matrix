@@ -256,8 +256,10 @@ Use this checklist when adding a new language:
 - [ ] Update `ProjectContext.from_matrix()` in .codetrellis/bpl/selector.py`:
   - [ ] Add framework detection from dependencies
   - [ ] Add artifact counting for weighted detection
-- [ ] Update `_get_practice_frameworks()` in selector.py:
-  - [ ] Add ID prefix mapping (e.g., `GO*` → golang, `RS*` → rust)
+- [ ] Update `PracticeSelector._PREFIX_FRAMEWORK_MAP` in selector.py (class attribute):
+  - [ ] Add root language prefix (e.g., `"GO": {"golang"}`)
+  - [ ] Add framework prefixes (e.g., `"GIN": {"gin", "golang"}`)
+  - [ ] Language grouping auto-derives — no separate map needed (v5.0)
 - [ ] Update `_filter_applicable()` to handle new language
 - [ ] Test context-aware selection with new language project
 - [ ] Test token budget enforcement: `--max-practice-tokens 200` → reduced count
@@ -1494,51 +1496,79 @@ def from_matrix(cls, matrix: Any) -> "ProjectContext":
         context.frameworks.add("<lang>")
 ```
 
-### 7.5 Update Practice ID Prefix Mapping
+### 7.5 Update Practice ID Prefix Mapping (UPDATED v5.0)
 
-#### File: .codetrellis/bpl/selector.py`-`\_get_practice_frameworks()`
+#### File: `codetrellis/bpl/selector.py` — class attribute `_PREFIX_FRAMEWORK_MAP`
 
-Add the ID prefix mapping for the new language:
+> **Note (v5.0):** The prefix→framework map is now a **class-level attribute** on
+> `PracticeSelector`, not a local dict. Language grouping for proportional allocation
+> and CLI output is **auto-derived** from this map — no separate language map is needed.
+
+Add entries to `PracticeSelector._PREFIX_FRAMEWORK_MAP` for the new language:
 
 ```python
-def _get_practice_frameworks(self, practice: BestPractice) -> Set[str]:
-    """Determine which frameworks a practice applies to from its ID prefix."""
-    practice_id = practice.id.upper()
+class PracticeSelector:
+    # ... existing code ...
 
-    # Map of ID prefixes to required frameworks
-    prefix_framework_map = {
-        # Existing
-        "NG": {"angular", "typescript"},
-        "TS": {"typescript"},
+    _PREFIX_FRAMEWORK_MAP: ClassVar[dict[str, set[str]]] = {
+        # Root languages — single-element sets
         "PY": {"python"},
-        "PYE": {"python"},
-        "DP": set(),  # Design patterns are generic
-
-        # NEW: Add your language
+        "TS": {"typescript"},
         "GO": {"golang"},
         "RS": {"rust"},
         "JAVA": {"java"},
-        "KT": {"kotlin"},
-        "CS": {"csharp", "dotnet"},
         "RB": {"ruby"},
-        "SCALA": {"scala"},
+        "CS": {"csharp"},
+        "KT": {"kotlin"},
+        "JS": {"javascript"},
+        "DP": set(),  # Design patterns are generic
+
+        # Framework prefixes — multi-element sets include parent language
+        "PYE": {"python"},           # Python expanded (child of python)
+        "FLASK": {"flask", "python"},
+        "DJANGO": {"django", "python"},
+        "FAST": {"fastapi", "python"},
+        "NG": {"angular", "typescript"},
+        "REACT": {"react", "typescript"},
         "GIN": {"gin", "golang"},
         "ACTIX": {"actix", "rust"},
-        "SPRING": {"spring", "java"},
         "RAILS": {"rails", "ruby"},
-        "PLAY": {"play", "scala"},
-        "AKKA": {"akka", "scala"},
-        "ZIO": {"zio", "scala"},
-        "HTTP4S": {"http4s", "scala"},
-        "TAPIR": {"tapir", "scala"},
-    }
 
-    # ... rest of method
+        # NEW: Add your language
+        "<LANG>": {"<lang>"},                        # Root language
+        "<FRAMEWORK>": {"<framework>", "<lang>"},    # Framework (child of <lang>)
+    }
 ```
+
+#### How Auto-Derivation Works
+
+When `_PREFIX_FRAMEWORK_MAP` is updated, `_derive_prefix_language_map()` automatically:
+
+1. **Identifies root languages** from single-element entries (e.g., `"PY": {"python"}` → `python` is a root)
+2. **Builds child→parent edges** from multi-element entries (e.g., `"FLASK": {"flask", "python"}` → `flask` is a child of `python`)
+3. **Walks parent chains** to resolve every prefix to its ultimate root language
+4. **Caches the result** — computed once, reused for all practice lookups
+
+This means:
+- `FLASK001` → `python` (resolved via `flask → python`)
+- `REACT001` → `typescript` (resolved via `react → typescript`)
+- `DP001` → `generic` (empty set means generic)
+- `PY001` → `python` (direct root match)
+
+#### What Happens Automatically
+
+| Mechanism | What it does |
+|---|---|
+| `_derive_prefix_language_map()` | Maps every prefix to its root language |
+| `_get_practice_language()` | Returns language for any practice by longest-prefix match |
+| `_allocate_proportional_slots()` | Distributes practice slots fairly across detected languages |
+| CLI `_generate_practices_section()` | Groups practices by language in output (e.g., `## PYTHON (5)`) |
+
+**No other files need editing** for language grouping to work.
 
 ### 7.6 Update Filtering Logic
 
-#### File: .codetrellis/bpl/selector.py`-`\_filter_applicable()`
+#### File: `codetrellis/bpl/selector.py` — `_filter_applicable()`
 
 Add filtering for the new language:
 
@@ -1750,13 +1780,14 @@ go_framework_mapping = {
     "grpc": ["google.golang.org/grpc"],
 }
 
-# In _get_practice_frameworks():
-prefix_framework_map = {
+# In _PREFIX_FRAMEWORK_MAP (class attribute, v5.0):
+_PREFIX_FRAMEWORK_MAP = {
     ...
     "GO": {"golang"},
     "GIN": {"gin", "golang"},
     "ECHO": {"echo", "golang"},
 }
+# Language grouping auto-derives from these entries.
 
 # In _filter_applicable():
 has_golang = any(f in context_frameworks for f in ["golang", "gin", "echo", "fiber"])

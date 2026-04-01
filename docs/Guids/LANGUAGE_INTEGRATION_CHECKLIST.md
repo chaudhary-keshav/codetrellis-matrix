@@ -485,21 +485,45 @@ File: .codetrellis/bpl/selector.py`-`ProjectContext.from_matrix()`
       context.frameworks.add("<lang>")
   ```
 
-### 6.6 Update Selector - Practice Filtering
+### 6.6 Update Selector - Practice ID Prefix Mapping (UPDATED v5.0)
 
-File: .codetrellis/bpl/selector.py`-`\_get_practice_frameworks()`
+File: `codetrellis/bpl/selector.py` — class attribute `_PREFIX_FRAMEWORK_MAP`
 
-- [ ] Add ID prefix mapping:
+> **Note (v5.0):** The prefix→framework map is now a **class-level attribute** on
+> `PracticeSelector`, not a local dict inside `_get_practice_frameworks()`. Language
+> grouping for proportional allocation and CLI output is **auto-derived** from this
+> map via `_derive_prefix_language_map()` — no separate language map needed.
+
+- [ ] Add entries to `PracticeSelector._PREFIX_FRAMEWORK_MAP`:
   ```python
-  prefix_framework_map = {
+  _PREFIX_FRAMEWORK_MAP: ClassVar[dict[str, set[str]]] = {
+      # ... existing entries ...
+
+      # NEW: Add your language (root language — single-element set)
       "<LANG>": {"<lang>"},
+
+      # NEW: Add framework prefixes (multi-element set includes parent language)
       "<FRAMEWORK>": {"<framework>", "<lang>"},
   }
   ```
 
+- [ ] **Root language entries** must use a **single-element set** (e.g., `{"python"}`).
+  This tells `_derive_prefix_language_map()` that this is a root language, not a child.
+
+- [ ] **Framework entries** must include the parent language in the set (e.g., `{"flask", "python"}`).
+  This creates a child→parent edge so Flask practices are grouped under Python.
+
+- [ ] **What happens automatically** once entries are added:
+  | Mechanism | What it does | No manual edit needed |
+  |---|---|---|
+  | `_derive_prefix_language_map()` | Maps prefix→root language for grouping | Auto-derived from `_PREFIX_FRAMEWORK_MAP` |
+  | `_get_practice_language()` | Returns language for any practice by longest-prefix match | Uses cached language map |
+  | `_allocate_proportional_slots()` | Distributes practice slots fairly across detected languages | Uses `_get_practice_language()` |
+  | CLI `_generate_practices_section()` | Groups practices by language in output (e.g., `## PYTHON (5)`) | Uses `_get_practice_language()` |
+
 ### 6.7 Update Selector - Applicability Filter
 
-File: .codetrellis/bpl/selector.py`-`\_filter_applicable()`
+File: `codetrellis/bpl/selector.py` — `_filter_applicable()`
 
 - [ ] Add language detection:
 

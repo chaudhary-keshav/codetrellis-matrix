@@ -4262,8 +4262,14 @@ class PracticeSelector:
             max_generic = max(3, len(language_specific) // 3)  # At most 1/3 of language-specific count
             scored = language_specific + generic[:max_generic]
 
-        # Limit results
-        limited = scored[: criteria.max_practices]
+        # v5.5: Per-language proportional slot allocation to prevent
+        # frontend-heavy monorepos from crowding out backend practices.
+        # Groups practices by primary language and allocates slots
+        # proportionally, ensuring every detected language gets
+        # representation in the final selection.
+        limited = self._allocate_proportional_slots(
+            scored, context, criteria.max_practices,
+        )
 
         # Enforce token budget if set
         if criteria.max_tokens is not None:
@@ -4306,16 +4312,197 @@ class PracticeSelector:
         context = ProjectContext.from_matrix(matrix)
         return self.select(context, criteria)
 
+    # ── Centralized prefix→framework mapping ─────────────────────────────
+    # Single source of truth for mapping practice ID prefixes to their
+    # required framework sets.  Used by _get_practice_frameworks (for
+    # filtering) and _derive_prefix_language_map (for language grouping).
+    # When adding a new language/framework, ONLY this dict needs updating.
+    _PREFIX_FRAMEWORK_MAP: dict = {
+        "NG": {"angular", "typescript"},
+        "TS": {"typescript"},
+        "PY": {"python"},
+        "PYE": {"python"},  # Python expanded
+        "DP": set(),  # Design patterns are generic
+        "SOLID": set(),  # SOLID patterns are generic
+        "NEST": {"nestjs", "typescript"},
+        "REACT": {"react", "typescript"},
+        "FLASK": {"flask", "python"},
+        "DJANGO": {"django", "python"},
+        "FAST": {"fastapi", "python"},
+        "DB": set(),  # Database practices are generic
+        "DEVOPS": set(),  # DevOps practices are generic
+        "GORM": {"gorm", "golang"},
+        "GRPCGO": {"grpc_go", "golang"},
+        "GO": {"golang"},
+        "GIN": {"gin", "golang"},
+        "ECHO": {"echo", "golang"},
+        "FIBER": {"fiber", "golang"},
+        "CHI": {"chi", "golang"},
+        "COBRA": {"cobra", "golang"},
+        "JAVA": {"java"},
+        "SPRING": {"spring", "java"},
+        "JPA": {"jpa", "java"},
+        "QUARKUS": {"quarkus", "java"},
+        "MICRONAUT": {"micronaut", "java"},
+        "CS": {"csharp"},
+        "ASPNET": {"aspnet", "csharp"},
+        "EF": {"efcore", "csharp"},
+        "BLAZOR": {"blazor", "csharp"},
+        "SIGNALR": {"signalr", "csharp"},
+        "MAUI": {"maui", "csharp"},
+        "RS": {"rust"},
+        "ACTIX": {"actix", "rust"},
+        "ROCKET": {"rocket", "rust"},
+        "AXUM": {"axum", "rust"},
+        "WARP": {"warp", "rust"},
+        "TOKIO": {"tokio", "rust"},
+        "DIESEL": {"diesel", "rust"},
+        "SEAORM": {"sea_orm", "rust"},
+        "TAURI": {"tauri", "rust"},
+        "TONIC": {"tonic", "rust"},
+        "SQLX": {"sqlx_go", "golang"},
+        "SQL": {"sql"},
+        "PG": {"postgresql", "sql"},
+        "MYSQL": {"mysql", "sql"},
+        "TSQL": {"sqlserver", "sql"},
+        "ORA": {"oracle", "sql"},
+        "SQLITE": {"sqlite", "sql"},
+        "HTML": {"html"},
+        "A11Y": {"html"},
+        "SEO": {"html"},
+        "TMPL": {"html"},
+        "CSS": {"css"},
+        "SASS": {"sass"},
+        "LESS": {"less"},
+        "PCSS": {"postcss"},
+        "BASH": {"bash"},
+        "SH": {"bash"},
+        "ZSH": {"zsh", "bash"},
+        "KSH": {"ksh", "bash"},
+        "C": {"c"},
+        "POSIX": {"posix", "c"},
+        "GLIB": {"glib", "c"},
+        "OPENSSL": {"openssl", "c"},
+        "CPP": {"cpp"},
+        "QT": {"qt", "cpp"},
+        "BOOST": {"boost", "cpp"},
+        "CUDA": {"cuda", "cpp"},
+        "SWIFT": {"swift"},
+        "VAPOR": {"vapor", "swift"},
+        "SWIFTUI": {"swiftui", "swift"},
+        "COMBINE": {"combine", "swift"},
+        "RB": {"ruby"},
+        "RAILS": {"rails", "ruby"},
+        "SINATRA": {"sinatra", "ruby"},
+        "GRAPE": {"grape", "ruby"},
+        "HANAMI": {"hanami", "ruby"},
+        "SCALA": {"scala"},
+        "PLAY": {"play", "scala"},
+        "AKKA": {"akka", "scala"},
+        "ZIO": {"zio", "scala"},
+        "HTTP4S": {"http4s", "scala"},
+        "TAPIR": {"tapir", "scala"},
+        "R": {"rlang"},
+        "SHINY": {"shiny", "rlang"},
+        "PLUMBER": {"plumber", "rlang"},
+        "GOLEM": {"golem", "rlang"},
+        "TIDY": {"tidyverse", "rlang"},
+        "DART": {"dart"},
+        "FLUTTER": {"flutter", "dart"},
+        "RIVERPOD": {"riverpod", "dart"},
+        "BLOC": {"bloc", "dart"},
+        "SHELF": {"shelf", "dart"},
+        "DART_FROG": {"dart_frog", "dart"},
+        "SERVERPOD": {"serverpod", "dart"},
+        "LUA": {"lua"},
+        "LOVE": {"love2d", "lua"},
+        "OPENRESTY": {"openresty", "lua"},
+        "LAPIS": {"lapis", "lua"},
+        "TARANTOOL": {"tarantool", "lua"},
+        "PS": {"powershell"},
+        "PODE": {"pode", "powershell"},
+        "DSC": {"dsc", "powershell"},
+        "PESTER": {"pester", "powershell"},
+        "AZURE": {"azure", "powershell"},
+        "JS": {"javascript"},
+        "EXPRESS": {"express", "javascript"},
+        "MONGOOSE": {"mongoose", "javascript"},
+        "NODE": {"node", "javascript"},
+        "NESTJS": {"nestjs", "typescript"},
+        "ANGULAR": {"angular", "typescript"},
+        "TRPC": {"trpc", "typescript"},
+        "TYPEORM": {"typeorm", "typescript"},
+        "PRISMA_TS": {"prisma", "typescript"},
+        "DRIZZLE": {"drizzle", "typescript"},
+        "ZOD": {"zod", "typescript"},
+        "VUE": {"vue"},
+        "NUXT": {"nuxt", "vue"},
+        "PINIA": {"pinia", "vue"},
+        "VUEX": {"vuex", "vue"},
+        "VUETIFY": {"vuetify", "vue"},
+        "QUASAR": {"quasar", "vue"},
+        "MUI": {"mui", "react"},
+        "ANTD": {"antd", "react"},
+        "CHAKRA": {"chakra-ui", "react"},
+        "RADIX": {"radix-ui", "react"},
+        "REDUX": {"redux", "react"},
+        "ZUSTAND": {"zustand", "react"},
+        "JOTAI": {"jotai", "react"},
+        "RECOIL": {"recoil", "react"},
+        "SOLIDJS": {"solidjs"},
+        "HTMX": {"htmx"},
+        "STIM": {"stimulus"},
+        "SB": {"storybook"},
+        "GSAP": {"gsap"},
+        "RXJS": {"rxjs"},
+        # ── Additional prefixes (prevent wrong-language collisions) ──
+        "ALPINE": {"alpinejs"},
+        "APOLLO": {"apollo", "typescript"},
+        "ASTRO": {"astro"},
+        "BOOT": {"bootstrap"},
+        "CHARTJS": {"chartjs"},
+        "CI": set(),                          # CI/CD — generic
+        "D3JS": {"d3js"},
+        "EMO": {"emotion", "react"},
+        "FRAMER": {"framer-motion", "react"},
+        "KT": {"kotlin"},
+        "LARAVEL": {"laravel", "php"},
+        "LEAFLET": {"leaflet"},
+        "LIT": {"lit"},
+        "MOBX": {"mobx", "react"},
+        "NEXT": {"nextjs", "react"},
+        "NGRX": {"ngrx", "angular"},
+        "PATTERN": set(),                     # Design patterns — generic
+        "PHP": {"php"},
+        "PREACT": {"preact"},
+        "QWIK": {"qwik"},
+        "RECHARTS": {"recharts", "react"},
+        "REMIX": {"remix", "react"},
+        "RN": {"react-native", "react"},
+        "SC": {"styled-components", "react"},
+        "SHADCN": {"shadcn", "react"},
+        "SIDEKIQ": {"sidekiq", "ruby"},
+        "SLIM": {"slim", "ruby"},
+        "SVELTE": {"svelte"},
+        "SWR": {"swr", "react"},
+        "SYMFONY": {"symfony", "php"},
+        "THREEJS": {"threejs"},
+        "TSQUERY": {"tanstack-query", "typescript"},
+        "TW": {"tailwind", "css"},
+        "VALTIO": {"valtio", "react"},
+        "WP": {"wordpress", "php"},
+        "XSTATE": {"xstate"},
+    }
+
+    # Class-level cache for derived language grouping
+    _cached_language_map: Optional[dict] = None
+
     def _get_practice_frameworks(self, practice: BestPractice) -> Set[str]:
         """Determine which frameworks a practice applies to from its ID prefix.
 
-        Practice ID prefixes map to frameworks:
-        - NG* -> angular, typescript
-        - TS* -> typescript
-        - PY*, PYE* -> python
-        - DP* -> generic (design patterns apply to all)
-        - NEST* -> nestjs, typescript
-        - REACT* -> react, typescript
+        Uses ``_PREFIX_FRAMEWORK_MAP`` (the single source of truth) to map
+        practice ID prefixes to framework sets.  Uses longest-prefix matching
+        to avoid ambiguity (e.g. ``GORM`` before ``GO``, ``CSS`` before ``C``).
 
         Args:
             practice: The practice to check.
@@ -4323,160 +4510,276 @@ class PracticeSelector:
         Returns:
             Set of framework names this practice applies to.
         """
-        practice_id = practice.id.upper()
-
-        # Map of ID prefixes to required frameworks
-        prefix_framework_map = {
-            "NG": {"angular", "typescript"},
-            "TS": {"typescript"},
-            "PY": {"python"},
-            "PYE": {"python"},  # Python expanded
-            "DP": set(),  # Design patterns are generic
-            "SOLID": set(),  # SOLID patterns are generic
-            "NEST": {"nestjs", "typescript"},
-            "REACT": {"react", "typescript"},
-            "FLASK": {"flask", "python"},
-            "DJANGO": {"django", "python"},
-            "FAST": {"fastapi", "python"},
-            "DB": set(),  # Database practices are generic
-            "DEVOPS": set(),  # DevOps practices are generic
-            "GORM": {"gorm", "golang"},    # GORM ORM (v5.2) — must precede GO
-            "GRPCGO": {"grpc_go", "golang"},  # gRPC-Go framework (v5.2)
-            "GO": {"golang"},  # Go language practices (G-17)
-            "GIN": {"gin", "golang"},  # Gin framework
-            "ECHO": {"echo", "golang"},  # Echo framework
-            "FIBER": {"fiber", "golang"},  # Fiber framework (v5.2)
-            "CHI": {"chi", "golang"},      # Chi router (v5.2)
-            "COBRA": {"cobra", "golang"},  # Cobra CLI framework (v5.2)
-            "JAVA": {"java"},  # Java language practices (v4.12)
-            "SPRING": {"spring", "java"},  # Spring framework
-            "JPA": {"jpa", "java"},  # JPA/Hibernate practices
-            "QUARKUS": {"quarkus", "java"},  # Quarkus framework
-            "MICRONAUT": {"micronaut", "java"},  # Micronaut framework
-            "CS": {"csharp"},              # C# language practices (v4.13)
-            "ASPNET": {"aspnet", "csharp"},  # ASP.NET Core
-            "EF": {"efcore", "csharp"},    # Entity Framework Core
-            "BLAZOR": {"blazor", "csharp"},  # Blazor framework
-            "SIGNALR": {"signalr", "csharp"},  # SignalR
-            "MAUI": {"maui", "csharp"},    # MAUI
-            "RS": {"rust"},                # Rust language practices (v4.14)
-            "ACTIX": {"actix", "rust"},    # actix-web framework
-            "ROCKET": {"rocket", "rust"},  # Rocket framework
-            "AXUM": {"axum", "rust"},      # Axum framework
-            "WARP": {"warp", "rust"},      # Warp framework
-            "TOKIO": {"tokio", "rust"},    # Tokio async runtime
-            "DIESEL": {"diesel", "rust"},  # Diesel ORM
-            "SEAORM": {"sea_orm", "rust"},  # SeaORM async ORM (v5.4)
-            "TAURI": {"tauri", "rust"},     # Tauri desktop framework (v5.4)
-            "TONIC": {"tonic", "rust"},    # Tonic gRPC
-            "SQLX": {"sqlx_go", "golang"},   # sqlx Go SQL extensions (v5.2) — must precede SQL
-            "SQL": {"sql"},                # SQL language practices (v4.15)
-            "PG": {"postgresql", "sql"},   # PostgreSQL-specific
-            "MYSQL": {"mysql", "sql"},     # MySQL-specific
-            "TSQL": {"sqlserver", "sql"},  # SQL Server / T-SQL
-            "ORA": {"oracle", "sql"},      # Oracle / PL/SQL
-            "SQLITE": {"sqlite", "sql"},   # SQLite-specific
-            "HTML": {"html"},              # HTML language practices (v4.16)
-            "A11Y": {"html"},              # Accessibility practices
-            "SEO": {"html"},               # SEO practices
-            "TMPL": {"html"},              # Template engine practices
-            "CSS": {"css"},                # CSS language practices (v4.17)
-            "SASS": {"sass"},              # Sass/SCSS language practices (v4.44)
-            "LESS": {"less"},              # Less CSS language practices (v4.45)
-            "PCSS": {"postcss"},           # PostCSS language practices (v4.46)
-            "BASH": {"bash"},              # Bash/Shell language practices (v4.18)
-            "SH": {"bash"},                # POSIX shell practices
-            "ZSH": {"zsh", "bash"},        # Zsh-specific practices
-            "KSH": {"ksh", "bash"},        # Ksh-specific practices
-            "C": {"c"},                    # C language practices (v4.19)
-            "POSIX": {"posix", "c"},       # POSIX C practices
-            "GLIB": {"glib", "c"},         # GLib framework practices
-            "OPENSSL": {"openssl", "c"},   # OpenSSL practices
-            "CPP": {"cpp"},                # C++ language practices (v4.20)
-            "QT": {"qt", "cpp"},           # Qt framework practices
-            "BOOST": {"boost", "cpp"},     # Boost library practices
-            "CUDA": {"cuda", "cpp"},       # CUDA practices
-            "SWIFT": {"swift"},              # Swift language practices (v4.22)
-            "VAPOR": {"vapor", "swift"},     # Vapor framework
-            "SWIFTUI": {"swiftui", "swift"}, # SwiftUI framework
-            "COMBINE": {"combine", "swift"}, # Combine framework
-            "RB": {"ruby"},                  # Ruby language practices (v4.23)
-            "RAILS": {"rails", "ruby"},      # Rails framework
-            "SINATRA": {"sinatra", "ruby"},  # Sinatra framework
-            "GRAPE": {"grape", "ruby"},      # Grape API framework
-            "HANAMI": {"hanami", "ruby"},    # Hanami framework
-            "SCALA": {"scala"},                  # Scala language practices (v4.25)
-            "PLAY": {"play", "scala"},           # Play Framework
-            "AKKA": {"akka", "scala"},           # Akka toolkit
-            "ZIO": {"zio", "scala"},             # ZIO effect system
-            "HTTP4S": {"http4s", "scala"},       # http4s server
-            "TAPIR": {"tapir", "scala"},         # Tapir endpoints
-            "R": {"rlang"},                          # R language practices (v4.26)
-            "SHINY": {"shiny", "rlang"},             # Shiny framework
-            "PLUMBER": {"plumber", "rlang"},         # Plumber REST API
-            "GOLEM": {"golem", "rlang"},             # Golem framework
-            "TIDY": {"tidyverse", "rlang"},          # tidyverse practices
-            "DART": {"dart"},                            # Dart language practices (v4.27)
-            "FLUTTER": {"flutter", "dart"},              # Flutter framework
-            "RIVERPOD": {"riverpod", "dart"},            # Riverpod state management
-            "BLOC": {"bloc", "dart"},                    # Bloc state management
-            "SHELF": {"shelf", "dart"},                  # Shelf server framework
-            "DART_FROG": {"dart_frog", "dart"},          # Dart Frog server framework
-            "SERVERPOD": {"serverpod", "dart"},          # Serverpod server framework
-            "LUA": {"lua"},                                  # Lua language practices (v4.28)
-            "LOVE": {"love2d", "lua"},                       # LÖVE2D game framework
-            "OPENRESTY": {"openresty", "lua"},               # OpenResty/nginx-lua
-            "LAPIS": {"lapis", "lua"},                       # Lapis web framework
-            "TARANTOOL": {"tarantool", "lua"},               # Tarantool database
-            "PS": {"powershell"},                                # PowerShell practices (v4.29)
-            "PODE": {"pode", "powershell"},                      # Pode web framework
-            "DSC": {"dsc", "powershell"},                        # DSC configuration
-            "PESTER": {"pester", "powershell"},                  # Pester testing
-            "AZURE": {"azure", "powershell"},                    # Azure PowerShell
-            "JS": {"javascript"},                                    # JavaScript practices (v4.30)
-            "EXPRESS": {"express", "javascript"},                    # Express.js framework
-            "MONGOOSE": {"mongoose", "javascript"},                  # Mongoose ODM
-            "NODE": {"node", "javascript"},                          # Node.js platform
-            "NESTJS": {"nestjs", "typescript"},                          # NestJS framework
-            "ANGULAR": {"angular", "typescript"},                        # Angular framework
-            "TRPC": {"trpc", "typescript"},                              # tRPC API framework
-            "TYPEORM": {"typeorm", "typescript"},                        # TypeORM ORM
-            "PRISMA_TS": {"prisma", "typescript"},                       # Prisma with TypeScript
-            "DRIZZLE": {"drizzle", "typescript"},                        # Drizzle ORM
-            "ZOD": {"zod", "typescript"},                                # Zod validation
-            "VUE": {"vue"},                                                      # Vue.js practices (v4.34)
-            "NUXT": {"nuxt", "vue"},                                             # Nuxt framework
-            "PINIA": {"pinia", "vue"},                                           # Pinia state management
-            "VUEX": {"vuex", "vue"},                                             # Vuex state management
-            "VUETIFY": {"vuetify", "vue"},                                       # Vuetify UI framework
-            "QUASAR": {"quasar", "vue"},                                         # Quasar framework
-            "MUI": {"mui", "react"},                                                     # Material UI practices (v4.36)
-            "ANTD": {"antd", "react"},                                                   # Ant Design practices (v4.37)
-            "CHAKRA": {"chakra-ui", "react"},                                              # Chakra UI practices (v4.38)
-            "RADIX": {"radix-ui", "react"},                                                # Radix UI practices (v4.41)
-            "REDUX": {"redux", "react"},                                                       # Redux / RTK practices (v4.47)
-            "ZUSTAND": {"zustand", "react"},                                                   # Zustand practices (v4.48)
-            "JOTAI": {"jotai", "react"},                                                       # Jotai practices (v4.49)
-            "RECOIL": {"recoil", "react"},                                                     # Recoil practices (v4.50)
-            "SOLIDJS": {"solidjs"},                                                                # Solid.js practices (v4.62)
-            "HTMX": {"htmx"},                                                                          # HTMX practices (v4.67)
-            "STIM": {"stimulus"},                                                                        # Stimulus / Hotwire practices (v4.68)
-            "SB": {"storybook"},                                                                             # Storybook practices (v4.70)
-            "GSAP": {"gsap"},                                                                                # GSAP animation library (v4.77)
-            "RXJS": {"rxjs"},                                                                                # RxJS reactive programming (v4.78)
-        }
-
         # Check explicit applicability first
         if practice.applicability.frameworks:
             return set(practice.applicability.frameworks)
 
-        # Determine from prefix
-        for prefix, frameworks in prefix_framework_map.items():
-            if practice_id.startswith(prefix):
-                return frameworks
+        practice_id = practice.id.upper()
 
-        # Default: generic practice
-        return set()
+        # Longest-prefix match against the centralized map
+        best_prefix = ""
+        best_frameworks: Set[str] = set()
+        for prefix, frameworks in self._PREFIX_FRAMEWORK_MAP.items():
+            if practice_id.startswith(prefix) and len(prefix) > len(best_prefix):
+                best_prefix = prefix
+                best_frameworks = frameworks
+
+        return best_frameworks
+
+    # ── Practice language grouping (v5.5) ────────────────────────────────
+    #
+    # Language groups are derived DYNAMICALLY from _PREFIX_FRAMEWORK_MAP.
+    # No separate hard-coded mapping is needed.  When a new language or
+    # framework is added to _PREFIX_FRAMEWORK_MAP, the language grouping
+    # auto-updates on next use.
+
+    @classmethod
+    def _derive_prefix_language_map(cls) -> dict[str, str]:
+        """Derive prefix→language-group dynamically from _PREFIX_FRAMEWORK_MAP.
+
+        Algorithm:
+        1. Identify **root languages** — frameworks that appear as the sole
+           element of at least one prefix entry (e.g. ``"TS": {"typescript"}``
+           makes ``typescript`` a root).
+        2. Count how often each framework appears across all entries
+           (used as a deterministic tiebreaker).
+        3. Build child→parent edges from multi-element entries:
+           a. If exactly one element is a root → root is the parent.
+           b. If multiple roots → most-frequent root is the parent.
+           c. If no roots → most-frequent framework is the parent.
+        4. Walk the parent chain to resolve each prefix to its ultimate
+           root language group.
+
+        This avoids maintaining a second hard-coded mapping: adding a new
+        language/framework to ``_PREFIX_FRAMEWORK_MAP`` is sufficient.
+        """
+        pfm = cls._PREFIX_FRAMEWORK_MAP
+
+        # 1. Identify root languages (appear as single-element entries)
+        roots: set[str] = set()
+        for fws in pfm.values():
+            if len(fws) == 1:
+                roots.add(next(iter(fws)))
+
+        # 2. Count framework frequency (deterministic tiebreaker)
+        freq: dict[str, int] = {}
+        for fws in pfm.values():
+            for fw in fws:
+                freq[fw] = freq.get(fw, 0) + 1
+
+        # 3. Build child→parent edges
+        child_parent: dict[str, str] = {}
+        for fws in pfm.values():
+            if len(fws) < 2:
+                continue
+            set_roots = fws & roots
+            set_non_roots = fws - roots
+
+            if len(set_roots) == 1 and set_non_roots:
+                # (a) One root → it is the parent
+                parent = next(iter(set_roots))
+                for child in set_non_roots:
+                    child_parent.setdefault(child, parent)
+            elif len(set_roots) >= 2:
+                # (b) Multiple roots → most-frequent root is parent
+                by_freq = sorted(
+                    set_roots, key=lambda f: freq.get(f, 0), reverse=True
+                )
+                parent = by_freq[0]
+                for child in by_freq[1:]:
+                    child_parent.setdefault(child, parent)
+                for child in set_non_roots:
+                    child_parent.setdefault(child, parent)
+            elif not set_roots and len(fws) >= 2:
+                # (c) No roots → most-frequent framework is parent
+                by_freq = sorted(
+                    fws, key=lambda f: freq.get(f, 0), reverse=True
+                )
+                parent = by_freq[0]
+                for child in by_freq[1:]:
+                    child_parent.setdefault(child, parent)
+
+        # 4. Resolve ultimate root for a framework (walk parent chain)
+        def resolve(fw: str) -> str:
+            visited: set[str] = set()
+            while fw in child_parent and fw not in visited:
+                visited.add(fw)
+                fw = child_parent[fw]
+            return fw
+
+        # 5. Map each prefix to its root language group
+        result: dict[str, str] = {}
+        for prefix, fws in pfm.items():
+            if not fws:
+                result[prefix] = "generic"
+            else:
+                # Prefer root framework as representative; freq tiebreaker
+                set_roots = fws & roots
+                if set_roots:
+                    best = sorted(
+                        set_roots,
+                        key=lambda f: freq.get(f, 0),
+                        reverse=True,
+                    )[0]
+                else:
+                    best = sorted(
+                        fws,
+                        key=lambda f: freq.get(f, 0),
+                        reverse=True,
+                    )[0]
+                result[prefix] = resolve(best)
+
+        return result
+
+    @classmethod
+    def _get_prefix_language_map(cls) -> dict[str, str]:
+        """Return the cached prefix→language-group map, building on first call."""
+        if cls._cached_language_map is None:
+            cls._cached_language_map = cls._derive_prefix_language_map()
+        return cls._cached_language_map
+
+    def _get_practice_language(self, practice: BestPractice) -> str:
+        """Map a practice to its primary language group.
+
+        Returns a language group key (e.g. ``'python'``, ``'typescript'``,
+        ``'golang'``) or ``'generic'`` for non-language-specific practices
+        (DP*, SOLID*, etc.).
+
+        The mapping is derived dynamically from ``_PREFIX_FRAMEWORK_MAP`` —
+        no separate hard-coded language map is needed.
+        """
+        lang_map = self._get_prefix_language_map()
+        pid = practice.id.upper()
+        # Match longest prefix first to avoid e.g. "C" matching "CSS"
+        best_match = ""
+        best_lang = "generic"
+        for prefix, lang in lang_map.items():
+            if pid.startswith(prefix) and len(prefix) > len(best_match):
+                best_match = prefix
+                best_lang = lang
+        return best_lang
+
+    def _allocate_proportional_slots(
+        self,
+        scored: List[BestPractice],
+        context: ProjectContext,
+        max_practices: int,
+    ) -> List[BestPractice]:
+        """Allocate practice slots proportionally across language groups.
+
+        Prevents monorepos with large frontend codebases from crowding out
+        backend language practices.  Every detected language group gets at
+        least ``_MIN_SLOTS_PER_LANGUAGE`` slots (if it has that many
+        practices available), and remaining slots are distributed
+        proportionally by the number of practices in each group.
+
+        Security-category practices get a priority boost: they are
+        guaranteed at least 2 slots per language group that has them.
+
+        Args:
+            scored: Pre-scored and sorted practices (best first).
+            context: Project context with detected frameworks.
+            max_practices: Total budget of practices to return.
+
+        Returns:
+            Selected practices respecting proportional allocation.
+        """
+        if len(scored) <= max_practices:
+            return scored
+
+        _MIN_SLOTS_PER_LANGUAGE = 2
+        _MIN_SECURITY_SLOTS = 2  # per language group, if available
+
+        # Group practices by language
+        groups: dict[str, list[BestPractice]] = {}
+        for p in scored:
+            lang = self._get_practice_language(p)
+            groups.setdefault(lang, []).append(p)
+
+        # Nothing to allocate
+        if not groups:
+            return scored[:max_practices]
+
+        # Separate security practices per group for priority treatment
+        security_by_group: dict[str, list[BestPractice]] = {}
+        for lang, practices in groups.items():
+            sec = [
+                p for p in practices
+                if p.category == PracticeCategory.SECURITY
+                or (hasattr(p, 'content') and p.content
+                    and hasattr(p.content, 'tags') and p.content.tags
+                    and any('security' in t.lower() for t in p.content.tags))
+            ]
+            if sec:
+                security_by_group[lang] = sec
+
+        # Calculate slot allocation
+        num_groups = len(groups)
+
+        # Dynamic minimum: reduce per-group base when many groups compete
+        # for a small budget (e.g. 8 groups with max_practices=15).
+        min_per_group = min(
+            _MIN_SLOTS_PER_LANGUAGE,
+            max(1, max_practices // num_groups),
+        )
+        min_reserved = min_per_group * num_groups
+        remaining = max_practices - min_reserved
+
+        # Proportional allocation of remaining slots based on group size
+        total_available = sum(len(v) for v in groups.values())
+        allocated: dict[str, int] = {}
+        for lang, practices in groups.items():
+            # Proportional share of remaining slots
+            if total_available > 0 and remaining > 0:
+                proportion = len(practices) / total_available
+                extra = int(remaining * proportion)
+            else:
+                extra = 0
+            allocated[lang] = min_per_group + extra
+
+        # Distribute any rounding remainder to the largest groups
+        total_allocated = sum(allocated.values())
+        shortfall = max_practices - total_allocated
+        if shortfall > 0:
+            # Sort groups by size descending
+            for lang in sorted(groups, key=lambda g: len(groups[g]), reverse=True):
+                if shortfall <= 0:
+                    break
+                allocated[lang] += 1
+                shortfall -= 1
+
+        # Select practices per group with security priority
+        result: list[BestPractice] = []
+        for lang, practices in groups.items():
+            slots = min(allocated.get(lang, _MIN_SLOTS_PER_LANGUAGE), len(practices))
+            if slots <= 0:
+                continue
+
+            selected_ids: set[str] = set()
+            group_result: list[BestPractice] = []
+
+            # First, fill security slots
+            sec_practices = security_by_group.get(lang, [])
+            sec_slots = min(_MIN_SECURITY_SLOTS, slots, len(sec_practices))
+            for p in sec_practices[:sec_slots]:
+                group_result.append(p)
+                selected_ids.add(p.id)
+
+            # Fill remaining slots from the scored order (already sorted)
+            for p in practices:
+                if len(group_result) >= slots:
+                    break
+                if p.id not in selected_ids:
+                    group_result.append(p)
+                    selected_ids.add(p.id)
+
+            result.extend(group_result)
+
+        # Final sort: maintain original score order across groups
+        score_order = {p.id: i for i, p in enumerate(scored)}
+        result.sort(key=lambda p: score_order.get(p.id, len(scored)))
+
+        return result[:max_practices]
 
     def _filter_applicable(
         self,
@@ -5039,6 +5342,7 @@ class PracticeSelector:
 
         Higher scores are better. Considers:
         - Priority level
+        - Security category boost (v5.5)
         - Framework match
         - Pattern match
         - Dependencies match
@@ -5056,11 +5360,24 @@ class PracticeSelector:
             """Calculate score for a practice.
 
             Returns tuple for stable sorting:
-            (priority_score, framework_match, pattern_match, id)
+            (priority_score, security_boost, framework_match, pattern_match, id)
             """
             # Priority score (higher priority = higher score)
             priority_order = list(PracticePriority)
             priority_score = len(priority_order) - priority_order.index(practice.priority)
+
+            # v5.5: Security category boost — security practices get a +2
+            # score bump to ensure they surface in the selection even when
+            # competing against a large pool of non-security practices.
+            security_boost = 0
+            is_security = (
+                practice.category == PracticeCategory.SECURITY
+                or (hasattr(practice, 'content') and practice.content
+                    and hasattr(practice.content, 'tags') and practice.content.tags
+                    and any('security' in t.lower() for t in practice.content.tags))
+            )
+            if is_security:
+                security_boost = 2
 
             # Framework match score
             practice_frameworks = set(practice.applicability.frameworks)
@@ -5077,7 +5394,7 @@ class PracticeSelector:
             # Combined score
             total_match = framework_match + pattern_match + dep_match
 
-            return (priority_score, total_match, practice.id)
+            return (priority_score, security_boost, total_match, practice.id)
 
         return sorted(practices, key=score, reverse=True)
 
