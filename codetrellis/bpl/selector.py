@@ -4312,197 +4312,403 @@ class PracticeSelector:
         context = ProjectContext.from_matrix(matrix)
         return self.select(context, criteria)
 
-    # ── Centralized prefix→framework mapping ─────────────────────────────
-    # Single source of truth for mapping practice ID prefixes to their
-    # required framework sets.  Used by _get_practice_frameworks (for
-    # filtering) and _derive_prefix_language_map (for language grouping).
-    # When adding a new language/framework, ONLY this dict needs updating.
-    _PREFIX_FRAMEWORK_MAP: dict = {
-        "NG": {"angular", "typescript"},
-        "TS": {"typescript"},
-        "PY": {"python"},
-        "PYE": {"python"},  # Python expanded
-        "DP": set(),  # Design patterns are generic
-        "SOLID": set(),  # SOLID patterns are generic
-        "NEST": {"nestjs", "typescript"},
-        "REACT": {"react", "typescript"},
-        "FLASK": {"flask", "python"},
-        "DJANGO": {"django", "python"},
-        "FAST": {"fastapi", "python"},
-        "DB": set(),  # Database practices are generic
-        "DEVOPS": set(),  # DevOps practices are generic
-        "GORM": {"gorm", "golang"},
-        "GRPCGO": {"grpc_go", "golang"},
-        "GO": {"golang"},
-        "GIN": {"gin", "golang"},
-        "ECHO": {"echo", "golang"},
-        "FIBER": {"fiber", "golang"},
-        "CHI": {"chi", "golang"},
-        "COBRA": {"cobra", "golang"},
-        "JAVA": {"java"},
-        "SPRING": {"spring", "java"},
-        "JPA": {"jpa", "java"},
-        "QUARKUS": {"quarkus", "java"},
-        "MICRONAUT": {"micronaut", "java"},
-        "CS": {"csharp"},
-        "ASPNET": {"aspnet", "csharp"},
-        "EF": {"efcore", "csharp"},
-        "BLAZOR": {"blazor", "csharp"},
-        "SIGNALR": {"signalr", "csharp"},
-        "MAUI": {"maui", "csharp"},
-        "RS": {"rust"},
-        "ACTIX": {"actix", "rust"},
-        "ROCKET": {"rocket", "rust"},
-        "AXUM": {"axum", "rust"},
-        "WARP": {"warp", "rust"},
-        "TOKIO": {"tokio", "rust"},
-        "DIESEL": {"diesel", "rust"},
-        "SEAORM": {"sea_orm", "rust"},
-        "TAURI": {"tauri", "rust"},
-        "TONIC": {"tonic", "rust"},
-        "SQLX": {"sqlx_go", "golang"},
-        "SQL": {"sql"},
-        "PG": {"postgresql", "sql"},
-        "MYSQL": {"mysql", "sql"},
-        "TSQL": {"sqlserver", "sql"},
-        "ORA": {"oracle", "sql"},
-        "SQLITE": {"sqlite", "sql"},
-        "HTML": {"html"},
-        "A11Y": {"html"},
-        "SEO": {"html"},
-        "TMPL": {"html"},
-        "CSS": {"css"},
-        "SASS": {"sass"},
-        "LESS": {"less"},
-        "PCSS": {"postcss"},
-        "BASH": {"bash"},
-        "SH": {"bash"},
-        "ZSH": {"zsh", "bash"},
-        "KSH": {"ksh", "bash"},
-        "C": {"c"},
-        "POSIX": {"posix", "c"},
-        "GLIB": {"glib", "c"},
-        "OPENSSL": {"openssl", "c"},
-        "CPP": {"cpp"},
-        "QT": {"qt", "cpp"},
-        "BOOST": {"boost", "cpp"},
-        "CUDA": {"cuda", "cpp"},
-        "SWIFT": {"swift"},
-        "VAPOR": {"vapor", "swift"},
-        "SWIFTUI": {"swiftui", "swift"},
-        "COMBINE": {"combine", "swift"},
-        "RB": {"ruby"},
-        "RAILS": {"rails", "ruby"},
-        "SINATRA": {"sinatra", "ruby"},
-        "GRAPE": {"grape", "ruby"},
-        "HANAMI": {"hanami", "ruby"},
-        "SCALA": {"scala"},
-        "PLAY": {"play", "scala"},
-        "AKKA": {"akka", "scala"},
-        "ZIO": {"zio", "scala"},
-        "HTTP4S": {"http4s", "scala"},
-        "TAPIR": {"tapir", "scala"},
-        "R": {"rlang"},
-        "SHINY": {"shiny", "rlang"},
-        "PLUMBER": {"plumber", "rlang"},
-        "GOLEM": {"golem", "rlang"},
-        "TIDY": {"tidyverse", "rlang"},
-        "DART": {"dart"},
-        "FLUTTER": {"flutter", "dart"},
-        "RIVERPOD": {"riverpod", "dart"},
-        "BLOC": {"bloc", "dart"},
-        "SHELF": {"shelf", "dart"},
-        "DART_FROG": {"dart_frog", "dart"},
-        "SERVERPOD": {"serverpod", "dart"},
-        "LUA": {"lua"},
-        "LOVE": {"love2d", "lua"},
-        "OPENRESTY": {"openresty", "lua"},
-        "LAPIS": {"lapis", "lua"},
-        "TARANTOOL": {"tarantool", "lua"},
-        "PS": {"powershell"},
-        "PODE": {"pode", "powershell"},
-        "DSC": {"dsc", "powershell"},
-        "PESTER": {"pester", "powershell"},
-        "AZURE": {"azure", "powershell"},
-        "JS": {"javascript"},
-        "EXPRESS": {"express", "javascript"},
-        "MONGOOSE": {"mongoose", "javascript"},
-        "NODE": {"node", "javascript"},
-        "NESTJS": {"nestjs", "typescript"},
-        "ANGULAR": {"angular", "typescript"},
-        "TRPC": {"trpc", "typescript"},
-        "TYPEORM": {"typeorm", "typescript"},
-        "PRISMA_TS": {"prisma", "typescript"},
-        "DRIZZLE": {"drizzle", "typescript"},
-        "ZOD": {"zod", "typescript"},
-        "VUE": {"vue"},
-        "NUXT": {"nuxt", "vue"},
-        "PINIA": {"pinia", "vue"},
-        "VUEX": {"vuex", "vue"},
-        "VUETIFY": {"vuetify", "vue"},
-        "QUASAR": {"quasar", "vue"},
-        "MUI": {"mui", "react"},
-        "ANTD": {"antd", "react"},
-        "CHAKRA": {"chakra-ui", "react"},
-        "RADIX": {"radix-ui", "react"},
-        "REDUX": {"redux", "react"},
-        "ZUSTAND": {"zustand", "react"},
-        "JOTAI": {"jotai", "react"},
-        "RECOIL": {"recoil", "react"},
-        "SOLIDJS": {"solidjs"},
-        "HTMX": {"htmx"},
-        "STIM": {"stimulus"},
-        "SB": {"storybook"},
-        "GSAP": {"gsap"},
-        "RXJS": {"rxjs"},
-        # ── Additional prefixes (prevent wrong-language collisions) ──
-        "ALPINE": {"alpinejs"},
-        "APOLLO": {"apollo", "typescript"},
-        "ASTRO": {"astro"},
-        "BOOT": {"bootstrap"},
-        "CHARTJS": {"chartjs"},
-        "CI": set(),                          # CI/CD — generic
-        "D3JS": {"d3js"},
-        "EMO": {"emotion", "react"},
-        "FRAMER": {"framer-motion", "react"},
-        "KT": {"kotlin"},
-        "LARAVEL": {"laravel", "php"},
-        "LEAFLET": {"leaflet"},
-        "LIT": {"lit"},
-        "MOBX": {"mobx", "react"},
-        "NEXT": {"nextjs", "react"},
-        "NGRX": {"ngrx", "angular"},
-        "PATTERN": set(),                     # Design patterns — generic
-        "PHP": {"php"},
-        "PREACT": {"preact"},
-        "QWIK": {"qwik"},
-        "RECHARTS": {"recharts", "react"},
-        "REMIX": {"remix", "react"},
-        "RN": {"react-native", "react"},
-        "SC": {"styled-components", "react"},
-        "SHADCN": {"shadcn", "react"},
-        "SIDEKIQ": {"sidekiq", "ruby"},
-        "SLIM": {"slim", "ruby"},
-        "SVELTE": {"svelte"},
-        "SWR": {"swr", "react"},
-        "SYMFONY": {"symfony", "php"},
-        "THREEJS": {"threejs"},
-        "TSQUERY": {"tanstack-query", "typescript"},
-        "TW": {"tailwind", "css"},
-        "VALTIO": {"valtio", "react"},
-        "WP": {"wordpress", "php"},
-        "XSTATE": {"xstate"},
+    # ── Framework → language mapping ────────────────────────────────────
+    # Maps framework names (as they appear in YAML applicability.frameworks)
+    # to their root language group.  Only PRIMARY framework names need
+    # entries — version variants (e.g. 'xstate-v5') are resolved via
+    # the primary name.
+    #
+    # The prefix→framework mapping is AUTO-BUILT from YAML practice files.
+    # This dict is the ONLY manual mapping needed.  When adding a new YAML
+    # that introduces previously-unknown framework names, add entries here.
+    _FRAMEWORK_TO_LANGUAGE: dict[str, str] = {
+        # ── Root languages (self-referencing) ──
+        "python": "python",
+        "golang": "golang",
+        "javascript": "javascript",
+        "typescript": "typescript",
+        "rust": "rust",
+        "java": "java",
+        "csharp": "csharp",
+        "ruby": "ruby",
+        "scala": "scala",
+        "dart": "dart",
+        "lua": "lua",
+        "rlang": "rlang",
+        "powershell": "powershell",
+        "swift": "swift",
+        "cpp": "cpp",
+        "c": "c",
+        "kotlin": "kotlin",
+        "php": "php",
+        "html": "html",
+        "css": "css",
+        "sql": "sql",
+        "bash": "bash",
+        "vue": "vue",
+        # ── Python ecosystem ──
+        "flask": "python",
+        "django": "python",
+        "fastapi": "python",
+        "sqlalchemy": "python",
+        "alembic": "python",
+        "celery": "python",
+        # ── Go ecosystem ──
+        "gin": "golang",
+        "echo": "golang",
+        "fiber": "golang",
+        "chi": "golang",
+        "cobra": "golang",
+        "gorm": "golang",
+        "grpc_go": "golang",
+        "sqlx_go": "golang",
+        # ── Rust ecosystem ──
+        "actix": "rust",
+        "rocket": "rust",
+        "axum": "rust",
+        "warp": "rust",
+        "tokio": "rust",
+        "diesel": "rust",
+        "sea_orm": "rust",
+        "tauri": "rust",
+        "tonic": "rust",
+        # ── Java ecosystem ──
+        "spring": "java",
+        "spring_boot": "java",
+        "spring_mvc": "java",
+        "spring_data": "java",
+        "spring_security": "java",
+        "jpa": "java",
+        "hibernate": "java",
+        "quarkus": "java",
+        "micronaut": "java",
+        "jaxrs": "java",
+        "kafka": "java",
+        # ── C# ecosystem ──
+        "aspnet": "csharp",
+        "aspnet_core": "csharp",
+        "ef_core": "csharp",
+        "efcore": "csharp",
+        "blazor": "csharp",
+        "signalr": "csharp",
+        "maui": "csharp",
+        # ── Ruby ecosystem ──
+        "rails": "ruby",
+        "sinatra": "ruby",
+        "grape": "ruby",
+        "hanami": "ruby",
+        "sidekiq": "ruby",
+        "slim": "ruby",
+        # ── Scala ecosystem ──
+        "play": "scala",
+        "akka": "scala",
+        "zio": "scala",
+        "http4s": "scala",
+        "tapir": "scala",
+        # ── Dart ecosystem ──
+        "flutter": "dart",
+        "riverpod": "dart",
+        "bloc": "dart",
+        "shelf": "dart",
+        "dart_frog": "dart",
+        "serverpod": "dart",
+        # ── Lua ecosystem ──
+        "love2d": "lua",
+        "openresty": "lua",
+        "lapis": "lua",
+        "tarantool": "lua",
+        # ── R ecosystem ──
+        "shiny": "rlang",
+        "plumber": "rlang",
+        "golem": "rlang",
+        "tidyverse": "rlang",
+        # ── PowerShell ecosystem ──
+        "pode": "powershell",
+        "dsc": "powershell",
+        "pester": "powershell",
+        "azure": "powershell",
+        # ── Swift ecosystem ──
+        "vapor": "swift",
+        "swiftui": "swift",
+        "combine": "swift",
+        # ── C++ ecosystem ──
+        "qt": "cpp",
+        "boost": "cpp",
+        "cuda": "cpp",
+        # ── C ecosystem ──
+        "posix": "c",
+        "glib": "c",
+        "openssl": "c",
+        # ── Kotlin ecosystem ──
+        "arrow": "kotlin",
+        "compose": "kotlin",
+        "ktor": "kotlin",
+        "koin": "kotlin",
+        "hilt": "kotlin",
+        "kmm": "kotlin",
+        "exposed": "kotlin",
+        "kotest": "kotlin",
+        "kotlinx_coroutines": "kotlin",
+        "kotlinx_serialization": "kotlin",
+        "mockk": "kotlin",
+        "room": "kotlin",
+        # ── PHP ecosystem ──
+        "laravel": "php",
+        "symfony": "php",
+        "wordpress": "php",
+        "codeigniter": "php",
+        "doctrine": "php",
+        "eloquent": "php",
+        # ── JavaScript frameworks ──
+        "express": "javascript",
+        "gsap": "javascript",
+        "d3": "javascript",
+        "d3js": "javascript",
+        "leaflet": "javascript",
+        "threejs": "javascript",
+        "chartjs": "javascript",
+        "storybook": "javascript",
+        "stimulus": "javascript",
+        "mongoose": "javascript",
+        "node": "javascript",
+        "solidjs": "javascript",
+        "solid-start": "javascript",
+        "htmx": "javascript",
+        "alpine": "javascript",
+        "alpinejs": "javascript",
+        "astro": "javascript",
+        "svelte": "javascript",
+        "sveltekit": "javascript",
+        "preact": "javascript",
+        "fresh": "javascript",
+        "qwik": "javascript",
+        "lit": "javascript",
+        "bootstrap": "css",
+        "xstate": "javascript",
+        # ── TypeScript frameworks ──
+        "angular": "typescript",
+        "nestjs": "typescript",
+        "rxjs": "typescript",
+        "ngrx": "typescript",
+        "apollo": "typescript",
+        "trpc": "typescript",
+        "typeorm": "typescript",
+        "prisma": "typescript",
+        "drizzle": "typescript",
+        "zod": "typescript",
+        "tanstack-query": "typescript",
+        # ── React ecosystem (→ typescript) ──
+        "react": "typescript",
+        "nextjs": "typescript",
+        "remix": "typescript",
+        "react-native": "typescript",
+        "mui": "typescript",
+        "antd": "typescript",
+        "chakra-ui": "typescript",
+        "radix-ui": "typescript",
+        "shadcn-ui": "typescript",
+        "redux": "typescript",
+        "zustand": "typescript",
+        "jotai": "typescript",
+        "recoil": "typescript",
+        "mobx": "typescript",
+        "valtio": "typescript",
+        "swr": "typescript",
+        "styled-components": "typescript",
+        "emotion": "typescript",
+        "framer-motion": "typescript",
+        "recharts": "typescript",
+        "react-redux": "typescript",
+        # ── Vue ecosystem ──
+        "nuxt": "vue",
+        "pinia": "vue",
+        "vuex": "vue",
+        "vuetify": "vue",
+        "quasar": "vue",
+        # ── CSS ecosystem ──
+        "sass": "css",
+        "scss": "css",
+        "less": "css",
+        "postcss": "css",
+        "tailwind": "css",
+        "tailwind_v4": "css",
+        "stylus": "css",
+        "dart_sass": "css",
+        # ── SQL ecosystem ──
+        "postgresql": "sql",
+        "mysql": "sql",
+        "sqlserver": "sql",
+        "oracle": "sql",
+        "sqlite": "sql",
+        # ── Bash ecosystem ──
+        "zsh": "bash",
+        "ksh": "bash",
     }
 
-    # Class-level cache for derived language grouping
-    _cached_language_map: Optional[dict] = None
+    # ── Prefix overrides for YAML files with empty applicability ─────────
+    # Only needed for prefixes whose YAML practices lack
+    # applicability.frameworks.  All other prefixes are auto-discovered.
+    _PREFIX_OVERRIDES: dict[str, set[str]] = {
+        "PY": {"python"},
+        "PYE": {"python"},
+        "PY310-": {"python"},
+        "PY311-": {"python"},
+        "PY312-": {"python"},
+        "JS": {"javascript"},
+        "TS": {"typescript"},
+        "NG": {"angular", "typescript"},
+        "LUA": {"lua"},
+        "DP": set(),
+        "SOLID": set(),
+        "PATTERN": set(),
+        "DB": set(),
+        "DEVOPS": set(),
+    }
+
+    # Class-level cache for auto-built prefix→frameworks map
+    _cached_prefix_framework_map: Optional[dict[str, set[str]]] = None
+    # Class-level cache for derived prefix→language map
+    _cached_language_map: Optional[dict[str, str]] = None
+
+    @classmethod
+    def _build_prefix_framework_map(cls) -> dict[str, set[str]]:
+        """Auto-build prefix→{frameworks} from YAML practice files.
+
+        Scans all ``*.yaml`` files in the practices directory, extracts
+        practice ID prefixes and their ``applicability.frameworks``, then
+        unions them per prefix.  Merges with ``_PREFIX_OVERRIDES`` for
+        prefixes whose practices lack explicit framework metadata.
+
+        Returns:
+            Mapping of practice ID prefix → set of framework names.
+        """
+        from pathlib import Path
+
+        try:
+            import yaml
+        except ImportError:
+            logger.warning("yaml not available — using _PREFIX_OVERRIDES only")
+            return dict(cls._PREFIX_OVERRIDES)
+
+        practices_dir = Path(__file__).parent / "practices"
+        if not practices_dir.exists():
+            return dict(cls._PREFIX_OVERRIDES)
+
+        result: dict[str, set[str]] = {}
+        for yf in practices_dir.glob("*.yaml"):
+            try:
+                data = yaml.safe_load(yf.read_text())
+            except Exception:
+                continue
+            if not data or "practices" not in data:
+                continue
+            for p in data["practices"]:
+                pid = p.get("id", "")
+                prefix = re.sub(r"\d+$", "", pid).upper()
+                if not prefix:
+                    continue
+                app = p.get("applicability", {})
+                fws = app.get("frameworks", [])
+                if not fws and "frameworks" in p:
+                    fws = p["frameworks"]
+                result.setdefault(prefix, set()).update(
+                    fw.lower() for fw in fws
+                )
+
+        # Apply overrides unconditionally — these take precedence over
+        # YAML-derived data (e.g. DB/DEVOPS are generic despite their
+        # practices listing compatible frameworks).
+        for prefix, fws in cls._PREFIX_OVERRIDES.items():
+            result[prefix] = fws.copy()
+
+        return result
+
+    @classmethod
+    def _get_prefix_framework_map(cls) -> dict[str, set[str]]:
+        """Return the cached prefix→frameworks map, building on first call."""
+        if cls._cached_prefix_framework_map is None:
+            cls._cached_prefix_framework_map = cls._build_prefix_framework_map()
+        return cls._cached_prefix_framework_map
+
+    @classmethod
+    def _derive_prefix_language_map(cls) -> dict[str, str]:
+        """Derive prefix→language-group from auto-built frameworks + lookup.
+
+        Resolution strategy (in order):
+        1. **Canonical match** — if the lowercased prefix name itself appears
+           as a framework and has a ``_FRAMEWORK_TO_LANGUAGE`` entry, use it.
+           This correctly resolves e.g. CHARTJS→chartjs→javascript even when
+           the YAML also lists compatibility frameworks like react, angular.
+        2. **First known framework** — iterate sorted frameworks and return
+           the first with a ``_FRAMEWORK_TO_LANGUAGE`` entry.
+
+        Returns:
+            Mapping of practice ID prefix → root language group string.
+        """
+        pfm = cls._get_prefix_framework_map()
+        ftl = cls._FRAMEWORK_TO_LANGUAGE
+        result: dict[str, str] = {}
+
+        for prefix, fws in pfm.items():
+            if not fws:
+                result[prefix] = "generic"
+                continue
+
+            # 1. Canonical match: lowered prefix == framework name
+            canonical = prefix.lower()
+            if canonical in fws and canonical in ftl:
+                result[prefix] = ftl[canonical]
+                continue
+
+            # Try common prefix variants (e.g. D3JS→d3, GRPCGO→grpc_go)
+            found = False
+            for fw in fws:
+                normalised = fw.replace("-", "").replace("_", "")
+                if normalised == canonical and fw in ftl:
+                    result[prefix] = ftl[fw]
+                    found = True
+                    break
+            if found:
+                continue
+
+            # 2. Fall back to first known framework (sorted for determinism)
+            lang = None
+            for fw in sorted(fws):
+                lang = ftl.get(fw)
+                if lang:
+                    break
+            result[prefix] = lang or "generic"
+
+        return result
+
+    @classmethod
+    def _get_prefix_language_map(cls) -> dict[str, str]:
+        """Return the cached prefix→language-group map, building on first call."""
+        if cls._cached_language_map is None:
+            cls._cached_language_map = cls._derive_prefix_language_map()
+        return cls._cached_language_map
+
+    @staticmethod
+    def _is_security_practice(practice: BestPractice) -> bool:
+        """Check if a practice is security-related (category or tags)."""
+        if practice.category == PracticeCategory.SECURITY:
+            return True
+        return any('security' in t.lower() for t in practice.content.tags)
+
+    def get_practice_language(self, practice: BestPractice) -> str:
+        """Return the root language group for a practice.
+
+        Public API for language grouping used by CLI and other consumers.
+        Delegates to the internal ``_get_practice_language`` method.
+        """
+        return self._get_practice_language(practice)
 
     def _get_practice_frameworks(self, practice: BestPractice) -> Set[str]:
-        """Determine which frameworks a practice applies to from its ID prefix.
+        """Determine which frameworks a practice applies to.
 
-        Uses ``_PREFIX_FRAMEWORK_MAP`` (the single source of truth) to map
-        practice ID prefixes to framework sets.  Uses longest-prefix matching
-        to avoid ambiguity (e.g. ``GORM`` before ``GO``, ``CSS`` before ``C``).
+        First checks the practice's explicit ``applicability.frameworks``.
+        Falls back to the auto-built prefix→frameworks map (derived from
+        YAML practice files + ``_PREFIX_OVERRIDES``).
 
         Args:
             practice: The practice to check.
@@ -4515,128 +4721,17 @@ class PracticeSelector:
             return set(practice.applicability.frameworks)
 
         practice_id = practice.id.upper()
+        pfm = self._get_prefix_framework_map()
 
-        # Longest-prefix match against the centralized map
+        # Longest-prefix match against the auto-built map
         best_prefix = ""
         best_frameworks: Set[str] = set()
-        for prefix, frameworks in self._PREFIX_FRAMEWORK_MAP.items():
+        for prefix, frameworks in pfm.items():
             if practice_id.startswith(prefix) and len(prefix) > len(best_prefix):
                 best_prefix = prefix
                 best_frameworks = frameworks
 
         return best_frameworks
-
-    # ── Practice language grouping (v5.5) ────────────────────────────────
-    #
-    # Language groups are derived DYNAMICALLY from _PREFIX_FRAMEWORK_MAP.
-    # No separate hard-coded mapping is needed.  When a new language or
-    # framework is added to _PREFIX_FRAMEWORK_MAP, the language grouping
-    # auto-updates on next use.
-
-    @classmethod
-    def _derive_prefix_language_map(cls) -> dict[str, str]:
-        """Derive prefix→language-group dynamically from _PREFIX_FRAMEWORK_MAP.
-
-        Algorithm:
-        1. Identify **root languages** — frameworks that appear as the sole
-           element of at least one prefix entry (e.g. ``"TS": {"typescript"}``
-           makes ``typescript`` a root).
-        2. Count how often each framework appears across all entries
-           (used as a deterministic tiebreaker).
-        3. Build child→parent edges from multi-element entries:
-           a. If exactly one element is a root → root is the parent.
-           b. If multiple roots → most-frequent root is the parent.
-           c. If no roots → most-frequent framework is the parent.
-        4. Walk the parent chain to resolve each prefix to its ultimate
-           root language group.
-
-        This avoids maintaining a second hard-coded mapping: adding a new
-        language/framework to ``_PREFIX_FRAMEWORK_MAP`` is sufficient.
-        """
-        pfm = cls._PREFIX_FRAMEWORK_MAP
-
-        # 1. Identify root languages (appear as single-element entries)
-        roots: set[str] = set()
-        for fws in pfm.values():
-            if len(fws) == 1:
-                roots.add(next(iter(fws)))
-
-        # 2. Count framework frequency (deterministic tiebreaker)
-        freq: dict[str, int] = {}
-        for fws in pfm.values():
-            for fw in fws:
-                freq[fw] = freq.get(fw, 0) + 1
-
-        # 3. Build child→parent edges
-        child_parent: dict[str, str] = {}
-        for fws in pfm.values():
-            if len(fws) < 2:
-                continue
-            set_roots = fws & roots
-            set_non_roots = fws - roots
-
-            if len(set_roots) == 1 and set_non_roots:
-                # (a) One root → it is the parent
-                parent = next(iter(set_roots))
-                for child in set_non_roots:
-                    child_parent.setdefault(child, parent)
-            elif len(set_roots) >= 2:
-                # (b) Multiple roots → most-frequent root is parent
-                by_freq = sorted(
-                    set_roots, key=lambda f: freq.get(f, 0), reverse=True
-                )
-                parent = by_freq[0]
-                for child in by_freq[1:]:
-                    child_parent.setdefault(child, parent)
-                for child in set_non_roots:
-                    child_parent.setdefault(child, parent)
-            elif not set_roots and len(fws) >= 2:
-                # (c) No roots → most-frequent framework is parent
-                by_freq = sorted(
-                    fws, key=lambda f: freq.get(f, 0), reverse=True
-                )
-                parent = by_freq[0]
-                for child in by_freq[1:]:
-                    child_parent.setdefault(child, parent)
-
-        # 4. Resolve ultimate root for a framework (walk parent chain)
-        def resolve(fw: str) -> str:
-            visited: set[str] = set()
-            while fw in child_parent and fw not in visited:
-                visited.add(fw)
-                fw = child_parent[fw]
-            return fw
-
-        # 5. Map each prefix to its root language group
-        result: dict[str, str] = {}
-        for prefix, fws in pfm.items():
-            if not fws:
-                result[prefix] = "generic"
-            else:
-                # Prefer root framework as representative; freq tiebreaker
-                set_roots = fws & roots
-                if set_roots:
-                    best = sorted(
-                        set_roots,
-                        key=lambda f: freq.get(f, 0),
-                        reverse=True,
-                    )[0]
-                else:
-                    best = sorted(
-                        fws,
-                        key=lambda f: freq.get(f, 0),
-                        reverse=True,
-                    )[0]
-                result[prefix] = resolve(best)
-
-        return result
-
-    @classmethod
-    def _get_prefix_language_map(cls) -> dict[str, str]:
-        """Return the cached prefix→language-group map, building on first call."""
-        if cls._cached_language_map is None:
-            cls._cached_language_map = cls._derive_prefix_language_map()
-        return cls._cached_language_map
 
     def _get_practice_language(self, practice: BestPractice) -> str:
         """Map a practice to its primary language group.
@@ -4645,19 +4740,30 @@ class PracticeSelector:
         ``'golang'``) or ``'generic'`` for non-language-specific practices
         (DP*, SOLID*, etc.).
 
-        The mapping is derived dynamically from ``_PREFIX_FRAMEWORK_MAP`` —
-        no separate hard-coded language map is needed.
+        Resolution order:
+        1. Longest-prefix match in the auto-derived prefix→language map.
+        2. Fallback: first matching framework in ``_FRAMEWORK_TO_LANGUAGE``.
         """
         lang_map = self._get_prefix_language_map()
         pid = practice.id.upper()
         # Match longest prefix first to avoid e.g. "C" matching "CSS"
         best_match = ""
-        best_lang = "generic"
+        best_lang = ""
         for prefix, lang in lang_map.items():
             if pid.startswith(prefix) and len(prefix) > len(best_match):
                 best_match = prefix
                 best_lang = lang
-        return best_lang
+        if best_lang:
+            return best_lang
+
+        # Fallback: resolve from practice's applicability.frameworks
+        ftl = self._FRAMEWORK_TO_LANGUAGE
+        for fw in practice.applicability.frameworks:
+            lang = ftl.get(fw.lower())
+            if lang:
+                return lang
+
+        return "generic"
 
     def _allocate_proportional_slots(
         self,
@@ -4703,13 +4809,7 @@ class PracticeSelector:
         # Separate security practices per group for priority treatment
         security_by_group: dict[str, list[BestPractice]] = {}
         for lang, practices in groups.items():
-            sec = [
-                p for p in practices
-                if p.category == PracticeCategory.SECURITY
-                or (hasattr(p, 'content') and p.content
-                    and hasattr(p.content, 'tags') and p.content.tags
-                    and any('security' in t.lower() for t in p.content.tags))
-            ]
+            sec = [p for p in practices if self._is_security_practice(p)]
             if sec:
                 security_by_group[lang] = sec
 
@@ -4718,12 +4818,16 @@ class PracticeSelector:
 
         # Dynamic minimum: reduce per-group base when many groups compete
         # for a small budget (e.g. 8 groups with max_practices=15).
-        min_per_group = min(
-            _MIN_SLOTS_PER_LANGUAGE,
-            max(1, max_practices // num_groups),
-        )
+        # When num_groups > max_practices, set min to 0 to avoid exceeding budget.
+        if num_groups >= max_practices:
+            min_per_group = 0
+        else:
+            min_per_group = min(
+                _MIN_SLOTS_PER_LANGUAGE,
+                max(1, max_practices // num_groups),
+            )
         min_reserved = min_per_group * num_groups
-        remaining = max_practices - min_reserved
+        remaining = max(0, max_practices - min_reserved)
 
         # Proportional allocation of remaining slots based on group size
         total_available = sum(len(v) for v in groups.values())
@@ -4750,12 +4854,14 @@ class PracticeSelector:
 
         # Select practices per group with security priority
         result: list[BestPractice] = []
+        selected_ids: set[str] = set()
+        leftover_capacity: list[tuple[str, list[BestPractice]]] = []
+
         for lang, practices in groups.items():
             slots = min(allocated.get(lang, _MIN_SLOTS_PER_LANGUAGE), len(practices))
             if slots <= 0:
                 continue
 
-            selected_ids: set[str] = set()
             group_result: list[BestPractice] = []
 
             # First, fill security slots
@@ -4774,6 +4880,29 @@ class PracticeSelector:
                     selected_ids.add(p.id)
 
             result.extend(group_result)
+
+            # Track groups with leftover capacity for redistribution
+            remaining_practices = [p for p in practices if p.id not in selected_ids]
+            if remaining_practices and len(group_result) < allocated.get(lang, 0):
+                leftover_capacity.append((lang, remaining_practices))
+            elif remaining_practices:
+                leftover_capacity.append((lang, remaining_practices))
+
+        # Redistribute unused slots to groups with remaining capacity
+        unused_slots = max_practices - len(result)
+        if unused_slots > 0 and leftover_capacity:
+            # Sort by group size descending to favor larger groups
+            leftover_capacity.sort(key=lambda x: len(x[1]), reverse=True)
+            for lang, remaining_practices in leftover_capacity:
+                if unused_slots <= 0:
+                    break
+                for p in remaining_practices:
+                    if unused_slots <= 0:
+                        break
+                    if p.id not in selected_ids:
+                        result.append(p)
+                        selected_ids.add(p.id)
+                        unused_slots -= 1
 
         # Final sort: maintain original score order across groups
         score_order = {p.id: i for i, p in enumerate(scored)}
@@ -5366,18 +5495,15 @@ class PracticeSelector:
             priority_order = list(PracticePriority)
             priority_score = len(priority_order) - priority_order.index(practice.priority)
 
-            # v5.5: Security category boost — security practices get a +2
-            # score bump to ensure they surface in the selection even when
-            # competing against a large pool of non-security practices.
+            # v5.5: Security category boost — security practices get a score
+            # bump to ensure they surface in the selection even when competing
+            # against a large pool of non-security practices.
+            # +2 for explicit SECURITY category, +1 for security tags only.
             security_boost = 0
-            is_security = (
-                practice.category == PracticeCategory.SECURITY
-                or (hasattr(practice, 'content') and practice.content
-                    and hasattr(practice.content, 'tags') and practice.content.tags
-                    and any('security' in t.lower() for t in practice.content.tags))
-            )
-            if is_security:
+            if practice.category == PracticeCategory.SECURITY:
                 security_boost = 2
+            elif any('security' in t.lower() for t in practice.content.tags):
+                security_boost = 1
 
             # Framework match score
             practice_frameworks = set(practice.applicability.frameworks)

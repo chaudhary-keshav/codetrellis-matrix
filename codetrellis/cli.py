@@ -299,7 +299,7 @@ def _generate_practices_section(
         # Group by language for segregated output
         by_language: dict[str, list] = {}
         for practice in selected:
-            lang = selector._get_practice_language(practice)
+            lang = selector.get_practice_language(practice)
             by_language.setdefault(lang, []).append(practice)
 
         # Add context summary

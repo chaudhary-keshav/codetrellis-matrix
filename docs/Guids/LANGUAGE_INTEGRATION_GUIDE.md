@@ -1510,7 +1510,7 @@ Add entries to `PracticeSelector._PREFIX_FRAMEWORK_MAP` for the new language:
 class PracticeSelector:
     # ... existing code ...
 
-    _PREFIX_FRAMEWORK_MAP: ClassVar[dict[str, set[str]]] = {
+    _PREFIX_FRAMEWORK_MAP: dict[str, set[str]] = {
         # Root languages — single-element sets
         "PY": {"python"},
         "TS": {"typescript"},
@@ -1550,6 +1550,7 @@ When `_PREFIX_FRAMEWORK_MAP` is updated, `_derive_prefix_language_map()` automat
 4. **Caches the result** — computed once, reused for all practice lookups
 
 This means:
+
 - `FLASK001` → `python` (resolved via `flask → python`)
 - `REACT001` → `typescript` (resolved via `react → typescript`)
 - `DP001` → `generic` (empty set means generic)
@@ -1557,11 +1558,11 @@ This means:
 
 #### What Happens Automatically
 
-| Mechanism | What it does |
-|---|---|
-| `_derive_prefix_language_map()` | Maps every prefix to its root language |
-| `_get_practice_language()` | Returns language for any practice by longest-prefix match |
-| `_allocate_proportional_slots()` | Distributes practice slots fairly across detected languages |
+| Mechanism                           | What it does                                                   |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `_derive_prefix_language_map()`     | Maps every prefix to its root language                         |
+| `_get_practice_language()`          | Returns language for any practice by longest-prefix match      |
+| `_allocate_proportional_slots()`    | Distributes practice slots fairly across detected languages    |
 | CLI `_generate_practices_section()` | Groups practices by language in output (e.g., `## PYTHON (5)`) |
 
 **No other files need editing** for language grouping to work.
