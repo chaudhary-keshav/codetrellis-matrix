@@ -256,8 +256,11 @@ Use this checklist when adding a new language:
 - [ ] Update `ProjectContext.from_matrix()` in .codetrellis/bpl/selector.py`:
   - [ ] Add framework detection from dependencies
   - [ ] Add artifact counting for weighted detection
-- [ ] Update `_get_practice_frameworks()` in selector.py:
-  - [ ] Add ID prefix mapping (e.g., `GO*` → golang, `RS*` → rust)
+- [ ] Update `PracticeSelector._FRAMEWORK_TO_LANGUAGE` in selector.py:
+  - [ ] Add root language (e.g., `"golang": "golang"`)
+  - [ ] Add frameworks (e.g., `"gin": "golang"`, `"echo": "golang"`)
+  - [ ] Only add `_PREFIX_OVERRIDES` entries if YAML lacks `applicability.frameworks`
+  - [ ] Prefix→framework map auto-builds from YAML at first use (v6.0)
 - [ ] Update `_filter_applicable()` to handle new language
 - [ ] Test context-aware selection with new language project
 - [ ] Test token budget enforcement: `--max-practice-tokens 200` → reduced count
@@ -1494,51 +1497,88 @@ def from_matrix(cls, matrix: Any) -> "ProjectContext":
         context.frameworks.add("<lang>")
 ```
 
-### 7.5 Update Practice ID Prefix Mapping
+### 7.5 Update Language & Prefix Registration (UPDATED v6.0)
 
-#### File: .codetrellis/bpl/selector.py`-`\_get_practice_frameworks()`
+#### File: `codetrellis/bpl/selector.py`
 
-Add the ID prefix mapping for the new language:
+> **Note (v6.0):** The prefix→framework map is now **auto-built** from YAML practice
+> files by `_build_prefix_framework_map()`.  You only need to update two data
+> structures: `_FRAMEWORK_TO_LANGUAGE` and (rarely) `_PREFIX_OVERRIDES`.
+
+#### Step 1 — Add framework→language entries
+
+Add entries to `PracticeSelector._FRAMEWORK_TO_LANGUAGE` so the system knows which
+root language each framework belongs to:
 
 ```python
-def _get_practice_frameworks(self, practice: BestPractice) -> Set[str]:
-    """Determine which frameworks a practice applies to from its ID prefix."""
-    practice_id = practice.id.upper()
-
-    # Map of ID prefixes to required frameworks
-    prefix_framework_map = {
-        # Existing
-        "NG": {"angular", "typescript"},
-        "TS": {"typescript"},
-        "PY": {"python"},
-        "PYE": {"python"},
-        "DP": set(),  # Design patterns are generic
+class PracticeSelector:
+    _FRAMEWORK_TO_LANGUAGE: dict[str, str] = {
+        # Root languages (self-referencing)
+        "python": "python",
+        "golang": "golang",
+        "typescript": "typescript",
+        "javascript": "javascript",
+        "rust": "rust",
+        # ...
 
         # NEW: Add your language
-        "GO": {"golang"},
-        "RS": {"rust"},
-        "JAVA": {"java"},
-        "KT": {"kotlin"},
-        "CS": {"csharp", "dotnet"},
-        "RB": {"ruby"},
-        "SCALA": {"scala"},
-        "GIN": {"gin", "golang"},
-        "ACTIX": {"actix", "rust"},
-        "SPRING": {"spring", "java"},
-        "RAILS": {"rails", "ruby"},
-        "PLAY": {"play", "scala"},
-        "AKKA": {"akka", "scala"},
-        "ZIO": {"zio", "scala"},
-        "HTTP4S": {"http4s", "scala"},
-        "TAPIR": {"tapir", "scala"},
+        "<lang>": "<lang>",                  # Root language
+        "<framework>": "<lang>",             # Framework → root
     }
-
-    # ... rest of method
 ```
+
+#### Step 2 — (Only if needed) Add prefix overrides
+
+If the new YAML practices **lack** `applicability.frameworks`, add an entry to
+`_PREFIX_OVERRIDES` so the auto-builder can still map the prefix:
+
+```python
+    _PREFIX_OVERRIDES: dict[str, set[str]] = {
+        # ... existing entries ...
+        "<LANG>": {"<lang>"},     # Only if YAML has no applicability.frameworks
+    }
+```
+
+If the YAML **does** include `applicability.frameworks`, skip this step.
+
+#### How Auto-Build Works
+
+`_build_prefix_framework_map()` runs once on first use:
+
+1. **Scans all `*.yaml`** files in the practices directory
+2. **Extracts practice ID prefixes** and their `applicability.frameworks`
+3. **Unions frameworks per prefix** (e.g., all FLASK practices → `{"flask", "python"}`)
+4. **Merges `_PREFIX_OVERRIDES`** for prefixes with missing/empty YAML metadata
+5. **Caches the result** — computed once, reused for all practice lookups
+
+Then `_derive_prefix_language_map()` resolves each prefix to a root language:
+
+- **Canonical match:** lowered prefix name (e.g., `FLASK` → `flask`) looked up in `_FRAMEWORK_TO_LANGUAGE`
+- **Variant match:** each framework in the set looked up in `_FRAMEWORK_TO_LANGUAGE`
+- **Fallback:** first known framework match wins
+
+Examples:
+
+- `FLASK001` → `python` (canonical: `flask` → `python`)
+- `REACT001` → `typescript` (canonical: `react` → `typescript`)
+- `DP001` → `generic` (empty set means generic)
+- `SPRING001` → `java` (framework fallback: `spring-boot` → `java`)
+
+#### What Happens Automatically
+
+| Mechanism                           | What it does                                                   |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `_build_prefix_framework_map()`     | Scans YAML → builds prefix→{frameworks} map                    |
+| `_derive_prefix_language_map()`     | Resolves prefix→root language via `_FRAMEWORK_TO_LANGUAGE`     |
+| `_get_practice_language()`          | Returns language for any practice by longest-prefix match      |
+| `_allocate_proportional_slots()`    | Distributes practice slots fairly across detected languages    |
+| CLI `_generate_practices_section()` | Groups practices by language in output (e.g., `## PYTHON (5)`) |
+
+**No other files need editing** for language grouping to work.
 
 ### 7.6 Update Filtering Logic
 
-#### File: .codetrellis/bpl/selector.py`-`\_filter_applicable()`
+#### File: `codetrellis/bpl/selector.py` — `_filter_applicable()`
 
 Add filtering for the new language:
 
@@ -1750,13 +1790,15 @@ go_framework_mapping = {
     "grpc": ["google.golang.org/grpc"],
 }
 
-# In _get_practice_frameworks():
-prefix_framework_map = {
+# In _FRAMEWORK_TO_LANGUAGE (v6.0):
+_FRAMEWORK_TO_LANGUAGE = {
     ...
-    "GO": {"golang"},
-    "GIN": {"gin", "golang"},
-    "ECHO": {"echo", "golang"},
+    "golang": "golang",
+    "gin": "golang",
+    "echo": "golang",
+    "fiber": "golang",
 }
+# Prefix→framework map auto-builds from YAML practices.
 
 # In _filter_applicable():
 has_golang = any(f in context_frameworks for f in ["golang", "gin", "echo", "fiber"])

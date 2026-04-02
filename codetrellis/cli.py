@@ -296,32 +296,28 @@ def _generate_practices_section(
 
         selected = bpl_output.practices
 
-        # Group by category for organization
-        by_category = {}
+        # Group by language for segregated output
+        by_language: dict[str, list] = {}
         for practice in selected:
-            cat_name = practice.category.value
-            if cat_name not in by_category:
-                by_category[cat_name] = []
-            by_category[cat_name].append(practice)
+            lang = selector.get_practice_language(practice)
+            by_language.setdefault(lang, []).append(practice)
 
         # Add context summary
         if bpl_output.context_summary:
             lines.append(f"# Context: {bpl_output.context_summary}")
 
-        lines.append(f"# Practices: {len(selected)} selected (from {bpl_output.total_available} available)")
+        lang_count = len(by_language)
+        lines.append(
+            f"# Practices: {len(selected)} selected"
+            f" (from {bpl_output.total_available} available,"
+            f" {lang_count} language{'s' if lang_count != 1 else ''})"
+        )
 
-        # Per-category limits based on format
-        per_category_limits = {
-            "minimal": 8,       # More practices allowed
-            "standard": 5,      # Default
-            "comprehensive": 3  # Fewer but detailed
-        }
-        per_category_limit = per_category_limits.get(practices_format.lower(), 5)
-
-        # Output practices by category with format-specific rendering
-        for category, practices in by_category.items():
-            lines.append(f"## {category.upper()}")
-            for practice in practices[:per_category_limit]:
+        # Output practices segregated by language group
+        for lang in sorted(by_language):
+            practices = by_language[lang]
+            lines.append(f"## {lang.upper()} ({len(practices)})")
+            for practice in practices:
                 lines.extend(_format_practice(practice, practices_format))
 
         return "\n".join(lines)

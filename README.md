@@ -5,7 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/codetrellis)](https://pypi.org/project/codetrellis/)
 [![Python](https://img.shields.io/pypi/pyversions/codetrellis)](https://pypi.org/project/codetrellis/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-7264%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-7359%20passing-brightgreen)]()
 
 **Works with:** GitHub Copilot | Claude | Cursor | Windsurf | any MCP-compatible AI
 
