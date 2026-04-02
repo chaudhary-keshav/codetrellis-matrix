@@ -62,7 +62,7 @@ Run tests: `pytest tests/ -x -q`
 
 ## Version & Release
 
-**Single source of truth:** `pyproject.toml` — `version = "1.1.0"`
+**Single source of truth:** `pyproject.toml` — `version = "1.2.0"`
 
 - `__init__.py` reads via `importlib.metadata` — never edit it manually.
 - Release: push `v*` tag → CI runs tests → build → publish.

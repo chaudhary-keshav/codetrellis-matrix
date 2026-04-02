@@ -485,39 +485,48 @@ File: .codetrellis/bpl/selector.py`-`ProjectContext.from_matrix()`
       context.frameworks.add("<lang>")
   ```
 
-### 6.6 Update Selector - Practice ID Prefix Mapping (UPDATED v5.0)
+### 6.6 Update Selector — Language & Prefix Registration (UPDATED v6.0)
 
-File: `codetrellis/bpl/selector.py` — class attribute `_PREFIX_FRAMEWORK_MAP`
+File: `codetrellis/bpl/selector.py`
 
-> **Note (v5.0):** The prefix→framework map is now a **class-level attribute** on
-> `PracticeSelector`, not a local dict inside `_get_practice_frameworks()`. Language
-> grouping for proportional allocation and CLI output is **auto-derived** from this
-> map via `_derive_prefix_language_map()` — no separate language map needed.
+> **Note (v6.0):** The prefix→framework map is now **auto-built** from YAML practice
+> files by `_build_prefix_framework_map()`. You typically only need to update two
+> data structures: `_FRAMEWORK_TO_LANGUAGE` (framework→root language) and, in rare
+> cases, `_PREFIX_OVERRIDES` (for prefixes whose YAML lacks `applicability.frameworks`).
 
-- [ ] Add entries to `PracticeSelector._PREFIX_FRAMEWORK_MAP`:
+- [ ] Add framework→language entries to `PracticeSelector._FRAMEWORK_TO_LANGUAGE`:
 
   ```python
-  _PREFIX_FRAMEWORK_MAP: dict[str, set[str]] = {
+  _FRAMEWORK_TO_LANGUAGE: dict[str, str] = {
       # ... existing entries ...
 
-      # NEW: Add your language (root language — single-element set)
-      "<LANG>": {"<lang>"},
+      # Root language (self-referencing)
+      "<lang>": "<lang>",
 
-      # NEW: Add framework prefixes (multi-element set includes parent language)
-      "<FRAMEWORK>": {"<framework>", "<lang>"},
+      # Frameworks that belong to this language
+      "<framework>": "<lang>",
   }
   ```
 
-- [ ] **Root language entries** must use a **single-element set** (e.g., `{"python"}`).
-      This tells `_derive_prefix_language_map()` that this is a root language, not a child.
+- [ ] **Only if** the new YAML practices lack `applicability.frameworks`, add to `_PREFIX_OVERRIDES`:
 
-- [ ] **Framework entries** must include the parent language in the set (e.g., `{"flask", "python"}`).
-      This creates a child→parent edge so Flask practices are grouped under Python.
+  ```python
+  _PREFIX_OVERRIDES: dict[str, set[str]] = {
+      # ... existing entries ...
+
+      # Only needed when YAML has no applicability.frameworks
+      "<LANG>": {"<lang>"},
+  }
+  ```
+
+- [ ] If the new YAML practices **do** include `applicability.frameworks`, no override is
+      needed — `_build_prefix_framework_map()` will auto-discover the prefix→framework mapping.
 
 - [ ] **What happens automatically** once entries are added:
       | Mechanism | What it does | No manual edit needed |
       |---|---|---|
-      | `_derive_prefix_language_map()` | Maps prefix→root language for grouping | Auto-derived from `_PREFIX_FRAMEWORK_MAP` |
+      | `_build_prefix_framework_map()` | Scans YAML practices → builds prefix→{frameworks} map | Auto-built at first use |
+      | `_derive_prefix_language_map()` | Resolves prefix→root language via `_FRAMEWORK_TO_LANGUAGE` | Auto-derived from built map |
       | `_get_practice_language()` | Returns language for any practice by longest-prefix match | Uses cached language map |
       | `_allocate_proportional_slots()` | Distributes practice slots fairly across detected languages | Uses `_get_practice_language()` |
       | CLI `_generate_practices_section()` | Groups practices by language in output (e.g., `## PYTHON (5)`) | Uses `_get_practice_language()` |

@@ -29,7 +29,7 @@ You are a read-heavy specialist for the **codetrellis-matrix** project.
 - **Architecture:** Request-Response
 - **Primary language:** python
 - **Python:** >=3.9
-- **Version source:** pyproject.toml (version = "1.0.2")
+- **Version source:** pyproject.toml (version = "1.2.0")
 
 ## Output Format
 

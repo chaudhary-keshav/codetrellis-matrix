@@ -256,10 +256,11 @@ Use this checklist when adding a new language:
 - [ ] Update `ProjectContext.from_matrix()` in .codetrellis/bpl/selector.py`:
   - [ ] Add framework detection from dependencies
   - [ ] Add artifact counting for weighted detection
-- [ ] Update `PracticeSelector._PREFIX_FRAMEWORK_MAP` in selector.py (class attribute):
-  - [ ] Add root language prefix (e.g., `"GO": {"golang"}`)
-  - [ ] Add framework prefixes (e.g., `"GIN": {"gin", "golang"}`)
-  - [ ] Language grouping auto-derives — no separate map needed (v5.0)
+- [ ] Update `PracticeSelector._FRAMEWORK_TO_LANGUAGE` in selector.py:
+  - [ ] Add root language (e.g., `"golang": "golang"`)
+  - [ ] Add frameworks (e.g., `"gin": "golang"`, `"echo": "golang"`)
+  - [ ] Only add `_PREFIX_OVERRIDES` entries if YAML lacks `applicability.frameworks`
+  - [ ] Prefix→framework map auto-builds from YAML at first use (v6.0)
 - [ ] Update `_filter_applicable()` to handle new language
 - [ ] Test context-aware selection with new language project
 - [ ] Test token budget enforcement: `--max-practice-tokens 200` → reduced count
@@ -1496,71 +1497,79 @@ def from_matrix(cls, matrix: Any) -> "ProjectContext":
         context.frameworks.add("<lang>")
 ```
 
-### 7.5 Update Practice ID Prefix Mapping (UPDATED v5.0)
+### 7.5 Update Language & Prefix Registration (UPDATED v6.0)
 
-#### File: `codetrellis/bpl/selector.py` — class attribute `_PREFIX_FRAMEWORK_MAP`
+#### File: `codetrellis/bpl/selector.py`
 
-> **Note (v5.0):** The prefix→framework map is now a **class-level attribute** on
-> `PracticeSelector`, not a local dict. Language grouping for proportional allocation
-> and CLI output is **auto-derived** from this map — no separate language map is needed.
+> **Note (v6.0):** The prefix→framework map is now **auto-built** from YAML practice
+> files by `_build_prefix_framework_map()`.  You only need to update two data
+> structures: `_FRAMEWORK_TO_LANGUAGE` and (rarely) `_PREFIX_OVERRIDES`.
 
-Add entries to `PracticeSelector._PREFIX_FRAMEWORK_MAP` for the new language:
+#### Step 1 — Add framework→language entries
+
+Add entries to `PracticeSelector._FRAMEWORK_TO_LANGUAGE` so the system knows which
+root language each framework belongs to:
 
 ```python
 class PracticeSelector:
-    # ... existing code ...
-
-    _PREFIX_FRAMEWORK_MAP: dict[str, set[str]] = {
-        # Root languages — single-element sets
-        "PY": {"python"},
-        "TS": {"typescript"},
-        "GO": {"golang"},
-        "RS": {"rust"},
-        "JAVA": {"java"},
-        "RB": {"ruby"},
-        "CS": {"csharp"},
-        "KT": {"kotlin"},
-        "JS": {"javascript"},
-        "DP": set(),  # Design patterns are generic
-
-        # Framework prefixes — multi-element sets include parent language
-        "PYE": {"python"},           # Python expanded (child of python)
-        "FLASK": {"flask", "python"},
-        "DJANGO": {"django", "python"},
-        "FAST": {"fastapi", "python"},
-        "NG": {"angular", "typescript"},
-        "REACT": {"react", "typescript"},
-        "GIN": {"gin", "golang"},
-        "ACTIX": {"actix", "rust"},
-        "RAILS": {"rails", "ruby"},
+    _FRAMEWORK_TO_LANGUAGE: dict[str, str] = {
+        # Root languages (self-referencing)
+        "python": "python",
+        "golang": "golang",
+        "typescript": "typescript",
+        "javascript": "javascript",
+        "rust": "rust",
+        # ...
 
         # NEW: Add your language
-        "<LANG>": {"<lang>"},                        # Root language
-        "<FRAMEWORK>": {"<framework>", "<lang>"},    # Framework (child of <lang>)
+        "<lang>": "<lang>",                  # Root language
+        "<framework>": "<lang>",             # Framework → root
     }
 ```
 
-#### How Auto-Derivation Works
+#### Step 2 — (Only if needed) Add prefix overrides
 
-When `_PREFIX_FRAMEWORK_MAP` is updated, `_derive_prefix_language_map()` automatically:
+If the new YAML practices **lack** `applicability.frameworks`, add an entry to
+`_PREFIX_OVERRIDES` so the auto-builder can still map the prefix:
 
-1. **Identifies root languages** from single-element entries (e.g., `"PY": {"python"}` → `python` is a root)
-2. **Builds child→parent edges** from multi-element entries (e.g., `"FLASK": {"flask", "python"}` → `flask` is a child of `python`)
-3. **Walks parent chains** to resolve every prefix to its ultimate root language
-4. **Caches the result** — computed once, reused for all practice lookups
+```python
+    _PREFIX_OVERRIDES: dict[str, set[str]] = {
+        # ... existing entries ...
+        "<LANG>": {"<lang>"},     # Only if YAML has no applicability.frameworks
+    }
+```
 
-This means:
+If the YAML **does** include `applicability.frameworks`, skip this step.
 
-- `FLASK001` → `python` (resolved via `flask → python`)
-- `REACT001` → `typescript` (resolved via `react → typescript`)
+#### How Auto-Build Works
+
+`_build_prefix_framework_map()` runs once on first use:
+
+1. **Scans all `*.yaml`** files in the practices directory
+2. **Extracts practice ID prefixes** and their `applicability.frameworks`
+3. **Unions frameworks per prefix** (e.g., all FLASK practices → `{"flask", "python"}`)
+4. **Merges `_PREFIX_OVERRIDES`** for prefixes with missing/empty YAML metadata
+5. **Caches the result** — computed once, reused for all practice lookups
+
+Then `_derive_prefix_language_map()` resolves each prefix to a root language:
+
+- **Canonical match:** lowered prefix name (e.g., `FLASK` → `flask`) looked up in `_FRAMEWORK_TO_LANGUAGE`
+- **Variant match:** each framework in the set looked up in `_FRAMEWORK_TO_LANGUAGE`
+- **Fallback:** first known framework match wins
+
+Examples:
+
+- `FLASK001` → `python` (canonical: `flask` → `python`)
+- `REACT001` → `typescript` (canonical: `react` → `typescript`)
 - `DP001` → `generic` (empty set means generic)
-- `PY001` → `python` (direct root match)
+- `SPRING001` → `java` (framework fallback: `spring-boot` → `java`)
 
 #### What Happens Automatically
 
 | Mechanism                           | What it does                                                   |
 | ----------------------------------- | -------------------------------------------------------------- |
-| `_derive_prefix_language_map()`     | Maps every prefix to its root language                         |
+| `_build_prefix_framework_map()`     | Scans YAML → builds prefix→{frameworks} map                    |
+| `_derive_prefix_language_map()`     | Resolves prefix→root language via `_FRAMEWORK_TO_LANGUAGE`     |
 | `_get_practice_language()`          | Returns language for any practice by longest-prefix match      |
 | `_allocate_proportional_slots()`    | Distributes practice slots fairly across detected languages    |
 | CLI `_generate_practices_section()` | Groups practices by language in output (e.g., `## PYTHON (5)`) |
@@ -1781,14 +1790,15 @@ go_framework_mapping = {
     "grpc": ["google.golang.org/grpc"],
 }
 
-# In _PREFIX_FRAMEWORK_MAP (class attribute, v5.0):
-_PREFIX_FRAMEWORK_MAP = {
+# In _FRAMEWORK_TO_LANGUAGE (v6.0):
+_FRAMEWORK_TO_LANGUAGE = {
     ...
-    "GO": {"golang"},
-    "GIN": {"gin", "golang"},
-    "ECHO": {"echo", "golang"},
+    "golang": "golang",
+    "gin": "golang",
+    "echo": "golang",
+    "fiber": "golang",
 }
-# Language grouping auto-derives from these entries.
+# Prefix→framework map auto-builds from YAML practices.
 
 # In _filter_applicable():
 has_golang = any(f in context_frameworks for f in ["golang", "gin", "echo", "fiber"])

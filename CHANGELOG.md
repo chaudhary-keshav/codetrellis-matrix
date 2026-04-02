@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-02-07
+
+### Added
+
+- **Auto-generated prefix→framework map** from YAML practice files via `_build_prefix_framework_map()` — replaces the manually maintained 160-entry `_PREFIX_FRAMEWORK_MAP` with auto-scanning at first use
+- **`_FRAMEWORK_TO_LANGUAGE` mapping** (~220 entries): canonical framework→root language lookup used by the auto-builder
+- **`_PREFIX_OVERRIDES`** (14 entries): minimal overrides for prefixes whose YAML practices lack `applicability.frameworks`
+- **Proportional language allocation** in BPL selector — distributes practice slots fairly across detected languages, preventing frontend practices from crowding out backend in monorepo scans
+- **Security practice boost** — security practices receive a guaranteed allocation floor regardless of language distribution
+- **CLI language grouping** — `--include-practices` output now groups practices by language (e.g., `## PYTHON (5)`, `## TYPESCRIPT (3)`)
+- **Framework fallback resolution** — unknown prefixes (e.g., SPRING, FLUTTER) resolve via `applicability.frameworks` → `_FRAMEWORK_TO_LANGUAGE` lookup
+- **Canonical prefix matching** — CHARTJS→javascript, XSTATE→javascript (fixes incorrect resolution to typescript)
+- **CSS ecosystem fixes** — LESS/SASS/PCSS correctly resolve to css; Bootstrap mapped to css instead of javascript
+- 22 new unit tests for proportional allocation, language derivation, security detection, and framework fallback
+
+### Changed
+
+- Updated integration docs (CHECKLIST.md, GUIDE.md) to reflect v6.0 auto-build architecture
+
+### Removed
+
+- `_PREFIX_FRAMEWORK_MAP` class attribute (replaced by auto-built map from YAML + `_PREFIX_OVERRIDES`)
+
 ## [1.0.0] - 2026-03-14
 
 ### 🎉 First Public Release
