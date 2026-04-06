@@ -6,6 +6,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/codetrellis)](https://pypi.org/project/codetrellis/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-7359%20passing-brightgreen)]()
+[![Practices](https://img.shields.io/badge/practices-106%20YAMLs-blue)]()
 
 **Works with:** GitHub Copilot | Claude | Cursor | Windsurf | any MCP-compatible AI
 
@@ -49,6 +50,7 @@ codetrellis init . --ai   # sets up Copilot/Claude/Cursor integration
 
 - **120+ language/framework parsers** — Python, TypeScript, Go, Rust, Java, C#, and more
 - **MCP server** for real-time AI context injection (JSON-RPC 2.0)
+- **MCP `get_best_practices` tool** — returns framework-specific coding practices on demand (106 YAML practice files covering 25 ecosystems)
 - **JIT context engine** — delivers only relevant sections for the file you're editing
 - **Incremental builds** — only re-extract changed files
 - **Best Practices Library** — 4,500+ practices auto-selected for your stack

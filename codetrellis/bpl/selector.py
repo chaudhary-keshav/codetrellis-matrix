@@ -294,7 +294,11 @@ class ProjectContext:
             "python_dataclasses", "python_pydantic_models", "python_fastapi_endpoints",
             "python_flask_routes", "python_functions", "python_ml_models",
             "python_typed_dicts", "python_protocols", "python_type_aliases",
-            "python_enums", "python_celery_tasks", "python_sqlalchemy_models"
+            "python_enums", "python_celery_tasks", "python_sqlalchemy_models",
+            # Django-specific artifacts (v1.2.1)
+            "python_django_models", "python_django_views", "python_django_urls",
+            "python_django_admin", "python_django_forms", "python_django_serializers",
+            "python_django_signals", "python_django_middleware",
         ]
         for attr in python_artifacts:
             if hasattr(matrix, attr):
@@ -4146,6 +4150,19 @@ class ProjectContext:
 
         if hasattr(matrix, "python_flask_routes") and matrix.python_flask_routes:
             context.frameworks.add("flask")
+            context.frameworks.add("python")
+
+        # Django: detect from any of its 8 artifact types
+        django_artifact_fields = [
+            "python_django_models", "python_django_views", "python_django_urls",
+            "python_django_admin", "python_django_forms", "python_django_serializers",
+            "python_django_signals", "python_django_middleware",
+        ]
+        if any(
+            hasattr(matrix, f) and getattr(matrix, f)
+            for f in django_artifact_fields
+        ):
+            context.frameworks.add("django")
             context.frameworks.add("python")
 
         # ==== FALLBACK: If no frameworks detected, use raw presence ====

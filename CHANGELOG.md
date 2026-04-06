@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-04-06
+
+### Added
+
+- **MCP `get_best_practices` tool** — new MCP tool that returns framework/language-specific coding practices on demand. Supports 3 modes: file_path (auto-detects from extension), explicit frameworks list, or project-detected stack. Includes task-type hints (bug_fix, pr_review, feature, security_audit, refactor) for category prioritization.
+- **Auto-built practice lookup maps** from centralized configs — replaces hardcoded `_EXT_TO_FRAMEWORKS` with `_ensure_bp_maps()` classmethod that lazily builds 4 maps from `language_config.LANGUAGES` and `PracticeSelector._FRAMEWORK_TO_LANGUAGE`
+- **Python dependency extraction** in scanner — parses `requirements*.txt` and `pyproject.toml` (including optional-dependencies) into `matrix.python_dependencies`
+- **Full npm dependency capture** — scanner now collects ALL `dependencies` + `devDependencies` from `package.json` (was only 4 hardcoded keys)
+- **Django artifact detection** in BPL selector — 8 Django-specific matrix fields (`python_django_models`, `python_django_views`, etc.) now contribute to `python_count` and framework detection
+
+### Fixed
+
+- **Django/Python practices missing in monorepo scans** — 3 bugs fixed: `python_dependencies` never populated, Django artifacts not detected in `from_matrix()`, Django artifacts missing from `python_count`
+- **Ruff lint** — removed extraneous f-string prefix in mcp_server.py
+
+### Verified
+
+- **106/106 practice YAMLs** reachable via MCP tool — tested against 24 real public repos (Django, Flask, FastAPI, Express, Angular, Vue, Gin, Fiber, Actix, Axum, Rails, Laravel, Spring Boot, Flutter, Svelte, Ktor, Play, Vapor, Tailwind, and more)
+
 ## [1.2.0] - 2026-02-07
 
 ### Added

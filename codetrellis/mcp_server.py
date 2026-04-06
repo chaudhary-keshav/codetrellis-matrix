@@ -25,6 +25,7 @@ Architecture:
     - get_skills()               → List auto-generated skills
     - get_cache_stats()          → Get cache stats + matrix freshness info
     - get_filtered_logic(query)  → Filter IMPLEMENTATION_LOGIC by relevance
+    - get_best_practices(...)    → Get framework/language-specific best practices
 
 Protocol: MCP (Model Context Protocol) v1.0
 Transport: stdio (default), SSE (optional)
@@ -557,6 +558,52 @@ class MatrixMCPServer:
                     "required": ["query"],
                 },
             ),
+            MCPTool(
+                name="get_best_practices",
+                description=(
+                    "Get best practices relevant to a specific file, language, or framework. "
+                    "Returns full practice content from YAML files matching the request. "
+                    "Use this when editing code, reviewing PRs, or fixing bugs to get "
+                    "language/framework-specific coding guidelines.\n\n"
+                    "Three modes:\n"
+                    "1. file_path — auto-detects language from extension (e.g., 'views.py' → Django/Python)\n"
+                    "2. frameworks — explicit list (e.g., ['django', 'python', 'celery'])\n"
+                    "3. No args — returns practices for all project-detected frameworks"
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": (
+                                "File path being edited — practices auto-selected by extension "
+                                "(e.g., '.py' → Python/Django, '.tsx' → React/TypeScript)"
+                            ),
+                        },
+                        "frameworks": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": (
+                                "Explicit framework/language names to get practices for "
+                                "(e.g., ['django', 'python', 'celery'])"
+                            ),
+                        },
+                        "task": {
+                            "type": "string",
+                            "enum": ["bug_fix", "pr_review", "feature", "security_audit", "refactor"],
+                            "description": (
+                                "Task type hint — prioritizes relevant practice categories "
+                                "(e.g., 'security_audit' boosts security practices)"
+                            ),
+                        },
+                        "max_practices": {
+                            "type": "integer",
+                            "description": "Maximum number of practices to return (default: 50)",
+                            "default": 50,
+                        },
+                    },
+                },
+            ),
         ]
 
     def call_tool(self, name: str, arguments: Dict[str, Any]) -> MCPToolResult:
@@ -593,6 +640,13 @@ class MatrixMCPServer:
                 return self._tool_get_filtered_logic(
                     arguments.get("query", ""),
                     arguments.get("max_snippets", 20),
+                )
+            elif name == "get_best_practices":
+                return self._tool_get_best_practices(
+                    file_path=arguments.get("file_path"),
+                    frameworks=arguments.get("frameworks"),
+                    task=arguments.get("task"),
+                    max_practices=arguments.get("max_practices", 50),
                 )
             else:
                 return MCPToolResult(
@@ -815,6 +869,375 @@ class MatrixMCPServer:
         return MCPToolResult(
             content=[{"type": "text", "text": "\n".join(text_parts)}],
         )
+
+    # =========================================================================
+    # Best Practices — dynamic YAML-based practice serving
+    # =========================================================================
+
+    # Built lazily at first use from language_config + selector configs.
+    _bp_ext_map: Optional[Dict[str, tuple]] = None       # ext → (definite, conditional)
+    _bp_name_map: Optional[Dict[str, str]] = None         # alias → canonical name
+    _bp_available_stems: Optional[set] = None             # YAML practice file stems
+    _bp_lang_to_frameworks: Optional[Dict[str, list]] = None  # lang → [framework names]
+
+    # Extra extensions not in language_config but with practice files.
+    _EXTRA_EXT_MAPPING: Dict[str, str] = {
+        "Dockerfile": "devops",
+        ".dockerfile": "devops",
+        ".tf": "devops",
+        # Framework-specific file extensions not in language_config
+        ".vue": "vue",
+        ".svelte": "svelte",
+        ".astro": "astro",
+    }
+
+    # Extensions that imply a specific framework beyond the base language
+    # (e.g., .tsx always means "react" in addition to "typescript").
+    _EXT_FRAMEWORK_EXTRAS: Dict[str, List[str]] = {
+        ".tsx": ["react"],
+        ".jsx": ["react"],
+    }
+
+    @classmethod
+    def _ensure_bp_maps(cls) -> None:
+        """Build best-practice lookup maps lazily from centralised configs.
+
+        Sources:
+        - ``language_config.LANGUAGES``  → ext → base language (definite)
+        - ``bpl.selector._FRAMEWORK_TO_LANGUAGE`` → framework → language
+          (reversed to get language → frameworks for conditional matching)
+        - ``bpl/practices/*.yaml`` stems → available practice file names
+        """
+        if cls._bp_ext_map is not None:
+            return
+
+        from codetrellis.language_config import LANGUAGES, EXT_TO_LANG
+        from codetrellis.bpl.selector import PracticeSelector as BPL
+
+        # 1. Scan available practice YAML stems
+        practices_dir = Path(__file__).parent / "bpl" / "practices"
+        available: set = set()
+        if practices_dir.exists():
+            for f in practices_dir.glob("*.yaml"):
+                stem = f.stem.lower()
+                available.add(stem)
+                # Also index the stem without _core/_expanded suffix
+                available.add(stem.replace("_core", "").replace("_expanded", ""))
+        cls._bp_available_stems = available
+
+        # 2. Reverse _FRAMEWORK_TO_LANGUAGE: language → [frameworks with YAML files]
+        lang_to_fw: Dict[str, list] = {}
+        for fw, lang in BPL._FRAMEWORK_TO_LANGUAGE.items():
+            fw_norm = fw.lower().replace("-", "_")
+            # Only include frameworks that actually have a practice file
+            if fw_norm in available or fw_norm + "_core" in available:
+                lang_to_fw.setdefault(lang.lower(), []).append(fw_norm)
+        cls._bp_lang_to_frameworks = lang_to_fw
+
+        # 3. Build ext → (definite, conditional) map from language_config
+        ext_map: Dict[str, tuple] = {}
+        for lang_info in LANGUAGES:
+            lang_key = lang_info.key.lower()
+            # Conditional: all frameworks for this language that have practice files
+            # (excluding the base language itself — that's definite)
+            cond = [
+                fw for fw in lang_to_fw.get(lang_key, [])
+                if fw != lang_key
+            ]
+            for ext in lang_info.extensions:
+                definite = [lang_key]
+                # Add extra framework mapping (e.g. .tsx → react)
+                for extra in cls._EXT_FRAMEWORK_EXTRAS.get(ext.lower(), []):
+                    if extra not in definite:
+                        definite.append(extra)
+                ext_map[ext.lower()] = (definite, cond)
+
+        # Add extra extensions not in language_config (e.g. Dockerfile, .vue)
+        for ext, lang_key in cls._EXTRA_EXT_MAPPING.items():
+            if ext not in ext_map:
+                cond = [
+                    fw for fw in lang_to_fw.get(lang_key, [])
+                    if fw != lang_key
+                ]
+                ext_map[ext] = ([lang_key], cond)
+
+        cls._bp_ext_map = ext_map
+
+        # 4. Build name normalisation map from language_config aliases
+        #    + _FRAMEWORK_TO_LANGUAGE keys
+        name_map: Dict[str, str] = {}
+        for lang_info in LANGUAGES:
+            canonical = lang_info.key.lower()
+            name_map[canonical] = canonical
+            name_map[lang_info.display_name.lower()] = canonical
+            for alias in lang_info.aliases:
+                name_map[alias.lower()] = canonical
+        # Also add all framework names from selector
+        for fw in BPL._FRAMEWORK_TO_LANGUAGE:
+            fw_lower = fw.lower().replace("-", "_")
+            name_map.setdefault(fw_lower, fw_lower)
+        cls._bp_name_map = name_map
+
+    # Task type → categories to prioritize
+    _TASK_CATEGORY_BOOST: Dict[str, List[str]] = {
+        "bug_fix": ["error_handling", "debugging", "testing"],
+        "pr_review": ["security", "error_handling", "code_style", "testing", "performance"],
+        "feature": ["architecture", "design_patterns", "api_design", "testing"],
+        "security_audit": ["security"],
+        "refactor": ["architecture", "design_patterns", "performance", "code_style"],
+    }
+
+    def _tool_get_best_practices(
+        self,
+        file_path: Optional[str] = None,
+        frameworks: Optional[List[str]] = None,
+        task: Optional[str] = None,
+        max_practices: int = 50,
+    ) -> MCPToolResult:
+        """Get best practices for a file, framework list, or project-detected stack."""
+        self._ensure_bp_maps()
+
+        # Step 1: Determine target frameworks
+        target_frameworks: set = set()
+
+        if frameworks:
+            # Explicit — use directly
+            target_frameworks = {f.lower() for f in frameworks}
+        elif file_path:
+            # Derive from file extension
+            ext = Path(file_path).suffix.lower()
+            name = Path(file_path).name
+            # Check full filename first (e.g. "Dockerfile"), then extension
+            mapping = self._bp_ext_map.get(name) or self._bp_ext_map.get(ext)
+            if mapping:
+                definite, conditional = mapping
+                target_frameworks = set(definite)
+                if conditional:
+                    # Only include conditional frameworks if detected in the project
+                    detected = self._get_detected_frameworks()
+                    target_frameworks |= set(conditional) & detected
+            else:
+                target_frameworks = set()
+        else:
+            # No input — return practices for all project-detected frameworks
+            target_frameworks = self._get_detected_frameworks()
+
+        if not target_frameworks:
+            return MCPToolResult(
+                content=[{
+                    "type": "text",
+                    "text": (
+                        "No matching frameworks found. Provide file_path or frameworks, "
+                        "or ensure the project has been scanned with CodeTrellis."
+                    ),
+                }],
+            )
+
+        # Step 2: Find matching YAML practice files
+        practices_dir = Path(__file__).parent / "bpl" / "practices"
+        if not practices_dir.exists():
+            return MCPToolResult(
+                content=[{
+                    "type": "text",
+                    "text": "Practices directory not found.",
+                }],
+                is_error=True,
+            )
+
+        matched_files = self._find_practice_files(practices_dir, target_frameworks)
+
+        if not matched_files:
+            return MCPToolResult(
+                content=[{
+                    "type": "text",
+                    "text": (
+                        f"No practice files found for: {', '.join(sorted(target_frameworks))}. "
+                        f"Available: {', '.join(f.stem for f in sorted(practices_dir.glob('*.yaml')))}"
+                    ),
+                }],
+            )
+
+        # Step 3: Read and optionally filter practices
+        text_parts = [
+            "# Best Practices",
+            f"Frameworks: {', '.join(sorted(target_frameworks))}",
+        ]
+        if file_path:
+            text_parts.append(f"File: {file_path}")
+        if task:
+            text_parts.append(f"Task: {task}")
+        text_parts.append("")
+
+        boosted_categories = set()
+        if task and task in self._TASK_CATEGORY_BOOST:
+            boosted_categories = set(self._TASK_CATEGORY_BOOST[task])
+            text_parts.append(f"Priority categories: {', '.join(boosted_categories)}")
+            text_parts.append("")
+
+        total_practices = 0
+        was_truncated = False
+        remaining = max_practices
+        for yaml_file in sorted(matched_files):
+            if remaining <= 0:
+                break
+            content = yaml_file.read_text(encoding="utf-8", errors="replace")
+            framework_name = yaml_file.stem.replace("_core", "")
+            text_parts.append(f"## {framework_name.upper()} — {yaml_file.name}")
+
+            # If task hint provided, extract and reorder by category priority
+            if boosted_categories:
+                content = self._reorder_by_category(content, boosted_categories)
+
+            # Truncate to remaining practice count if needed
+            file_count = content.count("  - id:")
+            if file_count > remaining:
+                content = self._truncate_practices(content, remaining)
+                file_count = remaining
+                was_truncated = True
+
+            text_parts.append(content)
+            text_parts.append("")
+            total_practices += file_count
+            remaining -= file_count
+
+        if was_truncated:
+            text_parts.insert(
+                2,
+                f"Practices: {total_practices} (limited from max_practices={max_practices}) from {len(matched_files)} files",
+            )
+        else:
+            text_parts.insert(2, f"Practices: {total_practices} from {len(matched_files)} files")
+
+        return MCPToolResult(
+            content=[{"type": "text", "text": "\n".join(text_parts)}],
+        )
+
+    def _get_detected_frameworks(self) -> set:
+        """Extract detected frameworks from the matrix [OVERVIEW] and [PROJECT] sections."""
+        self._ensure_bp_maps()
+        detected: set = set()
+
+        # From [OVERVIEW] stack= line
+        overview = self._sections.get("OVERVIEW", "")
+        for line in overview.splitlines():
+            if line.startswith("stack="):
+                # e.g. "stack=Python + Bash + TypeScript"
+                parts = line.split("=", 1)[1].split("+")
+                for part in parts:
+                    detected.add(part.strip().lower())
+
+        # From [PROJECT] type= line
+        project = self._sections.get("PROJECT", "")
+        for line in project.splitlines():
+            if line.startswith("type="):
+                # e.g. "type=Python Library" → "python"
+                for word in line.split("=", 1)[1].lower().split():
+                    detected.add(word)
+
+        # Normalise using the auto-built name map
+        normalised: set = set()
+        for d in detected:
+            mapped = self._bp_name_map.get(d)
+            if mapped:
+                normalised.add(mapped)
+        # Remove non-framework tokens
+        normalised.discard("library")
+        normalised.discard("+")
+        normalised.discard("")
+
+        return normalised
+
+    def _find_practice_files(
+        self, practices_dir: Path, target_frameworks: set
+    ) -> List[Path]:
+        """Find YAML practice files matching the target frameworks.
+
+        Matches by:
+        1. Filename stem (e.g., 'django.yaml' matches 'django')
+        2. Filename stem without '_core' suffix (e.g., 'gin_core.yaml' matches 'gin')
+        3. Top-level 'framework:' field in the YAML
+        """
+        matched: List[Path] = []
+        # Normalize targets
+        targets = {t.lower().replace("-", "_") for t in target_frameworks}
+
+        for yaml_file in practices_dir.glob("*.yaml"):
+            stem = yaml_file.stem.lower()
+            # Match: exact stem, stem without _core, or first part before _
+            stem_base = stem.replace("_core", "").replace("_expanded", "")
+
+            if stem_base in targets or stem in targets:
+                matched.append(yaml_file)
+                continue
+
+            # Also check top-level framework: field (first 10 lines)
+            try:
+                head = ""
+                with open(yaml_file, encoding="utf-8") as f:
+                    for i, line in enumerate(f):
+                        if i >= 10:
+                            break
+                        head += line
+                for line in head.splitlines():
+                    stripped = line.strip()
+                    if stripped.startswith("framework:"):
+                        fw = stripped.split(":", 1)[1].strip().strip("'\"").lower()
+                        if fw in targets:
+                            matched.append(yaml_file)
+                            break
+                    if stripped.startswith("# Frameworks:"):
+                        # Comment-style: "# Frameworks: gin, golang"
+                        fws = stripped.split(":", 1)[1].strip().lower().split(",")
+                        if any(f.strip() in targets for f in fws):
+                            matched.append(yaml_file)
+                            break
+            except Exception:
+                pass
+
+        return matched
+
+    @staticmethod
+    def _reorder_by_category(yaml_content: str, boost_categories: set) -> str:
+        """Reorder YAML practice content to put boosted categories first.
+
+        Adds a priority marker comment before practices in boosted categories
+        without actually restructuring the YAML (which would be fragile).
+        """
+        if not boost_categories:
+            return yaml_content
+
+        # Add a header noting the priority
+        lines = yaml_content.splitlines()
+        result: List[str] = []
+        in_boosted = False
+        for line in lines:
+            stripped = line.strip().lower()
+            if stripped.startswith("category:"):
+                cat = stripped.split(":", 1)[1].strip().strip("'\"")
+                if cat in boost_categories:
+                    if not in_boosted:
+                        result.append("    # ⚡ PRIORITY — matches task type")
+                    in_boosted = True
+                else:
+                    in_boosted = False
+            result.append(line)
+        return "\n".join(result)
+
+    @staticmethod
+    def _truncate_practices(yaml_content: str, max_count: int) -> str:
+        """Truncate YAML content to include at most max_count practices.
+
+        Splits on '  - id:' markers and keeps only the first max_count entries,
+        preserving the file header (everything before the first practice).
+        """
+        marker = "  - id:"
+        parts = yaml_content.split(marker)
+        if len(parts) <= max_count + 1:
+            return yaml_content
+        # parts[0] is the header, parts[1:] are practices
+        truncated = marker.join(parts[: max_count + 1])
+        truncated += f"\n\n# ... truncated to {max_count} practices"
+        return truncated
 
     def _count_source_files_newer_than(self, threshold: float) -> int:
         """Count project source files modified after the given timestamp."""
