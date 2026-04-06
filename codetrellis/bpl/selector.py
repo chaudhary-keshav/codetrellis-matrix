@@ -295,7 +295,7 @@ class ProjectContext:
             "python_flask_routes", "python_functions", "python_ml_models",
             "python_typed_dicts", "python_protocols", "python_type_aliases",
             "python_enums", "python_celery_tasks", "python_sqlalchemy_models",
-            # Django-specific artifacts (v1.2.1)
+            # Django-specific artifacts (v1.3.0)
             "python_django_models", "python_django_views", "python_django_urls",
             "python_django_admin", "python_django_forms", "python_django_serializers",
             "python_django_signals", "python_django_middleware",

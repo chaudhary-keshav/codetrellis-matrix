@@ -26230,7 +26230,7 @@ class ProjectScanner:
         # Get gitignore filter for respecting .gitignore rules
         gi = self._gitignore_filter
 
-        # --- Python: requirements*.txt, pyproject.toml, setup.cfg ---
+        # --- Python: requirements*.txt, pyproject.toml ---
         import re as _re
 
         def _parse_requirement_line(line: str) -> Optional[str]:

@@ -911,7 +911,7 @@ class MatrixMCPServer:
         if cls._bp_ext_map is not None:
             return
 
-        from codetrellis.language_config import LANGUAGES, EXT_TO_LANG
+        from codetrellis.language_config import LANGUAGES
         from codetrellis.bpl.selector import PracticeSelector as BPL
 
         # 1. Scan available practice YAML stems
@@ -1001,8 +1001,14 @@ class MatrixMCPServer:
         target_frameworks: set = set()
 
         if frameworks:
-            # Explicit — use directly
-            target_frameworks = {f.lower() for f in frameworks}
+            # Explicit — normalize via _bp_name_map aliases
+            for f in frameworks:
+                key = f.lower().replace("-", "_")
+                resolved = self._bp_name_map.get(key)
+                if resolved:
+                    target_frameworks.add(resolved)
+                else:
+                    target_frameworks.add(key)
         elif file_path:
             # Derive from file extension
             ext = Path(file_path).suffix.lower()

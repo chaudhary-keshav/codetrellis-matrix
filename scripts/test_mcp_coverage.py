@@ -24,7 +24,7 @@ from pathlib import Path
 
 from codetrellis.mcp_server import MatrixMCPServer
 
-PRACTICES_DIR = Path(__file__).parent / "codetrellis" / "bpl" / "practices"
+PRACTICES_DIR = Path(__file__).resolve().parents[1] / "codetrellis" / "bpl" / "practices"
 ALL_YAML_STEMS = sorted(f.stem for f in PRACTICES_DIR.glob("*.yaml"))
 TOTAL = len(ALL_YAML_STEMS)
 WIDTH = 78
