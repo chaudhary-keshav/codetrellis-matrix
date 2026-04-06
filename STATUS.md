@@ -1,4 +1,4 @@
-> **Public Release Version:** 1.0.0 (PyPI)
+> **Public Release Version:** 1.3.0 (PyPI)
 > Internal development tracked as v4.9.0–v5.7.0 across 83 sessions.
 > This file contains internal development history.
 

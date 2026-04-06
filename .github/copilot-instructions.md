@@ -35,6 +35,7 @@ tools below. They return the full project context in one call and save hundreds 
 | `get_context_for_file(path)` | **Before editing any file** — returns types, deps, APIs for that file                                                                        |
 | `get_skills()`               | List auto-generated AI skills                                                                                                                |
 | `get_cache_stats()`          | Cache optimization statistics                                                                                                                |
+| `get_best_practices(...)`    | Get framework/language-specific best practices — pass `file_path`, `frameworks`, `task`, or `max_practices`                                  |
 
 ## Key Conventions
 
@@ -62,7 +63,7 @@ Run tests: `pytest tests/ -x -q`
 
 ## Version & Release
 
-**Single source of truth:** `pyproject.toml` — `version = "1.2.0"`
+**Single source of truth:** `pyproject.toml` — `version = "1.3.0"`
 
 - `__init__.py` reads via `importlib.metadata` — never edit it manually.
 - Release: push `v*` tag → CI runs tests → build → publish.

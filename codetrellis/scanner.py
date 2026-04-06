@@ -26226,9 +26226,60 @@ class ProjectScanner:
     _EXAMPLE_DIRS = FileClassifier.EXAMPLE_DIRS
 
     def _extract_dependencies(self, root: Path, matrix: ProjectMatrix):
-        """Extract dependencies from package.json and go.mod files"""
+        """Extract dependencies from package.json, go.mod, and Python manifest files"""
         # Get gitignore filter for respecting .gitignore rules
         gi = self._gitignore_filter
+
+        # --- Python: requirements*.txt, pyproject.toml ---
+        import re as _re
+
+        def _parse_requirement_line(line: str) -> Optional[str]:
+            """Extract package name from a pip requirements line."""
+            line = line.strip()
+            if not line or line.startswith(("#", "-")):
+                return None
+            # Strip extras, version specifiers, environment markers
+            match = _re.match(r"([A-Za-z0-9][\w.\-]*)", line)
+            return match.group(1).lower().replace("-", "_").replace(".", "_") if match else None
+
+        # requirements*.txt files (only at root and one level deep)
+        for req_file in list(root.glob("requirements*.txt")) + list(root.glob("*/requirements*.txt")):
+            if gi and not gi.is_empty:
+                rel = str(req_file.relative_to(root))
+                if gi.should_ignore(rel, is_dir=False):
+                    continue
+            try:
+                for raw_line in req_file.read_text(encoding="utf-8", errors="replace").splitlines():
+                    pkg = _parse_requirement_line(raw_line)
+                    if pkg:
+                        matrix.python_dependencies[pkg] = "*"
+            except Exception:
+                pass
+
+        # pyproject.toml — [project] dependencies
+        for pyproject in list(root.glob("pyproject.toml")) + list(root.glob("*/pyproject.toml")):
+            if gi and not gi.is_empty:
+                rel = str(pyproject.relative_to(root))
+                if gi.should_ignore(rel, is_dir=False):
+                    continue
+            try:
+                try:
+                    import tomllib
+                except ImportError:
+                    import tomli as tomllib  # type: ignore[no-redef]
+                data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+                for dep_str in data.get("project", {}).get("dependencies", []):
+                    pkg = _parse_requirement_line(dep_str)
+                    if pkg:
+                        matrix.python_dependencies[pkg] = "*"
+                # Also check optional-dependencies
+                for group_deps in data.get("project", {}).get("optional-dependencies", {}).values():
+                    for dep_str in group_deps:
+                        pkg = _parse_requirement_line(dep_str)
+                        if pkg:
+                            matrix.python_dependencies[pkg] = "*"
+            except Exception:
+                pass
         
         # --- Node.js: package.json ---
         # Recursively find all package.json files but respect .gitignore
@@ -26242,11 +26293,13 @@ class ProjectScanner:
             try:
                 data = json.loads(package_json.read_text())
                 deps = data.get("dependencies", {})
+                dev_deps = data.get("devDependencies", {})
 
-                # Extract key dependencies
-                for key in ["@nestjs/common", "@angular/core", "express", "fastapi"]:
-                    if key in deps:
-                        matrix.dependencies[key] = deps[key]
+                # Store all dependencies so the BPL framework mapping can match them
+                for key, ver in deps.items():
+                    matrix.dependencies[key] = ver if isinstance(ver, str) else "*"
+                for key, ver in dev_deps.items():
+                    matrix.dependencies[key] = ver if isinstance(ver, str) else "*"
 
             except Exception:
                 pass
